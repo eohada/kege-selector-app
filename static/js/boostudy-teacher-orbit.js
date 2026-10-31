@@ -58,7 +58,7 @@
     };
   }
 
-  // Master Tools Configuration (5 Focused Pedagogical Sectors + Satellites)
+  // Master Tools Configuration (4 Focused Pedagogical Sectors + Satellites)
   const MASTER_SECTORS = [
     {
       id: 'teacher_draft',
@@ -78,66 +78,6 @@
           title: 'Личные заметки',
           icon: 'ph-notebook',
           action: () => actionOpenTeacherNotes()
-        },
-        {
-          id: 'toggle_student_viewport',
-          title: 'Контур ученика',
-          icon: 'ph-bounding-box',
-          action: () => window.toggleStudentViewportOutline?.()
-        }
-      ]
-    },
-    {
-      id: 'official_answer',
-      title: 'Эталон ответа',
-      icon: 'ph-check-circle',
-      color: '#059669',
-      action: (x, y) => spawnAnswerCard(x, y),
-      satellites: [
-        {
-          id: 'show_card',
-          title: 'Карточка ответа',
-          icon: 'ph-article',
-          action: (x, y) => spawnAnswerCard(x, y)
-        },
-        {
-          id: 'toggle_student_vis',
-          title: 'Открыть ученику',
-          icon: 'ph-broadcast',
-          action: () => toggleStudentAnswerVisibility()
-        }
-      ]
-    },
-    {
-      id: 'task_manager',
-      title: 'Задания урока',
-      icon: 'ph-books',
-      color: '#d97706',
-      action: () => actionNextTask(),
-      satellites: [
-        {
-          id: 'prev_task',
-          title: 'Предыдущая',
-          icon: 'ph-arrow-circle-left',
-          action: () => actionPrevTask()
-        },
-        {
-          id: 'next_task',
-          title: 'Следующая',
-          icon: 'ph-arrow-circle-right',
-          action: () => actionNextTask()
-        },
-        {
-          id: 'task_bank',
-          title: 'Банк задач',
-          icon: 'ph-magnifying-glass-plus',
-          action: () => actionOpenTaskBank()
-        },
-        {
-          id: 'ai_analog',
-          title: 'AI аналог',
-          icon: 'ph-sparkle',
-          action: () => actionGenerateAnalog()
         }
       ]
     },
@@ -197,6 +137,27 @@
           title: 'Написать свою',
           icon: 'ph-pencil-line',
           action: (x, y) => spawnMasterHintCard(x, y)
+        }
+      ]
+    },
+    {
+      id: 'student_viewport',
+      title: 'Контур ученика',
+      icon: 'ph-bounding-box',
+      color: '#059669',
+      action: () => window.toggleStudentViewportOutline?.(),
+      satellites: [
+        {
+          id: 'toggle_outline',
+          title: 'Вкл/выкл контур',
+          icon: 'ph-eye',
+          action: () => window.toggleStudentViewportOutline?.()
+        },
+        {
+          id: 'jump_student',
+          title: 'К экрану ученика',
+          icon: 'ph-crosshair',
+          action: () => window.focusOnStudentViewport?.()
         }
       ]
     }
@@ -435,6 +396,18 @@
       // Hotkey: Ctrl + Alt (or Cmd + Alt on macOS)
       const isCtrlAlt = (e.ctrlKey || e.metaKey) && e.altKey;
       if (isCtrlAlt && !this.isOpen && !e.repeat) {
+        const hovered = document.elementFromPoint(this.cursorX, this.cursorY);
+        if (!hovered) return;
+        // Suppress Orbit if hovering over any window, dock, input, textarea, modal, dialog
+        if (hovered.closest('.glass-os-window, [id$="-window"], #dock-bar, .lesson-dock, input, textarea, select, button, .modal, dialog, [role="dialog"], #dev-role-switcher-modal')) {
+          return;
+        }
+        // Allowed ONLY over the real bare canvas viewport
+        const canvasViewport = document.getElementById('whiteboard-canvas-viewport');
+        if (!canvasViewport || (!hovered.closest('#whiteboard-canvas-viewport') && hovered !== canvasViewport)) {
+          return;
+        }
+
         this.activeKey = 'CtrlAlt';
         this.show(this.cursorX, this.cursorY);
         e.preventDefault();
@@ -751,181 +724,6 @@
   }
 
   // Floating Official Answer Card (Real Task Integration)
-  function spawnAnswerCard(x, y) {
-    const existing = document.getElementById('boo-master-answer-card');
-    if (existing) {
-      existing.remove();
-      masterInstance?.showToast('Карточка ответа закрыта', 'ph-check-circle');
-      return;
-    }
-
-    const host = getMasterWorkspaceHost();
-    const coords = getWorkspaceCoordinates(x, y);
-
-    const card = document.createElement('div');
-    card.id = 'boo-master-answer-card';
-    card.className = 'boo-master-card';
-    card.style.left = `${Math.max(20, Math.min(coords.maxW - 380, coords.x - 180))}px`;
-    card.style.top = `${Math.max(20, Math.min(coords.maxH - 320, coords.y - 120))}px`;
-
-    const activeTask = window.lessonTasksController?.getActiveTask?.();
-    const taskTitle = activeTask?.title || (activeTask?.task_number ? `Задание №${activeTask.task_number}` : 'Текущее задание');
-    const answer = String(activeTask?.answer || '').trim();
-    const answerVisible = activeTask?.answer_visible_to_student === true;
-    const criteriaOrSolution = activeTask?.criteria || activeTask?.solution || activeTask?.explanation || (Array.isArray(activeTask?.subtasks) ? activeTask.subtasks.map((s) => s.text).join('\n') : '');
-
-    card.innerHTML = `
-      <div class="boo-master-card-header">
-        <div class="boo-master-card-title">
-          <i class="ph-bold ph-check-circle text-emerald-500"></i>
-          <span>${escapeHtml(taskTitle)}</span>
-        </div>
-        <button type="button" class="boo-master-card-close" aria-label="Закрыть"><i class="ph-bold ph-x"></i></button>
-      </div>
-      <div class="boo-master-answer-body">
-        <div class="flex items-center justify-between gap-2">
-          <span class="boo-master-answer-badge">Эталонный ответ</span>
-          <span id="boo-answer-vis-status" class="text-[10px] font-bold ${answerVisible ? 'text-emerald-600' : 'text-amber-600'}">
-            <i class="ph-bold ${answerVisible ? 'ph-eye' : 'ph-eye-slash'}"></i> ${answerVisible ? 'Виден ученику' : 'Скрыт от ученика'}
-          </span>
-        </div>
-        <div class="boo-master-answer-val">${escapeHtml(answer || 'Не задан в условии')}</div>
-        ${criteriaOrSolution ? `
-          <div class="text-xs text-slate-600 space-y-1">
-            <div class="text-[11px] text-amber-900 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 mt-1 max-h-32 overflow-y-auto leading-relaxed">
-              <strong>Решение / Критерии:</strong>
-              <div class="mt-1 whitespace-pre-wrap">${escapeHtml(criteriaOrSolution)}</div>
-            </div>
-          </div>
-        ` : ''}
-        <div class="flex items-center gap-1.5 pt-1">
-          <button type="button" class="boo-inspector-btn flex-1 py-1.5 text-[11px]" id="boo-toggle-student-answer">
-            <i class="ph-bold ${answerVisible ? 'ph-eye-slash' : 'ph-eye'}"></i>
-            <span>${answerVisible ? 'Скрыть от ученика' : 'Показать ученику'}</span>
-          </button>
-          ${answer ? `
-            <button type="button" class="boo-inspector-btn py-1.5 px-3 text-[11px]" id="boo-copy-answer" title="Скопировать ответ">
-              <i class="ph-bold ph-copy"></i>
-            </button>
-          ` : ''}
-        </div>
-      </div>
-    `;
-
-    host.appendChild(card);
-    bringMasterElementToFront(card);
-    makeMasterDraggable(card, card.querySelector('.boo-master-card-header'));
-    card.querySelector('.boo-master-card-close').addEventListener('click', () => card.remove());
-
-    const toggleBtn = card.querySelector('#boo-toggle-student-answer');
-    toggleBtn?.addEventListener('click', () => {
-      window.lessonTasksController?.toggleAnswerVisibility?.();
-      const updatedTask = window.lessonTasksController?.getActiveTask?.();
-      const isVis = updatedTask?.answer_visible_to_student === true;
-      const statusEl = card.querySelector('#boo-answer-vis-status');
-      if (statusEl) {
-        statusEl.className = `text-[10px] font-bold ${isVis ? 'text-emerald-600' : 'text-amber-600'}`;
-        statusEl.innerHTML = `<i class="ph-bold ${isVis ? 'ph-eye' : 'ph-eye-slash'}"></i> ${isVis ? 'Виден ученику' : 'Скрыт от ученика'}`;
-      }
-      toggleBtn.innerHTML = `<i class="ph-bold ${isVis ? 'ph-eye-slash' : 'ph-eye'}"></i> <span>${isVis ? 'Скрыть от ученика' : 'Показать ученику'}</span>`;
-      window.boostudyLessonControl?.sendUi?.({
-        kind: 'teacher_answer_vis',
-        visible: isVis,
-        answer: updatedTask?.answer || '',
-        task_id: updatedTask?.lesson_task_id || updatedTask?.task_id
-      });
-      masterInstance?.showToast(isVis ? 'Ответ открыт ученику' : 'Ответ скрыт от ученика', isVis ? 'ph-eye' : 'ph-eye-slash');
-    });
-
-    const copyBtn = card.querySelector('#boo-copy-answer');
-    copyBtn?.addEventListener('click', () => {
-      if (answer && navigator.clipboard) {
-        navigator.clipboard.writeText(answer).then(() => {
-          masterInstance?.showToast('Ответ скопирован в буфер', 'ph-copy');
-        });
-      }
-    });
-
-    masterInstance?.showToast('Карточка эталонного ответа открыта', 'ph-check-circle');
-  }
-
-  // 3. Task Management Actions
-  function actionPrevTask() {
-    if (window.lessonTasksController?.prevTask) {
-      const task = window.lessonTasksController.prevTask();
-      if (task) {
-        const taskId = task.lesson_task_id || task.task_id;
-        window.boostudyLessonControl?.sendUi?.({
-          kind: 'task_switch',
-          task_id: taskId
-        });
-        masterInstance?.showToast(`Переход: ${task.title || ('Задание №' + task.task_number)}`, 'ph-arrow-circle-left');
-        return;
-      }
-    }
-    const list = document.getElementById('task-attached-list');
-    const currentActive = list?.querySelector('[aria-current="true"]');
-    const prevBtn = currentActive?.previousElementSibling || list?.lastElementChild;
-    if (prevBtn) {
-      prevBtn.click();
-      masterInstance?.showToast('Переход к предыдущей задаче', 'ph-arrow-circle-left');
-    } else {
-      masterInstance?.showToast('В уроке пока нет прикрепленных задач', 'ph-info');
-    }
-  }
-
-  function actionNextTask() {
-    if (window.lessonTasksController?.nextTask) {
-      const task = window.lessonTasksController.nextTask();
-      if (task) {
-        const taskId = task.lesson_task_id || task.task_id;
-        window.boostudyLessonControl?.sendUi?.({
-          kind: 'task_switch',
-          task_id: taskId
-        });
-        masterInstance?.showToast(`Переход: ${task.title || ('Задание №' + task.task_number)}`, 'ph-arrow-circle-right');
-        return;
-      }
-    }
-    const list = document.getElementById('task-attached-list');
-    const currentActive = list?.querySelector('[aria-current="true"]');
-    const nextBtn = currentActive?.nextElementSibling || list?.firstElementChild;
-    if (nextBtn) {
-      nextBtn.click();
-      masterInstance?.showToast('Переход к следующей задаче', 'ph-arrow-circle-right');
-    } else {
-      masterInstance?.showToast('В уроке пока нет прикрепленных задач', 'ph-info');
-    }
-  }
-
-  function actionOpenTaskBank() {
-    if (window.lessonTasksController?.openBank) {
-      window.lessonTasksController.openBank();
-      masterInstance?.showToast('Банк задач открыт', 'ph-magnifying-glass-plus');
-    } else if (typeof window.openWindow === 'function') {
-      window.openWindow('task-window');
-      masterInstance?.showToast('Окно заданий открыто', 'ph-books');
-    }
-  }
-
-  function actionGenerateAnalog() {
-    const activeTask = window.lessonTasksController?.getActiveTask?.();
-    const taskTitle = activeTask?.title || (activeTask?.task_number ? `Задание №${activeTask.task_number}` : '');
-    if (window.lessonTasksController?.openCompose) {
-      window.lessonTasksController.openCompose();
-    }
-    if (typeof window.toggleBooAICopilot === 'function') {
-      window.toggleBooAICopilot();
-      const popover = document.getElementById('booai-popover');
-      const input = popover?.querySelector('input');
-      if (input) {
-        input.value = taskTitle ? `Сгенерируй аналог для задачи: ${taskTitle}` : 'Сгенерируй аналогичную задачу по текущей теме';
-        input.focus();
-      }
-    }
-    masterInstance?.showToast('AI Lab: генерация аналога подготовлена', 'ph-sparkle');
-  }
-
   // 4. Pedagogical Stamps (Synchronized with student & canvas-space aware)
   function spawnMasterStamp(x, y, label, type, icon) {
     const canvasViewport = document.getElementById('whiteboard-canvas-viewport') || document.querySelector('.boo-canvas-overlay');

@@ -96,6 +96,172 @@ def test_staff_view_student_profile(app_ctx, test_data):
     assert "manage-study-time-modal" in html
 
 
+def test_student_profile_activity_uses_canonical_student_id(app_ctx, test_data):
+    from datetime import datetime
+
+    from core.db_models import Assignment, Submission
+
+    teacher = db.session.get(User, test_data['teacher_id'])
+    other_user_id = test_data['other_student_id']
+    target_user = User(
+        email="target-profile@test.local",
+        username="target_profile_student",
+        role="student",
+        full_name="Целевой ученик",
+    )
+    target_user.set_password("pass123")
+    db.session.add(target_user)
+    db.session.flush()
+
+    target_student = Student(
+        student_id=target_user.id + 1000,
+        user_id=target_user.id,
+        name="Целевой ученик",
+        mentor_id=teacher.id,
+    )
+    colliding_student = Student(
+        student_id=target_user.id,
+        user_id=other_user_id,
+        name="Другой ученик с совпавшим ID",
+        mentor_id=teacher.id,
+    )
+    db.session.add_all([target_student, colliding_student])
+    own_assignment = Assignment(
+        title="Своя работа",
+        assignment_type="homework",
+        deadline=datetime(2026, 10, 27, 12),
+        created_by_id=teacher.id,
+    )
+    other_assignment = Assignment(
+        title="Работа другого ученика",
+        assignment_type="homework",
+        deadline=datetime(2026, 10, 27, 12),
+        created_by_id=teacher.id,
+    )
+    db.session.add_all([own_assignment, other_assignment])
+    db.session.flush()
+    db.session.add_all([
+        Submission(
+            assignment_id=own_assignment.assignment_id,
+            student_id=target_student.student_id,
+            status="GRADED",
+            submitted_at=datetime(2026, 10, 26, 12, 0),
+            total_score=1,
+            max_score=1,
+            percentage=100,
+        ),
+        Submission(
+            assignment_id=other_assignment.assignment_id,
+            student_id=colliding_student.student_id,
+            status="GRADED",
+            submitted_at=datetime(2026, 10, 26, 12, 1),
+            total_score=1,
+            max_score=1,
+            percentage=100,
+        ),
+    ])
+    db.session.commit()
+
+    client = app_ctx.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(test_data['teacher_id'])
+        sess['_fresh'] = True
+
+    response = client.get(f"/workspace/people/{target_user.id}")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert f"Сдал работу #{own_assignment.assignment_id}" in html
+    assert f"Сдал работу #{other_assignment.assignment_id}" not in html
+
+
+def test_tutor_profile_does_not_link_tutor_core_label_to_student_practice(app_ctx, test_data, monkeypatch):
+    from app.ai_lab import analytics, database_safety, tutor_core31
+
+    student_user = db.session.get(User, test_data['student_user_id'])
+    student_user.username = "synthetic_profile_student"
+    db.session.commit()
+    monkeypatch.setattr(database_safety, 'has_verified_safe_ai_lab_db', lambda: True)
+    monkeypatch.setattr(analytics, 'all_analytics_evidence', lambda actor_user_id: [])
+    monkeypatch.setattr(tutor_core31, 'get_tutor_core31_state', lambda actor_user_id: {
+        'learners': [{
+            'student_id': test_data['student_id'],
+            'subject_id': f"platform-student:{test_data['student_user_id']}",
+            'event_count': 1,
+            'comparison': {'decision': {'title': 'Собрать ещё доказательства', 'reason': 'Одна проверенная попытка.'}},
+            'curriculum_status': 'linked',
+            'state_b': {'skills': []},
+            'curriculum': None,
+        }],
+    })
+
+    client = app_ctx.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(test_data['teacher_id'])
+        sess['sandbox_role'] = 'teacher'
+        sess['_fresh'] = True
+
+    response = client.get(f"/workspace/people/{test_data['student_user_id']}")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'Основания текущего шага и ограничения показаны в этой сводке' in html
+    assert 'Открыть основания и решения' not in html
+    assert 'Сейчас нет действия для преподавателя' in html
+    assert 'Общий учебный прогресс' in html
+    assert 'работы и практика учитываются отдельно.' in html
+
+    assert client.get('/admin/ai-lab/tutor-core').status_code == 403
+
+
+def test_teacher_profile_links_to_course_form_when_individual_plan_has_no_future_lesson(
+    app_ctx, test_data, monkeypatch
+):
+    from app.ai_lab import analytics, database_safety, tutor_core, tutor_core31
+
+    student_user = db.session.get(User, test_data['student_user_id'])
+    student_user.username = "synthetic_profile_student"
+    db.session.commit()
+    subject_id = f"platform-student:{student_user.id}"
+    monkeypatch.setattr(database_safety, 'has_verified_safe_ai_lab_db', lambda: True)
+    monkeypatch.setattr(analytics, 'all_analytics_evidence', lambda actor_user_id: [])
+    monkeypatch.setattr(tutor_core31, 'get_tutor_core31_state', lambda actor_user_id: {
+        'learners': [{
+            'student_id': test_data['student_id'],
+            'subject_id': subject_id,
+            'event_count': 0,
+            'comparison': {'decision': {'title': 'Сохранить план', 'reason': 'Нет будущего урока.'}},
+            'state_b': {'skills': []},
+        }],
+    })
+    monkeypatch.setattr(tutor_core, '_platform_profile_cases', lambda actor_user_id: [{
+        'profile_id': subject_id,
+        'course_copy_id': 42,
+        'course_title': 'Синтетическая индивидуальная программа',
+        'course_version': 3,
+        'next_lesson': None,
+        'adaptation_target_lesson': None,
+        'proposal': {'action': 'maintain_plan', 'text': 'В индивидуальной программе нет будущего урока.'},
+        'curriculum_resolution': {'status': 'linked'},
+        'can_generate': False,
+    }])
+
+    client = app_ctx.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(test_data['teacher_id'])
+        sess['sandbox_role'] = 'teacher'
+        sess['_fresh'] = True
+
+    response = client.get(f"/workspace/people/{student_user.id}")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert 'В индивидуальной программе не осталось будущих занятий' in html
+    assert 'Добавить следующее занятие' in html
+    assert 'href="/courses/42/lessons/new"' in html
+    assert 'Ничего не добавится, пока преподаватель не заполнит и не сохранит урок.' in html
+
+
 def test_staff_manage_xp_bonus_and_set(app_ctx, test_data):
     """Преподаватель может начислять бонусный XP и задавать точный уровень опыта."""
     client = app_ctx.test_client()
@@ -126,6 +292,35 @@ def test_staff_manage_xp_bonus_and_set(app_ctx, test_data):
     # Проверка в базе
     student = Student.query.get(test_data['student_id'])
     assert student.xp >= 1200
+
+
+def test_teacher_cannot_manage_unlinked_student_from_public_profile(app_ctx, test_data):
+    other_user = db.session.get(User, test_data['other_student_id'])
+    db.session.add(Student(
+        student_id=other_user.id,
+        user_id=other_user.id,
+        name="Несвязанный ученик",
+        mentor_id=None,
+    ))
+    db.session.commit()
+
+    client = app_ctx.test_client()
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(test_data['teacher_id'])
+        sess['sandbox_role'] = 'teacher'
+        sess['_fresh'] = True
+
+    profile = client.get(f"/workspace/people/{other_user.id}")
+    html = profile.get_data(as_text=True)
+
+    assert profile.status_code == 200
+    assert 'onclick="openManageXpModal()"' not in html
+    assert 'onclick="openManageStreakModal()"' not in html
+    assert 'onclick="openManageStudyTimeModal()"' not in html
+    assert client.post(
+        f"/student/{other_user.id}/xp",
+        json={"mode": "bonus", "bonus_xp": 1},
+    ).status_code == 403
 
 
 def test_staff_manage_streak(app_ctx, test_data):

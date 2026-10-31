@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f1fa">
+  <meta name="description" content="Всё обучение — в одном живом пространстве BooStudy OS.">
+  <title>BooStudy — в одном живом пространстве</title>
+  <link rel="stylesheet" href="/static/css/boostudy-design-system.css">
+  <link rel="stylesheet" href="/static/landing-preview-sprint-2-5/experience.css">
+  <script defer src="/static/landing-preview-sprint-2-5/experience.js"></script>
+</head>
+<body class="s25-page">
+  <a class="s25-skip" href="#s25-main">Перейти к содержанию</a>
+
+  <main id="s25-main">
+    <div class="s25-story" data-s25-story>
+      <section class="s25-stage" data-s25-stage data-scene="hero" aria-label="Знакомство с BooStudy OS">
+        <div class="s25-glow" aria-hidden="true"></div>
+        <div class="s25-grid" aria-hidden="true"></div>
+
+        <header class="s25-header">
+          <a class="s25-brand" href="#s25-top" id="s25-top" aria-label="BooStudy — начало">
+            <span class="s25-brand__mark" aria-hidden="true">B</span>
+            <span class="s25-brand__name"><b>boo</b>study</span>
+          </a>
+          <nav class="s25-nav" aria-label="Разделы истории">
+            <a href="#s25-workspace" data-s25-goto="workspace">Рабочее пространство</a>
+            <a href="#s25-canvas" data-s25-goto="canvas">BooCanvas</a>
+            <a class="s25-nav__login" href="/login">Войти</a>
+          </nav>
+        </header>
+
+        <div class="s25-copy-stack" aria-live="polite" aria-atomic="true">
+          <section class="s25-copy" data-s25-copy="hero" aria-labelledby="s25-hero-title">
+            <p class="s25-kicker"><span></span>Учёба, в которую можно войти</p>
+            <h1 id="s25-hero-title">Всё обучение.<br><em>В одном живом пространстве.</em></h1>
+            <p class="s25-lede">Открой урок, разбери решение и попробуй идею — в одной учебной среде.</p>
+            <div class="s25-actions">
+              <a class="s25-button s25-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a>
+              <a class="s25-button s25-button--quiet" href="#s25-workspace" data-s25-goto="workspace">Войти в комнату <span aria-hidden="true">↓</span></a>
+            </div>
+            <p class="s25-proof"><span aria-hidden="true">✦</span> Настоящий экран ученической комнаты BooStudy OS</p>
+          </section>
+
+          <section class="s25-copy" data-s25-copy="workspace" aria-labelledby="s25-workspace-title" aria-hidden="true">
+            <p class="s25-kicker"><span></span>Урок уже открыт</p>
+            <h2 id="s25-workspace-title">Окна одной сессии.</h2>
+            <p class="s25-lede">Задание и Boo Tracer рядом. Комната остаётся целой, пока ты переходишь от вопроса к разбору.</p>
+            <a class="s25-text-link" href="/login">Продолжить в своей комнате <span aria-hidden="true">↗</span></a>
+          </section>
+
+          <section class="s25-copy" data-s25-copy="canvas" aria-labelledby="s25-canvas-title" aria-hidden="true">
+            <p class="s25-kicker"><span></span>Начало работы на BooCanvas</p>
+            <h2 id="s25-canvas-title">Мысль становится наглядной.</h2>
+            <p class="s25-lede">На холсте — рисунок, подготовленный преподавателем. Ученик видит обе ветви решения и может вернуться к ним в той же комнате.</p>
+            <a class="s25-text-link" href="/register">Попробовать BooStudy <span aria-hidden="true">↗</span></a>
+          </section>
+        </div>
+
+        <div class="s25-os" data-s25-os aria-label="Статичный захват рабочей комнаты BooStudy OS">
+          <div class="s25-os__topbar">
+            <span class="s25-os__traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="s25-os__title"><span class="s25-os__logo" aria-hidden="true">B</span> BooStudy OS <span class="s25-os__slash">/</span> Урок в процессе</span>
+            <span class="s25-os__status"><i aria-hidden="true"></i> сохранено</span>
+          </div>
+          <div class="s25-os__screen-wrap">
+            <img class="s25-os__screen" src="/static/images/landing/os-student-workspace.webp"
+              alt="Подлинный статичный захват комнаты ученика: задание, Boo Tracer, холст и терминал рядом"
+              width="1920" height="1080" fetchpriority="high" decoding="async">
+            <span class="s25-os__live-note"><i aria-hidden="true"></i> Захват экрана · без имитации действий</span>
+          </div>
+          <div class="s25-os__shadow" aria-hidden="true"></div>
+        </div>
+
+        <figure class="s25-window s25-window--tracer" data-s25-window="tracer">
+          <figcaption><span class="s25-window__lights" aria-hidden="true"><i></i><i></i></span><span>Boo Tracer</span><small>та же комната</small></figcaption>
+          <img src="/static/images/landing/os-student-tracer.webp" alt="Статичный фрагмент настоящего окна Boo Tracer" width="471" height="398" loading="lazy" decoding="async">
+        </figure>
+        <figure class="s25-window s25-window--task" data-s25-window="task">
+          <figcaption><span class="s25-window__lights" aria-hidden="true"><i></i><i></i></span><span>Задание</span><small>та же комната</small></figcaption>
+          <img src="/static/images/landing/os-student-task.webp" alt="Статичный фрагмент настоящего окна задания ученика" width="454" height="434" loading="lazy" decoding="async">
+        </figure>
+        <figure class="s25-window s25-window--canvas" data-s25-window="canvas">
+          <figcaption><span class="s25-window__lights" aria-hidden="true"><i></i><i></i></span><span>BooCanvas · вид ученика</span><small>рисунок преподавателя</small></figcaption>
+          <img src="/static/images/landing/os-student-canvas.webp" alt="Статичный захват BooCanvas: преподаватель подготовил рисунок с роботом и двумя ветвями решения" width="1088" height="800" loading="lazy" decoding="async">
+          <p>Рисунок подготовил преподаватель · страница 1</p>
+        </figure>
+
+        <div class="s25-mascot" aria-hidden="true">
+          <img class="s25-mascot__peek" src="/static/images/landing/boo-peek-clean.png" alt="" width="1322" height="1190" fetchpriority="high" decoding="async">
+          <img class="s25-mascot__point" src="/static/images/landing/boo-pointing-clean.webp" alt="" width="1312" height="1199" loading="lazy" decoding="async">
+          <img class="s25-mascot__read" src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async">
+        </div>
+
+        <div class="s25-progress" aria-label="Ход знакомства">
+          <span data-s25-progress-label>01 <i>/ 03</i></span>
+          <span class="s25-progress__track"><i data-s25-progress-bar></i></span>
+          <span class="s25-progress__hint">Прокрути, чтобы войти</span>
+        </div>
+      </section>
+
+      <div class="s25-track" aria-hidden="true">
+        <section class="s25-step" id="s25-hero" data-s25-step="hero"><span class="s25-sr-only">Всё обучение. В одном живом пространстве.</span></section>
+        <section class="s25-step" id="s25-workspace" data-s25-step="workspace"><span class="s25-sr-only">Окна одной сессии.</span></section>
+        <section class="s25-step" id="s25-canvas" data-s25-step="canvas"><span class="s25-sr-only">Мысль становится наглядной.</span></section>
+      </div>
+    </div>
+
+    <section class="s25-end" aria-labelledby="s25-end-title">
+      <div class="s25-end__boo" aria-hidden="true"><img src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async"></div>
+      <p class="s25-kicker"><span></span>Одна среда. Всё для занятия.</p>
+      <h2 id="s25-end-title">Продолжай в BooStudy OS.</h2>
+      <a class="s25-button s25-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+</body>
+</html>

@@ -14,15 +14,24 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DOTENV_PATH = PROJECT_ROOT / ".env"
 
-AI_LAB_DEFAULTS: dict[str, int] = {
+AI_LAB_DEFAULTS: dict[str, int | bool] = {
     "AI_LAB_RUNS_PER_ADMIN_PER_HOUR": 120,
     "AI_LAB_RUNS_PER_HOUR": 300,
     "AI_LAB_MAX_INPUT_BYTES": 128 * 1024,
     "AI_LAB_GIGACHAT_CONCURRENCY": 1,
     "AI_LAB_MAX_QUEUE_SIZE": 20,
-    "AI_LAB_MAX_COMPLETION_TOKENS": 1600,
+    "AI_LAB_MAX_COMPLETION_TOKENS": 3200,
+    "AI_LAB_MAX_COMPLETION_ATTEMPTS": 2,
+    "AI_LAB_AUTO_RETRY_ENABLED": True,
     "AI_LAB_QUEUE_WAIT_SECONDS": 600,
+    "AI_LAB_PROVIDER_CONNECT_TIMEOUT_SECONDS": 20,
     "AI_LAB_PROVIDER_READ_TIMEOUT_SECONDS": 120,
+    "AI_LAB_COURSE_CHUNK_BYTES": 24_000,
+    "AI_LAB_COURSE_MAX_CHUNKS": 6,
+    "AI_LAB_LESSON_CHUNK_BYTES": 32_000,
+    "AI_LAB_LESSON_MAX_CHUNKS": 8,
+    "AI_LAB_OPERATION_MAX_ATTEMPTS": 2,
+    "AI_LAB_OPERATION_LEASE_SECONDS": 900,
     "AI_LAB_CODE_JUDGE_MAX_SOURCE_BYTES": 65_536,
     "AI_LAB_CODE_JUDGE_MAX_TEST_SET_BYTES": 131_072,
     "AI_LAB_CODE_JUDGE_MAX_TEST_CASES": 30,
@@ -34,16 +43,22 @@ AI_LAB_DEFAULTS: dict[str, int] = {
     "AI_LAB_CODE_JUDGE_CONCURRENCY": 1,
     "AI_LAB_CODE_JUDGE_MAX_QUEUE_SIZE": 20,
     "AI_LAB_CODE_JUDGE_QUEUE_WAIT_SECONDS": 120,
+    "AI_LAB_CODE_JUDGE_DOCKER_API_TIMEOUT_SECONDS": 30,
 }
 
 _ALLOWED_DOTENV_KEYS = {
     "AI_LAB_ENABLED",
+    "AI_LAB_COURSE_ADAPTER_ENABLED",
+    "AI_LAB_SYNTHETIC_COURSE_IDS",
+    "AI_LAB_SYNTHETIC_COURSE_COPY_IDS",
+    "AI_LAB_PLATFORM_TEST_USER_IDS",
     "ENVIRONMENT",
     "GIGACHAT_AUTH_KEY",
     "GIGACHAT_SCOPE",
     "GIGACHAT_MODEL",
     "GIGACHAT_CA_BUNDLE",
     "GIGACHAT_CA_BUNDLE_FILE",
+    "GIGACHAT_USE_SYSTEM_PROXY",
     "AI_LAB_CODE_JUDGE_RUNNER_URL",
     "AI_LAB_CODE_JUDGE_RUNNER_HOST",
     "AI_LAB_CODE_JUDGE_RUNNER_PORT",
@@ -86,6 +101,8 @@ def _read_dotenv(path: str, modified_ns: int) -> dict[str, str]:
 
 
 def local_dotenv_values() -> dict[str, str]:
+    if os.environ.get("AI_LAB_SAFE_DB_MODE", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return {}
     try:
         modified_ns = DOTENV_PATH.stat().st_mtime_ns
     except FileNotFoundError:
@@ -130,7 +147,18 @@ def integer_setting(name: str, default: int, *, minimum: int = 1, maximum: int =
     return value
 
 
-def ai_lab_limits() -> dict[str, int]:
+def boolean_setting(name: str, default: bool) -> bool:
+    raw, _source = setting_with_source(name, "true" if default else "false")
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    logger.warning("AI Lab setting %s is not boolean; using default=%s", name, default)
+    return default
+
+
+def ai_lab_limits() -> dict[str, int | bool]:
     return {
         "runs_per_admin_per_hour": integer_setting(
             "AI_LAB_RUNS_PER_ADMIN_PER_HOUR", AI_LAB_DEFAULTS["AI_LAB_RUNS_PER_ADMIN_PER_HOUR"], maximum=100_000
@@ -150,14 +178,32 @@ def ai_lab_limits() -> dict[str, int]:
         "max_completion_tokens": integer_setting(
             "AI_LAB_MAX_COMPLETION_TOKENS", AI_LAB_DEFAULTS["AI_LAB_MAX_COMPLETION_TOKENS"], maximum=4_096
         ),
+        "max_completion_attempts": integer_setting(
+            "AI_LAB_MAX_COMPLETION_ATTEMPTS", AI_LAB_DEFAULTS["AI_LAB_MAX_COMPLETION_ATTEMPTS"], minimum=1, maximum=2
+        ),
+        "auto_retry_enabled": boolean_setting(
+            "AI_LAB_AUTO_RETRY_ENABLED", bool(AI_LAB_DEFAULTS["AI_LAB_AUTO_RETRY_ENABLED"])
+        ),
         "queue_wait_seconds": integer_setting(
             "AI_LAB_QUEUE_WAIT_SECONDS", AI_LAB_DEFAULTS["AI_LAB_QUEUE_WAIT_SECONDS"], maximum=3_600
+        ),
+        "provider_connect_timeout_seconds": integer_setting(
+            "AI_LAB_PROVIDER_CONNECT_TIMEOUT_SECONDS",
+            AI_LAB_DEFAULTS["AI_LAB_PROVIDER_CONNECT_TIMEOUT_SECONDS"],
+            minimum=2,
+            maximum=60,
         ),
         "provider_read_timeout_seconds": integer_setting(
             "AI_LAB_PROVIDER_READ_TIMEOUT_SECONDS",
             AI_LAB_DEFAULTS["AI_LAB_PROVIDER_READ_TIMEOUT_SECONDS"],
             maximum=300,
         ),
+        "course_chunk_bytes": integer_setting("AI_LAB_COURSE_CHUNK_BYTES", AI_LAB_DEFAULTS["AI_LAB_COURSE_CHUNK_BYTES"], minimum=2_048, maximum=64_000),
+        "course_max_chunks": integer_setting("AI_LAB_COURSE_MAX_CHUNKS", AI_LAB_DEFAULTS["AI_LAB_COURSE_MAX_CHUNKS"], minimum=1, maximum=12),
+        "lesson_chunk_bytes": integer_setting("AI_LAB_LESSON_CHUNK_BYTES", AI_LAB_DEFAULTS["AI_LAB_LESSON_CHUNK_BYTES"], minimum=2_048, maximum=32_000),
+        "lesson_max_chunks": integer_setting("AI_LAB_LESSON_MAX_CHUNKS", AI_LAB_DEFAULTS["AI_LAB_LESSON_MAX_CHUNKS"], minimum=1, maximum=16),
+        "operation_max_attempts": integer_setting("AI_LAB_OPERATION_MAX_ATTEMPTS", AI_LAB_DEFAULTS["AI_LAB_OPERATION_MAX_ATTEMPTS"], minimum=1, maximum=3),
+        "operation_lease_seconds": integer_setting("AI_LAB_OPERATION_LEASE_SECONDS", AI_LAB_DEFAULTS["AI_LAB_OPERATION_LEASE_SECONDS"], minimum=60, maximum=3_600),
     }
 
 
@@ -179,3 +225,12 @@ def code_judge_limits() -> dict[str, int]:
         key: integer_setting(name, default, minimum=minimum, maximum=maximum)
         for key, (name, default, minimum, maximum) in limits.items()
     }
+
+
+def code_judge_docker_api_timeout_seconds() -> int:
+    return integer_setting(
+        "AI_LAB_CODE_JUDGE_DOCKER_API_TIMEOUT_SECONDS",
+        30,
+        minimum=8,
+        maximum=120,
+    )

@@ -1,0 +1,57 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}Подготовка к уроку #{{ lesson.lesson_id }} | Oristera{% endblock %}
+
+{% block content %}
+<div class="ori-field-page ori-prep-field" id="ori-prep-portal">
+  <header class="ori-field-intro">
+    <div>
+      <p class="ori-field-eyebrow">ПОДГОТОВКА К УРОКУ · №{{ lesson.lesson_id }}</p>
+      <h1 class="ori-field-title">{{ lesson.topic or 'Тема не указана' }}</h1>
+      <p class="ori-field-lede">
+        {% if teacher %}Наставник: {{ teacher.full_name or teacher.username }} · {% endif %}
+        {% if lesson.lesson_date %}{{ lesson.lesson_date.strftime('%d.%m.%Y · %H:%M') }} МСК{% else %}Дата ещё не назначена{% endif %}
+      </p>
+    </div>
+    <div class="ori-prep-actions">
+      <span class="ori-prep-status">{% if lesson.status == 'in_progress' %}Идёт{% elif lesson.status == 'completed' %}Завершён{% elif lesson.status == 'planned' %}Запланирован{% else %}{{ lesson.status }}{% endif %}</span>
+      <a href="{{ url_for('oristera.lessons_space') }}" class="ori-field-button ori-field-button-secondary">К расписанию <span aria-hidden="true">→</span></a>
+    </div>
+  </header>
+
+  <div class="ori-prep-grid">
+    <section class="ori-field-panel ori-prep-briefing" aria-labelledby="ori-prep-description-title">
+      <p class="ori-field-eyebrow">ПЛАН И ФОКУС</p>
+      <h2 class="ori-panel-title" id="ori-prep-description-title">О чём поговорим</h2>
+      {% if lesson.description %}
+      <div class="ori-prep-description">{{ lesson.description }}</div>
+      {% else %}
+      <div class="ori-field-empty"><span class="ori-empty-line" aria-hidden="true"></span><p>План занятия пока не добавлен. Вы сможете уточнить его у наставника в комнате урока.</p></div>
+      {% endif %}
+
+      <div class="ori-prep-materials">
+        <h3>Материалы</h3>
+        {% if materials %}
+        <ul>
+          {% for material in materials %}
+          <li>
+            {% if material is string %}{{ material }}{% elif material.title is defined %}{{ material.title }}{% elif material.name is defined %}{{ material.name }}{% elif material.url is defined %}{{ material.url }}{% else %}{{ material }}{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="ori-child-empty">К этому уроку материалы не прикреплены.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <aside class="ori-prep-gateway" aria-labelledby="ori-prep-gateway-title">
+      <p class="ori-field-eyebrow">СЛЕДУЮЩИЙ ШАГ</p>
+      <h2 id="ori-prep-gateway-title">Комната урока</h2>
+      <p>Перейдите в BooStudy OS, чтобы встретиться с наставником и использовать инструменты занятия.</p>
+      <a href="/lesson/{{ lesson.lesson_id }}/room?from=oristera" id="ori-enter-room-btn" class="ori-field-button ori-field-button-primary">Войти в комнату <span aria-hidden="true">→</span></a>
+      <span class="ori-prep-footnote">После завершения занятия вернитесь в Oristera через навигацию BooStudy OS.</span>
+    </aside>
+  </div>
+</div>
+{% endblock %}

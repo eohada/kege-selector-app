@@ -271,14 +271,14 @@ def test_dev_token_precedence(monkeypatch):
     """8. Отказ от запуска при небезопасном использовании общего токена:
     TELEGRAM_DEV_BOT_TOKEN имеет приоритет над боевым токеном."""
     import importlib
-    monkeypatch.setenv('TELEGRAM_DEV_BOT_TOKEN', '1111111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', '2222222222:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB')
-    monkeypatch.setenv('MAIN_BOT_TOKEN', '3333333333:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC')
+    monkeypatch.setenv('TELEGRAM_DEV_BOT_TOKEN', 'test_dev_token_sample_value_12345')
+    monkeypatch.setenv('TELEGRAM_BOT_TOKEN', 'test_bot_token_sample_value_12345')
+    monkeypatch.setenv('MAIN_BOT_TOKEN', 'test_main_token_sample_value_12345')
 
     import app.telegram.config as tg_conf
     importlib.reload(tg_conf)
 
-    assert tg_conf.MAIN_BOT_TOKEN == '1111111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    assert tg_conf.MAIN_BOT_TOKEN == 'test_dev_token_sample_value_12345'
 
 
 def test_check_telegram_status_diagnostics(monkeypatch):
@@ -292,3 +292,81 @@ def test_check_telegram_status_diagnostics(monkeypatch):
     assert 'db_exists' in diag
     assert 'db_path' in diag
     assert 'backend_running' in diag
+
+
+def test_profile_renders_active_telegram_section_not_skoro(client, app, test_user):
+    """Страница /workspace/profile рендерит активный интерфейс Telegram, а не заглушку 'Скоро'."""
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(test_user)
+        sess['_fresh'] = True
+
+    response = client.get('/workspace/profile')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Проверяем наличие всех ключевых интерактивных элементов
+    assert 'id="telegram-connection"' in html
+    assert 'id="tg-status-pill"' in html
+    assert 'id="tg-connect-button"' in html
+    assert 'id="tg-link-panel"' in html
+    assert 'id="tg-link-code"' in html
+    assert 'id="tg-deep-link"' in html
+    assert 'id="tg-copy-code-btn"' in html
+    assert 'id="tg-unlink-button"' in html
+    assert 'id="tg-notifications-button"' in html
+
+    # Убеждаемся, что заглушки "Скоро" больше нет в карточке
+    assert 'Интеграция с Telegram-ботом и мгновенные уведомления скоро появятся' not in html
+
+
+def test_telegram_api_status_notifications_and_unlink(client, app, test_user, monkeypatch):
+    """API эндпоинты /api/telegram/status, link-code, link-bot, toggle-notifications и unlink работают согласованно."""
+    monkeypatch.setenv('BOT_INTERNAL_TOKEN', 'test_bot_secret_token_123')
+
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(test_user)
+        sess['_fresh'] = True
+
+    # 1. Начальный статус: не привязан
+    status_resp = client.get('/api/telegram/status')
+    assert status_resp.status_code == 200
+    assert status_resp.get_json()['linked'] is False
+
+    # 2. Генерируем код привязки через клиент
+    code_resp = client.post('/api/telegram/link-code')
+    assert code_resp.status_code == 200
+    code_data = code_resp.get_json()
+    assert code_data['success'] is True
+    code = code_data['code']
+    assert code.startswith('BS-')
+
+    # 3. Бот подтверждает привязку по коду через /api/telegram/link-bot
+    bot_resp = client.post(
+        '/api/telegram/link-bot',
+        json={'code': code, 'chat_id': 8933706317, 'telegram_id': '@test_student_tg'},
+        headers={'X-Bot-Token': 'test_bot_secret_token_123'},
+    )
+    assert bot_resp.status_code == 200
+    assert bot_resp.get_json()['success'] is True
+
+    # 4. Проверяем статус в веб-интерфейсе: теперь привязан!
+    status_resp2 = client.get('/api/telegram/status')
+    assert status_resp2.status_code == 200
+    data2 = status_resp2.get_json()
+    assert data2['linked'] is True
+    assert data2['chat_id'] == 8933706317
+
+    # 5. Переключение уведомлений
+    toggle_resp = client.post('/api/telegram/toggle-notifications', json={'enabled': False})
+    assert toggle_resp.status_code == 200
+    assert toggle_resp.get_json()['enabled'] is False
+
+    # 6. Отвязка
+    unlink_resp = client.post('/api/telegram/unlink')
+    assert unlink_resp.status_code == 200
+    assert unlink_resp.get_json()['success'] is True
+
+    # 7. Статус после отвязки: снова не привязан
+    status_resp3 = client.get('/api/telegram/status')
+    assert status_resp3.status_code == 200
+    assert status_resp3.get_json()['linked'] is False

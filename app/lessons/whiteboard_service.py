@@ -947,3 +947,206 @@ def persist_operations(
     lock = _board_operation_locks.setdefault(board_id, RLock())
     with lock:
         return _persist_operations_locked(board, operations, user_id, client_id, base_version, role)
+
+
+def convert_v2_board_to_document(
+    strokes: list[dict[str, Any]],
+    pages: list[dict[str, Any]] | None = None,
+    active_page_id: str = "page_1",
+    include_teacher: bool = True,
+) -> dict[str, Any]:
+    """Convert V2 BooCanvasOverlay board state (strokes & pages) to canonical document format.
+
+    Preserves multi-page structure, stroke types, geometric shapes, text, math, and protects
+    the teacher private layer based on authorization role.
+    """
+    raw_pages = pages if isinstance(pages, list) and pages else [{"id": "page_1", "title": "Страница 1", "background": "dots"}]
+    doc_pages: list[dict[str, Any]] = []
+    page_map: dict[str, dict[str, Any]] = {}
+
+    for idx, p in enumerate(raw_pages):
+        pid = str(p.get("id") or f"page_{idx + 1}")
+        title = str(p.get("title") or f"Страница {idx + 1}")
+        page_dict = {
+            "id": pid,
+            "title": title,
+            "order": idx,
+            "objects": [],
+        }
+        doc_pages.append(page_dict)
+        page_map[pid] = page_dict
+
+    if not doc_pages:
+        default_pg = {"id": "page_1", "title": "Страница 1", "order": 0, "objects": []}
+        doc_pages.append(default_pg)
+        page_map["page_1"] = default_pg
+
+    fallback_page = doc_pages[0]
+
+    for stroke in (strokes or []):
+        if not isinstance(stroke, dict):
+            continue
+        if not include_teacher and stroke.get("layer") == "teacher":
+            continue
+
+        sid = str(stroke.get("id") or uuid4().hex)
+        target_pid = str(stroke.get("page_id") or active_page_id or fallback_page["id"])
+        target_page = page_map.get(target_pid, fallback_page)
+
+        stype = stroke.get("type")
+        raw_pts = stroke.get("points") or []
+        pts = [{"x": float(p.get("x") or 0), "y": float(p.get("y") or 0)} for p in raw_pts if isinstance(p, dict)]
+
+        if stype == "text":
+            x = pts[0]["x"] if pts else float(stroke.get("x") or 0)
+            y = pts[0]["y"] if pts else float(stroke.get("y") or 0)
+            target_page["objects"].append({
+                "id": sid,
+                "type": "text",
+                "x": x,
+                "y": y,
+                "width": 200,
+                "height": 40,
+                "data": {
+                    "text": str(stroke.get("text") or ""),
+                    "color": str(stroke.get("color") or "#000000"),
+                    "fontSize": float(stroke.get("fontSize") or 20),
+                },
+            })
+        elif stype == "math":
+            x = pts[0]["x"] if pts else float(stroke.get("x") or 0)
+            y = pts[0]["y"] if pts else float(stroke.get("y") or 0)
+            target_page["objects"].append({
+                "id": sid,
+                "type": "text",
+                "x": x,
+                "y": y,
+                "width": 240,
+                "height": 40,
+                "data": {
+                    "text": str(stroke.get("latex") or stroke.get("text") or ""),
+                    "color": str(stroke.get("color") or "#0f172a"),
+                    "fontSize": float(stroke.get("fontSize") or 20),
+                    "is_math": True,
+                },
+            })
+        elif stype == "image":
+            if len(pts) >= 2:
+                x = min(pts[0]["x"], pts[1]["x"])
+                y = min(pts[0]["y"], pts[1]["y"])
+                w = max(1.0, abs(pts[1]["x"] - pts[0]["x"]))
+                h = max(1.0, abs(pts[1]["y"] - pts[0]["y"]))
+            else:
+                x = float(stroke.get("x") or 0)
+                y = float(stroke.get("y") or 0)
+                w = float(stroke.get("width") or 300)
+                h = float(stroke.get("height") or 200)
+            target_page["objects"].append({
+                "id": sid,
+                "type": "image",
+                "x": x,
+                "y": y,
+                "width": w,
+                "height": h,
+                "data": {
+                    "url": stroke.get("src") or stroke.get("url") or "",
+                    "name": stroke.get("name") or "Изображение",
+                },
+            })
+        elif stype == "connector" or stroke.get("shape") in ("line", "arrow", "double-arrow", "curved-arrow"):
+            p0 = pts[0] if len(pts) > 0 else {"x": 0.0, "y": 0.0}
+            p1 = pts[1] if len(pts) > 1 else {"x": 100.0, "y": 100.0}
+            x = min(p0["x"], p1["x"])
+            y = min(p0["y"], p1["y"])
+            w = max(1.0, abs(p1["x"] - p0["x"]))
+            h = max(1.0, abs(p1["y"] - p0["y"]))
+            target_page["objects"].append({
+                "id": sid,
+                "type": "arrow",
+                "x": x,
+                "y": y,
+                "width": w,
+                "height": h,
+                "data": {
+                    "start": p0,
+                    "end": p1,
+                    "color": stroke.get("color") or "#4f46e5",
+                    "shape": stroke.get("shape") or "arrow",
+                },
+            })
+        elif stype == "shape":
+            p0 = pts[0] if len(pts) > 0 else {"x": 0.0, "y": 0.0}
+            p1 = pts[1] if len(pts) > 1 else {"x": 100.0, "y": 100.0}
+            x = min(p0["x"], p1["x"])
+            y = min(p0["y"], p1["y"])
+            w = max(1.0, abs(p1["x"] - p0["x"]))
+            h = max(1.0, abs(p1["y"] - p0["y"]))
+            target_page["objects"].append({
+                "id": sid,
+                "type": "shape",
+                "x": x,
+                "y": y,
+                "width": w,
+                "height": h,
+                "data": {
+                    "shape": stroke.get("shape") or "rectangle",
+                    "color": stroke.get("color") or "#4f46e5",
+                    "fill": stroke.get("fillColor") or "#eef2ff",
+                },
+            })
+        elif stype in ("sticky", "sticker"):
+            x = pts[0]["x"] if pts else float(stroke.get("x") or 0)
+            y = pts[0]["y"] if pts else float(stroke.get("y") or 0)
+            target_page["objects"].append({
+                "id": sid,
+                "type": "sticky",
+                "x": x,
+                "y": y,
+                "width": 160,
+                "height": 120,
+                "data": {
+                    "text": str(stroke.get("text") or ""),
+                    "color": str(stroke.get("color") or "#fff7cc"),
+                },
+            })
+        else:
+            if pts:
+                min_x = min(p["x"] for p in pts)
+                min_y = min(p["y"] for p in pts)
+                max_x = max(p["x"] for p in pts)
+                max_y = max(p["y"] for p in pts)
+                w = max(1.0, max_x - min_x)
+                h = max(1.0, max_y - min_y)
+            else:
+                min_x = min_y = 0.0
+                w = h = 1.0
+            target_page["objects"].append({
+                "id": sid,
+                "type": "stroke",
+                "x": min_x,
+                "y": min_y,
+                "width": w,
+                "height": h,
+                "data": {
+                    "points": pts,
+                    "color": str(stroke.get("color") or "#4f46e5"),
+                    "size": float(stroke.get("width") or stroke.get("size") or 4),
+                    "opacity": float(stroke.get("opacity") if stroke.get("opacity") is not None else 1.0),
+                },
+            })
+
+    act_pid = active_page_id if active_page_id in page_map else doc_pages[0]["id"]
+    return {
+        "schema_version": BOARD_SCHEMA_VERSION,
+        "pages": doc_pages,
+        "active_page_id": act_pid,
+        "settings": {"grid": True, "snap": True, "background": "dots"},
+        "presentation": {
+            "mode": "edit",
+            "follow": False,
+            "page_id": act_pid,
+            "frame_id": None,
+            "camera": {"pan_x": 0, "pan_y": 0, "scale": 1},
+            "control": default_control(),
+        },
+    }

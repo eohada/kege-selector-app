@@ -1,0 +1,62 @@
+{
+  "protocol": {
+    "name": "knowledge_base_v6_expert_pilot",
+    "status": "synthetic_development_sample",
+    "recorded_at": "2026-10-23",
+    "independent_of_v5_cases": true,
+    "no_learner_data": true,
+    "no_teacher_approval": true,
+    "no_model_requests": true,
+    "notes": "New deterministic subject checks and hypothetical Tutor Core scenarios; not a holdout, classroom trial, Code Judge run, or human editorial acceptance."
+  },
+  "technical_cases": [
+    {
+      "case_id": "v6-logic-precedence-counterexample",
+      "knowledge_key": "ege.inf.logic-boundaries.v1",
+      "input": {"expressions": ["(A or B) and C", "A or (B and C)"], "distinguishing_row": [true, false, false]},
+      "expected": {"left": false, "right": true, "truth_table_rows": 8, "left_outputs": [false, false, false, true, false, true, false, true], "right_outputs": [false, false, false, true, true, true, true, true]}
+    },
+    {
+      "case_id": "v6-number-base-seven-round-trip",
+      "knowledge_key": "ege.inf.positional-number-systems.v1",
+      "input": {"base7": "431", "decimal": 218},
+      "expected": {"expanded_value": 218, "reverse_base7": "431", "digits_valid": true}
+    },
+    {
+      "case_id": "v6-spreadsheet-filtered-duplicate-values",
+      "knowledge_key": "ege.inf.spreadsheet-aggregates.v1",
+      "input": {"header_row": 1, "values": [5, 8, 12, 12, 17], "condition": ">= 10"},
+      "expected": {"selected": [12, 12, 17], "count": 3, "sum": 41, "mean": 13.666666666666666, "minimum": 12, "maximum": 17}
+    },
+    {
+      "case_id": "v6-python-negative-integer-semantics",
+      "knowledge_key": "ege.inf.python-integer-parity.v1",
+      "input": {"values": [-17, -18, -1, 0, 1, 18, 19]},
+      "expected": {"odd_by_modulo": [true, false, true, false, true, false, true], "odd_by_bit": [true, false, true, false, true, false, true], "divmod_minus17_by_2": [-9, 1]}
+    },
+    {
+      "case_id": "v6-graph-isolated-vertex",
+      "knowledge_key": "ege.inf.graph-degree.v1",
+      "input": {"vertices": ["A", "B", "C", "D", "E", "F"], "edges": [["A", "B"], ["A", "C"], ["B", "C"], ["C", "D"], ["D", "E"]]},
+      "expected": {"degrees": {"A": 2, "B": 2, "C": 3, "D": 2, "E": 1, "F": 0}, "degree_sum": 10, "twice_edges": 10}
+    },
+    {
+      "case_id": "v6-ipv4-prefix-boundary-29",
+      "knowledge_key": "ege.inf.ip-prefix-mask.v1",
+      "input": {"address": "192.0.2.250/29", "point_to_point_prefix": "192.0.2.8/31"},
+      "expected": {"network": "192.0.2.248", "broadcast": "192.0.2.255", "addresses": 8, "ordinary_hosts": 6, "rfc3021_point_to_point_hosts": ["192.0.2.8", "192.0.2.9"]}
+    },
+    {
+      "case_id": "v6-sql-left-join-duplicate-names",
+      "knowledge_key": "ege.inf.sql-relational-query.v1",
+      "input": {"people": [[1, "Alex"], [2, "Alex"], [3, "Bea"]], "orders": [[101, 1, 4], [102, 1, 6], [103, 2, 9]]},
+      "expected": {"rows": [["Alex", 1, 2, 10], ["Alex", 2, 1, 9], ["Bea", 3, 0, 0]]}
+    }
+  ],
+  "tutor_scenarios": [
+    {"scenario_id": "A", "knowledge_key": "ege.inf.logic-boundaries.v1", "evidence_state": "confirmed_error", "student_status_claim_allowed": false, "query": "Я сравнил логические выражения (A or B) and C и A or (B and C), построил таблицу истинности, но перепутал приоритет операций и скобки.", "skill_id": "exam-skill:15", "task_number": 15},
+    {"scenario_id": "B", "knowledge_key": "ege.inf.positional-number-systems.v1", "evidence_state": "independent_correct", "student_status_claim_allowed": false, "query": "Перевёл позиционную запись 431 из основания 7 разложением по разрядам и проверил число обратным переводом.", "skill_id": "exam-skill:14", "task_number": 14},
+    {"scenario_id": "C", "knowledge_key": "ege.inf.spreadsheet-aggregates.v1", "evidence_state": "corrected_after_hint", "student_status_claim_allowed": false, "query": "В электронной таблице сначала взял весь диапазон для среднего, а после подсказки выделил строки по условию отбора и убрал заголовок.", "skill_id": "exam-skill:9", "task_number": 9},
+    {"scenario_id": "D", "knowledge_key": "ege.inf.sql-relational-query.v1", "evidence_state": "insufficient_data", "student_status_claim_allowed": false, "query": "В SQL использовал JOIN по имени, но не приложил схему таблиц, ключи, данные и ожидаемый результат; обсуждаем LEFT JOIN.", "skill_id": null, "task_number": null}
+  ]
+}

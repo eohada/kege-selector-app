@@ -1,0 +1,558 @@
+/* Shared Light Cosmic presentation for the ORISTERA learning spaces. */
+:root {
+  --ori-field-canvas: #f2f7fc;
+  --ori-field-paper: rgba(255, 255, 255, 0.86);
+  --ori-field-paper-deep: #edf3fb;
+  --ori-field-ink: #152d4a;
+  --ori-field-copy: #3f5875;
+  --ori-field-muted: #687f9b;
+  --ori-field-line: rgba(124, 154, 190, 0.22);
+  --ori-field-line-strong: rgba(98, 132, 174, 0.38);
+  --ori-field-green: #287e8a;
+  --ori-field-green-deep: #155a70;
+  --ori-field-blue: #496cf4;
+  --ori-field-ochre: #c58032;
+  --ori-field-rust: #b96768;
+  --ori-field-shadow: 0 18px 44px rgba(48, 82, 122, 0.1), inset 0 1px rgba(255, 255, 255, 0.92);
+  --ori-field-radius-lg: 26px;
+  --ori-field-radius-md: 19px;
+  --ori-field-motion: 240ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+body.oristera-body:not(.ori-genesis-body) {
+  background-color: var(--ori-field-canvas);
+  background-image:
+    radial-gradient(ellipse at 9% 8%, rgba(139, 211, 237, 0.2), transparent 29rem),
+    radial-gradient(ellipse at 91% 17%, rgba(165, 164, 250, 0.15), transparent 32rem),
+    linear-gradient(180deg, #f8fbff 0%, #f0f6fc 62%, #eef4fa 100%);
+  color: var(--ori-field-copy);
+}
+
+body.oristera-body:not(.ori-genesis-body)::before {
+  background-image:
+    radial-gradient(ellipse at 15% 23%, rgba(124, 212, 235, 0.13), transparent 35%),
+    radial-gradient(ellipse at 83% 72%, rgba(164, 156, 246, 0.12), transparent 38%);
+  filter: blur(22px);
+  opacity: 0.75;
+}
+
+body.oristera-body:not(.ori-genesis-body)::after {
+  background-image:
+    linear-gradient(to right, rgba(76, 111, 160, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(76, 111, 160, 0.028) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse at 50% 32%, #000 4%, transparent 74%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 32%, #000 4%, transparent 74%);
+  opacity: 0.5;
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-island {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(250, 253, 255, 0.78);
+  box-shadow: 0 12px 34px rgba(53, 90, 135, 0.09), inset 0 1px rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-brand-logo {
+  border: 1px solid rgba(108, 155, 188, 0.18);
+  background: linear-gradient(145deg, #eef9ff, #e9edff);
+  color: #176278;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 5px 14px rgba(79, 123, 163, 0.09);
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-compass-node {
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-compass-node:hover {
+  border-color: rgba(112, 153, 197, 0.2);
+  background: rgba(235, 244, 253, 0.78);
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-compass-node.active {
+  border-color: rgba(91, 135, 204, 0.2);
+  background: linear-gradient(135deg, rgba(222, 243, 250, 0.9), rgba(232, 234, 255, 0.9));
+  color: #2857a3;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 4px 12px rgba(77, 116, 168, 0.08);
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-mode-toggle,
+.oristera-body:not(.ori-genesis-body) .ori-user-beacon {
+  border-color: rgba(125, 157, 192, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 5px 14px rgba(67, 103, 151, 0.06);
+}
+
+.oristera-body .ori-mode-toggle {
+  min-height: 44px;
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-mode-toggle:hover {
+  border-color: rgba(102, 138, 197, 0.38);
+  background: #f2f6ff;
+  box-shadow: 0 6px 16px rgba(74, 103, 151, 0.11);
+}
+
+.oristera-body:not(.ori-genesis-body) .ori-avatar {
+  background: linear-gradient(145deg, #57a6ae, #28697c);
+}
+
+.ori-field-page {
+  width: min(100%, 1400px);
+  padding-top: clamp(26px, 3.1vw, 48px);
+}
+
+.ori-field-intro {
+  border-image: linear-gradient(90deg, rgba(104, 156, 202, 0.34), rgba(151, 155, 228, 0.16), transparent) 1;
+}
+
+.ori-field-eyebrow {
+  color: #317f9b;
+  letter-spacing: 0.16em;
+}
+
+.ori-field-title,
+.ori-panel-title,
+.ori-priority-title,
+.ori-inspector-heading,
+.ori-child-heading,
+.ori-child-identity,
+.ori-lessons-current h2,
+.ori-atlas-empty h2,
+.ori-parent-empty h2 {
+  color: var(--ori-field-ink);
+}
+
+.ori-field-lede,
+.ori-priority-description,
+.ori-inspector-copy {
+  color: var(--ori-field-copy);
+}
+
+.ori-field-panel,
+.ori-nexus-priority,
+.ori-lessons-current,
+.ori-atlas-map-frame,
+.ori-parent-empty {
+  border-color: rgba(255, 255, 255, 0.88);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.91), rgba(245, 250, 255, 0.8));
+  box-shadow: var(--ori-field-shadow), 0 10px 24px rgba(89, 130, 176, 0.055);
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+}
+
+.ori-field-panel {
+  transition: border-color var(--ori-field-motion), box-shadow var(--ori-field-motion), transform var(--ori-field-motion);
+}
+
+.ori-nexus-priority {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 88% 16%, rgba(162, 196, 255, 0.2), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(238, 248, 255, 0.84));
+}
+
+.ori-nexus-priority::before {
+  background: linear-gradient(180deg, rgba(99, 125, 245, 0.72), rgba(67, 183, 206, 0.42));
+}
+
+.ori-field-button {
+  border-color: rgba(104, 145, 189, 0.26);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 rgba(56, 91, 138, 0.09), inset 0 1px rgba(255, 255, 255, 0.7);
+  transition: transform var(--ori-field-motion), box-shadow var(--ori-field-motion), background var(--ori-field-motion), border-color var(--ori-field-motion), color var(--ori-field-motion);
+}
+
+.ori-field-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 14px rgba(71, 111, 164, 0.13), 0 3px 0 rgba(56, 91, 138, 0.08), inset 0 1px rgba(255, 255, 255, 0.75);
+}
+
+.ori-field-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 rgba(56, 91, 138, 0.08), inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.ori-field-button:focus-visible,
+.ori-atlas-tab:focus-visible,
+.ori-area-jump:focus-visible,
+.ori-field-back:focus-visible,
+.ori-inspector-close:focus-visible,
+.ori-code-editor:focus-visible {
+  outline: 3px solid rgba(77, 112, 235, 0.44);
+  outline-offset: 3px;
+}
+
+.ori-field-button-primary {
+  border-color: #255c79;
+  background: linear-gradient(135deg, #246d83, #274e79);
+  box-shadow: 0 4px 0 #1c4464, inset 0 1px rgba(255, 255, 255, 0.23), 0 9px 18px rgba(35, 82, 121, 0.18);
+}
+
+.ori-field-button-primary:hover {
+  background: linear-gradient(135deg, #287d91, #315e8c);
+  box-shadow: 0 6px 14px rgba(40, 87, 133, 0.22), 0 3px 0 #1c4464, inset 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.ori-field-button-secondary {
+  border-color: rgba(116, 151, 191, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+  color: #315982;
+}
+
+.ori-genesis-panel-link {
+  min-height: 44px;
+  padding-inline: 9px;
+}
+
+.ori-atlas-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+  scrollbar-width: none;
+}
+
+.ori-atlas-tab {
+  white-space: nowrap;
+  border-color: rgba(129, 160, 196, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.57);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.ori-atlas-tab > span:last-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.ori-atlas-tab:hover {
+  border-color: rgba(94, 134, 196, 0.34);
+  background: rgba(243, 248, 255, 0.92);
+}
+
+.ori-atlas-tab.is-active {
+  border-color: rgba(89, 123, 217, 0.34);
+  background: linear-gradient(135deg, #e8f5fb, #eef0ff);
+  color: #3155a0;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 4px 11px rgba(80, 118, 185, 0.1);
+}
+
+.ori-atlas-map-frame {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(197, 232, 248, 0.75), transparent 56%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(229, 240, 251, 0.9));
+}
+
+.ori-map-ground {
+  fill: transparent;
+}
+
+.ori-map-grid-line {
+  stroke: rgba(94, 133, 175, 0.12);
+}
+
+.ori-map-topography {
+  stroke: rgba(103, 143, 186, 0.19);
+}
+
+.ori-map-region {
+  fill: color-mix(in srgb, var(--ori-region-color) 8%, transparent);
+  stroke: color-mix(in srgb, var(--ori-region-color) 28%, transparent);
+}
+
+.ori-node-hit {
+  r: 33px;
+}
+
+.ori-map-contour {
+  stroke: color-mix(in srgb, var(--ori-region-color) 31%, transparent);
+}
+
+.ori-region-name {
+  fill: #234667;
+}
+
+.ori-region-count {
+  fill: #68819b;
+}
+
+.ori-node-mark {
+  fill: rgba(255, 255, 255, 0.94);
+  stroke: rgba(103, 136, 182, 0.58);
+  filter: drop-shadow(0 4px 8px rgba(72, 109, 154, 0.16));
+}
+
+.ori-star-node:hover .ori-node-mark,
+.ori-star-node:focus-visible .ori-node-mark {
+  fill: #eef5ff;
+  stroke: #577af1;
+}
+
+.ori-node-number {
+  fill: #234d78;
+}
+
+.ori-field-inspector {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.92), rgba(246, 250, 255, 0.86));
+  box-shadow: var(--ori-field-shadow);
+}
+
+.ori-evidence-summary > div,
+.ori-evidence-stat,
+.ori-area-jump {
+  border-color: rgba(127, 158, 193, 0.18);
+  background: rgba(244, 249, 255, 0.76);
+}
+
+.ori-data-integrity-note,
+.ori-field-data-note {
+  border-color: rgba(84, 142, 169, 0.17);
+  background: linear-gradient(100deg, rgba(232, 246, 251, 0.9), rgba(240, 243, 255, 0.75));
+  color: #496a84;
+}
+
+.ori-practice-code-panel {
+  border: 1px solid rgba(117, 151, 195, 0.24);
+  background:
+    radial-gradient(ellipse at 88% 0%, rgba(54, 93, 160, 0.18), transparent 32%),
+    linear-gradient(145deg, #12243b, #152c42 68%, #17394b);
+  box-shadow: 0 22px 48px rgba(24, 52, 82, 0.2), inset 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.ori-code-title {
+  color: #e6f2ff;
+}
+
+.ori-code-run-button {
+  border-color: rgba(104, 224, 204, 0.62);
+  background: linear-gradient(135deg, #b7f1de, #83d8d4);
+  color: #103b49;
+  box-shadow: 0 4px 0 rgba(42, 117, 129, 0.5), inset 0 1px rgba(255, 255, 255, 0.78);
+}
+
+.ori-code-run-button:hover {
+  background: linear-gradient(135deg, #cdf8e9, #a4e9e1);
+}
+
+.ori-code-editor,
+.ori-code-output {
+  border-color: rgba(155, 190, 225, 0.2);
+  background: rgba(8, 22, 36, 0.74);
+  color: #d8eaff;
+  caret-color: #82e5d4;
+}
+
+.ori-code-editor::placeholder {
+  color: #8ba2b8;
+}
+
+.ori-code-output-heading {
+  color: #b8cde1;
+}
+
+.ori-practice-assignment-list li {
+  border-color: rgba(122, 153, 189, 0.17);
+}
+
+.ori-practice-assignment-list a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ori-practice-assignment-list a:hover {
+  color: #355e9c;
+  text-decoration: underline;
+  text-decoration-color: rgba(53, 94, 156, 0.35);
+  text-underline-offset: 3px;
+}
+
+.ori-teacher-quick-links {
+  border-color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: var(--ori-field-shadow);
+}
+
+.ori-student-avatar,
+.ori-child-avatar {
+  border: 1px solid rgba(108, 160, 195, 0.2);
+  background: linear-gradient(145deg, #e1f6f7, #e9edff);
+  color: #2c6785;
+}
+
+.ori-child-progress {
+  border-color: rgba(123, 153, 189, 0.17);
+  background: linear-gradient(135deg, rgba(238, 248, 255, 0.85), rgba(243, 241, 255, 0.72));
+}
+
+.ori-child-list,
+.ori-schedule-list,
+.ori-history-list,
+.ori-teacher-student-list {
+  border-color: rgba(122, 153, 189, 0.2);
+}
+
+.ori-schedule-row,
+.ori-history-row,
+.ori-teacher-student-row,
+.ori-child-list li {
+  border-color: rgba(122, 153, 189, 0.18);
+}
+
+.ori-lessons-current {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(160, 199, 255, 0.22), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(239, 248, 255, 0.86));
+}
+
+.ori-prep-gateway {
+  border-color: rgba(255, 255, 255, 0.88);
+  background: linear-gradient(145deg, rgba(231, 246, 255, 0.92), rgba(242, 240, 255, 0.85));
+  box-shadow: var(--ori-field-shadow);
+}
+
+.ori-atlas-legend {
+  color: #617992;
+}
+
+.ori-priority-state.is-live .ori-status-dot {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12), 0 0 14px rgba(16, 185, 129, 0.3);
+}
+
+@media (min-width: 1200px) {
+  .ori-field-panel:hover {
+    transform: translateY(-2px);
+    border-color: rgba(123, 158, 201, 0.32);
+    box-shadow: 0 22px 48px rgba(48, 82, 122, 0.12), inset 0 1px rgba(255, 255, 255, 0.95);
+  }
+}
+
+@media (max-width: 900px) {
+  .ori-atlas-nav {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ori-atlas-nav > .ori-field-button {
+    align-self: flex-start;
+  }
+
+  .ori-atlas-stage {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .ori-atlas-nav {
+    align-items: stretch;
+  }
+
+  .ori-atlas-tabs {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    overflow: visible;
+    padding: 4px 0 8px;
+  }
+
+  .ori-atlas-tab {
+    min-height: 62px;
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 28px;
+    flex: none;
+    gap: 8px;
+    align-items: center;
+    padding: 9px 10px;
+    border-radius: 14px;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .ori-atlas-tab .ori-tab-title {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  .ori-atlas-tab .ori-tab-count {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border: 1px solid rgba(119, 153, 192, 0.2);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ori-field-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .ori-atlas-stage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    overflow: visible;
+  }
+
+  .ori-field-inspector {
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    padding: 18px;
+  }
+
+  .ori-skill-inspector {
+    position: static;
+    inset: auto;
+    width: auto;
+    animation: none;
+  }
+
+  .ori-atlas-map-frame {
+    display: none;
+  }
+
+  .ori-area-index {
+    display: none;
+  }
+
+  .ori-atlas-legend {
+    display: none;
+  }
+
+  .ori-field-page {
+    padding-inline: 14px;
+  }
+
+  .ori-field-intro {
+    gap: 16px;
+  }
+
+  .ori-code-header {
+    align-items: flex-start;
+  }
+
+  .ori-code-run-button {
+    min-height: 40px;
+    padding-inline: 12px;
+  }
+
+  .ori-atlas-legend {
+    gap: 10px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ori-field-page *,
+  .ori-field-page *::before,
+  .ori-field-page *::after,
+  .ori-island,
+  .ori-island *,
+  .ori-island *::before,
+  .ori-island *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

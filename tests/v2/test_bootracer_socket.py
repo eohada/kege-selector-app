@@ -286,3 +286,141 @@ def test_vfs_multi_file_and_tracer_interactive_sync(app, role_users):
         for connection in sockets:
             if connection.is_connected('/lesson'):
                 connection.disconnect(namespace='/lesson')
+
+
+def test_orbit_and_master_boo_sync(app, role_users):
+    """Test real-time collaborative synchronization of Boo Orbit tools and Master Boo hints."""
+    lesson_id, _ = _create_lesson_context(app, role_users)
+    teacher_http, student_http = app.test_client(), app.test_client()
+    login_as(teacher_http, role_users['tutor_id'], 'tutor')
+    login_as(student_http, role_users['student_user_id'], 'student')
+    sockets = []
+
+    def connect(http):
+        connection = app.socketio.test_client(app, flask_test_client=http, namespace='/lesson')
+        sockets.append(connection)
+        assert connection.is_connected('/lesson')
+        connection.emit('join_lesson', {'lesson_id': lesson_id}, namespace='/lesson')
+        connection.emit('whiteboard_join', {'lesson_id': lesson_id}, namespace='/lesson')
+        return connection
+
+    def event(connection, name):
+        matches = [item for item in connection.get_received('/lesson') if item['name'] == name]
+        assert matches, f'Missing {name}'
+        return matches[-1]['args'][0]
+
+    try:
+        teacher, student = connect(teacher_http), connect(student_http)
+
+        # 1. Teacher sends teacher_hint -> Student receives it intact
+        teacher.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'teacher_hint',
+            'hint': 'Разбей условие на две проверки: четность и делимость на 7.',
+            'tier': 2,
+        }, namespace='/lesson')
+
+        hint_ev = event(student, 'lesson_room_ui')
+        assert hint_ev['kind'] == 'teacher_hint'
+        assert hint_ev['hint'] == 'Разбей условие на две проверки: четность и делимость на 7.'
+        assert hint_ev['tier'] == 2
+
+        # 2. Teacher starts orbit_timer_sync -> Student receives it
+        teacher.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'orbit_timer_sync',
+            'action': 'start',
+            'seconds': 300,
+            'isRunning': True,
+            'mode': 'countdown',
+        }, namespace='/lesson')
+
+        timer_ev = event(student, 'lesson_room_ui')
+        assert timer_ev['kind'] == 'orbit_timer_sync'
+        assert timer_ev['action'] == 'start'
+        assert timer_ev['seconds'] == 300
+        assert timer_ev['isRunning'] is True
+
+        # 3. Student opens orbit_calc_sync -> Teacher receives it
+        student.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'orbit_calc_sync',
+            'action': 'open',
+            'x': 250,
+            'y': 180,
+            'expr': '256 * 4',
+            'val': '1024',
+        }, namespace='/lesson')
+
+        calc_ev = event(teacher, 'lesson_room_ui')
+        assert calc_ev['kind'] == 'orbit_calc_sync'
+        assert calc_ev['action'] == 'open'
+        assert calc_ev['expr'] == '256 * 4'
+        assert calc_ev['val'] == '1024'
+
+        # 4. Student triggers orbit_beacon -> Teacher receives it
+        student.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'orbit_beacon',
+            'x': 400,
+            'y': 300,
+            'maxW': 1920,
+            'maxH': 1080,
+            'author': 'Ученик',
+        }, namespace='/lesson')
+
+        beacon_ev = event(teacher, 'lesson_room_ui')
+        assert beacon_ev['kind'] == 'orbit_beacon'
+        assert beacon_ev['x'] == 400
+        assert beacon_ev['y'] == 300
+
+        # 5. Teacher sends orbit_laser -> Student receives it
+        teacher.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'orbit_laser',
+            'points': [{'x': 0.5, 'y': 0.5}],
+            'color': '#38bdf8',
+        }, namespace='/lesson')
+
+        laser_ev = event(student, 'lesson_room_ui')
+        assert laser_ev['kind'] == 'orbit_laser'
+        assert len(laser_ev['points']) == 1
+        assert laser_ev['color'] == '#38bdf8'
+
+        # 6. Student creates orbit_sticky -> Teacher receives it
+        student.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'orbit_sticky',
+            'id': 'sticky_test_1',
+            'color': 'mint',
+            'text': 'Попробовать через бинарный поиск',
+            'x': 100,
+            'y': 150,
+        }, namespace='/lesson')
+
+        sticky_ev = event(teacher, 'lesson_room_ui')
+        assert sticky_ev['kind'] == 'orbit_sticky'
+        assert sticky_ev['id'] == 'sticky_test_1'
+        assert sticky_ev['color'] == 'mint'
+        assert sticky_ev['text'] == 'Попробовать через бинарный поиск'
+
+        # 7. Teacher places pedagogical stamp -> Student receives it
+        teacher.emit('lesson_room_ui', {
+            'lesson_id': lesson_id,
+            'kind': 'teacher_stamp',
+            'label': 'Отлично! 100%',
+            'type': 'excellent',
+            'icon': 'ph-star',
+            'x': 320,
+            'y': 240,
+        }, namespace='/lesson')
+
+        stamp_ev = event(student, 'lesson_room_ui')
+        assert stamp_ev['kind'] == 'teacher_stamp'
+        assert stamp_ev['label'] == 'Отлично! 100%'
+        assert stamp_ev['type'] == 'excellent'
+
+    finally:
+        for connection in sockets:
+            if connection.is_connected('/lesson'):
+                connection.disconnect(namespace='/lesson')

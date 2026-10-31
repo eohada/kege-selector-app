@@ -100,3 +100,29 @@ def test_notification_and_delivery_are_created_in_same_transaction(app):
         delivery = TelegramDelivery.query.one()
         assert delivery.notification_id == UserNotification.query.one().notification_id
         assert delivery.status == 'pending'
+
+
+def test_notification_datetime_metadata_is_stored_as_iso8601_in_both_records(app):
+    from datetime import datetime, timezone
+    from app.models import TelegramDelivery, User, UserNotification, UserProfile, db
+    from app.notifications.service import notify_user
+
+    with app.app_context():
+        user = User(username='datetime-meta-user', role='student')
+        db.session.add(user)
+        db.session.flush()
+        db.session.add(UserProfile(user_id=user.id, telegram_chat_id=23456))
+        submitted_at = datetime(2026, 10, 24, 9, 30, tzinfo=timezone.utc)
+
+        notify_user(
+            user.id,
+            kind='teacher_homework_submitted',
+            title='Synthetic homework submitted',
+            meta={'submission_id': 77, 'submitted_at': submitted_at},
+        )
+        db.session.commit()
+
+        notification = UserNotification.query.filter_by(user_id=user.id).one()
+        delivery = TelegramDelivery.query.filter_by(notification_id=notification.notification_id).one()
+        assert notification.meta['submitted_at'] == submitted_at.isoformat()
+        assert delivery.payload['meta']['submitted_at'] == submitted_at.isoformat()

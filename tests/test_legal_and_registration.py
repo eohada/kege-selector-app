@@ -1,15 +1,20 @@
 import pytest
 from app import create_app
-from core.db_models import db, User, UserConsent, UserRole, UserProfile, TeacherProfile
+from core.db_models import db, User, UserConsent, UserProfile, TeacherProfile
 
 @pytest.fixture
 def app():
-    app = create_app()
-    app.config.update({
+    app = create_app({
         'TESTING': True,
         'WTF_CSRF_ENABLED': False,
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
     })
+    with app.app_context():
+        db.create_all()
     yield app
+    with app.app_context():
+        db.session.remove()
+        db.drop_all()
 
 @pytest.fixture
 def client(app):
@@ -25,7 +30,6 @@ def clean_db(app):
             UserConsent.query.filter_by(user_id=u.id).delete()
             TeacherProfile.query.filter_by(user_id=u.id).delete()
             UserProfile.query.filter_by(user_id=u.id).delete()
-            UserRole.query.filter_by(user_id=u.id).delete()
             db.session.delete(u)
         db.session.commit()
         yield
@@ -34,7 +38,6 @@ def clean_db(app):
             UserConsent.query.filter_by(user_id=u.id).delete()
             TeacherProfile.query.filter_by(user_id=u.id).delete()
             UserProfile.query.filter_by(user_id=u.id).delete()
-            UserRole.query.filter_by(user_id=u.id).delete()
             db.session.delete(u)
         db.session.commit()
 

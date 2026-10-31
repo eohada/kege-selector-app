@@ -1,0 +1,181 @@
+{
+  "dataset_id": "boostudy-ai-lab-sprint5-synthetic-v1",
+  "purpose": "Frozen expert expectations for scaling and regression checks across AI Lab Course and Lesson pipelines.",
+  "synthetic_only": true,
+  "real_student_data": false,
+  "frozen_before_live_model_runs": true,
+  "development": [
+    {
+      "case_id": "dev-course-prerequisite-order",
+      "module": "ai_course",
+      "input": {
+        "course_id": "synthetic-s5-course-prerequisite",
+        "course_version": 1,
+        "title": "Условия перед циклами",
+        "topics": [
+          {"topic_id": "python.iteration", "title": "Циклы", "order": 1, "prerequisite_ids": ["python.conditions"]},
+          {"topic_id": "python.conditions", "title": "Условия", "order": 2, "prerequisite_ids": []}
+        ],
+        "learning_goals": [],
+        "materials": [
+          {"material_id": "material.iteration", "title": "Цикл", "topic_id": "python.iteration", "content": "Цикл проходит по последовательности."},
+          {"material_id": "material.conditions", "title": "Условие", "topic_id": "python.conditions", "content": "Условие выбирает ветвь."}
+        ],
+        "assignments": []
+      },
+      "expert_expectation": {
+        "deterministic_findings": ["prerequisite_after_topic"],
+        "ai_review": "Можно предложить проверить порядок или обосновать ранее изученное условие; не менять курс автоматически.",
+        "must_not_claim": ["Порядок обязательно неверен без педагогического контекста"]
+      }
+    },
+    {
+      "case_id": "dev-course-assignment-skill-mismatch",
+      "module": "ai_course",
+      "input": {
+        "course_id": "synthetic-s5-course-skill-mismatch",
+        "course_version": 1,
+        "title": "Условия и циклы",
+        "topics": [
+          {"topic_id": "python.conditions", "title": "Условия", "order": 1, "prerequisite_ids": [], "skill_id": "python.boundary_cases"},
+          {"topic_id": "python.iteration", "title": "Циклы", "order": 2, "prerequisite_ids": [], "skill_id": "python.iteration"}
+        ],
+        "learning_goals": [],
+        "materials": [
+          {"material_id": "material.conditions", "title": "Условия", "topic_id": "python.conditions", "content": "Разбор ветвления."},
+          {"material_id": "material.iteration", "title": "Циклы", "topic_id": "python.iteration", "content": "Разбор повторения."}
+        ],
+        "assignments": [
+          {"assignment_id": "synthetic-s5-assignment", "title": "Задача о цикле", "topic_id": "python.iteration", "skill_id": "python.boundary_cases"}
+        ]
+      },
+      "expert_expectation": {
+        "deterministic_findings": ["assignment_skill_mismatch"],
+        "ai_review": "Попросить автора курса подтвердить намеренную межтематическую проверку или исправить связь.",
+        "must_not_claim": ["Задание педагогически неверно только по несовпадению метаданных"]
+      }
+    },
+    {
+      "case_id": "dev-course-topic-without-material",
+      "module": "ai_course",
+      "input": {
+        "course_id": "synthetic-s5-course-material-gap",
+        "course_version": 1,
+        "title": "Функции и границы",
+        "topics": [
+          {"topic_id": "python.functions", "title": "Функции", "order": 1, "prerequisite_ids": []},
+          {"topic_id": "python.boundaries", "title": "Границы", "order": 2, "prerequisite_ids": []}
+        ],
+        "learning_goals": [],
+        "materials": [
+          {"material_id": "material.functions", "title": "Функции", "topic_id": "python.functions", "content": "Функция возвращает значение."}
+        ],
+        "assignments": []
+      },
+      "expert_expectation": {
+        "deterministic_findings": ["topic_without_material"],
+        "ai_review": "Сообщить, что в представленном снимке для темы нет материала.",
+        "must_not_claim": ["Тема отсутствует во всём курсе за пределами переданного снимка"]
+      }
+    },
+    {
+      "case_id": "dev-course-permitted-alternative-order",
+      "module": "ai_course",
+      "input": {
+        "course_id": "synthetic-s5-course-alternative-order",
+        "course_version": 1,
+        "title": "Текстовые задачи перед формальными условиями",
+        "topics": [
+          {"topic_id": "python.strings", "title": "Строки", "order": 1, "prerequisite_ids": []},
+          {"topic_id": "python.conditions", "title": "Условия", "order": 2, "prerequisite_ids": []}
+        ],
+        "learning_goals": [],
+        "materials": [
+          {"material_id": "material.strings", "title": "Строки", "topic_id": "python.strings", "content": "Перебираем символы строки."},
+          {"material_id": "material.conditions", "title": "Условия", "topic_id": "python.conditions", "content": "Проверяем значения в текстовой задаче."}
+        ],
+        "assignments": []
+      },
+      "expert_expectation": {
+        "deterministic_findings": [],
+        "ai_review": "Признать порядок допустимым: явной зависимости между темами нет.",
+        "must_not_claim": ["Условия обязаны изучаться раньше строк"]
+      }
+    },
+    {
+      "case_id": "dev-lesson-explicit-student-difficulty",
+      "module": "ai_lesson_intelligence",
+      "input": {"lesson_id": "synthetic-s5-lesson-explicit", "lesson_version": 1, "transcript": "Ученик: Я не понимаю, почему верхняя граница не включается."},
+      "expert_expectation": {
+        "expected_observation": "python.boundary_cases may be proposed with an exact source reference, pending manual review.",
+        "must_not_claim": ["Подтверждённый диагноз", "Числовая оценка", "Текущая неспособность после одного высказывания"]
+      }
+    },
+    {
+      "case_id": "dev-lesson-question-is-not-proof",
+      "module": "ai_lesson_intelligence",
+      "input": {"lesson_id": "synthetic-s5-lesson-question", "lesson_version": 1, "transcript": "Ученик: Почему здесь используется n плюс один?\nПреподаватель: Правая граница range не включается."},
+      "expert_expectation": {
+        "expected_observation": "No observed difficulty; a question alone is insufficient evidence.",
+        "must_not_claim": ["Затруднение ученика", "Навык не освоен"]
+      }
+    }
+  ],
+  "holdout": [
+    {
+      "case_id": "holdout-course-factual-range-error",
+      "module": "ai_course",
+      "input": {
+        "course_id": "synthetic-s5-holdout-range-error",
+        "course_version": 1,
+        "title": "Границы range",
+        "topics": [{"topic_id": "python.range", "title": "Диапазоны", "order": 1, "prerequisite_ids": []}],
+        "learning_goals": [{"goal_id": "goal.range", "text": "Разобрать диапазон", "topic_ids": ["python.range"]}],
+        "materials": [{"material_id": "material.range", "title": "Диапазон", "topic_id": "python.range", "content": "В Python range(1, n) всегда включает n."}],
+        "assignments": []
+      },
+      "expert_expectation": {
+        "ai_review": "Предложить исправить фактически неверное объяснение и сослаться на точный фрагмент.",
+        "must_not_claim": ["Изменённый материал уже применён", "Полная корректность всего курса"]
+      }
+    },
+    {
+      "case_id": "holdout-course-contradictory-sources",
+      "module": "ai_course",
+      "input": {
+        "course_id": "synthetic-s5-holdout-conflicting-materials",
+        "course_version": 1,
+        "title": "Противоречие в пояснениях",
+        "topics": [{"topic_id": "python.range", "title": "Диапазоны", "order": 1, "prerequisite_ids": []}],
+        "learning_goals": [],
+        "materials": [
+          {"material_id": "material.range-a", "title": "Пример A", "topic_id": "python.range", "content": "Правая граница range не включается."},
+          {"material_id": "material.range-b", "title": "Пример B", "topic_id": "python.range", "content": "Правая граница range включается."}
+        ],
+        "assignments": []
+      },
+      "expert_expectation": {
+        "ai_review": "Показать обе противоречащие цитаты и запросить решение преподавателя.",
+        "must_not_claim": ["Одна из цитат точно не относится к текущей версии", "Изменение выполнено автоматически"]
+      }
+    },
+    {
+      "case_id": "holdout-lesson-corrected-misconception",
+      "module": "ai_lesson_intelligence",
+      "input": {"lesson_id": "synthetic-s5-holdout-corrected", "lesson_version": 1, "transcript": "Ученик: Я не понимаю, включает ли range правую границу.\nПреподаватель: Правая граница не включается.\nУченик: Теперь понятно, проверка проходит."},
+      "expert_expectation": {
+        "expected_observation": "A tentative resolution candidate with refs to both the difficulty and later learner resolution; manual review required.",
+        "must_not_claim": ["Текущее неразрешённое затруднение без оговорки", "Объективная вероятность освоения навыка"]
+      }
+    },
+    {
+      "case_id": "holdout-lesson-teacher-correction-only",
+      "module": "ai_lesson_intelligence",
+      "input": {"lesson_id": "synthetic-s5-holdout-teacher-correction", "lesson_version": 1, "transcript": "Преподаватель: Исправлю доску: верхняя граница range не включается.\nУченик: Хорошо."},
+      "expert_expectation": {
+        "expected_observation": "No current learner difficulty; the teacher correction alone is not evidence about learner understanding.",
+        "must_not_claim": ["Ошибка ученика", "Потребность в повторении темы"]
+      }
+    }
+  ]
+}

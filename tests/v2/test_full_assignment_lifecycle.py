@@ -74,6 +74,157 @@ def test_assignment_lifecycle_uses_only_canonical_v2_endpoints(app, client, role
         assert final_submission.total_score == 1
 
 
+def test_assignment_and_lesson_publication_records_one_task_exposure(app, role_users):
+    """The same publication through an assignment and lesson is one exposure."""
+    from app import db
+    from core.db_models import (
+        Assignment, AssignmentTask, Lesson, LessonTask, StudentTaskSeen, Submission, Tasks, utc_now,
+    )
+
+    with app.app_context():
+        student_id = role_users['student_id']
+        task = Tasks(
+            task_number=9491,
+            content_html='<p>Exposure listener regression</p>',
+            answer='42',
+            answer_spec={'type': 'short_answer', 'grading_mode': 'exact'},
+        )
+        lesson = Lesson(student_id=student_id, topic='Exposure listener regression', status='planned')
+        assignment = Assignment(
+            title='Exposure listener regression',
+            assignment_type='homework',
+            deadline=utc_now() + timedelta(days=2),
+            created_by_id=role_users['tutor_id'],
+            is_active=True,
+        )
+        db.session.add_all([task, lesson, assignment])
+        db.session.flush()
+        link = LessonTask(
+            lesson_id=lesson.lesson_id,
+            task_id=task.task_id,
+            assignment_type='homework',
+            is_visible_to_student=False,
+        )
+        db.session.add_all([
+            link,
+            AssignmentTask(assignment_id=assignment.assignment_id, task_id=task.task_id, max_score=1),
+            Submission(
+                assignment_id=assignment.assignment_id,
+                student_id=student_id,
+                status='ASSIGNED',
+                max_score=1,
+            ),
+        ])
+        link.is_visible_to_student = True
+        db.session.commit()
+
+        exposures = StudentTaskSeen.query.filter_by(student_id=student_id, task_id=task.task_id).all()
+        assert len(exposures) == 1
+        assert exposures[0].source == 'lesson'
+        assert exposures[0].normal_use_count == 1
+
+
+def test_resubmission_clears_active_revision_flag_and_keeps_grade_history(app, client, role_users):
+    from app import db
+    from app.assignments.evaluation_history import current_answer_evaluation, record_answer_evaluation
+    from core.db_models import (
+        Answer, AnswerEvaluationRevision, Assignment, AssignmentTask, Submission, Tasks, utc_now,
+    )
+
+    cases = []
+    with app.app_context():
+        for suffix, attempts_per_task in ((1, False), (2, True)):
+            task = Tasks(
+                task_number=9400 + suffix,
+                content_html=f'<p>Исправление ответа {suffix}</p>',
+                answer='42',
+                answer_spec={'type': 'short_answer', 'grading_mode': 'exact'},
+            )
+            assignment = Assignment(
+                title=f'Revision resubmission {suffix}',
+                assignment_type='homework',
+                deadline=utc_now() + timedelta(days=2),
+                created_by_id=role_users['tutor_id'],
+                allow_separate_submission=True,
+                attempts_per_task=attempts_per_task,
+                max_attempts_default=3,
+                is_active=True,
+            )
+            db.session.add_all([task, assignment])
+            db.session.flush()
+            assignment_task = AssignmentTask(
+                assignment_id=assignment.assignment_id,
+                task_id=task.task_id,
+                order_index=0,
+                max_score=1,
+            )
+            submission = Submission(
+                assignment_id=assignment.assignment_id,
+                student_id=role_users['student_id'],
+                status='RETURNED',
+                max_score=1,
+            )
+            db.session.add_all([assignment_task, submission])
+            db.session.flush()
+            answer = Answer(
+                submission_id=submission.submission_id,
+                assignment_task_id=assignment_task.assignment_task_id,
+                value='41',
+                score=0,
+                max_score=1,
+                is_correct=False,
+                needs_revision=True,
+                attempts_used=1,
+            )
+            db.session.add(answer)
+            db.session.flush()
+            record_answer_evaluation(
+                answer,
+                method='teacher_manual',
+                actor_user_id=role_users['tutor_id'],
+                score=0,
+                max_score=1,
+                is_correct=False,
+            )
+            cases.append((submission.submission_id, assignment_task.assignment_task_id, attempts_per_task))
+        db.session.commit()
+
+    for submission_id, assignment_task_id, attempts_per_task in cases:
+        _login_as(client, role_users['student_user_id'], 'student')
+        if attempts_per_task:
+            response = client.post(f'/submissions/{submission_id}/submit-task', json={
+                'assignment_task_id': assignment_task_id,
+                'value': '42',
+            })
+            assert response.status_code == 200, response.get_json()
+        else:
+            saved = client.put(f'/submissions/{submission_id}/autosave', json={
+                'answers': [{'assignment_task_id': assignment_task_id, 'value': '42'}],
+            })
+            assert saved.status_code == 200, saved.get_json()
+
+        submitted = client.post(f'/submissions/{submission_id}/submit', json={})
+        assert submitted.status_code == 200, submitted.get_json()
+
+        with app.app_context():
+            answer = Answer.query.filter_by(
+                submission_id=submission_id,
+                assignment_task_id=assignment_task_id,
+            ).one()
+            submission = db.session.get(Submission, submission_id)
+            revisions = AnswerEvaluationRevision.query.filter_by(answer_id=answer.answer_id).order_by(
+                AnswerEvaluationRevision.revision_no.asc(),
+            ).all()
+            current = current_answer_evaluation(answer.answer_id)
+            assert submission.status == 'GRADED'
+            assert answer.needs_revision is False
+            assert answer.is_correct is True and answer.score == 1
+            assert len(revisions) == 2
+            assert revisions[0].state == 'superseded'
+            assert current.revision_id == revisions[1].revision_id
+            assert current.state == 'current' and current.is_correct is True
+
+
 def test_submission_datetime_notification_is_persisted_with_outbox(app, client, role_users):
     from app import db
     from core.db_models import Assignment, AssignmentTask, Submission, Tasks, TelegramDelivery, User, UserNotification, utc_now
@@ -246,9 +397,13 @@ def test_teacher_review_shows_the_exact_student_answer_value(app, client, role_u
 
     _login_as(client, role_users['tutor_id'], 'tutor')
     review = client.get(f'/submissions/{submission_id}/grade')
-    assert review.status_code == 200
-    assert 'Введённый ответ ученика'.encode('utf-8') in review.data
-    assert b'north' in review.data and b'south' in review.data
+    assert review.status_code == 302
+    assert '/task-workspace/?context_type=submission_task' in review.headers['Location']
+    review_workspace = client.get(review.headers['Location'])
+    assert review_workspace.status_code == 200
+    assert b'data-boostudy-mode="review"' in review_workspace.data
+    assert b'id="review-student-answer-box"' in review_workspace.data
+    assert b'north' in review_workspace.data and b'south' in review_workspace.data
 
 
 def test_teacher_review_state_keeps_zero_score_distinct_from_unreviewed(app, client, role_users):
@@ -491,9 +646,10 @@ def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, 
 
     workspace = client.get(entry.headers['Location'])
     assert workspace.status_code == 200
-    assert b'id="tw-code-workspace-grid"' in workspace.data
-    assert b'id="tw-standard-workspace-grid"' in workspace.data
-    assert b'data-workspace-mode-switch' in workspace.data
+    assert b'id="trainer-arena-view"' in workspace.data
+    assert b'data-boostudy-mode="homework"' in workspace.data
+    assert b'id="code-editor-textarea"' in workspace.data
+    assert b'id="homework-answer-frame"' in workspace.data
     assert f'assignment_task_id={assignment_tasks[1].assignment_task_id}'.encode() in workspace.data
 
     saved_code = client.post('/task-workspace/api/save', json={
@@ -555,11 +711,22 @@ def test_standard_workspace_renders_real_answer_contract_and_persists_json(app, 
         'context_type': 'submission_task', 'context_id': submission_id, 'assignment_task_id': assignment_task_id,
     })
     assert page.status_code == 200
-    assert 'tw-standard-grid'.encode('utf-8') in page.data
-    assert 'Python IDE'.encode('utf-8') in page.data
-    assert b'data-workspace-mode-switch' in page.data
-    assert 'Подсказки к задаче'.encode('utf-8') in page.data
-    assert 'scheme.png'.encode('utf-8') in page.data
+    assert b'id="trainer-arena-view"' in page.data
+    assert b'data-boostudy-mode="homework"' in page.data
+    assert b'id="homework-answer-frame"' in page.data
+
+    answer_workspace = client.get('/task-workspace/', query_string={
+        'context_type': 'submission_task', 'context_id': submission_id,
+        'assignment_task_id': assignment_task_id, 'embedded': 'answer',
+    })
+    assert answer_workspace.status_code == 200
+    assert b'id="tw-standard-workspace-grid"' in answer_workspace.data
+    assert 'Сопоставьте протокол и назначение.'.encode('utf-8') in answer_workspace.data
+    assert 'Сопоставьте элементы двух столбцов.'.encode('utf-8') in answer_workspace.data
+    assert 'Python IDE'.encode('utf-8') in answer_workspace.data
+    assert 'Направление'.encode('utf-8') in answer_workspace.data
+    assert 'Сначала вспомните назначение HTTP.'.encode('utf-8') in answer_workspace.data
+    assert 'scheme.png'.encode('utf-8') in answer_workspace.data
 
     value = '{"A":"1","B":"2"}'
     saved = client.post('/task-workspace/api/save', json={
@@ -750,6 +917,75 @@ def test_author_task_with_answer_spec_is_persisted_and_editable(app, client, rol
         assert t.max_score == 1
 
 
+def test_synthetic_task_revision_persists_its_own_fingerprint(app, client, role_users, monkeypatch):
+    """A new synthetic revision stores a fingerprint for its own content, not its source task."""
+    from types import SimpleNamespace
+
+    from app import db
+    from app.ai_lab.platform_homework import _task_fingerprint
+    from app.task_generator import routes as task_routes
+    from core.db_models import Tasks
+
+    context_course_id = 9313004
+    context_lesson_id = 9313007
+    binding = {
+        'contract': 'boostudy.synthetic-course-skill.v1',
+        'status': 'draft',
+        'course_id': context_course_id,
+        'course_version': 4,
+        'lesson_id': context_lesson_id,
+        'skill_id': 'exam-skill:4',
+        'topic_code': 'ege.inf.graph.optimal-paths.v1',
+        'criterion_id': 'result_check',
+        'task_fingerprint': '0' * 64,
+    }
+    with app.app_context():
+        source_task = Tasks(
+            task_number=9913,
+            content_html='<p>Source condition</p>',
+            answer='source-answer',
+            answer_spec={
+                'type': 'short_answer',
+                'grading_mode': 'exact',
+                'synthetic_course_skill_binding': binding,
+            },
+            created_by_id=role_users['tutor_id'],
+            bank_category='synthetic_adaptive_draft',
+            source_key=f'boostudy.synthetic.adaptive-v1/{context_course_id}/{context_lesson_id}/source',
+            max_score=1,
+        )
+        db.session.add(source_task)
+        db.session.commit()
+        source_task_id = source_task.task_id
+
+    monkeypatch.setattr(
+        task_routes,
+        '_resolve_synthetic_task_context',
+        lambda course_id, lesson_id: (
+            SimpleNamespace(course_id=course_id, current_version=4),
+            SimpleNamespace(lesson_id=lesson_id),
+        ),
+    )
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    created = client.post('/task-generator/bank/create', data={
+        'synthetic_course_id': str(context_course_id),
+        'synthetic_lesson_id': str(context_lesson_id),
+        'revision_of_task_id': str(source_task_id),
+        'task_number': '9913',
+        'content': 'Revised condition without a printed answer.',
+        'answer': 'revised-answer',
+        'answer_spec': json.dumps({'type': 'short_answer', 'grading_mode': 'exact'}),
+        'max_score': '1',
+    })
+
+    assert created.status_code == 201, created.get_json()
+    with app.app_context():
+        revised_task = db.session.get(Tasks, created.get_json()['task_id'])
+        revised_binding = revised_task.answer_spec['synthetic_course_skill_binding']
+        assert revised_binding['task_fingerprint'] == _task_fingerprint(revised_task)
+        assert revised_binding['task_fingerprint'] != binding['task_fingerprint']
+
+
 def test_teacher_can_open_student_file_and_canvas_from_assignment_review(app, client, role_users):
     """Вложения и заметки ученика остаются доступны преподавателю в одном контуре проверки."""
     from app import db
@@ -804,9 +1040,12 @@ def test_teacher_can_open_student_file_and_canvas_from_assignment_review(app, cl
     assert canvas.status_code == 200, canvas.get_json()
     assert canvas.get_json()['exists'] is True
     review = client.get(f'/submissions/{submission_id}/grade')
-    assert review.status_code == 200
-    assert attachment_url.encode() in review.data
-    assert 'Заметки ученика'.encode('utf-8') in review.data
+    assert review.status_code == 302
+    review_workspace = client.get(review.headers['Location'])
+    assert review_workspace.status_code == 200
+    assert b'data-boostudy-mode="review"' in review_workspace.data
+    assert attachment_url.encode() in review_workspace.data
+    assert 'Конспект ученика'.encode('utf-8') in review_workspace.data
 
 
 def test_strict_timer_prevents_submission_after_time_limit(app, client, role_users):

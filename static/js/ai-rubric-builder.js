@@ -5,17 +5,27 @@
   const state = { rubric: null, rubrics: JSON.parse($('rb-initial-rubrics').textContent || '[]'), busy: false, verification: null, pendingGeneration: null, pendingRepair: null };
   const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const message = (text, error = false) => { $('rb-message').textContent = text; $('rb-message').classList.toggle('is-error', error); };
-  const task = () => ({
-    title: $('rb-title').value, subject: $('rb-subject').value, topic: $('rb-topic').value,
-    answer_type: $('rb-type').value, max_score: $('rb-max').value,
-    condition: $('rb-condition').value, reference_answer: $('rb-reference').value,
-    teacher_requirements: $('rb-requirements').value
-  });
+  const task = () => {
+    const value = {
+      title: $('rb-title').value, subject: $('rb-subject').value, topic: $('rb-topic').value,
+      answer_type: $('rb-type').value, max_score: $('rb-max').value,
+      condition: $('rb-condition').value, reference_answer: $('rb-reference').value,
+      teacher_requirements: $('rb-requirements').value
+    };
+    const assignmentId = $('rb-assignment-id').value.trim();
+    if (assignmentId) {
+      value.assignment_id = assignmentId;
+      value.assignment_version = $('rb-assignment-version').value;
+    }
+    return value;
+  };
   const setTask = (value) => {
     $('rb-title').value = value.title || ''; $('rb-subject').value = value.subject || '';
     $('rb-topic').value = value.topic || ''; $('rb-type').value = value.answer_type || 'python';
     $('rb-max').value = value.max_score || ''; $('rb-condition').value = value.condition || '';
     $('rb-reference').value = value.reference_answer || ''; $('rb-requirements').value = value.teacher_requirements || '';
+    $('rb-assignment-id').value = value.assignment_id || '';
+    $('rb-assignment-version').value = value.assignment_version || 1;
   };
   const request = async (url, body) => {
     const response = await fetch(url, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json', 'X-CSRFToken': $('rb-csrf').value}, body: JSON.stringify(body)});
@@ -123,7 +133,10 @@
     }
     state.rubric = await request('/admin/ai-lab/api/rubrics/generate', {task: task(), model: $('rb-model').value, request_key:state.pendingGeneration.key});
     state.pendingGeneration = null;
-    state.rubrics.unshift(state.rubric); render(); message('Предложение сохранено как черновик.');
+    state.rubrics = [state.rubric, ...state.rubrics.filter((item) => item.id !== state.rubric.id)];
+    render(); message(state.rubric.reused
+      ? `Повторно открыта совместимая версия ${state.rubric.version_no} для этого задания.`
+      : 'Предложение сохранено как черновик.');
   }));
   $('rb-save').addEventListener('click', () => safeBusy(async () => {
     const item = await request(`/admin/ai-lab/api/rubrics/${state.rubric.id}/revise`, {task: task(), criteria: collectCriteria()});

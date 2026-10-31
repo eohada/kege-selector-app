@@ -6,9 +6,12 @@
 <main class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
   <form method="POST" id="lessonForm" class="space-y-6">
     {{ form.hidden_tag() }}
+    {% if course.student_id and not course.is_template %}<input type="hidden" name="expected_course_version" value="{{ course.current_version or 1 }}">{% endif %}
+    {{ form.pedagogy_contract_json(type='hidden', id='pedagogyContractJson') }}
 
     <!-- Header Section -->
     <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
+      {% if course_version_error %}<p class="mb-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-900" role="alert">{{ course_version_error }}</p>{% endif %}
       <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
@@ -31,6 +34,24 @@
         </div>
       </div>
     </section>
+
+    {% if lesson and course.student_id and not course.is_template %}
+      <section class="rounded-2xl border-2 border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="lesson-plan-before-title">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="lesson-plan-before-title" class="text-sm font-black text-slate-900">Исходная версия индивидуального урока · v{{ course.current_version or 1 }}</h2>
+            <p class="mt-1 text-xs leading-5 text-slate-600">Поля ниже редактируют будущий урок. Сохранение создаст новую версию; уже проведённые занятия и результаты не меняются.</p>
+          </div>
+          <span class="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-black text-violet-800">Ручное решение преподавателя</span>
+        </div>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div class="rounded-xl bg-slate-50 p-3 text-xs"><strong>Тема · {{ lesson.duration or 0 }} мин.</strong><p class="mt-1">{{ lesson.topic }}</p></div>
+          <div class="rounded-xl bg-slate-50 p-3 text-xs"><strong>Содержание</strong><p class="mt-1 whitespace-pre-wrap">{{ lesson.content or 'Не задано' }}</p></div>
+          <div class="rounded-xl bg-slate-50 p-3 text-xs"><strong>Домашняя работа</strong><p class="mt-1 whitespace-pre-wrap">{{ lesson.homework or 'Не задана' }}</p></div>
+          <div class="rounded-xl bg-slate-50 p-3 text-xs"><strong>Связанные задания</strong><p class="mt-1">{% set original_task_ids = lesson.homework_tasks|map(attribute='task_id')|list %}{{ original_task_ids|join(', ') if original_task_ids else 'Нет' }}</p></div>
+        </div>
+      </section>
+    {% endif %}
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
       <!-- Main Column -->
@@ -74,8 +95,8 @@
               <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
                 {{ form.course_order_index.label.text }}
               </label>
-              {{ form.course_order_index(class_='w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 font-bold text-slate-800 outline-hidden transition focus:border-indigo-500 text-sm', min='0', max='9999', step='10') }}
-              <span class="mt-1 block text-[11px] font-medium text-slate-400">Шаг 10 позволяет легко вставлять уроки в середину.</span>
+              {{ form.course_order_index(class_='w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 font-bold text-slate-800 outline-hidden transition focus:border-indigo-500 text-sm', min='0', max='9999', step='1', readonly=(course.student_id and not course.is_template)) }}
+              <span class="mt-1 block text-[11px] font-medium text-slate-400">{% if course.student_id and not course.is_template %}Новые занятия добавляются в конец; существующий порядок не меняется, пока нельзя проверить все предпосылки перестановки. Для очереди используйте действие «Отложить урок».{% else %}Шаг 10 оставляет место для новых занятий в базовой программе.{% endif %}</span>
             </div>
 
             <div>
@@ -166,10 +187,91 @@
           </div>
         </article>
 
-        <!-- 4. Theory & Homework Content -->
+        <!-- 4. Tutor Core lesson structure -->
+        <article class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8" aria-labelledby="pedagogyHeading">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5 pb-4 border-b border-slate-200">
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-violet-200 bg-violet-100 font-black text-violet-700 text-sm">4</span>
+                <h2 id="pedagogyHeading" class="font-black text-slate-900 text-lg">Учебная структура для Tutor Core</h2>
+              </div>
+              <p class="text-sm font-semibold leading-6 text-slate-600 max-w-3xl">
+                Опишите проверяемую цель и этапы отдельно от списка пунктов Lesson Room. Это черновик для анализа: он не утверждает освоение и не меняет план сам по себе.
+              </p>
+            </div>
+            <span class="inline-flex w-fit items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-black text-amber-800">Synthetic draft · без экспертного утверждения</span>
+          </div>
+
+          {% if pedagogy_errors %}
+            <div class="mb-5 rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-800" role="alert">
+              <p class="mb-2">Структура не сохранена. Исправьте указанные пункты:</p>
+              <ul class="list-disc space-y-1 pl-5">{% for error in pedagogy_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+
+          {% if not pedagogy_skill_ready %}
+            <div class="rounded-2xl border-2 border-violet-200 bg-white p-4 text-sm font-semibold leading-6 text-slate-700">
+              Для структуры нужен ровно один связанный активный навык с проверяемыми критериями. Сохраните привязку навыка, затем откройте урок снова. Если у навыка нет критериев, Tutor Core честно оставит анализ заблокированным.
+            </div>
+          {% else %}
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block rounded-2xl border-2 border-slate-200 bg-white p-4">
+                <span class="mb-2 block text-xs font-black uppercase tracking-wide text-slate-600">Наблюдаемая учебная цель</span>
+                <textarea id="pedagogyObjective" rows="3" class="w-full rounded-xl border-2 border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none" placeholder="Что ученик должен уметь выполнить самостоятельно?" aria-describedby="objectiveHint"></textarea>
+                <span id="objectiveHint" class="mt-2 block text-xs font-medium text-slate-500">Связь с навыком будет взята из выбранного выше навыка урока.</span>
+              </label>
+              <div class="rounded-2xl border-2 border-slate-200 bg-white p-4">
+                <label for="pedagogyPrerequisite" class="mb-2 block text-xs font-black uppercase tracking-wide text-slate-600">Предварительный навык или предпосылок нет</label>
+                <textarea id="pedagogyPrerequisite" rows="2" class="w-full rounded-xl border-2 border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none" placeholder="Какое знание нужно для этого урока? Оставьте пустым, если предпосылок нет."></textarea>
+                <label class="mt-3 flex items-start gap-2 text-xs font-semibold leading-5 text-slate-600">
+                  <input id="pedagogyNoPrerequisite" type="checkbox" class="mt-0.5 rounded border-slate-300 text-violet-600 focus:ring-violet-500">
+                  <span>Для этого занятия отдельные предварительные навыки не заявлены.</span>
+                </label>
+              </div>
+            </div>
+
+            <section class="mt-5 rounded-2xl border-2 border-slate-200 bg-white p-4" aria-labelledby="segmentsHeading">
+              <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 id="segmentsHeading" class="font-black text-slate-900">Этапы занятия</h3>
+              <p class="mt-1 text-xs font-semibold text-slate-500">Минуты должны в сумме равняться длительности урока: <strong>{{ form.duration.data or 60 }} мин.</strong> Сокращать можно только явно разрешённый гибкий резерв.</p>
+                </div>
+                <button type="button" id="addPedagogySegment" class="rounded-xl border-2 border-slate-200 border-b-4 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Добавить этап</button>
+              </div>
+              <div id="pedagogySegments" class="space-y-2"></div>
+              <p id="pedagogyTimeTotal" class="mt-3 text-xs font-black text-slate-600" aria-live="polite"></p>
+            </section>
+
+            <section class="mt-5" aria-labelledby="criteriaHeading">
+              <div class="mb-3">
+                <h3 id="criteriaHeading" class="font-black text-slate-900">Проверка по критериям навыка</h3>
+                <p class="mt-1 text-xs font-semibold leading-5 text-slate-500">Для каждого критерия укажите результат, связанное задание, способ проверки и пределы вывода. Эталонный ответ здесь не хранится.</p>
+                <p class="mt-1 text-xs font-semibold leading-5 text-violet-700">Перед рекомендацией Tutor Core отдельно перепроверит привязку навыка, checker, версию и историю использования. Уже использованное задание не считается независимой диагностикой.</p>
+              </div>
+              <div id="pedagogyCriteria" class="space-y-3"></div>
+              {% if pedagogy_teacher_confirmation_enabled %}
+                <label class="mt-4 flex items-start gap-3 rounded-2xl border-2 border-violet-200 bg-violet-50 p-4 text-sm leading-6 text-violet-950">
+                  <input type="checkbox" name="pedagogy_teacher_confirmation" value="1"
+                         class="mt-1 rounded border-violet-300 text-violet-700 focus:ring-violet-600"
+                         {% if pedagogy_teacher_confirmation_checked %}checked{% endif %}>
+                  <span>
+                    <strong class="block font-black">Подтверждаю привязку заданий к критериям для synthetic-проверки</strong>
+                    <span class="mt-1 block text-xs font-semibold text-violet-800">Это фиксирует решение преподавателя о соответствии упражнения критерию в изолированной среде. Это не экспертное утверждение, не подтверждение освоения навыка и не меняет прошлые результаты.</span>
+                  </span>
+                </label>
+              {% endif %}
+            </section>
+            <script type="application/json" id="pedagogyCriteriaData">{{ pedagogy_criteria|tojson }}</script>
+            <script type="application/json" id="pedagogyTasksData">{{ pedagogy_tasks|tojson }}</script>
+            <script type="application/json" id="pedagogyInitialData">{{ pedagogy_initial|tojson }}</script>
+            <p id="pedagogyEditorStatus" class="mt-4 text-sm font-bold text-rose-700" role="status" aria-live="polite"></p>
+          {% endif %}
+        </article>
+
+        <!-- 5. Theory & Homework Content -->
         <article class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
           <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200">
-            <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-100 font-black text-amber-700 text-sm">4</span>
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-amber-100 font-black text-amber-700 text-sm">5</span>
             <div>
               <h2 class="font-black text-slate-900 text-lg">Теория и домашнее задание</h2>
               <p class="text-xs font-semibold text-slate-400">Текстовые конспекты (Markdown) и инструкции для ученика</p>
@@ -193,12 +295,12 @@
           </div>
         </article>
 
-        <!-- 5. Attachments Section (if lesson exists) -->
+        <!-- 6. Attachments Section (if lesson exists) -->
         {% if lesson %}
           <article class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
             <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
               <div class="flex items-center gap-3">
-                <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-sky-200 bg-sky-100 font-black text-sky-700 text-sm">5</span>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-sky-200 bg-sky-100 font-black text-sky-700 text-sm">6</span>
                 <div>
                   <h2 class="font-black text-slate-900 text-lg">Вложения к уроку (.xlsx, .txt, .py, .pdf)</h2>
                   <p class="text-xs font-semibold text-slate-400">Файлы для теории или домашнего задания</p>
@@ -258,6 +360,74 @@
 
       <!-- Right Column: Actions & Notes -->
       <aside class="space-y-5 h-fit xl:sticky xl:top-6">
+        {% if lesson and not course.is_template %}
+          <section class="rounded-2xl border-2 border-violet-200 bg-violet-50 p-4">
+            <h2 class="text-sm font-black text-violet-950">Ручное решение преподавателя</h2>
+            <p class="mt-1 text-xs leading-5 text-violet-900">Изменение будет сохранено как действие преподавателя, отдельно от предложений Tutor Core.</p>
+            {% if manual_change_error %}<p class="mt-2 rounded-lg bg-white p-2 text-xs font-bold text-rose-700" role="alert">{{ manual_change_error }}</p>{% endif %}
+            <label class="mt-3 block text-xs font-black text-violet-950" for="programChangeReason">Педагогическое основание</label>
+            <textarea id="programChangeReason" name="program_change_reason" minlength="10" rows="3" class="mt-1 w-full rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs text-slate-800" placeholder="Например: сохранить время для разбора альтернативных маршрутов после наблюдений на уроке">{{ request.form.get('program_change_reason', '') }}</textarea>
+            <p class="mt-1 text-[11px] text-violet-800">Нужно при изменении цели, содержания, времени, навыков или заданий.</p>
+          </section>
+
+          <details class="rounded-2xl border-2 border-slate-200 bg-white p-4">
+            <summary class="cursor-pointer text-sm font-black text-slate-900">Подобрать существующее задание</summary>
+            <p class="mt-2 text-xs leading-5 text-slate-600">Показываются только задания с совпадающими навыком, критерием и способом проверки. Эталон ответа здесь не отображается.</p>
+            {% if bank_task_notice %}<p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-900">{{ bank_task_notice }}</p>{% endif %}
+            {% if bank_task_errors %}<div class="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-800" role="alert">{% for error in bank_task_errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+            {% if bank_task_candidates %}
+              <label class="mt-3 block text-xs font-black text-slate-700">Добавить выбранные задания как</label>
+              <select name="bank_assignment_type" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold text-slate-800">
+                <option value="classwork">Классная работа</option><option value="homework">Домашняя работа</option>
+              </select>
+              <p class="mt-1 text-[11px] leading-4 text-slate-500">Сохранение плана только готовит материал: закрытое домашнее условие не публикуется. Чтобы открыть его ученику, перейдите в обычный мастер, проверьте получателя и явно назначьте Assignment. Классные задания становятся видны при открытии занятия.</p>
+              <div class="mt-3 space-y-2">
+                {% for candidate in bank_task_candidates %}
+                  <article class="rounded-xl border border-slate-200 bg-slate-50 p-3" data-bank-task-card data-task-criterion="{{ candidate.criterion_id }}">
+                    <label class="flex cursor-pointer items-start gap-2 text-xs font-black text-slate-800">
+                      <input type="checkbox" name="bank_task_ids" value="{{ candidate.task_id }}" class="mt-0.5 rounded border-slate-300 text-indigo-600">
+                      <span>Задание #{{ candidate.task_id }} · {{ candidate.criterion_label }}</span>
+                    </label>
+                    <p class="mt-2 text-xs leading-5 text-slate-700">{{ candidate.preview }}</p>
+                    <p class="mt-2 text-[11px] text-slate-500">Проверка: {% if candidate.grading_mode in ['exact', 'auto'] %}точное сравнение с эталоном (эталон скрыт){% else %}{{ candidate.grading_mode }}{% endif %} · источник: курс {{ candidate.source_course_id }}, v{{ candidate.source_course_version }}, урок {{ candidate.source_lesson_id }} · материал: {% if candidate.pedagogical_status in ['unreviewed', 'synthetic_draft_not_expert_approved'] %}черновик, экспертная проверка не проведена{% else %}{{ candidate.pedagogical_status }}{% endif %} · сложность: {{ candidate.difficulty }}</p>
+                    <p class="mt-1 break-all text-[10px] text-slate-400">Происхождение задания подтверждено · отпечаток {{ candidate.task_fingerprint[:16] }}…</p>
+                    <p class="mt-1 text-[11px] font-black text-slate-700">Состояние: {{ candidate.workflow_state }}</p>
+                    <p class="mt-1 text-[11px] font-bold {% if candidate.independent_allowed %}text-emerald-700{% else %}text-amber-800{% endif %}">{{ candidate.purpose_label }}{% if candidate.previously_used %} · ранее предъявлялось{% endif %}</p>
+                    <select name="bank_task_purpose_{{ candidate.task_id }}" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
+                      {% if candidate.independent_allowed %}<option value="independent">Новая проверка этого урока</option>{% endif %}
+                      <option value="shared_review" {% if not candidate.independent_allowed %}selected{% endif %}>Совместный разбор / повторение</option>
+                    </select>
+                    <label class="mt-2 block text-[11px] font-bold text-slate-600">Связанный критерий
+                      <select name="bank_task_criterion_{{ candidate.task_id }}" data-bank-task-criterion class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs">
+                        <option value="{{ candidate.criterion_id }}">{{ candidate.criterion_label }}</option>
+                      </select>
+                    </label>
+                  </article>
+                {% endfor %}
+              </div>
+              <label class="mt-3 flex items-start gap-2 text-[11px] font-semibold text-slate-700">
+                <input type="checkbox" name="bank_tasks_confirmed" value="1" class="mt-0.5 rounded border-slate-300 text-indigo-600">
+                Я сверил условие, критерий и способ проверки. Черновой материал остаётся непроверенным для Tutor Core, а повторный вариант не выдаётся за независимую диагностику.
+              </label>
+            {% endif %}
+            {% if bank_task_excluded_count %}<p class="mt-2 text-[11px] text-slate-500">Не показано как подходящее: {{ bank_task_excluded_count }} заданий без проверенной совместимой привязки или допуска автора.</p>{% endif %}
+            <a href="/task-generator/bank" class="mt-3 inline-flex text-xs font-black text-indigo-700 underline">Открыть банк заданий для дополнительной проверки и подготовки материала</a>
+          </details>
+          {% if lesson %}
+            {% if pedagogy_teacher_confirmation_enabled %}
+              <a href="{{ url_for('assignments.assignment_create', source='lesson', assignment_type='homework', lesson_id=lesson.lesson_id, synthetic_course_id=course.course_id) }}" class="flex items-center justify-center gap-2 rounded-xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-4 py-3 text-center text-xs font-black text-white shadow-sm transition hover:bg-indigo-500">
+                <i class="ph-bold ph-paper-plane-tilt" aria-hidden="true"></i>
+                Проверить условие и назначить обычное домашнее задание
+              </a>
+            {% else %}
+              <a href="{{ url_for('assignments.assignment_create', source='lesson', assignment_type='homework', lesson_id=lesson.lesson_id) }}" class="flex items-center justify-center gap-2 rounded-xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-4 py-3 text-center text-xs font-black text-white shadow-sm transition hover:bg-indigo-500">
+                <i class="ph-bold ph-paper-plane-tilt" aria-hidden="true"></i>
+                Проверить условие и назначить обычное домашнее задание
+              </a>
+            {% endif %}
+            <p class="-mt-3 text-[11px] leading-4 text-slate-500">Назначение создаётся только после подтверждения в мастере. Непроверенный материал останется закреплением и не станет независимой диагностикой.</p>
+          {% endif %}
+        {% endif %}
         <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6">
           <div class="mb-4">
             <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
@@ -441,4 +611,377 @@ function deleteAttachment(attId) {
 }
 </script>
 {% endif %}
+<script>
+(() => {
+  const form = document.getElementById('lessonForm');
+  const hidden = document.getElementById('pedagogyContractJson');
+  const criteriaRoot = document.getElementById('pedagogyCriteria');
+  const segmentsRoot = document.getElementById('pedagogySegments');
+  if (!form || !hidden || !criteriaRoot || !segmentsRoot) return;
+
+  const criteria = JSON.parse(document.getElementById('pedagogyCriteriaData').textContent || '[]');
+  const tasks = JSON.parse(document.getElementById('pedagogyTasksData').textContent || '[]');
+  const initial = JSON.parse(document.getElementById('pedagogyInitialData').textContent || '{}');
+  const status = document.getElementById('pedagogyEditorStatus');
+  const durationField = form.querySelector('[name="duration"]');
+  const objective = document.getElementById('pedagogyObjective');
+  const prerequisite = document.getElementById('pedagogyPrerequisite');
+  const noPrerequisite = document.getElementById('pedagogyNoPrerequisite');
+  let changed = false;
+  let segments = [];
+
+  const make = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const initialExercises = new Map((initial.exercises || []).map(item => [item.id, item]));
+  const initialCriteria = new Map((initial.criteria || []).map(item => [item.id, item]));
+
+  if (initial.objective) objective.value = initial.objective.text || '';
+  if (initial.prerequisites && initial.prerequisites.length) {
+    const first = initial.prerequisites[0];
+    if (first.status === 'not_required') noPrerequisite.checked = true;
+    else prerequisite.value = first.label || '';
+  }
+  prerequisite.disabled = noPrerequisite.checked;
+  noPrerequisite.addEventListener('change', () => {
+    prerequisite.disabled = noPrerequisite.checked;
+    if (noPrerequisite.checked) prerequisite.value = '';
+    changed = true;
+  });
+
+  const scenarioField = form.querySelector('[name="studio_scenario"]');
+  const titleSeed = (scenarioField && scenarioField.value ? scenarioField.value.split('\n') : [])
+    .map((line, index) => {
+      const timed = line.match(/^\s*(\d+)\s*(?:мин(?:ут(?:а|ы)?)?\.?\s*)?[—-]\s*(.+)$/i);
+      const title = timed ? timed[2].trim() : line.replace(/^\s*[-•\d.)]+\s*/, '').trim();
+      return title ? {id: `segment-${index + 1}`, title, minutes: timed ? timed[1] : '',
+        mandatory: true, flexible_minutes: 0, flexible_reason: '', purpose: ''} : null;
+    }).filter(Boolean);
+  if (Array.isArray(initial.segments) && initial.segments.length) {
+    segments = initial.segments.map(item => ({
+      id: String(item.id || ''), title: String(item.title || ''), minutes: String(item.minutes || ''),
+      mandatory: item.mandatory !== false,
+      flexible_minutes: String(item.flexible_minutes || 0),
+      flexible_reason: String(item.flexible_reason || ''),
+      purpose: String(item.purpose || ''),
+    }));
+  } else {
+    segments = titleSeed.length ? titleSeed : [{id: 'segment-1', title: '', minutes: '',
+      mandatory: true, flexible_minutes: 0, flexible_reason: '', purpose: ''}];
+  }
+
+  const segmentOptions = (selected) => {
+    const select = make('select', 'w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+    select.appendChild(new Option('Выберите этап', ''));
+    segmentsRoot.querySelectorAll('[data-segment-row]').forEach((row, index) => {
+      const id = row.dataset.segmentId;
+      const title = row.querySelector('[data-segment-title]').value.trim() || `Этап ${index + 1}`;
+      select.appendChild(new Option(title, id, false, id === selected));
+    });
+    select.addEventListener('change', () => { changed = true; });
+    return select;
+  };
+
+  const updateExerciseSegmentOptions = () => {
+    criteriaRoot.querySelectorAll('[data-exercise-segment]').forEach(select => {
+      const selected = select.value;
+      const updated = segmentOptions(selected);
+      updated.dataset.exerciseSegment = '';
+      select.replaceWith(updated);
+    });
+  };
+
+  const renderSegments = () => {
+    segmentsRoot.replaceChildren();
+    segments.forEach((segment, index) => {
+      const row = make('div', 'grid gap-2 rounded-xl border border-slate-200 bg-[#F8FAFC] p-3 sm:grid-cols-[minmax(0,1fr)_110px_auto]');
+      row.dataset.segmentRow = '';
+      row.dataset.segmentId = segment.id || `segment-${index + 1}`;
+      const title = make('input', 'w-full rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+      title.type = 'text'; title.maxLength = 180; title.placeholder = 'Название этапа'; title.value = segment.title;
+      title.dataset.segmentTitle = '';
+      title.setAttribute('aria-label', `Название этапа ${index + 1}`);
+      const minutes = make('input', 'w-full rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+      minutes.type = 'number'; minutes.min = '1'; minutes.max = '240'; minutes.step = '1'; minutes.placeholder = 'Минуты'; minutes.value = segment.minutes;
+      minutes.dataset.segmentMinutes = '';
+      minutes.setAttribute('aria-label', `Длительность этапа ${index + 1}, минут`);
+      const remove = make('button', 'rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-rose-50 hover:text-rose-700', 'Удалить');
+      remove.type = 'button';
+      remove.addEventListener('click', () => {
+        segments = segments.filter((_, segmentIndex) => segmentIndex !== index);
+        changed = true; renderSegments(); updateTotal();
+      });
+      const detailGrid = make('div', 'col-span-full grid gap-3 sm:grid-cols-2');
+      const mandatoryLabel = make('label', 'flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700');
+      const mandatory = make('input', 'rounded border-slate-300 text-violet-600 focus:ring-violet-500');
+      mandatory.type = 'checkbox';
+      mandatory.checked = segment.mandatory !== false;
+      mandatory.dataset.segmentMandatory = '';
+      mandatoryLabel.append(mandatory, make('span', '', 'Обязательная часть цели'));
+      const flexibleLabel = make('label', 'block');
+      flexibleLabel.appendChild(make('span', 'mb-1 block text-xs font-bold text-slate-600', 'Разрешено сократить, минут'));
+      const flexibleMinutes = make('input', 'w-full rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+      flexibleMinutes.type = 'number'; flexibleMinutes.min = '0';
+      flexibleMinutes.max = String(Math.max(0, Number(segment.minutes || 0) - 1));
+      flexibleMinutes.step = '1'; flexibleMinutes.value = String(segment.flexible_minutes || 0);
+      flexibleMinutes.dataset.segmentFlexibleMinutes = '';
+      flexibleMinutes.disabled = mandatory.checked;
+      flexibleLabel.appendChild(flexibleMinutes);
+      const reasonLabel = make('label', 'block sm:col-span-2');
+      reasonLabel.appendChild(make('span', 'mb-1 block text-xs font-bold text-slate-600', 'Почему этот резерв можно использовать'));
+      const reason = make('input', 'w-full rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+      reason.type = 'text'; reason.maxLength = 300; reason.value = segment.flexible_reason || '';
+      reason.placeholder = 'Например: вариативное закрепление; базовая цель сохраняется';
+      reason.dataset.segmentFlexibleReason = '';
+      reason.disabled = mandatory.checked;
+      reasonLabel.appendChild(reason);
+      const purposeLabel = make('label', 'block sm:col-span-2');
+      purposeLabel.appendChild(make('span', 'mb-1 block text-xs font-bold text-slate-600', 'Учебная задача этапа (необязательно)'));
+      const purpose = make('textarea', 'w-full rounded-lg border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+      purpose.rows = 2; purpose.maxLength = 500; purpose.value = segment.purpose || '';
+      purpose.placeholder = 'Какой результат должен дать этот этап?';
+      purpose.dataset.segmentPurpose = '';
+      purposeLabel.appendChild(purpose);
+      detailGrid.append(mandatoryLabel, flexibleLabel, reasonLabel, purposeLabel);
+      const updateSegment = () => {
+        const current = segments[index];
+        if (!current) return;
+        current.title = title.value;
+        current.minutes = minutes.value;
+        current.mandatory = mandatory.checked;
+        current.flexible_minutes = mandatory.checked ? '0' : flexibleMinutes.value;
+        current.flexible_reason = mandatory.checked ? '' : reason.value;
+        current.purpose = purpose.value;
+        flexibleMinutes.disabled = mandatory.checked;
+        reason.disabled = mandatory.checked;
+        flexibleMinutes.max = String(Math.max(0, Number(minutes.value || 0) - 1));
+        updateExerciseSegmentOptions(); updateTotal();
+      };
+      [title, minutes, flexibleMinutes, reason, purpose].forEach(input => input.addEventListener('input', () => {
+        changed = true;
+        updateSegment();
+      }));
+      mandatory.addEventListener('change', () => {
+        changed = true;
+        if (mandatory.checked) { flexibleMinutes.value = '0'; reason.value = ''; }
+        updateSegment();
+      });
+      row.append(title, minutes, remove, detailGrid);
+      segmentsRoot.appendChild(row);
+    });
+    updateExerciseSegmentOptions(); updateTotal();
+  };
+
+  const renderCriteria = () => {
+    criteriaRoot.replaceChildren();
+    criteria.forEach(item => {
+      const criterion = initialCriteria.get(item.id) || {};
+      const exercise = initialExercises.get((criterion.exercise_ids || [])[0]) || {};
+      const card = make('article', 'rounded-2xl border-2 border-slate-200 bg-white p-4 sm:p-5');
+      card.dataset.criterionId = item.id;
+      const heading = make('h4', 'font-black text-slate-900', item.label || item.id);
+      const id = make('p', 'mt-1 text-xs font-mono font-bold text-violet-700', item.id);
+      card.append(heading, id);
+      if (item.description) card.appendChild(make('p', 'mt-1 text-xs font-medium leading-5 text-slate-500', item.description));
+      const enableLabel = make('label', 'mt-3 inline-flex items-center gap-2 text-xs font-black text-slate-700');
+      const enabled = make('input', 'rounded border-slate-300 text-violet-600 focus:ring-violet-500');
+      enabled.type = 'checkbox';
+      enabled.checked = Boolean(initialCriteria.has(item.id));
+      enabled.dataset.criterionEnabled = '';
+      enableLabel.append(enabled, make('span', '', 'Проверяется этим уроком'));
+      card.appendChild(enableLabel);
+      const grid = make('div', 'mt-4 grid gap-3 lg:grid-cols-2');
+      grid.hidden = !enabled.checked;
+      const addField = (labelText, fieldName, value, placeholder, multiline=false) => {
+        const label = make('label', 'block');
+        label.appendChild(make('span', 'mb-1.5 block text-xs font-black text-slate-600', labelText));
+        const field = make(multiline ? 'textarea' : 'input', 'w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+        if (!multiline) { field.type = 'text'; field.maxLength = 600; }
+        else { field.rows = 2; field.maxLength = 1000; }
+        field.placeholder = placeholder; field.value = value || ''; field.dataset[fieldName] = '';
+        field.addEventListener('input', () => { changed = true; });
+        label.appendChild(field); grid.appendChild(label); return field;
+      };
+      addField('Наблюдаемый результат', 'observable', criterion.observable_outcome, 'Какое действие ученика подтвердит критерий?', true);
+      addField('Способ проверки', 'assessment', criterion.assessment_method || exercise.assessment_method, 'Автопроверка, ручная проверка или разбор решения');
+      addField('Ограничения вывода', 'limitations', criterion.evidence_limitations || exercise.evidence_limitations, 'Что это задание не позволяет заключить?', true);
+      addField('Что именно проверяет задание', 'verificationScope', exercise.verification_scope, 'Укажите проверяемое поведение, не эталонный ответ');
+
+      const taskLabel = make('label', 'block');
+      taskLabel.appendChild(make('span', 'mb-1.5 block text-xs font-black text-slate-600', 'Задание из этого урока'));
+      const taskSelect = make('select', 'w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-violet-500 focus:outline-none');
+      taskSelect.appendChild(new Option('Выберите привязанное задание', ''));
+      tasks.forEach(task => {
+        if (!Array.isArray(task.criterion_ids) || !task.criterion_ids.includes(item.id)) return;
+        const label = `Задание #${task.id}${task.previously_used ? ' · уже использовано, не независимо' : ''}`;
+        taskSelect.appendChild(new Option(label, String(task.id), false, Number(exercise.task_id) === Number(task.id)));
+      });
+      taskSelect.dataset.taskId = '';
+      taskSelect.addEventListener('change', () => { changed = true; });
+      taskLabel.appendChild(taskSelect); grid.appendChild(taskLabel);
+
+      const segmentLabel = make('label', 'block');
+      segmentLabel.appendChild(make('span', 'mb-1.5 block text-xs font-black text-slate-600', 'Этап занятия'));
+      const segmentSelect = segmentOptions(exercise.segment_id || '');
+      segmentSelect.dataset.exerciseSegment = '';
+      segmentLabel.appendChild(segmentSelect); grid.appendChild(segmentLabel);
+      card.appendChild(grid);
+      enabled.addEventListener('change', () => {
+        grid.hidden = !enabled.checked;
+        changed = true;
+      });
+      criteriaRoot.appendChild(card);
+    });
+  };
+
+  document.querySelectorAll('[data-bank-task-card] input[name="bank_task_ids"]').forEach(input => {
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      const card = input.closest('[data-bank-task-card]');
+      const criterionId = card && card.dataset.taskCriterion;
+      const criterionCard = [...criteriaRoot.querySelectorAll('[data-criterion-id]')]
+        .find(node => node.dataset.criterionId === criterionId);
+      if (!criterionCard) return;
+      const enabled = criterionCard.querySelector('[data-criterion-enabled]');
+      const taskSelect = criterionCard.querySelector('[data-task-id]');
+      if (enabled && !enabled.checked) enabled.click();
+      if (taskSelect) {
+        taskSelect.value = input.value;
+        taskSelect.dispatchEvent(new Event('change', {bubbles: true}));
+      }
+    });
+  });
+
+  const updateTotal = () => {
+    const values = [...segmentsRoot.querySelectorAll('[data-segment-minutes]')].map(input => Number(input.value) || 0);
+    const total = values.reduce((sum, value) => sum + value, 0);
+    const expected = Number(durationField && durationField.value) || 0;
+    const output = document.getElementById('pedagogyTimeTotal');
+    output.textContent = `Распределено: ${total} из ${expected} минут`;
+    output.className = `mt-3 text-xs font-black ${total === expected ? 'text-emerald-700' : 'text-amber-700'}`;
+  };
+
+  document.getElementById('addPedagogySegment').addEventListener('click', () => {
+    segments.push({id: `segment-${Date.now()}`, title: '', minutes: '',
+      mandatory: true, flexible_minutes: 0, flexible_reason: '', purpose: ''});
+    changed = true; renderSegments();
+  });
+  if (durationField) durationField.addEventListener('input', () => { changed = true; updateTotal(); });
+  objective.addEventListener('input', () => { changed = true; });
+  prerequisite.addEventListener('input', () => { changed = true; });
+  form.querySelectorAll('[name="skill_ids"]').forEach(input => input.addEventListener('change', () => { changed = true; }));
+
+  renderSegments(); renderCriteria();
+  if (initial.contract === 'boostudy.lesson-pedagogy.v1') hidden.value = JSON.stringify(initial);
+
+  form.addEventListener('submit', event => {
+    const hasInitial = initial.contract === 'boostudy.lesson-pedagogy.v1';
+    if (!changed && hasInitial) { hidden.value = JSON.stringify(initial); return; }
+    if (!changed) { hidden.value = ''; return; }
+
+    const selectedSkills = [...form.querySelectorAll('[name="skill_ids"]:checked')];
+    const prerequisiteText = prerequisite.value.trim();
+    const segmentRows = [...segmentsRoot.querySelectorAll('[data-segment-row]')];
+    const segmentData = segmentRows.map(row => ({
+      id: row.dataset.segmentId,
+      title: row.querySelector('[data-segment-title]').value.trim(),
+      minutes: Number(row.querySelector('[data-segment-minutes]').value),
+      mandatory: row.querySelector('[data-segment-mandatory]').checked,
+      flexible_minutes: row.querySelector('[data-segment-mandatory]').checked
+        ? 0 : Number(row.querySelector('[data-segment-flexible-minutes]').value || 0),
+      flexible_reason: row.querySelector('[data-segment-mandatory]').checked
+        ? '' : row.querySelector('[data-segment-flexible-reason]').value.trim(),
+      purpose: row.querySelector('[data-segment-purpose]').value.trim(),
+    }));
+    const segmentTotal = segmentData.reduce((sum, item) => sum + (item.minutes || 0), 0);
+    const expectedDuration = Number(durationField && durationField.value) || 0;
+    const errors = [];
+    if (selectedSkills.length !== 1) errors.push('Выберите ровно один навык урока.');
+    if (!objective.value.trim()) errors.push('Заполните наблюдаемую учебную цель.');
+    if (!noPrerequisite.checked && !prerequisiteText) errors.push('Укажите предварительный навык или отметьте, что предпосылок нет.');
+    if (!segmentData.length || segmentData.some(item => !item.title || !Number.isInteger(item.minutes) || item.minutes <= 0)) errors.push('Заполните название и положительную длительность каждого этапа.');
+    if (segmentData.some(item => item.flexible_minutes < 0 || item.flexible_minutes >= item.minutes
+      || (item.flexible_minutes > 0 && (item.mandatory || !item.flexible_reason)))) {
+      errors.push('Гибкий резерв задаётся только для необязательного этапа, не больше его длительности минус одна минута и с понятным обоснованием.');
+    }
+    if (segmentTotal !== expectedDuration) errors.push(`Этапы должны занимать ровно ${expectedDuration} минут (сейчас ${segmentTotal}).`);
+
+    const criteriaData = [];
+    const exercises = [];
+    criteriaRoot.querySelectorAll('article').forEach((card, index) => {
+      const definition = criteria[index];
+      if (!definition) return;
+      if (!card.querySelector('[data-criterion-enabled]').checked) return;
+      const read = name => card.querySelector(`[data-${name}]`);
+      const observable = read('observable').value.trim();
+      const assessment = read('assessment').value.trim();
+      const limitations = read('limitations').value.trim();
+      const scope = read('verification-scope').value.trim();
+      const taskId = Number(read('task-id').value);
+      const segmentId = read('exercise-segment').value;
+      if (!observable || !assessment || !limitations || !scope || !taskId || !segmentId) {
+        errors.push(`Заполните упражнение и способ проверки для критерия «${definition.id}».`);
+        return;
+      }
+      const exerciseId = `exercise-${definition.id}`;
+      criteriaData.push({
+        id: definition.id,
+        label: definition.label || definition.id,
+        observable_outcome: observable,
+        assessment_method: assessment,
+        evidence_limitations: limitations,
+        exercise_ids: [exerciseId],
+      });
+      exercises.push({
+        id: exerciseId,
+        source_type: 'platform_task',
+        task_id: taskId,
+        criterion_ids: [definition.id],
+        segment_id: segmentId,
+        assessment_method: assessment,
+        verification_scope: scope,
+        evidence_limitations: limitations,
+      });
+    });
+    if (!criteria.length) errors.push('У выбранного навыка нет структурированных критериев.');
+    if (criteria.length && !criteriaData.length) errors.push('Отметьте хотя бы один критерий, который действительно проверяется на этом уроке.');
+
+    if (errors.length) {
+      event.preventDefault();
+      status.textContent = errors.join(' ');
+      status.scrollIntoView({behavior: 'smooth', block: 'center'});
+      return;
+    }
+    const selectedSkillId = Number(selectedSkills[0].value);
+    const prerequisites = noPrerequisite.checked ? [{
+      id: 'no-prerequisites',
+      label: 'Предварительные навыки для занятия не заявлены',
+      status: 'not_required',
+      diagnostic_method: 'Отдельные предпосылки не требуются; понимание цели проверяется в ходе занятия.',
+    }] : [{
+      id: 'prerequisite-1',
+      label: prerequisiteText,
+      status: 'not_assessed',
+      diagnostic_method: `Проверить в начале занятия: ${prerequisiteText}`,
+    }];
+    segmentData.forEach(segment => {
+      segment.exercise_ids = exercises.filter(item => item.segment_id === segment.id).map(item => item.id);
+    });
+    hidden.value = JSON.stringify({
+      contract: 'boostudy.lesson-pedagogy.v1',
+      status: 'synthetic_draft_not_expert_approved',
+      objective: {id: `objective-exam-skill-${selectedSkillId}`, text: objective.value.trim(), skill_id: `exam-skill:${selectedSkillId}`},
+      criteria: criteriaData,
+      prerequisites,
+      segments: segmentData,
+      exercises,
+      assessment_limitations: ['Результаты конечного набора заданий не доказывают общую корректность или устойчивое освоение навыка.'],
+    });
+    status.textContent = '';
+  });
+})();
+</script>
 {% endblock %}

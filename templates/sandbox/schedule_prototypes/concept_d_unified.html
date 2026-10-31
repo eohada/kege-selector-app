@@ -1,0 +1,751 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block title %}BooStudy · Концепция D: Unified Student Schedule{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* =====================================================================
+     Concept D: Unified Student Schedule (Phase 0.5 Integrated Architecture)
+     Synthesizes Fluid Week density, Command Center clarity & Boo study warmth.
+     ===================================================================== */
+
+  /* BooStudy 3D Tactile Buttons */
+  .btn-3d-primary {
+    background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+    border-bottom: 3px solid #3730A3;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-primary:hover {
+    background: linear-gradient(180deg, #4F46E5 0%, #4338CA 100%);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+    transform: translateY(-1px);
+  }
+  .btn-3d-primary:active {
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+  }
+
+  .btn-3d-secondary {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-bottom: 2px solid #CBD5E1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-secondary:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+  }
+  .btn-3d-secondary:active {
+    border-bottom-width: 1px;
+    transform: translateY(1px);
+  }
+
+  .btn-3d-amber {
+    background: linear-gradient(180deg, #F59E0B 0%, #D97706 100%);
+    border-bottom: 3px solid #B45309;
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-amber:hover {
+    background: linear-gradient(180deg, #D97706 0%, #B45309 100%);
+    box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);
+    transform: translateY(-1px);
+  }
+  .btn-3d-amber:active {
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+  }
+
+  /* Ergonomic Unified Ribbon Day Tabs */
+  .unified-day-tab {
+    transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    user-select: none;
+    cursor: pointer;
+  }
+  .unified-day-tab:hover:not(.is-active) {
+    background-color: #F8FAFC;
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+  }
+  .unified-day-tab.is-active {
+    background: #4F46E5 !important;
+    color: #FFFFFF !important;
+    border-color: #3730A3 !important;
+    box-shadow: 0 4px 14px -2px rgba(79, 70, 229, 0.35) !important;
+    transform: translateY(-1px);
+  }
+  .unified-day-tab.is-active * {
+    color: #FFFFFF !important;
+  }
+
+  /* Equal-Weight Peer Card Transition */
+  .peer-event-card {
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .peer-event-card:hover {
+    border-color: #A5B4FC;
+    box-shadow: 0 6px 20px -4px rgba(79, 70, 229, 0.08);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+{% endblock %}
+
+{% block sandbox_content %}
+{# Prototype Switcher Toolbar #}
+{% include "sandbox/schedule_prototypes/_prototype_toolbar.html" %}
+
+{# Embedded JSON Data payload for reactive client-side rendering #}
+<script type="application/json" id="prototype-data-payload">{{ data | tojson }}</script>
+
+<div class="max-w-[1440px] mx-auto px-3.5 sm:px-6 lg:px-8 pb-10 space-y-4 sm:space-y-5">
+
+  {# ===== 1. MASTHEAD & UNIFIED WEEK CONTROLS ===== #}
+  <div class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-3.5 sm:p-5 shadow-2xs space-y-3 sm:space-y-4">
+    
+    <!-- Top Header Row -->
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      
+      <!-- Brand & Schedule Context -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 text-lg sm:text-xl font-bold shrink-0 shadow-2xs">
+          <i class="ph-bold ph-calendar-check"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-base sm:text-xl font-black text-slate-900 tracking-tight font-display leading-tight">
+            Расписание занятий
+          </h1>
+          <p class="text-xs text-slate-500 font-medium mt-0.5">
+            Неделя: <strong class="text-slate-800" id="unified-week-label">{{ data.week_label }}</strong>
+            <span class="hidden sm:inline text-slate-300 mx-1.5">|</span>
+            <span class="text-slate-500 font-medium" id="unified-week-summary">
+              {{ data.stats.conducted_and_planned }} {% if data.stats.conducted_and_planned == 1 %}урок{% elif data.stats.conducted_and_planned < 5 %}урока{% else %}уроков{% endif %}
+              {% if data.stats.homework > 0 %}· {{ data.stats.homework }} дедлайн{% endif %}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Compact Week Switcher Stepper -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset - 1 }}" 
+           class="btn-3d-secondary px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1 no-underline"
+           title="Предыдущая неделя">
+          <i class="ph-bold ph-caret-left"></i>
+          <span class="hidden sm:inline">Пред.</span>
+        </a>
+        <a href="?scenario={{ data.scenario }}&week=0" 
+           class="btn-3d-secondary px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-black text-slate-800 no-underline"
+           title="Вернуться к текущей неделе">
+          Сегодня
+        </a>
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset + 1 }}" 
+           class="btn-3d-secondary px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1 no-underline"
+           title="Следующая неделя">
+          <span class="hidden sm:inline">След.</span>
+          <i class="ph-bold ph-caret-right"></i>
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ===== 2. ERGONOMIC 7-DAY UNIFIED RIBBON ===== -->
+    <!-- Lightweight, single delicate border, uncluttered workload dots -->
+    <div class="grid grid-cols-7 gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 no-scrollbar" id="unified-ribbon-track">
+      {% for d in data.weekdays %}
+      <div class="unified-day-tab p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-0.5 transition-all {% if d.day_index == data.default_selected_day_index %}is-active bg-indigo-600 border-indigo-700 text-white shadow-sm{% else %}bg-slate-50/60 border-slate-200/60 text-slate-700 hover:bg-slate-100/70 hover:border-slate-300{% endif %}"
+           id="unified-tab-{{ d.day_index }}"
+           onclick="handleUnifiedSelectDay({{ d.day_index }})">
+        
+        <!-- Day short & today dot -->
+        <div class="flex items-center justify-between w-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider opacity-85 px-0.5">
+          <span>{{ d.short_name }}</span>
+          {% if d.is_today %}
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Сегодня"></span>
+          {% endif %}
+        </div>
+
+        <!-- Date number -->
+        <div class="text-sm sm:text-base font-black leading-tight">
+          {{ d.date.split()[0] }}
+        </div>
+
+        <!-- Clean Workload Indicator -->
+        <div class="text-[10px] font-semibold tracking-tight leading-none">
+          {% if d.events_count > 0 %}
+            <span class="inline-flex items-center gap-1 {% if d.day_index == data.default_selected_day_index %}text-indigo-100{% else %}text-indigo-600{% endif %}">
+              <span class="w-1 h-1 rounded-full {% if d.day_index == data.default_selected_day_index %}bg-amber-300{% else %}bg-indigo-500{% endif %}"></span>
+              {{ d.events_count }} {% if d.events_count == 1 %}соб.{% else %}соб.{% endif %}
+            </span>
+          {% else %}
+            <span class="{% if d.day_index == data.default_selected_day_index %}text-indigo-200{% else %}text-slate-400{% endif %} font-medium opacity-60">
+              —
+            </span>
+          {% endif %}
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  {# ===== 3. ACTIVE DAY WORKSPACE ===== #}
+  {% set cur_day = data.selected_day %}
+  {% set lessons = [] %}
+  {% set tasks = [] %}
+  {% for ev in cur_day.events %}
+    {% if ev.type == 'lesson' %}
+      {% set _ = lessons.append(ev) %}
+    {% else %}
+      {% set _ = tasks.append(ev) %}
+    {% endif %}
+  {% endfor %}
+
+  <div class="space-y-3.5 sm:space-y-4" id="unified-day-workspace">
+
+    <!-- Day Header & Contextual Coach Tip from Boo -->
+    <div class="flex items-center justify-between flex-wrap gap-2.5 bg-white px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+      
+      <!-- Day Title & Status -->
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+        <h2 class="text-sm sm:text-base font-black text-slate-900 font-display" id="unified-day-title">
+          {{ cur_day.day_name }}, {{ cur_day.date }}
+        </h2>
+        {% if cur_day.is_today %}
+        <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase">
+          Сегодня
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Deliberate, tasteful contextual tip from Mascot Boo (Hidden on small mobile for clean single-row header) -->
+      <div class="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-700 bg-amber-50/70 border border-amber-200/70 px-3 py-1 rounded-xl">
+        <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-4 h-4 sm:w-5 sm:h-5 object-contain shrink-0">
+        <span id="unified-boo-coach-tip">
+          {% if cur_day.events_count > 1 %}
+            «Насыщенный день! Сделай перерыв между занятиями, чтобы мозг лучше усвоил материал.»
+          {% elif cur_day.events_count == 1 %}
+            «Один урок в фокусе — отличное время для качественного разбора темы!»
+          {% else %}
+            «Свободный день! Отдохни или реши пару задач в тренажёре для поддержания ритма.»
+          {% endif %}
+        </span>
+      </div>
+
+    </div>
+
+    <!-- Active Day Events Deck: Lessons & Compact Tasks -->
+    <div id="unified-events-grid" class="space-y-3.5 sm:space-y-4">
+      {% if cur_day.events_count > 0 %}
+        
+        {% if lessons|length > 0 %}
+        <!-- Primary Lessons Deck (Equal-Weight Peer Cards) -->
+        <div class="grid grid-cols-1 {% if lessons|length > 1 %}lg:grid-cols-2{% endif %} gap-4 sm:gap-5 items-stretch">
+          {% for ev in lessons %}
+          <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs flex flex-col justify-between space-y-4">
+            
+            <div class="space-y-3.5">
+              <!-- Card Top: Subject Pill, Time & Countdown -->
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-150 text-indigo-700 text-xs font-black uppercase tracking-wider">
+                    {{ ev.subject }}
+                  </span>
+                  <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1">
+                    <i class="ph-bold ph-clock"></i>{{ ev.time_str }}
+                  </span>
+                </div>
+                {% if ev.countdown_text %}
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-150 text-[11px] font-black flex items-center gap-1">
+                  <i class="ph-bold ph-hourglass-high"></i>{{ ev.countdown_text }}
+                </span>
+                {% endif %}
+              </div>
+
+              <!-- Lesson Title -->
+              <h3 class="text-base sm:text-lg font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
+                {{ ev.title }}
+              </h3>
+
+              <!-- Teacher Row (Contextual) -->
+              {% if ev.teacher %}
+              <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60">
+                <img src="{{ ev.teacher.avatar }}" alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0">
+                <div class="min-w-0">
+                  <div class="text-xs font-black text-slate-900 truncate">{{ ev.teacher.full_name }}</div>
+                  <div class="text-[11px] text-slate-500 font-medium truncate">{{ ev.teacher.role }}</div>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Card Action CTA (Immediately visible on first screen) -->
+              <div class="pt-1 flex items-center gap-2.5 flex-wrap">
+                {% if ev.status == 'planned' %}
+                <a href="{{ ev.room_url|default('#') }}" class="btn-3d-primary px-5 py-2.5 rounded-xl text-white text-xs font-black flex items-center gap-2 no-underline">
+                  <i class="ph-bold ph-video-camera"></i>
+                  <span>{{ ev.action_label|default('Войти в урок →') }}</span>
+                </a>
+                {% if ev.secondary_label %}
+                <a href="{{ ev.secondary_url|default('#') }}" class="btn-3d-secondary px-3.5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                  {{ ev.secondary_label }}
+                </a>
+                {% endif %}
+                {% elif ev.status == 'conducted' %}
+                <div class="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-2">
+                  <i class="ph-bold ph-check-circle"></i> Занятие проведено
+                </div>
+                {% if ev.secondary_label %}
+                <a href="{{ ev.secondary_url|default('#') }}" class="btn-3d-secondary px-3.5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                  {{ ev.secondary_label }}
+                </a>
+                {% endif %}
+                {% endif %}
+              </div>
+
+              <!-- Lesson Notes (Only when unique to this lesson) -->
+              {% if ev.notes %}
+              <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium">
+                <strong class="text-amber-800 uppercase text-[10px] block font-black mb-0.5">Совет преподавателя:</strong>
+                {{ ev.notes }}
+              </div>
+              {% endif %}
+
+              <!-- Contextual Materials -->
+              {% if ev.materials %}
+              <div class="space-y-1.5 pt-0.5">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Материалы к уроку:</div>
+                <div class="space-y-1.5">
+                  {% for m in ev.materials %}
+                  <a href="#" class="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
+                    <div class="flex items-center gap-2 truncate">
+                      <i class="ph-bold ph-file-text text-indigo-600 text-sm shrink-0"></i>
+                      <span class="truncate">{{ m.title }}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 shrink-0 ml-2 font-mono">{{ m.size }}</span>
+                  </a>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+            </div>
+
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if tasks|length > 0 %}
+        <!-- Compact Tasks & Quizzes Section (Doesn't bloat the day) -->
+        <div class="space-y-2 pt-1">
+          <div class="flex items-center justify-between px-1">
+            <div class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+              <i class="ph-bold ph-check-square-offset text-amber-500 text-sm"></i>
+              <span>Задания и дедлайны на этот день</span>
+            </div>
+            <span class="text-[11px] font-bold text-slate-400">{{ tasks|length }} к выполнению</span>
+          </div>
+          <div class="space-y-2">
+            {% for ev in tasks %}
+            {% if ev.type == 'homework' %}
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-amber-200/80 hover:border-amber-300 p-3 sm:p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+              <div class="flex items-start sm:items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm shrink-0 font-bold">
+                  <i class="ph-bold ph-pencil-simple-line"></i>
+                </div>
+                <div class="min-w-0 space-y-0.5">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200/60">
+                      {{ ev.subject }}
+                    </span>
+                    <span class="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                      <i class="ph-bold ph-clock"></i>{{ ev.time_str }}
+                    </span>
+                    {% if ev.badge %}
+                    <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-150">
+                      {{ ev.badge }}
+                    </span>
+                    {% endif %}
+                  </div>
+                  <h4 class="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                    {{ ev.title }}
+                  </h4>
+                  {% if ev.homework_desc %}
+                  <p class="text-[11px] text-slate-500 font-medium truncate">
+                    {{ ev.homework_desc }}
+                  </p>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <a href="{{ ev.action_url|default('#') }}" class="btn-3d-amber px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-1.5 no-underline">
+                  <i class="ph-bold ph-paper-plane-tilt"></i>
+                  <span>{{ ev.action_label|default('Сдать работу →') }}</span>
+                </a>
+              </div>
+            </div>
+            {% elif ev.type == 'practice' %}
+            <div class="bg-white rounded-xl sm:rounded-2xl border border-purple-200/80 hover:border-purple-300 p-3 sm:p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+              <div class="flex items-start sm:items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center text-sm shrink-0 font-bold">
+                  <i class="ph-bold ph-lightning"></i>
+                </div>
+                <div class="min-w-0 space-y-0.5">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-purple-800 bg-purple-100/70 px-2 py-0.5 rounded-md border border-purple-200/60">
+                      {{ ev.subject|default('Тренажёр') }}
+                    </span>
+                    <span class="text-[11px] font-bold text-slate-500">
+                      {{ ev.time_str }}
+                    </span>
+                  </div>
+                  <h4 class="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                    {{ ev.title }}
+                  </h4>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <a href="{{ ev.action_url|default('#') }}" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-800 text-xs font-bold no-underline">
+                  {{ ev.action_label|default('Пройти тест →') }}
+                </a>
+              </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+      {% else %}
+        <!-- Organic Empty Day with Boo Mascot (Natural, unforced geometry) -->
+        <div class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-2xs text-center flex flex-col items-center justify-center space-y-3.5">
+          <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto">
+          <div class="space-y-1 max-w-md">
+            <h3 class="text-base sm:text-lg font-black text-slate-900 font-display">Свободный учебный день</h3>
+            <p class="text-xs text-slate-500 leading-relaxed font-medium">
+              На этот день обязательных занятий не назначено. Вы можете отдохнуть, повторить конспекты или порешать подборку задач в тренажёре.
+            </p>
+          </div>
+          <div class="flex items-center gap-2.5 pt-1 flex-wrap justify-center">
+            <a href="/task-generator/bank" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              Перейти в банк задач
+            </a>
+            <a href="/theory" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              База знаний и теория
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  {# ===== 4. COMPACT STUDY RHYTHM & GENERAL NOTES STRIP ===== #}
+  <div class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs flex items-center justify-between flex-wrap gap-3.5 text-xs">
+    
+    <!-- General Tutor Advice -->
+    <div class="flex items-center gap-3 min-w-0 max-w-2xl">
+      <div class="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-bold shrink-0">
+        <i class="ph-bold ph-lightbulb"></i>
+      </div>
+      <div class="text-slate-600 font-medium leading-relaxed" id="unified-general-notes">
+        {{ data.student_notes_general }}
+      </div>
+    </div>
+
+    <!-- Week Stats Summary -->
+    <div class="flex items-center gap-3.5 shrink-0 font-bold flex-wrap">
+      <div class="flex items-center gap-1.5 text-slate-700">
+        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+        <span>План: <strong>{{ data.stats.conducted_and_planned }}</strong> ур.</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-slate-700">
+        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+        <span>Дедлайнов: <strong>{{ data.stats.homework }}</strong></span>
+      </div>
+      <div class="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-150">
+        <i class="ph-bold ph-flame"></i>
+        <span>{{ data.stats.streak_days }} дн. ударный темп</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{# ===== 5. CLIENT-SIDE INTERACTIVITY SCRIPT ===== #}
+<script>
+(function() {
+  'use strict';
+  const payloadEl = document.getElementById('prototype-data-payload');
+  const DATA = payloadEl ? JSON.parse(payloadEl.textContent || '{}') : {};
+  let currentDay = DATA.default_selected_day_index || 0;
+
+  window.handleUnifiedSelectDay = function(dayIndex) {
+    if (!DATA.weekdays || !DATA.weekdays[dayIndex]) return;
+    currentDay = dayIndex;
+    const day = DATA.weekdays[dayIndex];
+
+    // 1. Update 7-Day Ribbon Tabs
+    DATA.weekdays.forEach((d, idx) => {
+      const tab = document.getElementById(`unified-tab-${idx}`);
+      if (tab) {
+        if (idx === dayIndex) {
+          tab.className = "unified-day-tab is-active p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-0.5 transition-all bg-indigo-600 border-indigo-700 text-white shadow-sm";
+        } else {
+          tab.className = "unified-day-tab p-1.5 sm:p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-0.5 transition-all bg-slate-50/60 border-slate-200/60 text-slate-700 hover:bg-slate-100/70 hover:border-slate-300";
+        }
+      }
+    });
+
+    // 2. Update Day Header & Boo Coach Tip
+    const titleEl = document.getElementById('unified-day-title');
+    const tipEl = document.getElementById('unified-boo-coach-tip');
+
+    if (titleEl) {
+      titleEl.textContent = `${day.day_name}, ${day.date}`;
+    }
+
+    if (tipEl) {
+      if (day.events_count > 1) {
+        tipEl.textContent = '«Насыщенный день! Сделай перерыв между занятиями, чтобы мозг лучше усвоил материал.»';
+      } else if (day.events_count === 1) {
+        tipEl.textContent = '«Один урок в фокусе — отличное время для качественного разбора темы!»';
+      } else {
+        tipEl.textContent = '«Свободный день! Отдохни или реши пару задач в тренажёре для поддержания ритма.»';
+      }
+    }
+
+    // 3. Render Events Grid: Split Lessons & Compact Tasks
+    const gridEl = document.getElementById('unified-events-grid');
+    if (!gridEl) return;
+
+    const events = day.events || [];
+    if (events.length > 0) {
+      const lessons = events.filter(e => e.type === 'lesson');
+      const tasks = events.filter(e => e.type !== 'lesson');
+
+      let html = '';
+
+      if (lessons.length > 0) {
+        const isMulti = lessons.length > 1;
+        html += `
+          <div class="grid grid-cols-1 ${isMulti ? 'lg:grid-cols-2' : ''} gap-4 sm:gap-5 items-stretch">
+            ${lessons.map(ev => `
+              <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs flex flex-col justify-between space-y-4">
+                <div class="space-y-3.5">
+                  <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-150 text-indigo-700 text-xs font-black uppercase tracking-wider">
+                        ${ev.subject || 'Информатика'}
+                      </span>
+                      <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1">
+                        <i class="ph-bold ph-clock"></i>${ev.time_str || ''}
+                      </span>
+                    </div>
+                    ${ev.countdown_text ? `
+                      <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-150 text-[11px] font-black flex items-center gap-1">
+                        <i class="ph-bold ph-hourglass-high"></i>${ev.countdown_text}
+                      </span>
+                    ` : ''}
+                  </div>
+
+                  <h3 class="text-base sm:text-lg font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
+                    ${ev.title || ''}
+                  </h3>
+
+                  ${ev.teacher ? `
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/60">
+                      <img src="${ev.teacher.avatar}" alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0">
+                      <div class="min-w-0">
+                        <div class="text-xs font-black text-slate-900 truncate">${ev.teacher.full_name || ev.teacher.name}</div>
+                        <div class="text-[11px] text-slate-500 font-medium truncate">${ev.teacher.role || ''}</div>
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  <!-- Card Action CTA (Immediately visible on first screen) -->
+                  <div class="pt-1 flex items-center gap-2.5 flex-wrap">
+                    ${ev.status === 'planned' ? `
+                      <a href="${ev.room_url || '#'}" class="btn-3d-primary px-5 py-2.5 rounded-xl text-white text-xs font-black flex items-center gap-2 no-underline">
+                        <i class="ph-bold ph-video-camera"></i>
+                        <span>${ev.action_label || 'Войти в урок →'}</span>
+                      </a>
+                      ${ev.secondary_label ? `
+                        <a href="${ev.secondary_url || '#'}" class="btn-3d-secondary px-3.5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                          ${ev.secondary_label}
+                        </a>
+                      ` : ''}
+                    ` : `
+                      <div class="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-2">
+                        <i class="ph-bold ph-check-circle"></i> Занятие проведено
+                      </div>
+                      ${ev.secondary_label ? `
+                        <a href="${ev.secondary_url || '#'}" class="btn-3d-secondary px-3.5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                          ${ev.secondary_label}
+                        </a>
+                      ` : ''}
+                    `}
+                  </div>
+
+                  ${ev.notes ? `
+                    <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium">
+                      <strong class="text-amber-800 uppercase text-[10px] block font-black mb-0.5">Совет преподавателя:</strong>
+                      ${ev.notes}
+                    </div>
+                  ` : ''}
+
+                  ${ev.materials && ev.materials.length > 0 ? `
+                    <div class="space-y-1.5 pt-0.5">
+                      <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Материалы к уроку:</div>
+                      <div class="space-y-1.5">
+                        ${ev.materials.map(m => `
+                          <a href="#" class="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
+                            <div class="flex items-center gap-2 truncate">
+                              <i class="ph-bold ph-file-text text-indigo-600 text-sm shrink-0"></i>
+                              <span class="truncate">${m.title}</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 shrink-0 ml-2 font-mono">${m.size || ''}</span>
+                          </a>
+                        `).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      if (tasks.length > 0) {
+        html += `
+          <div class="space-y-2 pt-1">
+            <div class="flex items-center justify-between px-1">
+              <div class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500">
+                <i class="ph-bold ph-check-square-offset text-amber-500 text-sm"></i>
+                <span>Задания и дедлайны на этот день</span>
+              </div>
+              <span class="text-[11px] font-bold text-slate-400">${tasks.length} к выполнению</span>
+            </div>
+            <div class="space-y-2">
+              ${tasks.map(ev => {
+                if (ev.type === 'homework') {
+                  return `
+                    <div class="bg-white rounded-xl sm:rounded-2xl border border-amber-200/80 hover:border-amber-300 p-3 sm:p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+                      <div class="flex items-start sm:items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm shrink-0 font-bold">
+                          <i class="ph-bold ph-pencil-simple-line"></i>
+                        </div>
+                        <div class="min-w-0 space-y-0.5">
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200/60">
+                              ${ev.subject || ''}
+                            </span>
+                            <span class="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                              <i class="ph-bold ph-clock"></i>${ev.time_str || ''}
+                            </span>
+                            ${ev.badge ? `
+                              <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-150">
+                                ${ev.badge}
+                              </span>
+                            ` : ''}
+                          </div>
+                          <h4 class="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                            ${ev.title || ''}
+                          </h4>
+                          ${ev.homework_desc ? `
+                            <p class="text-[11px] text-slate-500 font-medium truncate">
+                              ${ev.homework_desc}
+                            </p>
+                          ` : ''}
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <a href="${ev.action_url || '#'}" class="btn-3d-amber px-4 py-2 rounded-xl text-white text-xs font-black flex items-center gap-1.5 no-underline">
+                          <i class="ph-bold ph-paper-plane-tilt"></i>
+                          <span>${ev.action_label || 'Сдать работу →'}</span>
+                        </a>
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  return `
+                    <div class="bg-white rounded-xl sm:rounded-2xl border border-purple-200/80 hover:border-purple-300 p-3 sm:p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+                      <div class="flex items-start sm:items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center text-sm shrink-0 font-bold">
+                          <i class="ph-bold ph-lightning"></i>
+                        </div>
+                        <div class="min-w-0 space-y-0.5">
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-purple-800 bg-purple-100/70 px-2 py-0.5 rounded-md border border-purple-200/60">
+                              ${ev.subject || 'Тренажёр'}
+                            </span>
+                            <span class="text-[11px] font-bold text-slate-500">
+                              ${ev.time_str || ''}
+                            </span>
+                          </div>
+                          <h4 class="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                            ${ev.title || ''}
+                          </h4>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <a href="${ev.action_url || '#'}" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-800 text-xs font-bold no-underline">
+                          ${ev.action_label || 'Пройти тест →'}
+                        </a>
+                      </div>
+                    </div>
+                  `;
+                }
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      gridEl.innerHTML = html;
+    } else {
+      gridEl.innerHTML = `
+        <div class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-2xs text-center flex flex-col items-center justify-center space-y-3.5">
+          <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto">
+          <div class="space-y-1 max-w-md">
+            <h3 class="text-base sm:text-lg font-black text-slate-900 font-display">Свободный учебный день</h3>
+            <p class="text-xs text-slate-500 leading-relaxed font-medium">
+              На этот день обязательных занятий не назначено. Вы можете отдохнуть, повторить конспекты или порешать подборку задач в тренажёре.
+            </p>
+          </div>
+          <div class="flex items-center gap-2.5 pt-1 flex-wrap justify-center">
+            <a href="/task-generator/bank" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              Перейти в банк задач
+            </a>
+            <a href="/theory" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              База знаний и теория
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. Smooth scroll on touch/mobile
+    const activeTab = document.getElementById(`unified-tab-${dayIndex}`);
+    if (activeTab && window.innerWidth < 768) {
+      activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  };
+})();
+</script>
+{% endblock %}

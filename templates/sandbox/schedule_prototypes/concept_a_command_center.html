@@ -1,0 +1,434 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block title %}BooStudy · Концепция A: Command Center{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Concept A: Learning Command Center Styles */
+  .btn-3d-primary {
+    background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+    border-bottom: 3px solid #3730A3;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-primary:hover {
+    background: linear-gradient(180deg, #4F46E5 0%, #4338CA 100%);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+    transform: translateY(-1px);
+  }
+  .btn-3d-primary:active {
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+  }
+
+  .btn-3d-secondary {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-bottom: 2px solid #CBD5E1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-secondary:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+  }
+
+  .mission-rail-node {
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    user-select: none;
+  }
+  .mission-rail-node.is-active {
+    background: #4F46E5 !important;
+    color: #FFFFFF !important;
+    border-color: #3730A3 !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    transform: translateY(-1px);
+  }
+  .mission-rail-node.is-active * {
+    color: #FFFFFF !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block sandbox_content %}
+{# Prototype Switcher Toolbar #}
+{% include "sandbox/schedule_prototypes/_prototype_toolbar.html" %}
+
+{# Embedded JSON Data for reactivity #}
+<script type="application/json" id="prototype-data-payload">{{ data | tojson }}</script>
+
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-10 space-y-6">
+
+  {# 1. TOP HEADER & ULTRA-LIGHT MISSION RAIL #}
+  <div class="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-4">
+    
+    <!-- Title and Week Switcher -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 text-lg font-bold shadow-2xs">
+          <i class="ph-bold ph-crosshair"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-display">Command Center</h1>
+            <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider">
+              Концепция A
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">
+            Неделя: <strong class="text-slate-700" id="header-week-label">{{ data.week_label }}</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Week Controls -->
+      <div class="flex items-center gap-2">
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset - 1 }}" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+          <i class="ph-bold ph-caret-left mr-1"></i>Пред. неделя
+        </a>
+        <a href="?scenario={{ data.scenario }}&week=0" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+          Сегодня
+        </a>
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset + 1 }}" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+          След. неделя<i class="ph-bold ph-caret-right ml-1"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- The 7-Day Ultra-Light Mission Rail (Single Line, No duplicated lesson cards) -->
+    <div class="grid grid-cols-7 gap-2 pt-2 border-t border-slate-100" id="mission-rail-track">
+      {% for d in data.weekdays %}
+      <div class="mission-rail-node p-2.5 rounded-2xl border text-center flex flex-col items-center justify-between gap-1 {% if d.day_index == data.default_selected_day_index %}is-active bg-indigo-600 border-indigo-700 text-white{% else %}bg-slate-50 border-slate-200/80 hover:bg-slate-100/80 text-slate-700{% endif %}"
+           id="rail-node-{{ d.day_index }}"
+           onclick="handleCommandCenterSelectDay({{ d.day_index }})">
+        <div class="flex items-center justify-between w-full text-[10px] font-bold opacity-80 px-1">
+          <span>{{ d.short_name }}</span>
+          {% if d.is_today %}
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          {% endif %}
+        </div>
+        <div class="text-sm sm:text-base font-black leading-tight">
+          {{ d.date.split()[0] }}
+        </div>
+        <div class="flex items-center gap-1 h-2">
+          {% if d.events_count > 0 %}
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+            {% if d.events_count > 1 %}
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            {% endif %}
+          {% else %}
+            <span class="text-[9px] text-slate-400 opacity-60">•</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  {# 2. MAIN COCKPIT GRID (Zero empty void by design) #}
+  {% set cur_day = data.selected_day %}
+  {% set cur_event = cur_day.main_event %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+
+    <!-- LEFT STAGE: Active Mission / Next Objective (7 cols) -->
+    <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+      
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between space-y-6" id="command-mission-card">
+        
+        <!-- Mission Header -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-150 text-indigo-700 text-xs font-black uppercase tracking-wider" id="mission-badge-type">
+                {{ cur_event.badge if cur_event else 'День отдыха' }}
+              </span>
+              {% if cur_event and cur_event.countdown_text %}
+              <span class="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-150 text-emerald-700 text-xs font-black flex items-center gap-1" id="mission-countdown">
+                <i class="ph-bold ph-clock"></i>{{ cur_event.countdown_text }}
+              </span>
+              {% endif %}
+            </div>
+            <span class="text-xs font-bold text-slate-500" id="mission-day-header">
+              {{ cur_day.day_name }}, {{ cur_day.date }}
+            </span>
+          </div>
+
+          <!-- Main Mission Title -->
+          <div class="space-y-1">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wide" id="mission-subject">
+              {{ cur_event.subject if cur_event else 'Учебный план BooStudy' }}
+            </span>
+            <h2 class="text-xl sm:text-2xl font-black text-slate-900 font-display leading-snug hyphens-auto break-words" id="mission-title">
+              {{ cur_event.title if cur_event else 'На этот день занятий не запланировано' }}
+            </h2>
+          </div>
+
+          <!-- Details & Teacher -->
+          {% if cur_event %}
+          <div class="flex items-center gap-4 flex-wrap pt-2 text-xs text-slate-600">
+            <div class="flex items-center gap-2">
+              <i class="ph-bold ph-clock-countdown text-indigo-600 text-sm"></i>
+              <span class="font-bold text-slate-800" id="mission-time">{{ cur_event.time_str }} ({{ cur_event.duration }} мин)</span>
+            </div>
+            {% if cur_event.teacher %}
+            <div class="flex items-center gap-2">
+              <img src="{{ cur_event.teacher.avatar }}" alt="" class="w-5 h-5 rounded-full object-cover">
+              <span class="font-medium text-slate-700" id="mission-teacher">{{ cur_event.teacher.full_name }}</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Materials / Notes Block inside Mission -->
+        <div class="space-y-3 pt-4 border-t border-slate-100" id="mission-middle-block">
+          {% if cur_event and cur_event.materials %}
+          <div>
+            <div class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">Материалы к занятию</div>
+            <div class="space-y-1.5" id="mission-materials-list">
+              {% for m in cur_event.materials %}
+              <a href="#" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
+                <div class="flex items-center gap-2 truncate">
+                  <i class="ph-bold ph-file-text text-indigo-600 text-sm"></i>
+                  <span class="truncate">{{ m.title }}</span>
+                </div>
+                <span class="text-[10px] text-slate-400 shrink-0 ml-2">{{ m.size }}</span>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+          {% elif not cur_event %}
+          <!-- Empty State within Mission -->
+          <div class="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 flex items-center gap-4">
+            <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-14 h-14 object-contain">
+            <div class="space-y-0.5">
+              <h4 class="text-xs font-black text-slate-800">Свободное время для повторения</h4>
+              <p class="text-[11px] text-slate-500">Рекомендуем заглянуть в банк задач или повторить теорию.</p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Primary Action Deck Button -->
+        <div class="pt-4 border-t border-slate-100 flex items-center gap-3 flex-wrap" id="mission-actions-bar">
+          {% if cur_event and cur_event.type == 'lesson' and cur_event.status == 'planned' %}
+          <a href="{{ cur_event.room_url }}" class="btn-3d-primary px-6 py-3 rounded-2xl text-white text-sm font-black flex items-center gap-2 no-underline">
+            <i class="ph-bold ph-video-camera"></i>
+            <span>{{ cur_event.action_label }}</span>
+          </a>
+          <a href="{{ cur_event.secondary_url }}" class="btn-3d-secondary px-4 py-3 rounded-2xl text-slate-700 text-xs font-bold no-underline">
+            {{ cur_event.secondary_label }}
+          </a>
+          {% elif cur_event and cur_event.status == 'conducted' %}
+          <div class="px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-2">
+            <i class="ph-bold ph-check-circle"></i> Занятие успешно проведено
+          </div>
+          {% else %}
+          <a href="/task-generator/bank" class="btn-3d-secondary px-5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+            Открыть банк задач →
+          </a>
+          <a href="/theory" class="btn-3d-secondary px-5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+            База знаний и теория
+          </a>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- Compact Teacher Advice Callout -->
+      <div class="bg-amber-50/70 rounded-2xl border border-amber-200/90 p-4 flex items-start gap-3">
+        <i class="ph-bold ph-chat-circle-dots text-amber-600 text-lg shrink-0 mt-0.5"></i>
+        <div class="text-xs leading-relaxed text-amber-950 font-medium" id="mission-tutor-note">
+          {{ data.student_notes_general }}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT TACTICAL QUEUE: Deadlines & Deliverables Stream (5 cols) -->
+    <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+      
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex-1 flex flex-col justify-between space-y-5">
+        
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="ph-bold ph-hourglass-high text-amber-600 text-base"></i>
+              <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider font-display">Дедлайны и задачи</h3>
+            </div>
+            <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">
+              {{ data.deadlines_queue|length }} активных
+            </span>
+          </div>
+
+          <!-- Queue List -->
+          <div class="space-y-3" id="tactical-deadlines-stream">
+            {% if data.deadlines_queue %}
+              {% for hw in data.deadlines_queue %}
+              <div class="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/70 hover:bg-white hover:shadow-2xs transition-all space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                    {{ hw.day_name }} · {{ hw.time_str }}
+                  </span>
+                  <span class="text-[10px] font-semibold text-slate-400">
+                    {{ hw.badge }}
+                  </span>
+                </div>
+                <h4 class="text-xs font-bold text-slate-900 leading-snug hyphens-auto break-words">
+                  {{ hw.title }}
+                </h4>
+                {% if hw.homework_desc %}
+                <p class="text-[11px] text-slate-500 leading-relaxed font-normal">
+                  {{ hw.homework_desc }}
+                </p>
+                {% endif %}
+                <div class="pt-1 flex items-center justify-end">
+                  <a href="{{ hw.action_url }}" class="btn-3d-secondary px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-800 no-underline">
+                    {{ hw.action_label }}
+                  </a>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="p-6 rounded-2xl border border-dashed border-slate-200 text-center space-y-1">
+                <i class="ph-bold ph-check-circle text-emerald-500 text-xl"></i>
+                <div class="text-xs font-bold text-slate-700">Все дедлайны закрыты</div>
+                <div class="text-[11px] text-slate-400">На этой неделе нет задолженностей</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Weekly Pulse Summary Card -->
+        <div class="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-center">
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
+            <div class="text-base font-black text-slate-900">{{ data.stats.conducted }}/{{ data.stats.conducted_and_planned }}</div>
+            <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Уроков</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
+            <div class="text-base font-black text-amber-600">{{ data.stats.homework }}</div>
+            <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Дедлайнов</div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
+            <div class="text-base font-black text-emerald-600">{{ data.stats.streak_days }} дн</div>
+            <div class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Ритм</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+{# Client-Side Interactivity Script #}
+<script>
+(function() {
+  const payloadEl = document.getElementById('prototype-data-payload');
+  const DATA = payloadEl ? JSON.parse(payloadEl.textContent || '{}') : {};
+  let currentDay = DATA.default_selected_day_index || 0;
+
+  window.handleCommandCenterSelectDay = function(dayIndex) {
+    if (!DATA.weekdays || !DATA.weekdays[dayIndex]) return;
+    currentDay = dayIndex;
+    const day = DATA.weekdays[dayIndex];
+    const ev = day.main_event;
+
+    // 1. Update Mission Rail nodes
+    DATA.weekdays.forEach((d, idx) => {
+      const node = document.getElementById(`rail-node-${idx}`);
+      if (node) {
+        if (idx === dayIndex) {
+          node.className = "mission-rail-node is-active p-2.5 rounded-2xl border text-center flex flex-col items-center justify-between gap-1 bg-indigo-600 border-indigo-700 text-white shadow-md";
+        } else {
+          node.className = "mission-rail-node p-2.5 rounded-2xl border text-center flex flex-col items-center justify-between gap-1 bg-slate-50 border-slate-200/80 hover:bg-slate-100/80 text-slate-700";
+        }
+      }
+    });
+
+    // 2. Update Stage Elements
+    const badgeType = document.getElementById('mission-badge-type');
+    const dayHeader = document.getElementById('mission-day-header');
+    const subject = document.getElementById('mission-subject');
+    const title = document.getElementById('mission-title');
+    const midBlock = document.getElementById('mission-middle-block');
+    const actionsBar = document.getElementById('mission-actions-bar');
+
+    if (dayHeader) dayHeader.textContent = `${day.day_name}, ${day.date}`;
+    if (badgeType) badgeType.textContent = ev ? (ev.badge || 'Занятие') : 'День отдыха';
+    if (subject) subject.textContent = ev ? (ev.subject || 'Информатика') : 'Учебный план BooStudy';
+    if (title) title.textContent = ev ? (ev.title || 'Урок') : 'На этот день обязательных занятий нет';
+
+    // Update Materials / Empty State
+    if (midBlock) {
+      if (ev && ev.materials && ev.materials.length > 0) {
+        midBlock.innerHTML = `
+          <div>
+            <div class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">Материалы к занятию</div>
+            <div class="space-y-1.5">
+              ${ev.materials.map(m => `
+                <a href="#" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
+                  <div class="flex items-center gap-2 truncate">
+                    <i class="ph-bold ph-file-text text-indigo-600 text-sm"></i>
+                    <span class="truncate">${m.title}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 shrink-0 ml-2">${m.size || ''}</span>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        midBlock.innerHTML = `
+          <div class="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-200 flex items-center gap-4">
+            <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-14 h-14 object-contain">
+            <div class="space-y-0.5">
+              <h4 class="text-xs font-black text-slate-800">Свободное время для повторения</h4>
+              <p class="text-[11px] text-slate-500">Отличная возможность повторить темы или зайти в тренажёр задач.</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Update Action Button
+    if (actionsBar) {
+      if (ev && ev.type === 'lesson' && ev.status === 'planned') {
+        actionsBar.innerHTML = `
+          <a href="${ev.room_url || '#'}" class="btn-3d-primary px-6 py-3 rounded-2xl text-white text-sm font-black flex items-center gap-2 no-underline">
+            <i class="ph-bold ph-video-camera"></i>
+            <span>${ev.action_label || 'Войти в урок →'}</span>
+          </a>
+          <a href="${ev.secondary_url || '#'}" class="btn-3d-secondary px-4 py-3 rounded-2xl text-slate-700 text-xs font-bold no-underline">
+            ${ev.secondary_label || 'Теория к теме'}
+          </a>
+        `;
+      } else {
+        actionsBar.innerHTML = `
+          <a href="/task-generator/bank" class="btn-3d-secondary px-5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+            Открыть банк задач →
+          </a>
+          <a href="/theory" class="btn-3d-secondary px-5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+            База знаний и теория
+          </a>
+        `;
+      }
+    }
+  };
+})();
+</script>
+{% endblock %}

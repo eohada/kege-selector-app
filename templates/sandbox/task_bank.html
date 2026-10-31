@@ -1402,7 +1402,8 @@ let selectedAssignmentStudentIds = new Set(BANK_INITIAL_RECIPIENT_IDS);
 
 let bankCourseId = '';
 let bankModule = '';
-let bankCategory = 'exam';
+// Let the safe-mode backend include allowlisted synthetic drafts on first load.
+let bankCategory = '';
 let bankSearchTimer = null;
 let bankPage = 1;
 let bankTotal = 0;
@@ -1694,6 +1695,9 @@ function getFormatMeta(task) {
 }
 
 function getExamBadgeMeta(task) {
+  if (task.bank_category === 'synthetic_adaptive_draft') {
+    return { label: 'Синтетика · черновик', bg: 'bg-[#FEF3C7] text-[#92400E]' };
+  }
   if (task.bank_category === 'python_practice') {
     return { label: 'Python', bg: 'bg-[#EDE9FE] text-[#5046E5]' };
   }
@@ -2846,12 +2850,84 @@ async function submitSaveSet() {
   }
 }
 
-function insertQueueToLesson() {
+async function insertQueueToLesson() {
   if (!queuedTasks.size) {
     showToast('Подборка пуста', true);
     return;
   }
-  const ids = [...queuedTasks.keys()].join(', ');
+  const taskIds = Array.from(queuedTasks.keys());
+  let lessonId = new URLSearchParams(window.location.search).get('lesson_id') ||
+                 window.__LESSON_ID__;
+  if (!lessonId && window.opener) {
+    try {
+      lessonId = window.opener.__LESSON_ID__ ||
+                 (window.opener.location?.pathname?.match(/\/lesson\/(\d+)\/room/)?.[1]);
+    } catch (_) {}
+  }
+  if (!lessonId && window.parent && window.parent !== window) {
+    try {
+      lessonId = window.parent.__LESSON_ID__ ||
+                 (window.parent.location?.pathname?.match(/\/lesson\/(\d+)\/room/)?.[1]);
+    } catch (_) {}
+  }
+
+  if (lessonId) {
+    try {
+      const res = await fetch(`/lesson/${encodeURIComponent(lessonId)}/tasks/insert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+          task_ids: taskIds,
+          assignment_type: 'classwork'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Ошибка вставки заданий в урок');
+      }
+      showToast(`Заданий добавлено в урок: ${data.count || taskIds.length}`);
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage({ type: 'boostudy:tasks_inserted', lessonId, count: data.count }, '*');
+        } catch (_) {}
+      }
+      return;
+    } catch (err) {
+      showToast(err.message, true);
+      return;
+    }
+  }
+
+  const promptId = prompt('Укажите ID урока для вставки (или оставьте пустым для копирования ID):', '');
+  if (promptId && promptId.trim()) {
+    try {
+      const res = await fetch(`/lesson/${encodeURIComponent(promptId.trim())}/tasks/insert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+          task_ids: taskIds,
+          assignment_type: 'classwork'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Ошибка вставки заданий в урок');
+      }
+      showToast(`Заданий добавлено в урок ${promptId.trim()}: ${data.count || taskIds.length}`);
+      return;
+    } catch (err) {
+      showToast(err.message, true);
+      return;
+    }
+  }
+
+  const ids = taskIds.join(', ');
   if (navigator.clipboard) {
     navigator.clipboard.writeText(ids).then(() => {
       showToast(`ID заданий скопированы: ${ids}`);

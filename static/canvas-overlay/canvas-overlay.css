@@ -1075,9 +1075,11 @@ html.dark .boo-canvas-save-status {
   margin: 0;
 }
 .boo-canvas-sticky-note.note-yellow { background: #fef08a; border: 1px solid #fde047; }
-.boo-canvas-sticky-note.note-purple { background: #ede9fe; border: 1px solid #ddd6fe; }
+.boo-canvas-sticky-note.note-purple,
+.boo-canvas-sticky-note.note-lavender { background: #ede9fe; border: 1px solid #ddd6fe; color: #4338ca; }
 .boo-canvas-sticky-note.note-blue { background: #dbeafe; border: 1px solid #bfdbfe; }
-.boo-canvas-sticky-note.note-green { background: #dcfce7; border: 1px solid #bbf7d0; }
+.boo-canvas-sticky-note.note-green,
+.boo-canvas-sticky-note.note-mint { background: #dcfce7; border: 1px solid #bbf7d0; color: #15803d; }
 .boo-canvas-sticky-note.note-pink { background: #fce7f3; border: 1px solid #fbcfe8; }
 .boo-canvas-sticky-note.note-orange { background: #ffedd5; border: 1px solid #fed7aa; }
 
@@ -3072,7 +3074,15 @@ html.dark .tb-brush-desc {
   z-index: 20;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 850;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12), 0 2px 4px rgba(0, 0, 0, 0.04);
+  border: 1.5px solid #ffffff;
   transition: transform 0.1s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
 }
 
 .boo-canvas-stamp-item:active {
@@ -3082,6 +3092,89 @@ html.dark .tb-brush-desc {
 .boo-canvas-stamp-item.selected {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
+}
+
+.boo-canvas-stamp-item .boo-stamp-close {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  border: none;
+  margin-left: 2px;
+  transition: background 0.15s ease;
+}
+
+.boo-canvas-stamp-item .boo-stamp-close:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Stamp color variants for both radial wheel and master orbit */
+.boo-canvas-stamp-item.boo-master-stamp-success,
+.boo-canvas-stamp-item.boo-orbit-stamp-success,
+.boo-orbit-badge-stamp.boo-master-stamp-success,
+.boo-orbit-badge-stamp.boo-orbit-stamp-success {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  color: #065f46 !important;
+  border: 1.5px solid #6ee7b7 !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.boo-canvas-stamp-item.boo-master-stamp-danger,
+.boo-canvas-stamp-item.boo-orbit-stamp-danger,
+.boo-canvas-stamp-item.boo-master-stamp-error,
+.boo-orbit-badge-stamp.boo-master-stamp-danger,
+.boo-orbit-badge-stamp.boo-orbit-stamp-danger,
+.boo-orbit-badge-stamp.boo-master-stamp-error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+  color: #991b1b !important;
+  border: 1.5px solid #fca5a5 !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.boo-canvas-stamp-item.boo-master-stamp-star,
+.boo-canvas-stamp-item.boo-orbit-stamp-star,
+.boo-canvas-stamp-item.boo-master-stamp-warning,
+.boo-orbit-badge-stamp.boo-master-stamp-star,
+.boo-orbit-badge-stamp.boo-orbit-stamp-star,
+.boo-orbit-badge-stamp.boo-master-stamp-warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+  color: #92400e !important;
+  border: 1.5px solid #fcd34d !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.boo-canvas-stamp-item.boo-master-stamp-question,
+.boo-canvas-stamp-item.boo-orbit-stamp-question {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important;
+  color: #3730a3 !important;
+  border: 1.5px solid #a5b4fc !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.boo-canvas-stamp-item.boo-master-stamp-idea,
+.boo-canvas-stamp-item.boo-orbit-stamp-idea,
+.boo-canvas-stamp-item.boo-master-stamp-hint,
+.boo-orbit-badge-stamp.boo-master-stamp-idea,
+.boo-orbit-badge-stamp.boo-orbit-stamp-idea,
+.boo-orbit-badge-stamp.boo-master-stamp-hint {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%) !important;
+  color: #6b21a8 !important;
+  border: 1.5px solid #d8b4fe !important;
+  box-shadow: 0 4px 14px rgba(147, 51, 234, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.boo-canvas-stamp-item.boo-master-stamp-excellent,
+.boo-orbit-badge-stamp.boo-master-stamp-excellent {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  color: #065f46 !important;
+  border: 1.5px solid #6ee7b7 !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Teacher Hidden Draft Banner */

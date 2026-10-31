@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone, time as dt_time
 from zoneinfo import ZoneInfo
 from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB as PG_JSONB
@@ -945,15 +945,11 @@ class RecurringLessonSlot(db.Model):
 
     @property
     def id(self):
-        return self.group_id
+        return self.slot_id
 
     @property
     def name(self):
-        return self.title
-
-    @name.setter
-    def name(self, val):
-        self.title = val
+        return getattr(self, 'title', None) or f"Слот #{self.slot_id}"
 
     @property
     def teacher_id(self):
@@ -968,6 +964,11 @@ class RecurringLessonSlot(db.Model):
     time_hhmm = db.Column(db.String(5), nullable=False)          # "HH:MM" в выбранной timezone
     duration = db.Column(db.Integer, default=60, nullable=False) # minutes
     lesson_type = db.Column(db.String(50), default='regular', nullable=False)
+    subject = db.Column(db.String(100), default='Информатика', nullable=True, index=True)
+    topic = db.Column(db.String(300), nullable=True)
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
+    series_id = db.Column(db.String(64), nullable=True, index=True)
     # IANA-зона автора слота: например, Asia/Krasnoyarsk.
     # Старые значения moscow/tomsk распознаются утилитой lesson_time.
     timezone = db.Column(db.String(64), default='Europe/Moscow', nullable=False)
@@ -978,6 +979,95 @@ class RecurringLessonSlot(db.Model):
 
     owner = db.relationship('User', foreign_keys=[owner_user_id])
     student = db.relationship('Student', foreign_keys=[student_id])
+    exceptions = db.relationship('RecurringSlotException', back_populates='slot', cascade='all, delete-orphan', lazy='dynamic')
+
+    @property
+    def start_time(self):
+        if self.time_hhmm:
+            parts = self.time_hhmm.split(':')
+            return dt_time(int(parts[0]), int(parts[1]))
+        return dt_time(18, 0)
+
+    @start_time.setter
+    def start_time(self, val):
+        if isinstance(val, (dt_time, datetime)):
+            self.time_hhmm = val.strftime('%H:%M')
+        elif isinstance(val, str):
+            self.time_hhmm = val
+
+    @property
+    def duration_minutes(self):
+        return self.duration or 60
+
+    @duration_minutes.setter
+    def duration_minutes(self, val):
+        self.duration = int(val)
+
+
+class RecurringSlotException(db.Model):
+    """
+    Исключение для конкретной даты повторяющегося слота.
+    action:
+      - 'skip': урок на эту дату отменен / пропущен.
+      - 'rescheduled': урок перенесен на другую дату/время.
+    """
+    __tablename__ = 'RecurringSlotExceptions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slot_id = db.Column(db.Integer, db.ForeignKey('RecurringLessonSlots.slot_id', ondelete='CASCADE'), nullable=False, index=True)
+    exception_date = db.Column(db.Date, nullable=False, index=True)
+    action = db.Column(db.String(20), default='skip', nullable=False)  # 'skip' | 'rescheduled'
+    rescheduled_to = db.Column(db.DateTime(timezone=True), nullable=True)
+    reason = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
+
+    slot = db.relationship('RecurringLessonSlot', back_populates='exceptions')
+
+    __table_args__ = (
+        UniqueConstraint('slot_id', 'exception_date', name='uq_slot_exception_date'),
+    )
+
+
+class TeacherWeeklyAvailability(db.Model):
+    """
+    Регулярное доступное рабочее время преподавателя по дням недели.
+    Пример: Вторник (weekday=1), start_time='16:00', end_time='21:00'.
+    """
+    __tablename__ = 'TeacherWeeklyAvailabilities'
+
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    weekday = db.Column(db.Integer, nullable=False, index=True)  # 0=Mon..6=Sun
+    start_time = db.Column(db.String(5), nullable=False)          # "HH:MM"
+    end_time = db.Column(db.String(5), nullable=False)            # "HH:MM"
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('weekly_availabilities', lazy='dynamic', cascade='all, delete-orphan'))
+
+
+class TeacherScheduleException(db.Model):
+    """
+    Индивидуальное исключение из графика доступности преподавателя.
+    exception_type:
+      - 'unavailable': полный выходной / недоступен в этот день
+      - 'custom_hours': измененные часы работы в этот конкретный день
+      - 'extra_available': дополнительно доступен в обычный выходной
+    """
+    __tablename__ = 'TeacherScheduleExceptions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    exception_date = db.Column(db.Date, nullable=False, index=True)
+    exception_type = db.Column(db.String(30), default='unavailable', nullable=False)  # 'unavailable' | 'custom_hours' | 'extra_available'
+    start_time = db.Column(db.String(5), nullable=True)  # "HH:MM"
+    end_time = db.Column(db.String(5), nullable=True)    # "HH:MM"
+    reason = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('schedule_exceptions', lazy='dynamic', cascade='all, delete-orphan'))
 
 
 class RubricTemplate(db.Model):
@@ -1039,6 +1129,8 @@ class Lesson(db.Model):
     __tablename__ = 'Lessons'
     lesson_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True, index=True)
+    subject = db.Column(db.String(100), nullable=True, index=True)
     learning_trajectory_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=True, index=True)
     course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
     exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
@@ -1075,15 +1167,25 @@ class Lesson(db.Model):
     started_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
     tg_reminder_30min_sent = db.Column(db.Boolean, default=False, nullable=False)  # Отправлено ли напоминание за 30 мин
     balance_deducted = db.Column(db.Boolean, default=False, nullable=False)  # Списан ли баланс занятий ученика
+    recurring_slot_id = db.Column(db.Integer, db.ForeignKey('RecurringLessonSlots.slot_id', ondelete='SET NULL'), nullable=True, index=True)
+    recurrence_key = db.Column(db.String(64), nullable=True, unique=True, index=True)
+    is_rescheduled = db.Column(db.Boolean, default=False, nullable=False)
+    slot_origin_date = db.Column(db.Date, nullable=True, index=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     student = db.relationship('Student', back_populates='lessons')
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('assigned_lessons', lazy='dynamic'))
+    recurring_slot = db.relationship('RecurringLessonSlot', foreign_keys=[recurring_slot_id], backref=db.backref('lessons', lazy='dynamic'))
     course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id], back_populates='lessons')
     exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
     homework_tasks = db.relationship('LessonTask', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
     skills = db.relationship('ExamSkill', secondary=lesson_skills, backref=db.backref('lessons', lazy=True))
     attachments = db.relationship('LessonAttachment', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
+
+    __table_args__ = (
+        Index('ix_lessons_teacher_date', 'teacher_id', 'lesson_date'),
+    )
 
     @property
     def theory_attachments(self):
@@ -1131,11 +1233,44 @@ class Lesson(db.Model):
 
     @property
     def teacher_user_id(self):
-        return getattr(self, '_teacher_user_id', None) or getattr(self, 'tutor_id', None) or getattr(self, 'teacher_id', None)
+        return self.teacher_id or getattr(self, '_teacher_user_id', None)
 
     @teacher_user_id.setter
     def teacher_user_id(self, val):
+        self.teacher_id = val
         self._teacher_user_id = val
+
+    @property
+    def id(self):
+        return self.lesson_id
+
+    @property
+    def start_time(self):
+        if self.lesson_date:
+            tz = getattr(self.recurring_slot, 'timezone', None) or 'Europe/Moscow'
+            from app.utils.timezone import to_viewer_tz
+            local_dt = to_viewer_tz(self.lesson_date, tz)
+            if local_dt:
+                return local_dt.replace(tzinfo=None)
+        return self.lesson_date
+
+    @start_time.setter
+    def start_time(self, val):
+        if val is None:
+            self.lesson_date = None
+            return
+        if isinstance(val, datetime):
+            if val.tzinfo is None:
+                from app.utils.timezone import parse_local_to_utc
+                self.lesson_date = parse_local_to_utc(val.strftime('%Y-%m-%d'), val.strftime('%H:%M'), 'Europe/Moscow')
+            else:
+                self.lesson_date = val.astimezone(timezone.utc)
+        else:
+            self.lesson_date = val
+
+    @property
+    def display_subject(self):
+        return self.subject or 'Информатика'
 
 
 class LessonAttachment(db.Model):
@@ -1150,6 +1285,32 @@ class LessonAttachment(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
 
     lesson = db.relationship('Lesson', back_populates='attachments')
+
+
+class LessonParticipantBan(db.Model):
+    """
+    Запрет на участие в интерактивной комнате урока (Kick).
+    Долговременное авторитетное состояние в БД до явного разрешения преподавателем.
+    """
+    __tablename__ = 'LessonParticipantBans'
+    id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    banned_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    banned_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    unbanned_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    user = db.relationship('User', foreign_keys=[user_id])
+    banned_by = db.relationship('User', foreign_keys=[banned_by_user_id])
+
+    __table_args__ = (
+        Index('ix_lesson_participant_ban_active', 'lesson_id', 'user_id', 'is_active'),
+    )
+
+    def __repr__(self):
+        return f'<LessonParticipantBan lesson={self.lesson_id} user={self.user_id} active={self.is_active}>'
 
 
 class LessonTask(db.Model):
@@ -2797,6 +2958,7 @@ class Submission(db.Model):
     percentage = db.Column(db.Float, nullable=True)  # Процент выполнения
     
     teacher_feedback = db.Column(db.Text, nullable=True)
+    results_published_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Явная публикация итогов проверки преподавателем
 
     rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
     rubric_scores = db.Column(db.JSON, nullable=True)  # {"crit1": {"score": 1, "comment": "..."}, ...}
@@ -2851,6 +3013,34 @@ class Answer(db.Model):
     
     def __repr__(self):
         return f'<Answer {self.answer_id}: submission {self.submission_id}, task {self.assignment_task_id}, score {self.score}>'
+
+
+class AnswerEvaluationRevision(db.Model):
+    """Append-only provenance for each saved evaluation of an answer."""
+    __tablename__ = 'AnswerEvaluationRevisions'
+
+    revision_id = db.Column(db.Integer, primary_key=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='CASCADE'), nullable=False, index=True)
+    revision_no = db.Column(db.Integer, nullable=False)
+    method = db.Column(db.String(48), nullable=False)
+    actor_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    score = db.Column(db.Integer, nullable=True)
+    max_score = db.Column(db.Integer, nullable=True)
+    is_correct = db.Column(db.Boolean, nullable=True)
+    teacher_comment = db.Column(db.Text, nullable=True)
+    state = db.Column(db.String(16), nullable=False, default='current')  # current | superseded | voided
+    supersedes_revision_id = db.Column(db.Integer, db.ForeignKey('AnswerEvaluationRevisions.revision_id'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    superseded_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    answer = db.relationship('Answer', foreign_keys=[answer_id])
+    actor = db.relationship('User', foreign_keys=[actor_user_id])
+    supersedes = db.relationship('AnswerEvaluationRevision', remote_side=[revision_id], uselist=False)
+
+    __table_args__ = (
+        UniqueConstraint('answer_id', 'revision_no', name='uq_answer_evaluation_revision'),
+        Index('ix_answer_evaluation_state', 'answer_id', 'state'),
+    )
 
 
 class CodePlaybackTrace(db.Model):
@@ -2940,6 +3130,7 @@ class SubmissionAttempt(db.Model):
     max_score = db.Column(db.Integer, nullable=True)
     percentage = db.Column(db.Float, nullable=True)
     teacher_feedback = db.Column(db.Text, nullable=True)
+    attempt_data = db.Column(db.JSON, nullable=True)
 
     submission = db.relationship('Submission', back_populates='attempts')
 
@@ -4022,6 +4213,7 @@ class AiLabExperiment(db.Model):
         index=True,
     )
     request_key = db.Column(db.String(36), nullable=False)
+    request_fingerprint = db.Column(db.String(64), nullable=True, index=True)
     scenario_id = db.Column(db.String(80), nullable=False, index=True)
     status = db.Column(db.String(32), nullable=False, default='running', index=True)
     provider = db.Column(db.String(32), nullable=True)
@@ -4145,3 +4337,234 @@ class AiLabCodeJudgeRun(db.Model):
         UniqueConstraint('actor_user_id', 'request_key', name='uq_ai_lab_code_judge_actor_request'),
         Index('ix_ai_lab_code_judge_created_status', 'created_at', 'status'),
     )
+
+
+class AiLabAssignmentFamilyVersion(db.Model):
+    """Immutable compatibility contract for a tested synthetic assignment family."""
+    __tablename__ = 'AiLabAssignmentFamilyVersions'
+    __table_args__ = (
+        db.UniqueConstraint('family_id', 'version_no', name='uq_ai_lab_family_version'),
+        db.Index('ix_ai_lab_family_status', 'family_id', 'status'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    family_id = db.Column(db.String(120), nullable=False, index=True)
+    version_no = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(180), nullable=False)
+    assignment_id = db.Column(db.String(120), nullable=False, index=True)
+    assignment_version = db.Column(db.Integer, nullable=False)
+    rubric_version_id = db.Column(db.Integer, db.ForeignKey('AiLabRubricVersions.id', ondelete='RESTRICT'), nullable=False, index=True)
+    rubric_version_no = db.Column(db.Integer, nullable=False)
+    test_set_id = db.Column(db.Integer, db.ForeignKey('AiLabCodeJudgeTestSets.id', ondelete='RESTRICT'), nullable=False, index=True)
+    test_set_version = db.Column(db.Integer, nullable=False)
+    reference_run_id = db.Column(db.Integer, db.ForeignKey('AiLabCodeJudgeRuns.id', ondelete='RESTRICT'), nullable=False)
+    contract_json = db.Column(db.JSON, nullable=False)
+    compatibility_json = db.Column(db.JSON, nullable=False, default=dict)
+    content_sha256 = db.Column(db.String(64), nullable=False)
+    validation_json = db.Column(db.JSON, nullable=False, default=dict)
+    status = db.Column(db.String(20), nullable=False, default='draft', index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    approved_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    approved_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    rubric_version = db.relationship('AiLabRubricVersion', foreign_keys=[rubric_version_id])
+    test_set = db.relationship('AiLabCodeJudgeTestSet', foreign_keys=[test_set_id])
+    reference_run = db.relationship('AiLabCodeJudgeRun', foreign_keys=[reference_run_id])
+
+
+class AiLabAssignmentVariant(db.Model):
+    """Locally verified deterministic assignment variant."""
+    __tablename__ = 'AiLabAssignmentVariants'
+    __table_args__ = (
+        db.UniqueConstraint('family_version_id', 'parameter_sha256', name='uq_ai_lab_family_variant_parameters'),
+        db.Index('ix_ai_lab_family_variant_status', 'family_version_id', 'status'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    variant_id = db.Column(db.String(120), nullable=False, unique=True, index=True)
+    family_version_id = db.Column(db.Integer, db.ForeignKey('AiLabAssignmentFamilyVersions.id', ondelete='RESTRICT'), nullable=False, index=True)
+    family_id = db.Column(db.String(120), nullable=False, index=True)
+    family_version_no = db.Column(db.Integer, nullable=False)
+    template_id = db.Column(db.String(120), nullable=False)
+    parameter_sha256 = db.Column(db.String(64), nullable=False)
+    parameters_json = db.Column(db.JSON, nullable=False)
+    assignment_id = db.Column(db.String(120), nullable=False, index=True)
+    assignment_version = db.Column(db.Integer, nullable=False)
+    scenario_id = db.Column(db.String(80), nullable=False, unique=True)
+    title = db.Column(db.String(180), nullable=False)
+    condition = db.Column(db.Text, nullable=False)
+    starter_code = db.Column(db.Text, nullable=False, default='')
+    reference_code = db.Column(db.Text, nullable=False)
+    task_snapshot_json = db.Column(db.JSON, nullable=False)
+    test_set_id = db.Column(db.Integer, db.ForeignKey('AiLabCodeJudgeTestSets.id', ondelete='RESTRICT'), nullable=False, unique=True)
+    test_set_version = db.Column(db.Integer, nullable=False)
+    reference_run_id = db.Column(db.Integer, db.ForeignKey('AiLabCodeJudgeRuns.id', ondelete='RESTRICT'), nullable=True)
+    content_sha256 = db.Column(db.String(64), nullable=False)
+    validation_json = db.Column(db.JSON, nullable=False, default=dict)
+    status = db.Column(db.String(24), nullable=False, default='materialized', index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    family_version = db.relationship('AiLabAssignmentFamilyVersion', foreign_keys=[family_version_id])
+    test_set = db.relationship('AiLabCodeJudgeTestSet', foreign_keys=[test_set_id])
+    reference_run = db.relationship('AiLabCodeJudgeRun', foreign_keys=[reference_run_id])
+
+
+class AiLabProviderAttempt(db.Model):
+    """Durable audit of provider attempts; a started paid request is never replayed."""
+    __tablename__ = 'AiLabProviderAttempts'
+    __table_args__ = (
+        db.UniqueConstraint('experiment_id', 'attempt_number', name='uq_ai_lab_provider_attempt_number'),
+        db.UniqueConstraint('idempotency_key', name='uq_ai_lab_provider_attempt_key'),
+        db.Index('ix_ai_lab_provider_attempt_status', 'status', 'started_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    experiment_id = db.Column(db.Integer, db.ForeignKey('AiLabExperiments.id', ondelete='CASCADE'), nullable=False, index=True)
+    attempt_number = db.Column(db.Integer, nullable=False)
+    idempotency_key = db.Column(db.String(64), nullable=False)
+    retry_reason = db.Column(db.String(40), nullable=False, default='initial')
+    request_fingerprint = db.Column(db.String(64), nullable=False)
+    model = db.Column(db.String(160), nullable=False)
+    status = db.Column(db.String(24), nullable=False, default='started', index=True)
+    provider_payload_id = db.Column(db.String(180), nullable=True)
+    payload_sha256 = db.Column(db.String(64), nullable=True)
+    response_text = db.Column(db.Text, nullable=True)
+    request_metadata_json = db.Column(db.JSON, nullable=False, default=dict)
+    usage_json = db.Column(db.JSON, nullable=False, default=dict)
+    error_code = db.Column(db.String(64), nullable=True)
+    started_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    experiment = db.relationship('AiLabExperiment', foreign_keys=[experiment_id])
+
+
+class AiLabKnowledgeSource(db.Model):
+    """Pinned source metadata for versioned Tutor Core knowledge."""
+    __tablename__ = 'AiLabKnowledgeSources'
+    __table_args__ = (db.UniqueConstraint('source_key', 'edition', name='uq_ai_lab_knowledge_source_edition'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    source_key = db.Column(db.String(120), nullable=False, index=True)
+    edition = db.Column(db.String(80), nullable=False)
+    title = db.Column(db.String(240), nullable=False)
+    publisher = db.Column(db.String(160), nullable=False)
+    url = db.Column(db.String(600), nullable=False)
+    source_status = db.Column(db.String(32), nullable=False, default='official')
+    content_sha256 = db.Column(db.String(64), nullable=True)
+    metadata_json = db.Column(db.JSON, nullable=False, default=dict)
+    captured_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AiLabKnowledgeEntry(db.Model):
+    """Stable knowledge identity; editorial content is stored in versions."""
+    __tablename__ = 'AiLabKnowledgeEntries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    stable_key = db.Column(db.String(160), nullable=False, unique=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id', ondelete='SET NULL'), nullable=True, index=True)
+    knowledge_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='SET NULL'), nullable=True, index=True)
+    codifier_codes_json = db.Column(db.JSON, nullable=False, default=list)
+    entry_kind = db.Column(db.String(32), nullable=False, default='concept')
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AiLabKnowledgeVersion(db.Model):
+    """Immutable knowledge snapshot."""
+    __tablename__ = 'AiLabKnowledgeVersions'
+    __table_args__ = (
+        db.UniqueConstraint('entry_id', 'version_no', name='uq_ai_lab_knowledge_entry_version'),
+        db.Index('ix_ai_lab_knowledge_version_entry_created', 'entry_id', 'created_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    entry_id = db.Column(db.Integer, db.ForeignKey('AiLabKnowledgeEntries.id', ondelete='RESTRICT'), nullable=False, index=True)
+    version_no = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(240), nullable=False)
+    content_json = db.Column(db.JSON, nullable=False)
+    source_refs_json = db.Column(db.JSON, nullable=False, default=list)
+    tags_json = db.Column(db.JSON, nullable=False, default=list)
+    content_sha256 = db.Column(db.String(64), nullable=False)
+    change_reason = db.Column(db.String(500), nullable=False)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AiLabKnowledgeReviewEvent(db.Model):
+    """Append-only editorial decision."""
+    __tablename__ = 'AiLabKnowledgeReviewEvents'
+    __table_args__ = (db.Index('ix_ai_lab_knowledge_review_version_created', 'version_id', 'created_at'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    version_id = db.Column(db.Integer, db.ForeignKey('AiLabKnowledgeVersions.id', ondelete='RESTRICT'), nullable=False, index=True)
+    decision = db.Column(db.String(24), nullable=False)
+    reviewer_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    rationale = db.Column(db.Text, nullable=False)
+    review_details_json = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AiLabExamTaskBinding(db.Model):
+    """Append-only link from a skill to an official EGE document revision."""
+    __tablename__ = 'AiLabExamTaskBindings'
+    __table_args__ = (
+        db.UniqueConstraint('binding_key', 'mapping_version', name='uq_ai_lab_exam_binding_version'),
+        db.Index('ix_ai_lab_exam_binding_revision_task', 'revision_key', 'task_number'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    binding_key = db.Column(db.String(180), nullable=False, index=True)
+    mapping_version = db.Column(db.SmallInteger, nullable=False)
+    revision_key = db.Column(db.String(100), nullable=False, index=True)
+    exam_year = db.Column(db.SmallInteger, nullable=False, index=True)
+    document_version = db.Column(db.String(100), nullable=False)
+    document_status = db.Column(db.String(24), nullable=False, index=True)
+    task_number = db.Column(db.SmallInteger, nullable=False, index=True)
+    skill_code = db.Column(db.String(160), nullable=False, index=True)
+    skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id', ondelete='RESTRICT'), nullable=False, index=True)
+    task_type = db.Column(db.String(180), nullable=False)
+    input_format = db.Column(db.String(240), nullable=False)
+    answer_format = db.Column(db.String(240), nullable=False)
+    source_key = db.Column(db.String(190), nullable=False)
+    source_url = db.Column(db.Text, nullable=False)
+    source_sha256 = db.Column(db.String(64), nullable=True)
+    change_reason = db.Column(db.Text, nullable=False)
+    editorial_status = db.Column(db.String(32), nullable=False, default='source_checked', index=True)
+    supersedes_binding_id = db.Column(db.Integer, db.ForeignKey('AiLabExamTaskBindings.id', ondelete='RESTRICT'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    skill = db.relationship('ExamSkill', foreign_keys=[skill_id])
+    supersedes = db.relationship('AiLabExamTaskBinding', remote_side=[id], uselist=False)
+
+
+class AiLabTutorDemo(db.Model):
+    """Stable pointer to a versioned local synthetic Tutor Core demo."""
+    __tablename__ = 'AiLabTutorDemos'
+
+    demo_key = db.Column(db.String(80), primary_key=True)
+    demo_version = db.Column(db.SmallInteger, nullable=False)
+    seed_version = db.Column(db.String(80), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id', ondelete='RESTRICT'), nullable=False, index=True)
+    student_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='RESTRICT'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='RESTRICT'), nullable=False, index=True)
+    metadata_json = db.Column(db.JSON, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    course = db.relationship('LearningTrajectory', foreign_keys=[course_id])
+    student_user = db.relationship('User', foreign_keys=[student_user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+
+class AiLabTutorDemoEvent(db.Model):
+    """Immutable synthetic event for an explicitly versioned Tutor Core scenario."""
+    __tablename__ = 'AiLabTutorDemoEvents'
+
+    event_id = db.Column(db.String(200), primary_key=True)
+    demo_key = db.Column(db.String(80), db.ForeignKey('AiLabTutorDemos.demo_key', ondelete='RESTRICT'), nullable=False, index=True)
+    scenario_key = db.Column(db.String(80), nullable=False, index=True)
+    event_json = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    demo = db.relationship('AiLabTutorDemo', foreign_keys=[demo_key])

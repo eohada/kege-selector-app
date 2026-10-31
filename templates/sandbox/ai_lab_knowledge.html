@@ -1,0 +1,153 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}База знаний — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-tutor-core.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-knowledge.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="tc-page kb-page" id="knowledgeBase"
+      data-csrf="{{ csrf_token() }}"
+      data-api-url="{{ url_for('ai_lab.knowledge_base_data') }}"
+      data-entry-url-template="{{ url_for('ai_lab.knowledge_base_entry_history', entry_id=0) }}"
+      data-create-url="{{ url_for('ai_lab.knowledge_base_create_version') }}"
+      data-review-url-template="{{ url_for('ai_lab.knowledge_base_review_version', version_id=0) }}">
+  <nav class="tc-nav" aria-label="Разделы AI Lab">
+    <a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a>
+    <a href="{{ url_for('ai_lab.analytics_page') }}">Аналитика</a>
+    <a href="{{ url_for('ai_lab.practice_page') }}">Практика</a>
+    <a href="{{ url_for('ai_lab.course_page') }}">AI Course</a>
+    <a class="is-active" href="{{ url_for('ai_lab.knowledge_base_page') }}" aria-current="page">База знаний</a>
+    <a href="{{ url_for('ai_lab.tutor_core3_page') }}">Tutor Core 3.0 · ЕГЭ-2027</a>
+  </nav>
+
+  {% if state %}<script id="knowledgeState" type="application/json">{{ state|tojson }}</script>{% endif %}
+  <header class="tc-header kb-header">
+    <div>
+      <p class="tc-eyebrow">ИСТОЧНИКИ · ПОКРЫТИЕ · ЭКСПЕРТНАЯ ПРОВЕРКА</p>
+      <h1>База знаний Tutor Core</h1>
+      <p class="tc-lede">Версионируемые учебные материалы, привязанные к кодам ФИПИ. Черновик не считается утверждённым содержанием.</p>
+    </div>
+    <span class="tc-badge">{{ state.data_version if state else 'Локальная AI Lab' }}</span>
+  </header>
+
+  {% if page_error %}
+    <section class="tc-card tc-error" role="alert"><h2>База знаний пока недоступна</h2><p>{{ page_error }}</p></section>
+  {% elif state %}
+    <p class="tc-notice kb-notice" role="note">
+      Карта построена по окончательным документам ЕГЭ 2026. Опубликованные документы 2027 года помечены как проекты и не используются как обязательное основание.
+      В базе сохранены начальные заметки и отдельные углублённые материалы по темам. Статус «Источники сверены» не означает экспертного утверждения или готовности к публикации ученикам.
+      Курс 3 используется только для отображения связей уроков и навыков; его содержание не изменяется, домашние работы и реальные данные учеников не подключены.
+    </p>
+
+    <section class="kb-metrics" aria-label="Состояние базы знаний">
+      <article class="tc-card kb-metric"><span>Пункты кодификатора 2026</span><strong>{{ state.counts.coverage_items }}</strong><small>Включено в спецификацию: {{ state.counts.included_in_2026 }}</small></article>
+      <article class="tc-card kb-metric"><span>Коды с привязанным материалом</span><strong>{{ state.counts.content_started }}</strong><small>Пробелы: {{ state.counts.content_gaps }} · всего материалов: {{ state.counts.materials }}</small></article>
+      <article class="tc-card kb-metric"><span>Редакционная проверка</span><strong>{{ state.counts.reviewed_materials }}</strong><small>Утверждено владельцем: {{ state.counts.approved_for_student_use }} · досье пилота ждут преподавателя: {{ state.counts.expert_pilot_dossiers_current }}</small></article>
+      <article class="tc-card kb-metric"><span>Синтетические техпроверки</span><strong>{{ state.counts.machine_check_results_recorded }}</strong><small>К текущим версиям привязано: {{ state.counts.machine_check_results_current }} · устарели: {{ state.counts.machine_check_results_outdated }} · не Code Judge и не педагогическая экспертиза</small></article>
+      <article class="tc-card kb-metric"><span>Источники</span><strong>{{ state.counts.sources }}</strong><small>Окончательные, проектные и первичная документация</small></article>
+    </section>
+
+    <section class="tc-card kb-source-card">
+      <div class="tc-section-title"><div><p class="tc-eyebrow">ПЕРВОИСТОЧНИКИ</p><h2>Редакции и статус</h2></div></div>
+      <div class="kb-sources" id="knowledgeSources"></div>
+    </section>
+
+    <section class="tc-card kb-coverage-card">
+      <div class="tc-section-title"><div><p class="tc-eyebrow">45 ЭЛЕМЕНТОВ · КОДЫ ИЗ КОДИФИКАТОРА</p><h2>Карта покрытия ЕГЭ по информатике</h2></div>
+        <span class="tc-muted tc-micro">«Нет учебного материала» — зафиксированный пробел, не отсутствие темы в курсе</span>
+      </div>
+      <p class="tc-muted tc-micro">Показатели различают наличие полей и решения редактора. «Полная карточка» означает структурно заполненные разделы, а не оценку их качества. Описания автопроверок не являются результатами запуска; тестовые результаты в KB пока не регистрируются.</p>
+      <div class="kb-coverage-grid" id="knowledgeCoverage"></div>
+    </section>
+
+    <section class="kb-workspace">
+      <aside class="tc-card kb-entry-panel">
+        <div class="tc-section-title"><div><p class="tc-eyebrow">ВЕРСИОНИРУЕМЫЕ ЗАМЕТКИ</p><h2>Материалы</h2></div>
+          <button class="tc-button tc-secondary" id="newKnowledgeEntry" type="button">Добавить</button>
+        </div>
+        <label class="kb-search-label" for="knowledgeSearch">Поиск по теме, навыку и содержанию</label>
+        <input class="kb-input" id="knowledgeSearch" type="search" placeholder="Например, остаток, маска, граничная ошибка">
+        <div class="kb-list-filters">
+          <label>Очередь
+            <select class="kb-input" id="knowledgeQueueFilter">
+              <option value="all">Все материалы</option>
+              <option value="review">Очередь проверки · {{ state.counts.pending_review_materials }}</option>
+              <option value="approved">Утверждённые · {{ state.counts.approved_for_student_use }}</option>
+              <option value="rejected">Отклонённые или снятые</option>
+            </select>
+          </label>
+          <label>Раздел ЕГЭ
+            <select class="kb-input" id="knowledgeSubjectFilter"><option value="all">Все разделы</option></select>
+          </label>
+        </div>
+        <p class="kb-result-count tc-muted" id="knowledgeResultCount" aria-live="polite"></p>
+        <div class="kb-entry-list" id="knowledgeEntryList" role="list"></div>
+      </aside>
+
+      <div class="kb-detail-column">
+        <section class="tc-card kb-detail" id="knowledgeDetail" aria-live="polite">
+          <p class="tc-muted">Выберите материал, чтобы посмотреть доказательную основу и версии.</p>
+        </section>
+
+        <details class="tc-card kb-editor" id="knowledgeEditor">
+          <summary><span class="tc-eyebrow">РЕДАКТОР</span><strong id="editorHeading">Новая версия материала</strong></summary>
+          <form id="knowledgeEntryForm">
+            <div class="kb-form-grid">
+              <label>Заголовок<input class="kb-input" name="title" maxlength="240" required></label>
+              <label>Стабильный ключ<input class="kb-input" name="stable_key" pattern="[a-z0-9][a-z0-9._-]{2,159}" required></label>
+              <label>Коды ФИПИ<input class="kb-input" name="codifier_codes" placeholder="2.7, 3.6" required></label>
+              <label>Теги поиска<input class="kb-input" name="tags" placeholder="логика, граница, Python" required></label>
+              <label class="kb-span">Источники по ключам<input class="kb-input" name="source_refs" placeholder="fipi.informatics.2026, python.stdtypes.3.12" required></label>
+              <label class="kb-span">Цель обучения<textarea class="kb-input" name="learning_goal" rows="2" required></textarea></label>
+              <label class="kb-span">Объяснение<textarea class="kb-input" name="explanation" rows="4" required></textarea></label>
+              <label class="kb-span">Примеры · JSON<textarea class="kb-input kb-json" name="examples" rows="6" required></textarea></label>
+              <label class="kb-span">Типичные заблуждения · JSON<textarea class="kb-input kb-json" name="misconceptions" rows="5" required></textarea></label>
+              <label class="kb-span">Диагностика · JSON<textarea class="kb-input kb-json" name="diagnostics" rows="4" required></textarea></label>
+              <label class="kb-span">Педагогические действия · JSON<textarea class="kb-input kb-json" name="interventions" rows="4" required></textarea></label>
+              <label class="kb-span">Границы проверки<textarea class="kb-input" name="assessment_boundary" rows="2" required></textarea></label>
+              <label class="kb-span">Предварительные знания · стабильные ключи через запятую<input class="kb-input" name="prerequisites" placeholder="ege.inf.positional-number-systems.v1"></label>
+              <details class="kb-editor-advanced kb-span">
+                <summary>Связи с курсом и заданиями · дополнительная настройка</summary>
+                <label>Связи с уроками<textarea class="kb-input kb-json" name="lesson_links" rows="3" placeholder='[{"course_id":3,"lesson_id":17,"skill_id":"exam-skill:13","relationship":"curriculum","rationale":"Связь по lesson_skills."}]'></textarea></label>
+                <label>Предварительные связи с заданиями<textarea class="kb-input kb-json" name="task_links" rows="3" placeholder='[{"course_id":3,"task_number":13,"skill_id":"exam-skill:13","relationship":"preliminary","rationale":"Требуется проверка преподавателя."}]'></textarea></label>
+              </details>
+              <label class="kb-span"><input type="checkbox" name="full_pedagogical_card"> Полная педагогическая карточка: навык, метод решения, объяснения, различающая диагностика и программные проверки</label>
+              <div class="kb-full-card-fields kb-span" id="fullPedagogicalFields" hidden>
+                <div class="kb-form-grid">
+                  <label>Ключ навыка<input class="kb-input" name="skill_key" placeholder="skill.inf.topic-action"></label>
+                  <label>Проверяемый навык<input class="kb-input" name="skill_name" maxlength="240"></label>
+                  <label class="kb-span">Наблюдаемые действия навыка · JSON<textarea class="kb-input kb-json" name="observable_actions" rows="3" placeholder='["Выбирает подходящий метод", "Проверяет граничный случай"]'></textarea></label>
+                  <label class="kb-span">Ступени освоения от понятия до независимой проверки · JSON<textarea class="kb-input kb-json" name="skill_progression" rows="5" placeholder='[{"stage_key":"concept","description":"..."}, {"stage_key":"routine","description":"..."}, {"stage_key":"choice","description":"..."}, {"stage_key":"transfer","description":"..."}, {"stage_key":"verification","description":"..."}]'></textarea></label>
+                  <label class="kb-span">Пошаговый способ решения · JSON<textarea class="kb-input kb-json" name="solution_steps" rows="4" placeholder='["Уточнить входные данные", "Выполнить расчёт", "Проверить результат"]'></textarea></label>
+                  <label class="kb-span">Краткое объяснение для ученика<textarea class="kb-input" name="student_explanation" rows="3"></textarea></label>
+                  <label class="kb-span">Пояснение для преподавателя<textarea class="kb-input" name="teacher_explanation" rows="3"></textarea></label>
+                  <label class="kb-span">Различающие диагностические паттерны · JSON<textarea class="kb-input kb-json" name="diagnostic_patterns" rows="5" placeholder='[{"response_pattern":"...", "interpretation":"...", "follow_up":"..."}]'></textarea></label>
+                  <label class="kb-span">Связанные предметные тесты · JSON<textarea class="kb-input kb-json" name="subject_checks" rows="4" placeholder='[{"test_id":"kb-topic-check", "method":"...", "scope":"..."}]'></textarea></label>
+                  <label class="kb-span">Предложения по привязке к занятиям · JSON<textarea class="kb-input kb-json" name="curriculum_suggestions" rows="3" placeholder='["Подобрать занятие после ...; точную связь подтвердить по курсу"]'></textarea></label>
+                </div>
+                <p class="tc-muted">Ссылка на тест указывает на автоматизированную проверку, но не заявляет, что ограниченные примеры доказывают общую корректность. Статус карточки и решение преподавателя хранятся отдельно.</p>
+              </div>
+              <label class="kb-span">Причина новой версии<input class="kb-input" name="change_reason" maxlength="500" required></label>
+            </div>
+            <div class="tc-actions"><button class="tc-button tc-primary" type="submit">Сохранить как новую версию</button><button class="tc-button" type="button" id="cancelKnowledgeEdit">Отмена</button></div>
+          </form>
+        </details>
+
+        <section class="tc-card kb-review" id="knowledgeReview" hidden>
+          <div class="tc-section-title"><div><p class="tc-eyebrow">РЕШЕНИЕ ЧЕЛОВЕКА</p><h2>Проверка текущей версии</h2></div></div>
+          <p class="tc-muted">Оцените каждый раздел. Ссылка на автопроверку не является результатом её выполнения. AI и сверка источников не утверждают материал.</p>
+          <div class="kb-review-checklist" id="knowledgeReviewChecklist"></div>
+          <label>Обоснование<textarea class="kb-input" id="reviewRationale" rows="3" minlength="10" maxlength="2000" placeholder="Что именно проверено, какие ограничения остаются"></textarea></label>
+          <div class="tc-actions">
+            <button class="tc-button" type="button" data-knowledge-decision="in_review">Сохранить замечания</button>
+            <button class="tc-button" type="button" data-knowledge-decision="rework">Вернуть на доработку</button>
+            <button class="tc-button" type="button" data-knowledge-decision="reviewed">Отметить проверенным</button>
+            <button class="tc-button tc-accept" type="button" data-knowledge-decision="approved">Утвердить владельцем</button>
+            <button class="tc-button" type="button" data-knowledge-decision="rejected">Отклонить</button>
+            <button class="tc-button" type="button" data-knowledge-decision="retired">Снять с использования</button>
+          </div>
+          <p class="tc-feedback" id="knowledgeFeedback" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+    </section>
+  {% endif %}
+</main>
+{% if state %}<script src="{{ url_for('static', filename='js/ai-lab-knowledge.js') }}" defer></script>{% endif %}
+{% endblock %}

@@ -499,14 +499,14 @@ def test_assignment_update_safely_handles_code_workspace_and_answer_dependencies
         assign_id = assign.assignment_id
         t2_id = t2.task_id
         t3_id = t3.task_id
-        tutor_username = tutor.username
+        tutor_user_id = tutor.id
         cwv_id = cwv.version_id
         cpt_id = cpt.trace_id
         comm_id = comm.comment_id
 
     # Входим под преподавателем
     with client.session_transaction() as sess:
-        sess['_user_id'] = str(User.query.filter_by(username=tutor_username).first().id)
+        sess['_user_id'] = str(tutor_user_id)
         sess['_fresh'] = True
 
     # Преподаватель редактирует работу: удаляет задание 1 (которое имеет ответ и трейсы кода)

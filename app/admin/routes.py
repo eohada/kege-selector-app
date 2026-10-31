@@ -3411,7 +3411,7 @@ def admin_mode_switch():
     mode = request.args.get('mode', 'admin')
     session['work_mode'] = mode
     if mode == 'teacher':
-        return redirect(url_for('main.universal_profile_view'))
+        return redirect(url_for('main.universal_profile_view', user_id=current_user.id))
     return redirect(url_for('admin.admin_users'))
 
 

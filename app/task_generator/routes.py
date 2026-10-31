@@ -8,7 +8,7 @@ import re
 import uuid
 from flask import abort, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import or_, func, text, delete
+from sqlalchemy import and_, or_, func, text, delete
 from sqlalchemy.orm import joinedload
 
 from app.utils.jinja_filters import (
@@ -55,11 +55,38 @@ from core.selector_logic import (
 )
 from core.audit_logger import audit_logger
 from app.notifications.service import enqueue_assignment_notification
+from app.task_bank.answer_safety import answer_appears_in_labeled_example
 
 logger = logging.getLogger(__name__)
 
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
+
+
+def _resolve_synthetic_task_context(course_id: int, lesson_id: int):
+    """Resolve only an explicit lesson in the verified isolated synthetic DB."""
+    from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+    from core.db_models import LearningTrajectory
+
+    if not has_verified_safe_ai_lab_db():
+        return None, None
+    course = LearningTrajectory.query.filter_by(
+        course_id=course_id,
+        is_template=False,
+        status='active',
+    ).first()
+    if not course or not course.student_id:
+        return None, None
+    lesson = Lesson.query.filter_by(
+        lesson_id=lesson_id,
+        learning_trajectory_id=course.course_id,
+        student_id=course.student_id,
+    ).first()
+    if not lesson or str(lesson.status or '').casefold() not in {
+        'planned', 'scheduled', 'in_progress', 'completed'
+    }:
+        return None, None
+    return course, lesson
 
 
 def _difficulty_label_ru(task: Tasks | None) -> str:
@@ -206,6 +233,31 @@ def _require_manual_task_create_access() -> None:
         pass
     from flask import abort
     abort(403)
+
+
+def _synthetic_adaptive_draft_author_ids() -> set[int]:
+    """Expose draft tasks only to allowlisted authors in the verified AI Lab database."""
+    if not current_user.is_authenticated:
+        return set()
+    try:
+        from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+        from app.ai_lab.platform_homework import _allowlisted_actor_ids, _allowlisted_task_author_ids
+        from app.ai_lab.provider import is_local_ai_lab_enabled
+
+        if (not has_verified_safe_ai_lab_db() or not is_local_ai_lab_enabled()
+                or int(current_user.id) not in _allowlisted_actor_ids()):
+            return set()
+        return {
+            int(author_id)
+            for author_id in _allowlisted_task_author_ids()
+            if author_id is not None
+        }
+    except Exception:
+        current_app.logger.warning(
+            'Synthetic draft task bank access disabled because safe-mode verification failed',
+            exc_info=True,
+        )
+        return set()
 
 
 @task_generator_bp.route('/sandbox/task_generator', methods=['GET', 'POST'])
@@ -1055,8 +1107,34 @@ def task_generator_bank_picker_list():
         bq = bq.filter(Tasks.is_active.is_(True))
     if selected_task_id is not None:
         bq = bq.filter(Tasks.task_id == selected_task_id)
-    if bank_category in ('exam', 'python_practice'):
-        bq = bq.filter(Tasks.bank_category == bank_category)
+    raw_bank_cat = data.get('bank_category')
+    synthetic_draft_authors = _synthetic_adaptive_draft_author_ids()
+    if raw_bank_cat and raw_bank_cat in ('exam', 'python_practice'):
+        bq = bq.filter(Tasks.bank_category == raw_bank_cat)
+    elif not exam_course_id and bank_category in ('exam', 'python_practice'):
+        if bank_category == 'exam' and synthetic_draft_authors:
+            bq = bq.filter(or_(
+                Tasks.bank_category == bank_category,
+                and_(
+                    Tasks.bank_category == 'synthetic_adaptive_draft',
+                    Tasks.source_key.like('boostudy.synthetic.adaptive-v1/%'),
+                    Tasks.created_by_id.in_(synthetic_draft_authors),
+                ),
+            ))
+        else:
+            bq = bq.filter(Tasks.bank_category == bank_category)
+    elif bank_category == 'all':
+        if synthetic_draft_authors:
+            bq = bq.filter(or_(
+                Tasks.bank_category != 'synthetic_adaptive_draft',
+                and_(
+                    Tasks.source_key.like('boostudy.synthetic.adaptive-v1/%'),
+                    Tasks.created_by_id.in_(synthetic_draft_authors),
+                ),
+            ))
+        else:
+            bq = bq.filter(Tasks.bank_category != 'synthetic_adaptive_draft')
+
     if exam_course_id:
         bq = bq.filter(Tasks.course_id == exam_course_id)
     module = (data.get('module') or '').strip()
@@ -1075,7 +1153,15 @@ def task_generator_bank_picker_list():
     if only_bookmarked:
         bq = bq.join(TaskBookmark, TaskBookmark.task_id == Tasks.task_id).filter(TaskBookmark.user_id == current_user.id)
 
-    sort = (data.get('sort') or 'recent').strip().lower()
+    exposure_filter = (data.get('exposure_filter') or '').strip().lower()
+    if exposure_filter and target_student_ids:
+        seen_task_subquery = db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id.in_(target_student_ids))
+        if exposure_filter == 'new':
+            bq = bq.filter(Tasks.task_id.notin_(seen_task_subquery))
+        elif exposure_filter in ('seen', 'blocked'):
+            bq = bq.filter(Tasks.task_id.in_(seen_task_subquery))
+
+    sort = (data.get('sort') or ('number_asc' if (exam_course_id and task_number is None) else 'recent')).strip().lower()
     if sort == 'number_asc':
         bq = bq.order_by(Tasks.task_number.asc(), Tasks.task_id.desc())
     elif sort == 'difficulty_asc':
@@ -1352,20 +1438,51 @@ def task_generator_bank_picker_add():
 def task_generator_bank_structure():
     """Древовидная структура разделов и статистика для Task Studio."""
     _require_manual_task_create_access()
+    from collections import defaultdict
     from app.utils.python_bank_import import foundations_metadata
     from app.utils.python_ege_curriculum_import import curriculum_metadata
     from app.utils.python_practice_bank import python_bank_metadata
     thematic = {**foundations_metadata(), **curriculum_metadata(), **python_bank_metadata()}
 
+    task_counts_raw = db.session.query(
+        Tasks.course_id, Tasks.task_number, func.count(Tasks.task_id)
+    ).filter(Tasks.is_active.is_(True)).group_by(Tasks.course_id, Tasks.task_number).all()
+    course_task_counts = {(row[0], row[1]): row[2] for row in task_counts_raw}
+
+    all_templates = CourseTaskTemplate.query.order_by(CourseTaskTemplate.course_id.asc(), CourseTaskTemplate.task_number.asc()).all()
+    templates_by_course = defaultdict(list)
+    for tpl in all_templates:
+        num = tpl.task_number
+        cnt = course_task_counts.get((tpl.course_id, num), 0)
+        templates_by_course[tpl.course_id].append({
+            'id': f'course_{tpl.course_id}_task_{num}',
+            'task_number': num,
+            'title': f'Задание №{num}',
+            'description': tpl.description or f'Тема задания №{num}',
+            'task_count': cnt,
+        })
+
     active_courses = Course.query.filter_by(is_active=True).order_by(Course.id.asc()).all()
     courses_data = []
     for c in active_courses:
         cnt = Tasks.query.filter_by(course_id=c.id, is_active=True).count()
+        task_tree = list(templates_by_course.get(c.id, []))
+        if not task_tree:
+            c_task_nums = sorted({k[1] for k in course_task_counts if k[0] == c.id and k[1] is not None and k[1] > 0})
+            if c_task_nums:
+                task_tree = [{
+                    'id': f'course_{c.id}_task_{num}',
+                    'task_number': num,
+                    'title': f'Задание №{num}',
+                    'description': f'Тема задания №{num}',
+                    'task_count': course_task_counts.get((c.id, num), 0),
+                } for num in c_task_nums]
         courses_data.append({
             'id': c.id,
             'title': c.title,
             'slug': c.slug,
             'task_count': cnt,
+            'task_tree': task_tree,
         })
 
     total_tasks = Tasks.query.filter(Tasks.is_active.is_(True)).count()
@@ -1378,33 +1495,21 @@ def task_generator_bank_structure():
         TaskBookmark.user_id == current_user.id
     ).count() if current_user.is_authenticated else 0
 
-    task_number_counts = dict(
-        db.session.query(Tasks.task_number, func.count(Tasks.task_id))
-        .filter(Tasks.is_active.is_(True), Tasks.bank_category == 'exam')
-        .group_by(Tasks.task_number)
-        .all()
-    )
-
-    exam_templates = CourseTaskTemplate.query.filter_by(course_id=1).order_by(CourseTaskTemplate.task_number.asc()).all()
-    exam_tree = []
-    if exam_templates:
-        for tpl in exam_templates:
-            num = tpl.task_number
-            exam_tree.append({
-                'id': f'exam_{num}',
-                'task_number': num,
-                'title': f'Задание №{num}',
-                'description': tpl.description or f'Тема задания №{num}',
-                'task_count': task_number_counts.get(num, 0),
-            })
-    else:
+    exam_tree = templates_by_course.get(1, [])
+    if not exam_tree:
+        global_task_number_counts = dict(
+            db.session.query(Tasks.task_number, func.count(Tasks.task_id))
+            .filter(Tasks.is_active.is_(True), Tasks.bank_category == 'exam')
+            .group_by(Tasks.task_number)
+            .all()
+        )
         for num in range(1, 28):
             exam_tree.append({
                 'id': f'exam_{num}',
                 'task_number': num,
                 'title': f'Задание №{num}',
                 'description': f'Тема задания №{num}',
-                'task_count': task_number_counts.get(num, 0),
+                'task_count': global_task_number_counts.get(num, 0),
             })
 
     python_modules_map = {}
@@ -2031,21 +2136,45 @@ def task_generator_bank_create():
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
 
-    try:
-        course_id = int(data.get('exam_course_id') or data.get('course_id'))
-    except (TypeError, ValueError):
-        return jsonify({'success': False, 'error': 'exam_course_id обязателен'}), 400
+    synthetic_course = synthetic_lesson = None
+    synthetic_context_requested = (
+        data.get('synthetic_course_id') is not None or data.get('synthetic_lesson_id') is not None
+    )
+    if synthetic_context_requested:
+        try:
+            synthetic_course_id = int(data.get('synthetic_course_id'))
+            synthetic_lesson_id = int(data.get('synthetic_lesson_id'))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Для synthetic-редакции укажите курс и урок'}), 400
+        synthetic_course, synthetic_lesson = _resolve_synthetic_task_context(
+            synthetic_course_id, synthetic_lesson_id
+        )
+        if not synthetic_course or not synthetic_lesson:
+            return jsonify({
+                'success': False,
+                'error': 'Указанная synthetic-программа и урок не связаны или safe mode не активен',
+            }), 403
+        course_id = None
+        course = None
+    else:
+        try:
+            course_id = int(data.get('exam_course_id') or data.get('course_id'))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'exam_course_id обязателен'}), 400
 
-    course = Course.query.filter_by(id=course_id, is_active=True).first()
-    if not course:
-        return jsonify({'success': False, 'error': 'Программа не найдена или неактивна'}), 404
+        course = Course.query.filter_by(id=course_id, is_active=True).first()
+        if not course:
+            return jsonify({'success': False, 'error': 'Программа не найдена или неактивна'}), 404
 
     try:
         task_number = int(data.get('task_number'))
     except (TypeError, ValueError):
         return jsonify({'success': False, 'error': 'task_number обязателен'}), 400
 
-    valid_numbers = {t.task_number for t in CourseTaskTemplate.query.filter_by(course_id=course_id).all()}
+    valid_numbers = (
+        {t.task_number for t in CourseTaskTemplate.query.filter_by(course_id=course_id).all()}
+        if course_id is not None else set()
+    )
     if valid_numbers and task_number not in valid_numbers:
         return jsonify({'success': False, 'error': f'Номер {task_number} не входит в спецификацию выбранной программы'}), 400
 
@@ -2090,6 +2219,50 @@ def task_generator_bank_create():
         elif spec_type == 'long_answer':
             manual_grading = True
 
+    synthetic_binding = None
+    revision_source = None
+    if synthetic_course:
+        try:
+            revision_source_id = int(data.get('revision_of_task_id'))
+        except (TypeError, ValueError):
+            return jsonify({
+                'success': False,
+                'error': 'Synthetic-задание можно создать только как новую редакцию упражнения с привязкой к навыку',
+            }), 400
+        revision_source = Tasks.query.get(revision_source_id)
+        if (not revision_source
+                or revision_source.created_by_id != current_user.id
+                or revision_source.bank_category != 'synthetic_adaptive_draft'
+                or not str(revision_source.source_key or '').startswith('boostudy.synthetic.adaptive-v1/')):
+            return jsonify({'success': False, 'error': 'Исходное synthetic-упражнение недоступно для редакции'}), 403
+        old_spec = revision_source.answer_spec if isinstance(revision_source.answer_spec, dict) else {}
+        old_binding = old_spec.get('synthetic_course_skill_binding')
+        if not isinstance(old_binding, dict):
+            return jsonify({'success': False, 'error': 'У исходного упражнения нет привязки к навыку'}), 409
+        try:
+            same_context = (
+                old_binding.get('contract') == 'boostudy.synthetic-course-skill.v1'
+                and int(old_binding.get('course_id')) == int(synthetic_course.course_id)
+                and int(old_binding.get('lesson_id')) == int(synthetic_lesson.lesson_id)
+                and int(old_binding.get('course_version')) == int(synthetic_course.current_version or 1)
+            )
+        except (TypeError, ValueError):
+            same_context = False
+        if not same_context:
+            return jsonify({
+                'success': False,
+                'error': 'Версия курса или урока изменилась; заново проверьте привязку упражнения',
+            }), 409
+        if not isinstance(answer_spec, dict):
+            answer_spec = {}
+        synthetic_binding = dict(old_binding)
+        answer_spec['synthetic_course_skill_binding'] = synthetic_binding
+        if answer and answer_appears_in_labeled_example(content_html, answer):
+            return jsonify({
+                'success': False,
+                'error': 'Пример формата содержит эталонный ответ. Укажите нейтральный пример или опишите формат словами.',
+            }), 400
+
     site_task_id = f'manual:{uuid.uuid4()}'
 
     _fix_tasks_pk_sequence()
@@ -2111,8 +2284,23 @@ def task_generator_bank_create():
             max_score=max(1, min(100, int(data.get('max_score') or 1))),
             hints=hints,
         )
+        if synthetic_course:
+            task.bank_category = 'synthetic_adaptive_draft'
+            task.source_key = (
+                f'boostudy.synthetic.adaptive-v1/{synthetic_course.course_id}/'
+                f'{synthetic_lesson.lesson_id}/revision/{revision_source.task_id}/{uuid.uuid4().hex}'
+            )
         db.session.add(task)
         db.session.flush()
+        if synthetic_binding is not None:
+            from app.ai_lab.platform_homework import _task_fingerprint
+            from sqlalchemy.orm.attributes import flag_modified
+
+            synthetic_binding['task_fingerprint'] = _task_fingerprint(task)
+            persisted_spec = dict(task.answer_spec or {})
+            persisted_spec['synthetic_course_skill_binding'] = synthetic_binding
+            task.answer_spec = persisted_spec
+            flag_modified(task, 'answer_spec')
 
         uploaded_files = request.files.getlist('files') + request.files.getlist('files[]')
         if uploaded_files:
@@ -2158,7 +2346,15 @@ def task_generator_bank_create():
         entity='Task',
         entity_id=task.task_id,
         status='success',
-        metadata={'course_id': course_id, 'task_number': task_number, 'site_task_id': site_task_id, 'owner_id': current_user.id},
+        metadata={
+            'course_id': course_id,
+            'synthetic_course_id': synthetic_course.course_id if synthetic_course else None,
+            'synthetic_lesson_id': synthetic_lesson.lesson_id if synthetic_lesson else None,
+            'revision_of_task_id': revision_source.task_id if revision_source else None,
+            'task_number': task_number,
+            'site_task_id': site_task_id,
+            'owner_id': current_user.id,
+        },
     )
 
     task_payload = _task_to_payload(task)
@@ -2227,6 +2423,13 @@ def task_generator_bank_save(task_id: int):
     task = Tasks.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    task_answer_spec = task.answer_spec if isinstance(task.answer_spec, dict) else {}
+    if isinstance(task_answer_spec.get('synthetic_course_skill_binding'), dict):
+        return jsonify({
+            'success': False,
+            'error': 'Привязанное synthetic-задание неизменяемо. Создайте новую редакцию в контексте его курса и урока.',
+        }), 409
 
     is_admin = bool(getattr(current_user, 'is_admin', lambda: False)())
     is_python_bank_task = getattr(task, 'bank_category', 'exam') == 'python_practice'

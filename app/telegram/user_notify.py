@@ -19,37 +19,56 @@ logger = logging.getLogger(__name__)
 # Mapping kind → UserProfile attribute
 _KIND_TO_ATTR: dict[str, str] = {
     'homework_checked':          'tg_notify_homework_checked',
+    'assignment_graded':         'tg_notify_homework_checked',
     'homework_returned':         'tg_notify_homework_returned',
+    'assignment_returned':       'tg_notify_homework_returned',
     'homework_submitted':        'tg_notify_homework_submitted',
+    'assignment_submitted':      'tg_notify_homework_submitted',
+    'teacher_homework_submitted':'tg_notify_homework_submitted',
+    'assignment_assigned':       'tg_notify_homework_submitted',
+    'assignment_deadline':       'tg_notify_homework_submitted',
+    'review_queue':              'tg_notify_homework_submitted',
     'lesson_reminder':           'tg_notify_lesson_reminder',
     'lesson_scheduled':          'tg_notify_lesson_scheduled',
-    'assignment_deadline':       'tg_notify_homework_submitted',
+    'lesson_rescheduled':        'tg_notify_lesson_scheduled',
+    'lesson_cancelled':          'tg_notify_lesson_scheduled',
     'new_message':               'tg_notify_new_message',
     'news':                      'tg_notify_news',
+    'achievement':               'tg_notify_news',
+    'family_link_created':       'tg_notify_news',
+    'family_link_confirmed':     'tg_notify_news',
+    'family_link_updated':       'tg_notify_news',
+    'family_link_removed':       'tg_notify_news',
+    'family_link_revoked':       'tg_notify_news',
     'referral_used':             'tg_notify_referral_used',
     'system_errors':             'tg_notify_system_errors',
+    'system_critical_error':     'tg_notify_system_errors',
+    'operational_alert':         'tg_notify_system_errors',
     'low_lessons':               'tg_notify_low_lessons',
     'subscription_expiring':     'tg_notify_subscription_expiring',
     'bug_report_reply':          'tg_notify_bug_report_reply',
     'daily_digest':              'tg_notify_daily_digest',
-    'review_queue':              'tg_notify_homework_submitted',
     'child_digest':              'tg_notify_daily_digest',
-    'operational_alert':         'tg_notify_system_errors',
-    'achievement':               'tg_notify_news',
 }
 
 # Public taxonomy for new application services.  Kinds without a profile
 # attribute still honor the global switch, quiet hours and Redis dedupe.
 TELEGRAM_NOTIFICATION_KINDS = frozenset({
     *_KIND_TO_ATTR.keys(),
-    'review_queue',
-    'child_digest',
-    'operational_alert',
-    'achievement',
+    'generic',
 })
 
 # Kinds that bypass quiet hours (urgent or time-sensitive)
-_QUIET_HOURS_BYPASS = {'system_errors', 'bug_report_reply', 'lesson_scheduled', 'lesson_reminder'}
+_QUIET_HOURS_BYPASS = {
+    'system_errors',
+    'system_critical_error',
+    'operational_alert',
+    'bug_report_reply',
+    'lesson_scheduled',
+    'lesson_rescheduled',
+    'lesson_cancelled',
+    'lesson_reminder',
+}
 _TELEGRAM_DEDUPE_SECONDS = 120
 _STUDENT_ACK_PROMPT = 'Уведомление пришло?(уведомления тестируются, это - временная мера)'
 _STUDENT_ACK_BUTTON = '✅ Пришло'
@@ -63,6 +82,8 @@ def normalize_notification_kind(kind: Optional[str]) -> Optional[str]:
         return None
     value = str(kind).strip().lower()
     return value if value in TELEGRAM_NOTIFICATION_KINDS else 'generic'
+
+
 STUDENT_NOTIFICATION_FEEDBACK_OPTIONS: dict[str, str] = {
     'dup': 'Это уведомление продублировалось',
     'late': 'Это уведомление пришло с опозданием',
@@ -115,7 +136,7 @@ def user_allows_telegram_notification(
         return False
 
     attr = _KIND_TO_ATTR.get(kind) if kind else None
-    if attr and kind not in {'lesson_scheduled', 'lesson_reminder'}:
+    if attr:
         if not _truthy(getattr(profile, attr, True)):
             return False
 

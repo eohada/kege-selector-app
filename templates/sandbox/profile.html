@@ -561,6 +561,7 @@
     </div>
 
     {% if is_owner %}
+    {% set is_tg_linked = (target_user.profile and target_user.profile.telegram_chat_id) or (target_user.telegram_chat_id) or (target_user.telegram_id) %}
     <section id="telegram-connection" class="mt-6 rounded-[1.75rem] border-2 border-sky-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-4 sm:p-5 shadow-[0_4px_0_#DCEAF6]" aria-labelledby="telegram-connection-title">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex min-w-0 items-start gap-3">
@@ -570,15 +571,54 @@
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <h2 id="telegram-connection-title" class="text-base font-black text-slate-900">Telegram и уведомления</h2>
-              <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-black text-amber-800">Скоро</span>
+              <span id="tg-status-pill" class="inline-flex items-center gap-1 rounded-full {{ 'bg-emerald-100 text-emerald-700' if is_tg_linked else 'bg-amber-100 text-amber-700' }} px-2.5 py-1 text-[11px] font-extrabold">
+                <i class="ph-bold {{ 'ph-check-circle' if is_tg_linked else 'ph-warning-circle' }}"></i>
+                {{ 'Подключён' if is_tg_linked else 'Не подключён' }}
+              </span>
             </div>
-            <p id="tg-status-description" class="mt-1 text-sm leading-5 text-slate-600">Интеграция с Telegram-ботом и мгновенные уведомления скоро появятся на платформе.</p>
+            <p id="tg-status-description" class="mt-1 text-sm leading-5 text-slate-600">
+              {{ 'Telegram связан с профилем. Управляйте уведомлениями или при необходимости отвяжите аккаунт.' if is_tg_linked else 'Подключите Telegram, чтобы получать уведомления и открывать BooStudy из бота.' }}
+            </p>
           </div>
         </div>
         <div class="flex flex-wrap gap-2 lg:justify-end">
-          <button type="button" disabled class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-4 py-2 text-sm font-bold text-slate-400 cursor-not-allowed">
-            <i class="ph-bold ph-hourglass-medium"></i><span>Скоро</span>
+          <button id="tg-connect-button" type="button" onclick="startTelegramConnection()" {{ 'hidden' if is_tg_linked else '' }} class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_#0284C7] transition hover:bg-sky-600 active:translate-y-0.5 active:shadow-none cursor-pointer">
+            <i class="ph-bold ph-link"></i><span>Подключить Telegram</span>
           </button>
+          <button type="button" onclick="refreshTelegramStatus()" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-[0_2px_0_#E2E8F0] transition hover:bg-slate-50 active:translate-y-0.5 active:shadow-none cursor-pointer" aria-label="Обновить статус Telegram">
+            <i class="ph-bold ph-arrows-clockwise"></i><span class="hidden sm:inline">Обновить</span>
+          </button>
+          <button id="tg-notifications-button" type="button" onclick="toggleTelegramNotifications()" {{ '' if is_tg_linked else 'hidden' }} class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 cursor-pointer">
+            <i class="ph-bold ph-bell"></i>Уведомления включены
+          </button>
+          <button id="tg-unlink-button" type="button" onclick="unlinkTelegram()" {{ '' if is_tg_linked else 'hidden' }} class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-50 cursor-pointer">
+            <i class="ph-bold ph-link-break"></i>Отвязать
+          </button>
+        </div>
+      </div>
+
+      <div id="tg-link-panel" hidden class="mt-4 rounded-2xl border-2 border-sky-200 bg-white p-4 sm:p-5 shadow-[0_3px_0_#BAE6FD]">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <p class="text-sm font-black text-slate-900">Код привязки сформирован</p>
+            </div>
+            <p class="mt-0.5 text-xs leading-5 text-slate-500">Откройте бота по ссылке (привязка выполнится автоматически) или скопируйте 6-значный код и отправьте его в чат боту.</p>
+          </div>
+          <a id="tg-deep-link" href="#" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-sm font-extrabold text-white no-underline shadow-[0_3px_0_#0284C7] transition hover:bg-sky-600 active:translate-y-0.5 active:shadow-none cursor-pointer">
+            <i class="ph-bold ph-paper-plane-tilt text-base"></i><span>Открыть бота (@BooStudy_local_bot)</span>
+          </a>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl bg-sky-50/70 border border-sky-100 p-3">
+          <span class="text-xs font-bold text-slate-500">Код:</span>
+          <code id="tg-link-code" class="rounded-lg bg-white border border-sky-200 px-3 py-1 font-mono text-lg font-black tracking-widest text-sky-700 shadow-xs select-all"></code>
+          <button id="tg-copy-code-btn" type="button" onclick="copyTelegramLinkCode()" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-[0_2px_0_#E2E8F0] transition hover:bg-slate-100 active:translate-y-0.5 active:shadow-none cursor-pointer flex items-center gap-1.5">
+            <i class="ph-bold ph-copy"></i><span>Скопировать</span>
+          </button>
+          <span id="tg-link-expiry" class="ml-auto text-xs font-semibold text-slate-500 flex items-center gap-1">
+            <i class="ph-bold ph-clock"></i><span>Действует 15 минут</span>
+          </span>
         </div>
       </div>
     </section>
@@ -593,15 +633,16 @@
           <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
             <i class="ph-bold ph-crosshair text-base"></i>
           </div>
-          <span class="text-xs font-bold text-slate-500">Прогресс обучения</span>
+          <span class="text-xs font-bold text-slate-500">Общий учебный прогресс</span>
         </div>
         <div>
-          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ 74 if (current_user.is_authenticated and current_user.is_demo_user) else progress_pct }}%</h3>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ progress_pct }}%</h3>
           <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-            <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ 74 if (current_user.is_authenticated and current_user.is_demo_user) else progress_pct }}%;"></div>
+            <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ progress_pct }}%;"></div>
           </div>
         </div>
-        <p class="text-[11px] font-medium text-slate-400 truncate mb-0">{% if current_user.is_authenticated and current_user.is_demo_user %}С начала пути: 48% → 74%{% else %}{{ completed_steps }} из {{ total_steps }} этапов пройдено{% endif %}</p>
+        <p class="text-[11px] font-medium text-slate-400 mb-0">{{ completed_cnt }}/{{ total_cnt }} занятий · {{ read_theory_cnt }}/{{ total_theory_cnt }} тем теории</p>
+        <p class="text-[11px] font-medium text-slate-500 mb-0">Учитываются уроки и темы теории; работы и практика учитываются отдельно.</p>
       </div>
 
       <!-- Metric 2: Стрик -->
@@ -676,6 +717,456 @@
       </div>
 
     </div>
+
+    {% if adaptive_learning_summary %}
+    <section id="adaptive-learning-summary" class="mt-6 rounded-[1.5rem] border-2 border-slate-200/90 bg-white p-5 shadow-[0_4px_0_#DAE1E9]" aria-labelledby="adaptive-learning-summary-title">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <p class="mb-1 text-xs font-black uppercase tracking-wider text-slate-500">Локальная синтетическая сводка · Tutor Core</p>
+          <h2 id="adaptive-learning-summary-title" class="mb-2 text-lg font-black text-slate-900">Учебные свидетельства и следующий шаг</h2>
+          <p class="mb-2 text-sm font-semibold text-slate-700">Записано учебных свидетельств: {{ adaptive_learning_summary.event_count }}.</p>
+          <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="События по источникам">
+            {% for source in adaptive_learning_summary.source_evidence %}
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <span class="block text-xs font-bold text-slate-700">{{ source.label }}</span>
+                <span class="text-xs text-slate-500">{% if source.count %}Записей: {{ source.count }}{% else %}Пока нет данных{% endif %}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <p class="mb-1 text-xs font-black uppercase tracking-wide text-slate-500">Предварительный следующий шаг</p>
+          <p class="mb-1 text-sm font-bold text-slate-800">{{ adaptive_learning_summary.next_step }}</p>
+          <p class="mb-0 text-sm leading-relaxed text-slate-600">{{ adaptive_learning_summary.reason }}</p>
+          {% for diagnostic in adaptive_learning_summary.evidence_context_diagnostics %}
+          <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-950" role="status">
+            {% if diagnostic.bound_lesson_order and diagnostic.current_lesson_order %}
+            Результат относится к уроку №{{ diagnostic.bound_lesson_order }} «{{ diagnostic.bound_lesson_title }}», а следующий незавершённый по порядку — №{{ diagnostic.current_lesson_order }} «{{ diagnostic.current_lesson_title }}».
+            {% else %}
+            Результат привязан к другому уроку этой версии курса.
+            {% endif %}
+            Он не используется для изменения другого урока. {{ diagnostic.history_note }}
+          </div>
+          {% endfor %}
+          <p class="mt-3 mb-0 text-sm text-slate-600">
+            Связь с индивидуальным планом:
+            {% if adaptive_learning_summary.curriculum_status == 'not_linked' %}
+              события Tutor Core пока не сопоставлены с траекторией BooStudy, поэтому предложение к конкретному занятию не формируется.
+            {% elif adaptive_learning_summary.curriculum_status == 'synthetic_fixture_only' %}
+              используется только синтетическая связь для проверки; оригинальный курс не меняется.
+            {% elif adaptive_learning_summary.curriculum_status %}
+              связь указана; любые изменения остаются предложением для преподавателя.
+            {% else %}
+              статус связи не установлен.
+            {% endif %}
+          </p>
+          {% if adaptive_learning_summary.skills %}
+          <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3" aria-label="Состояние предметных навыков">
+            <p class="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Наблюдаемые навыки</p>
+            <ul class="mb-0 space-y-1.5">{% for skill in adaptive_learning_summary.skills %}<li class="text-sm text-slate-700"><strong>{{ skill.state_label }}</strong> · {{ skill.display_title }} <span class="text-xs text-slate-500">({{ skill.confirmed_event_count }} проверенных наблюдений; не процент освоения)</span></li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if viewer_is_teacher and can_manage_student and adaptive_learning_summary.trajectory_profile %}
+          {% set trajectory = adaptive_learning_summary.trajectory_profile %}
+          <div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4" aria-labelledby="adaptive-trajectory-title">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p class="mb-1 text-xs font-black uppercase tracking-wide text-indigo-700">Персональная программа</p>
+                <h3 id="adaptive-trajectory-title" class="mb-1 text-base font-black text-slate-900">Ближайшие элементы учебного плана</h3>
+                {% if trajectory['status'] == 'available' %}
+                <p class="mb-0 text-xs leading-relaxed text-slate-600">{{ trajectory['course_title'] }} · копия №{{ trajectory['course_id'] }} · v{{ trajectory['course_version'] }}</p>
+                {% endif %}
+              </div>
+              {% if trajectory['status'] == 'available' %}<span class="rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-bold text-indigo-800">{{ trajectory['trajectory_items']|length }} элементов</span>{% endif %}
+            </div>
+            <p class="mt-3 mb-3 text-xs leading-relaxed text-slate-600">{{ trajectory['scope_note'] if trajectory['status'] == 'available' else trajectory['reason'] }}</p>
+            {% if trajectory['status'] == 'available' and trajectory['trajectory_items'] %}
+            <ol class="mb-0 space-y-2" aria-label="Учебные элементы по порядку курса">
+              {% for item in trajectory['trajectory_items'] %}
+              <li class="rounded-lg border border-white bg-white/85 p-3">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <h4 class="mb-0 text-sm font-bold text-slate-800">{{ item.order or loop.index }}. {{ item.title }}{% if item.is_selected_start %}<span class="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-black text-indigo-800">Точка анализа</span>{% endif %}{% if item.sequence_state_label %}<span class="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">{{ item.sequence_state_label }}</span>{% endif %}</h4>
+                  <span class="text-xs text-slate-500">{{ item.duration_minutes }} мин · запись урока №{{ item.lesson_id }}</span>
+                </div>
+                {% if item.sequence_reason %}<p class="mt-1 mb-0 text-xs text-amber-800">Основание отложения: {{ item.sequence_reason }}</p>{% endif %}
+                {% if item.skills %}
+                <ul class="mt-2 mb-0 space-y-1 border-l-2 border-indigo-100 pl-3">
+                  {% for skill in item.skills %}
+                  <li class="text-xs leading-relaxed text-slate-700"><strong>{{ skill.title }}</strong> · {{ skill.history_observations }} наблюдений в истории ({{ skill.history_met }} верных, {{ skill.history_not_met }} неверных); непосредственно по этому уроку: {{ skill.direct_lesson_evidence_count }}. {{ skill.interpretation }}</li>
+                  {% endfor %}
+                </ul>
+                {% else %}<p class="mt-2 mb-0 text-xs text-amber-800">Урок не связан с точными идентификаторами навыков; выводы по результатам не строятся.</p>{% endif %}
+              </li>
+              {% endfor %}
+            </ol>
+            <p class="mt-3 mb-0 text-xs font-semibold leading-relaxed text-slate-600">{{ trajectory['proposal_scope_note'] }}</p>
+            {% endif %}
+            {% if trajectory['evidence'] %}
+            <details class="mt-3 rounded-lg border border-indigo-100 bg-white px-3 py-2">
+              <summary class="cursor-pointer text-xs font-bold text-slate-700">Источники, пригодность и ограничения · {{ trajectory['evidence']|length }} последних записей</summary>
+              <ol class="mt-3 mb-0 space-y-2">
+                {% for event in trajectory['evidence'] %}
+                <li class="border-t border-slate-100 pt-2 text-xs leading-relaxed text-slate-700">
+                  <div class="flex flex-wrap justify-between gap-x-3"><strong>{{ event.source }} · {{ event.score if event.score is not none else 'без балла' }}{% if event.maximum is not none %}/{{ event.maximum }}{% endif %}</strong><span class="text-slate-500">{{ event.occurred_at }}</span></div>
+                  <p class="mb-1">{{ event.eligibility_label }} · {{ event.evidence_status_label }}{% if event.exclusion_reason %} · {{ event.exclusion_reason }}{% endif %}</p>
+                  <p class="mb-0 text-slate-500">Проверка: {{ event.method }} · помощь: {{ event.assistance_label }} · {{ event.reason }} · область урока: {{ event.lesson_scope }}</p>
+                </li>
+                {% endfor %}
+              </ol>
+            </details>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% set cohort = adaptive_learning_summary.cohort_comparison %}
+          {% if viewer_is_teacher and can_manage_student and cohort %}
+          <section class="mt-4 rounded-xl border border-sky-200 bg-sky-50/60 p-4" aria-labelledby="adaptive-cohort-title">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p class="mb-1 text-xs font-black uppercase tracking-wide text-sky-800">Один базовый курс · разные личные планы</p>
+                <h3 id="adaptive-cohort-title" class="mb-1 text-base font-black text-slate-900">Сравнение индивидуальных программ</h3>
+                <p class="mb-0 text-xs text-slate-600">{{ cohort.base_title }} · версия {{ cohort.base_version }}</p>
+              </div>
+              {% if cohort.status == 'available' %}<span class="rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-bold text-sky-900">{{ cohort.learners|length }} доступных траекторий</span>{% endif %}
+            </div>
+            <p class="mt-2 mb-3 text-xs leading-relaxed text-slate-600">{{ cohort.note if cohort.status == 'available' else cohort.reason }}</p>
+            {% if cohort.status == 'available' and cohort.learners %}
+            <div class="grid grid-cols-1 gap-3 xl:grid-cols-3" aria-label="Сводка индивидуальных программ учеников">
+              {% for learner in cohort.learners %}
+              <article class="min-w-0 rounded-xl border {{ 'border-sky-300 bg-white ring-2 ring-sky-100' if learner.is_selected else 'border-slate-200 bg-white/90' }} p-3" aria-label="Программа {{ learner.display_name }}">
+                <header class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <h4 class="mb-1 break-words text-sm font-black text-slate-900">{{ learner.display_name }}</h4>
+                    <p class="mb-0 text-xs text-slate-500">{{ learner.course_title }} · v{{ learner.course_version }}</p>
+                  </div>
+                  {% if learner.is_selected %}<span class="shrink-0 rounded-full bg-sky-100 px-2 py-1 text-[10px] font-black text-sky-900">Этот профиль</span>{% endif %}
+                </header>
+                <p class="mt-3 mb-1 text-xs font-bold text-slate-700">Изменения относительно базового плана</p>
+                {% if learner.lesson_changes %}
+                <ul class="mb-2 space-y-1 text-xs leading-relaxed text-slate-600">
+                  {% for change in learner.lesson_changes[:3] %}
+                  <li><strong>№{{ change.order }} · {{ change.title }}</strong>: {{ change.fields|join(', ') }}.</li>
+                  {% endfor %}
+                </ul>
+                {% if learner.changed_lesson_count > 3 %}<p class="mb-2 text-xs text-slate-500">Ещё {{ learner.changed_lesson_count - 3 }} изменённых занятий.</p>{% endif %}
+                {% else %}<p class="mb-2 text-xs text-slate-600">Содержательных отличий от базового плана пока нет.</p>{% endif %}
+                <div class="mb-2 grid grid-cols-2 gap-1 text-center">
+                  <div class="rounded-lg bg-slate-50 px-1 py-2"><strong class="block text-sm text-slate-900">{{ learner.evidence_count }}</strong><span class="text-[10px] text-slate-500">событий</span></div>
+                  <div class="rounded-lg bg-emerald-50 px-1 py-2"><strong class="block text-sm text-emerald-900">{{ learner.confirmed_count }}</strong><span class="text-[10px] text-emerald-800">результат проверен</span></div>
+                  <div class="rounded-lg bg-rose-50 px-1 py-2"><strong class="block text-sm text-rose-900">{{ learner.conflicted_count }}</strong><span class="text-[10px] text-rose-800">конфликт</span></div>
+                  <div class="rounded-lg bg-amber-50 px-1 py-2"><strong class="block text-sm text-amber-900">{{ learner.unknown_count }}</strong><span class="text-[10px] text-amber-800">недостаточно данных</span></div>
+                </div>
+                <p class="mb-3 text-[11px] leading-relaxed text-slate-500">Применимость к текущей программе: {{ learner.eligible_count }} из {{ learner.evidence_count }} событий. Проверка относится к конкретному ответу и не доказывает освоение навыка.</p>
+                {% if learner.skill_states %}
+                <div class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                  <p class="mb-1 text-[10px] font-black uppercase tracking-wide text-slate-500">Навыки ближайшего урока</p>
+                  {% for skill in learner.skill_states[:2] %}<p class="mb-1 text-xs leading-relaxed text-slate-700"><strong>{{ skill.title }}</strong> · {{ skill.state }}{% if skill.observations %} (история: {{ skill.observations }}){% endif %}</p>{% endfor %}
+                </div>
+                {% endif %}
+                <p class="mb-1 text-xs font-bold text-slate-700">Следующий шаг Tutor Core</p>
+                <p class="mb-2 text-xs leading-relaxed text-slate-700">{{ learner.recommendation }}</p>
+                <p class="mb-2 text-[11px] leading-relaxed text-slate-500">Ограничение вывода: {{ learner.uncertainty }}</p>
+                {% if learner.used_exercises %}
+                <details class="mb-2 rounded-lg border border-slate-200 px-2 py-1.5">
+                  <summary class="cursor-pointer text-xs font-bold text-slate-700">Уже встречавшиеся упражнения · {{ learner.used_exercises|length }}</summary>
+                  <ul class="mt-2 mb-0 space-y-1 text-xs leading-relaxed text-slate-600">{% for exercise in learner.used_exercises[:4] %}<li>{{ exercise }}</li>{% endfor %}</ul>
+                </details>
+                {% else %}<p class="mb-2 text-xs text-slate-500">В истории пока нет идентифицированных использованных упражнений.</p>{% endif %}
+                {% if learner.next_lessons %}
+                <details class="mb-2 rounded-lg border border-slate-200 px-2 py-1.5">
+                  <summary class="cursor-pointer text-xs font-bold text-slate-700">Элементов в доступном окне: {{ learner.next_lessons|length }}</summary>
+                  <ol class="mt-2 mb-0 space-y-2">{% for lesson in learner.next_lessons %}<li class="border-t border-slate-100 pt-2 text-xs text-slate-700"><strong>№{{ lesson.order }} · {{ lesson.title }}</strong> · {{ lesson.duration_minutes }} мин{% for skill in lesson.skills %}<p class="mb-0 mt-1 text-slate-500">{{ skill.title }}: {{ skill.interpretation }}</p>{% endfor %}</li>{% endfor %}</ol>
+                </details>
+                {% else %}<p class="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs leading-relaxed text-slate-600">Следующие элементы содержания не отображаются: {{ learner.trajectory_reason or 'в индивидуальном плане нет выбранного будущего урока.' }}</p>
+                {% endif %}
+                {% if learner.decision_history %}
+                <p class="mb-2 text-[11px] text-slate-500">Последнее решение преподавателя: {{ learner.decision_history[-1].decision }}{% if learner.decision_history[-1].rollback %} · изменение откачено{% endif %}.</p>
+                {% else %}<p class="mb-2 text-[11px] text-slate-500">Сохранённых решений преподавателя по предложению Tutor Core нет.</p>{% endif %}
+                {% if learner.version_history or learner.manual_plan_history %}
+                <details class="mb-2 rounded-lg border border-slate-200 px-2 py-1.5">
+                  <summary class="cursor-pointer text-xs font-bold text-slate-700">Версии и ручные решения</summary>
+                  {% if learner.manual_plan_history %}<ol class="mt-2 mb-0 space-y-2">{% for change in learner.manual_plan_history %}<li class="border-t border-slate-100 pt-2 text-xs leading-relaxed text-slate-600"><strong>Урок №{{ change.lesson_order }} · {{ change.lesson_title }}</strong> · v{{ change.source_version }} → v{{ change.effective_version }}<br>{{ change.reason }}</li>{% endfor %}</ol>{% endif %}
+                  {% if learner.version_history %}<p class="mb-1 mt-2 text-[10px] font-black uppercase tracking-wide text-slate-500">Последние версии снимка курса</p><ul class="mb-0 space-y-1 text-xs text-slate-600">{% for version in learner.version_history[:3] %}<li>v{{ version.version }} · {{ version.reason }}</li>{% endfor %}</ul>{% endif %}
+                </details>
+                {% endif %}
+                {% if learner.plan_editor_url %}
+                <a class="bs-button bs-button-primary mb-2 min-h-[40px] w-full" href="{{ learner.plan_editor_url }}">{{ learner.plan_editor_label }}</a>
+                <p class="mb-2 text-[11px] leading-relaxed text-slate-500">Ручное решение преподавателя · только эта индивидуальная программа · дата занятия не назначается.</p>
+                {% endif %}
+                <a class="bs-button bs-button-secondary min-h-[40px] w-full" href="{{ learner.profile_url }}">Открыть профиль ученика</a>
+              </article>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </section>
+          {% endif %}
+          {% if adaptive_learning_summary.curriculum and adaptive_learning_summary.curriculum.status == 'linked' %}
+          <div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+            <p class="mb-1 text-xs font-black uppercase tracking-wide text-indigo-700">Связанный индивидуальный урок</p>
+            <p class="mb-1 text-sm font-bold text-slate-800">{{ adaptive_learning_summary.curriculum.course_title }} · v{{ adaptive_learning_summary.curriculum.course_version }}</p>
+            <p class="mb-2 text-sm text-slate-700">{{ adaptive_learning_summary.curriculum.module_title }} · {{ adaptive_learning_summary.curriculum.lesson_topic }} · {{ adaptive_learning_summary.curriculum.lesson_duration }} минут</p>
+            {% if adaptive_learning_summary.curriculum.is_future_focus %}
+              {% if adaptive_learning_summary.curriculum.target_lesson_order and adaptive_learning_summary.curriculum.target_segment %}
+                <p class="mb-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-indigo-900">Текущий урок «{{ adaptive_learning_summary.curriculum.current_lesson_topic }}» не меняется. Предложение относится к будущему уроку №{{ adaptive_learning_summary.curriculum.target_lesson_order }} и уточняет этап «{{ adaptive_learning_summary.curriculum.target_segment }}».</p>
+              {% else %}
+                <p class="mb-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-indigo-900">Предложение относится к запланированному занятию «{{ adaptive_learning_summary.curriculum.lesson_topic }}»; его цель, этапы и длительность сохраняются.</p>
+              {% endif %}
+              {% if adaptive_learning_summary.curriculum.target_learning_goal %}<p class="mb-2 text-sm text-slate-700"><strong>Цель урока:</strong> {{ adaptive_learning_summary.curriculum.target_learning_goal }}</p>{% endif %}
+              {% if adaptive_learning_summary.curriculum.target_original_content %}<p class="mb-2 text-sm text-slate-600"><strong>Исходный план:</strong> {{ adaptive_learning_summary.curriculum.target_original_content }}</p>{% endif %}
+              {% if adaptive_learning_summary.curriculum.teacher_focus %}<p class="mb-2 text-sm text-slate-700"><strong>Предлагаемый фокус:</strong> {{ adaptive_learning_summary.curriculum.teacher_focus }}</p>{% endif %}
+              {% for coverage in adaptive_learning_summary.curriculum.criterion_coverage %}<p class="mb-2 text-xs text-slate-600"><strong>Критерий:</strong> {{ coverage.label }} · {{ coverage.status }}. Основание: смешанные технически подтверждённые наблюдения; причина расхождения не установлена.</p>{% endfor %}
+            {% endif %}
+            {% if adaptive_learning_summary.curriculum.selected_exercise %}
+              <p class="mb-1 text-sm font-semibold text-slate-800">Проверяемое упражнение: {{ adaptive_learning_summary.curriculum.selected_exercise.title }}</p>
+              <p class="mb-2 text-sm text-slate-600">{{ adaptive_learning_summary.curriculum.selected_exercise.prompt }}</p>
+              {% if adaptive_learning_summary.curriculum.selected_exercise.guided_only %}<p class="mb-2 text-xs font-semibold text-amber-800">Условие уже было показано ученику: только совместный разбор, не независимая проверка и не новое свидетельство.</p>{% endif %}
+              {% endif %}
+            <p class="mb-0 text-sm text-slate-600">{{ adaptive_learning_summary.curriculum.time_impact }}</p>
+            {% if adaptive_learning_summary.curriculum.separate_activity %}<p class="mt-2 mb-0 text-sm font-semibold text-amber-800">Дополнительное действие не входит в занятие и требует отдельного времени преподавателя.</p>{% endif %}
+          </div>
+          {% endif %}
+          <p class="mt-3 mb-0 text-xs leading-relaxed text-slate-500">Это предложение по синтетическим данным для просмотра преподавателем. Источники и ограничения показаны в этой сводке; курс и расписание автоматически не меняются.</p>
+        </div>
+        <div class="flex shrink-0 flex-col gap-2">
+          {% if adaptive_learning_summary.details_url %}
+          <a class="bs-button bs-button-secondary min-h-[44px]" href="{{ adaptive_learning_summary.details_url }}">Открыть основания и решения</a>
+          {% elif adaptive_learning_summary.details_note %}
+          <p class="max-w-xs text-xs leading-relaxed text-slate-500" role="status">{{ adaptive_learning_summary.details_note }}</p>
+          {% endif %}
+          {% if adaptive_learning_summary.curriculum and adaptive_learning_summary.curriculum.preview_available and (viewer_is_admin or viewer_is_creator) %}
+          <form method="post" action="{{ url_for('ai_lab.tutor_core_create_proposal') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="profile_id" value="{{ adaptive_learning_summary.subject_id }}">
+            <input type="hidden" name="include_model" value="false">
+            <button class="bs-button bs-button-primary min-h-[44px] w-full" type="submit">Подготовить черновик решения</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% if viewer_is_teacher and can_manage_student %}
+      <div class="mt-5 border-t border-slate-200 pt-4" aria-label="Действия преподавателя Tutor Core">
+        {% if not adaptive_learning_summary.proposal_history and not (adaptive_learning_summary.curriculum and adaptive_learning_summary.curriculum.preview_available) %}
+        <p class="mb-0 text-sm leading-relaxed text-slate-600" role="status">
+          {% if adaptive_learning_summary.needs_future_lesson and adaptive_learning_summary.course_plan_url %}
+          В индивидуальной программе не осталось будущих занятий. Tutor Core не создаёт продолжение автоматически; преподаватель может добавить следующий урок в обычной форме курса.
+          {% else %}
+          Сейчас нет действия для преподавателя: Tutor Core не подготовила проверяемое упражнение для этого урока. Причина указана выше; план и задания не изменялись.
+          {% endif %}
+        </p>
+        {% endif %}
+        {% if adaptive_learning_summary.current_lesson_url and adaptive_learning_summary.evidence_context_diagnostics %}
+        <a class="bs-button bs-button-secondary mt-3 min-h-[44px]" href="{{ adaptive_learning_summary.current_lesson_url }}">Открыть следующий урок по порядку</a>
+        {% endif %}
+        {% if adaptive_learning_summary.needs_future_lesson and adaptive_learning_summary.course_plan_url %}
+        <a class="bs-button bs-button-secondary mt-3 min-h-[44px]" href="{{ adaptive_learning_summary.course_plan_url }}">Добавить следующее занятие</a>
+        <p class="mt-2 mb-0 text-xs leading-relaxed text-slate-500">Откроется форма индивидуальной программы. Ничего не добавится, пока преподаватель не заполнит и не сохранит урок.</p>
+        {% endif %}
+        {% if adaptive_learning_summary.curriculum and adaptive_learning_summary.curriculum.preview_available %}
+        <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mb-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="preview">
+          <button class="bs-button bs-button-primary min-h-[44px]" type="submit">Подготовить предварительный просмотр</button>
+          <span class="ml-2 text-xs text-slate-500">Синтетические данные · план не меняется</span>
+        </form>
+        {% endif %}
+        {% if adaptive_learning_summary.proposal_history %}
+        <p class="mb-3 text-xs leading-relaxed text-slate-500" role="note">
+          Ниже — история предложений и решений Tutor Core, а не только актуальные действия. Решение относится к сохранённому предложению; текущий статус программы и следующий шаг показаны выше.
+        </p>
+        {% endif %}
+        {% for entry in (adaptive_learning_summary.proposal_history or [])|reverse %}
+          {% set details = entry.proposal.proposal if entry.proposal and entry.proposal.proposal else {} %}
+          {% set exercise = details.selected_exercise if details.selected_exercise else {} %}
+          {% set history_status = 'Отменено' if entry.rollback_at else ('Принято преподавателем' if entry.decision == 'accepted' else ('Отклонено преподавателем' if entry.decision == 'rejected' else 'Ожидает решения')) %}
+          <article class="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-4" aria-label="История предложений и решений Tutor Core">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="mb-0 text-sm font-bold text-slate-800">{{ 'Фокус будущего урока' if details.action == 'teacher_focus_overlay' else ('Последовательность упражнений' if details.action == 'exercise_sequence_adjustment' else (details.title or details.action or 'Предложение Tutor Core')) }}</h3>
+              <span class="text-xs font-semibold text-slate-500">{{ entry.created_at or '' }} · {{ history_status }}</span>
+            </div>
+            {% if entry.decision or entry.rollback_at %}<p class="mt-2 mb-1 text-xs text-slate-500">Сохранённая запись решения; она не означает, что предложение остаётся текущим или что завершённый урок изменён.</p>{% endif %}
+            <p class="mt-2 mb-1 text-sm text-slate-700">{{ details.reason or details.text or 'Основание сохранено в preview.' }}</p>
+            {% if exercise.title %}
+              <p class="mb-1 text-sm font-semibold text-slate-800">Упражнение: {{ exercise.title }}</p>
+              <p class="mb-1 text-sm text-slate-600">{{ exercise.prompt }}</p>
+              <p class="mb-2 text-xs text-slate-500">Критерии: {% if details.action == 'teacher_focus_overlay' %}{% for coverage in details.criteria_coverage %}{{ coverage.label }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{{ exercise.criterion_ids|join(', ') }}{% endif %} · проверка: {{ exercise.verification.method if exercise.verification else 'не указана' }}</p>
+            {% endif %}
+            {% if details.exercise_sequence and not entry.decision and not entry.diagnostic_assignment_id %}
+              <form id="exercise-sequence-{{ entry.id }}" method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mt-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="review">
+                <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                <input type="hidden" name="decision" value="accepted">
+            {% endif %}
+            {% if details.exercise_sequence %}
+              {% set sequence_basis = details.exercise_sequence_basis or {} %}
+              <p class="mb-2 text-xs text-slate-600">Основание: {{ sequence_basis.event_ids|length }} разных проверенных событий по критерию {{ sequence_basis.criterion_id }}; результаты обоих типов. Это не подтверждает причину ошибки, самостоятельность или освоение.</p>
+              <div class="mb-3 grid gap-3 md:grid-cols-2" aria-label="Упражнения и предлагаемые роли">
+                {% for item in details.exercise_sequence %}
+                  <div class="rounded-xl border border-slate-200 bg-white p-3">
+                    <p class="mb-1 text-sm font-semibold text-slate-800">{{ item.title }}</p>
+                    <p class="mb-2 text-sm text-slate-600">{{ item.prompt }}</p>
+                    <p class="mb-2 text-xs text-slate-500">Критерий: {{ item.criterion_ids|join(', ') }} · {{ item.verification.method or 'точный ответ' }}</p>
+                    <label for="exercise-role-{{ entry.id }}-{{ item.task_id }}" class="mb-1 block text-xs font-bold text-slate-700">Использовать как</label>
+                    {% if not entry.decision and not entry.diagnostic_assignment_id %}
+                      <select id="exercise-role-{{ entry.id }}-{{ item.task_id }}" name="exercise_role_{{ item.task_id }}" class="w-full rounded-xl border border-slate-300 bg-white p-2 text-sm text-slate-800">
+                        <option value="classwork" {{ 'selected' if item.proposed_role == 'classwork' else '' }}>Классная работа</option>
+                        <option value="homework" {{ 'selected' if item.proposed_role == 'homework' else '' }}>Домашняя работа</option>
+                      </select>
+                    {% elif entry.decision == 'accepted' and entry.applied_change and entry.applied_change.new_exercise_roles %}
+                      {% for saved_role in entry.applied_change.new_exercise_roles if saved_role.task_id == item.task_id %}
+                        <p class="mb-0 text-sm font-semibold text-slate-700">Сохранённая роль: {{ 'Классная работа' if saved_role.role == 'classwork' else 'Домашняя работа' }}</p>
+                      {% endfor %}
+                    {% else %}
+                      <p class="mb-0 text-sm font-semibold text-slate-700">Предложенная роль: {{ 'Классная работа' if item.proposed_role == 'classwork' else 'Домашняя работа' }} · решение {{ 'отклонено' if entry.decision == 'rejected' else 'уже сохранено' }}</p>
+                    {% endif %}
+                    <p class="mt-2 mb-0 text-xs text-slate-500">Условие уже показывалось; повтор не считается независимой диагностикой.</p>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if details.time_plan %}
+              {% if details.action == 'teacher_focus_overlay' %}
+                <p class="mb-2 text-xs text-slate-600">Время: урок {{ details.time_plan.total_minutes or adaptive_learning_summary.curriculum.lesson_duration }} минут; этапы и их порядок сохраняются. Меняется только фокус преподавателя внутри этапа.</p>
+              {% elif details.action == 'exercise_sequence_adjustment' %}
+                <p class="mb-2 text-xs text-slate-600">Время: {{ details.time_plan.total_minutes }} минут. Цель, критерии и этапы сохранены; меняется только распределение двух упражнений между классной и домашней работой.</p>
+              {% else %}
+                <p class="mb-2 text-xs text-slate-600">Время: {{ details.time_plan.status or 'не распределено' }}; урок {{ details.time_plan.total_minutes or adaptive_learning_summary.curriculum.lesson_duration }} минут. {{ details.time_plan.explanation or '' }}</p>
+              {% endif %}
+              {% if details.time_plan.original_segments and details.time_plan.proposed_segments %}
+                <div class="mb-3 grid gap-3 md:grid-cols-2" aria-label="Сравнение структуры занятия до и после предложения">
+                  <section class="rounded-xl border border-slate-200 bg-white p-3" aria-labelledby="plan-before-{{ entry.id }}">
+                    <h4 id="plan-before-{{ entry.id }}" class="mb-2 text-xs font-bold text-slate-700">Исходный план · {{ details.time_plan.lesson_minutes }} минут</h4>
+                    <ol class="space-y-2">
+                      {% for segment in details.time_plan.original_segments %}
+                        <li class="flex items-start justify-between gap-3 text-xs text-slate-600">
+                          <span>{{ segment.title }}{% if segment.mandatory %} · обязательный этап{% endif %}</span>
+                          <strong class="shrink-0">{{ segment.minutes }} мин.</strong>
+                        </li>
+                      {% endfor %}
+                    </ol>
+                  </section>
+                  <section class="rounded-xl border border-violet-200 bg-violet-50/50 p-3" aria-labelledby="plan-after-{{ entry.id }}">
+                    <h4 id="plan-after-{{ entry.id }}" class="mb-2 text-xs font-bold text-violet-800">Предлагаемый план · {{ details.time_plan.planned_lesson_minutes or details.time_plan.lesson_minutes }} минут</h4>
+                    <ol class="space-y-2">
+                      {% for segment in details.time_plan.proposed_segments %}
+                        <li class="flex items-start justify-between gap-3 text-xs text-slate-700">
+                          <span>{{ segment.title }}{% if segment.mandatory %} · обязательный этап{% endif %}</span>
+                          <strong class="shrink-0">{{ segment.minutes }} мин.</strong>
+                        </li>
+                      {% endfor %}
+                    </ol>
+                  </section>
+                </div>
+              {% endif %}
+              {% if not entry.decision and details.time_plan.status == 'redistributed' and details.time_plan.inserted_segment %}
+                <p class="mb-2 text-xs font-semibold text-slate-600">Обязательные этапы и их цели защищены. Можно изменить только явно разрешённые гибкие минуты и описание нового этапа; сумма должна остаться {{ details.time_plan.lesson_minutes }} минут.</p>
+              {% endif %}
+            {% endif %}
+            {% if entry.diagnostic_assignment_id %}
+              <p class="mb-2 text-xs font-semibold text-emerald-700">Диагностика назначена · работа №{{ entry.diagnostic_assignment_id }}</p>
+            {% endif %}
+            {% if entry.decision == 'accepted' and entry.applied_change and not entry.rollback_at %}
+              <p class="mb-2 text-sm text-emerald-800">Изменение сохранено в копии курса №{{ entry.applied_change.course_id }} · новая версия v{{ entry.applied_change.new_course_version }} · урок: {{ entry.applied_change.target_lesson_title }}.</p>
+              {% if entry.applied_change.teacher_focus %}<p class="mb-3 text-sm text-slate-700"><strong>Утверждённый фокус:</strong> {{ entry.applied_change.teacher_focus }}</p>{% endif %}
+              {% if entry.applied_change.new_exercise_roles %}<p class="mb-3 text-sm text-slate-700"><strong>Сохранённые роли:</strong> {% for item in entry.applied_change.new_exercise_roles %}№{{ item.task_id }} — {{ 'классная работа' if item.role == 'classwork' else 'домашняя работа' }}{% if not loop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+              {% if entry.applied_change.time_plan_change and entry.applied_change.time_plan_change.inserted_segment %}
+                <div class="mb-3 rounded-xl border border-emerald-200 bg-white p-3" aria-label="Сохранённая структура адаптированного занятия">
+                  <p class="mb-2 text-sm font-bold text-emerald-900">Сохранённая структура · {{ entry.applied_change.time_plan_change.total_minutes }} минут</p>
+                  <ol class="mb-2 space-y-1">
+                    {% for segment in entry.applied_change.time_plan_change.proposed_segments %}
+                      <li class="flex items-start justify-between gap-3 text-xs text-slate-700"><span>{{ segment.title }}{% if segment.id == entry.applied_change.time_plan_change.inserted_segment.id %}: {{ segment.purpose }}{% endif %}</span><strong class="shrink-0">{{ segment.minutes }} мин.</strong></li>
+                    {% endfor %}
+                  </ol>
+                  <p class="mb-0 text-xs text-slate-500">Основание перераспределения: {% for cut in entry.applied_change.time_plan_change.cuts %}{{ cut.minutes }} мин. из «{{ cut.segment_id }}» — {{ cut.reason }}{% if not loop.last %}; {% endif %}{% endfor %}</p>
+                </div>
+              {% endif %}
+              <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="rollback">
+                <input type="hidden" name="decision_id" value="{{ entry.decision_id }}">
+                <button class="bs-button bs-button-secondary min-h-[44px]" type="submit">Отменить изменение индивидуальной программы</button>
+              </form>
+            {% elif entry.rollback_at %}
+              <p class="mb-0 text-xs text-slate-500">Изменение отменено {{ entry.rollback_at }}; история сохранена.</p>
+            {% elif not entry.decision and not entry.diagnostic_assignment_id %}
+              {% if details.action == 'diagnostic_without_mastery_claim' and details.time_plan.status == 'separate_activity' %}
+                <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mt-3">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="action" value="assign_diagnostic">
+                  <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                  <button class="bs-button bs-button-primary min-h-[44px]" type="submit">Назначить отдельную диагностику</button>
+                </form>
+              {% else %}
+                {% if details.action == 'teacher_focus_overlay' %}
+                  <p class="mt-3 mb-2 text-xs text-slate-600">Условие уже знакомо ученику, поэтому фокус предназначен только для направленного разбора. Длительность и этапы урока сохраняются.</p>
+                  <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="review">
+                    <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                    <input type="hidden" name="decision" value="accepted">
+                    <label for="teacher-focus-{{ entry.id }}" class="mb-1 block text-xs font-bold text-slate-700">Отредактируйте фокус перед сохранением, если нужно</label>
+                    <textarea id="teacher-focus-{{ entry.id }}" name="teacher_focus" rows="3" minlength="30" maxlength="1500" class="mb-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-800" required>{{ details.teacher_focus or '' }}</textarea>
+                    <button class="bs-button bs-button-primary min-h-[44px]" type="submit">Подтвердить фокус для будущего урока</button>
+                  </form>
+                  <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="review">
+                    <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                    <input type="hidden" name="decision" value="rejected">
+                    <button class="bs-button bs-button-secondary min-h-[44px]" type="submit">Отклонить предложение</button>
+                  </form>
+                {% elif details.action == 'exercise_sequence_adjustment' %}
+                    <button class="bs-button bs-button-primary min-h-[44px]" type="submit">Сохранить выбранное распределение</button>
+                  </form>
+                  <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="review">
+                    <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                    <input type="hidden" name="decision" value="rejected">
+                    <button class="bs-button bs-button-secondary min-h-[44px]" type="submit">Отклонить предложение</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mt-3 space-y-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="review">
+                    <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                    <input type="hidden" name="decision" value="accepted">
+                    {% if details.time_plan.status == 'redistributed' and details.time_plan.inserted_segment %}
+                      <fieldset class="rounded-xl border border-violet-200 bg-white p-3">
+                        <legend class="px-1 text-xs font-bold text-violet-800">Настройка структуры до подтверждения</legend>
+                        {% for segment in details.time_plan.original_segments if not segment.mandatory and segment.flexible_minutes and segment.flexible_reason %}
+                          {% set proposed_value = namespace(minutes=segment.minutes) %}
+                          {% for candidate in details.time_plan.proposed_segments if candidate.id == segment.id %}{% set proposed_value.minutes = candidate.minutes %}{% endfor %}
+                          <label for="stage-minutes-{{ entry.id }}-{{ segment.id }}" class="mb-2 grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3 text-xs font-semibold text-slate-700">
+                            <span>{{ segment.title }} · до {{ segment.flexible_minutes }} гибких минут: {{ segment.flexible_reason }}</span>
+                            <span class="flex items-center gap-1"><input id="stage-minutes-{{ entry.id }}-{{ segment.id }}" type="number" name="stage_minutes_{{ segment.id }}" min="{{ [1, segment.minutes - segment.flexible_minutes]|max }}" max="{{ segment.minutes }}" value="{{ proposed_value.minutes }}" required class="min-h-11 w-full rounded-lg border border-slate-300 px-2 text-sm"><span>мин.</span></span>
+                          </label>
+                        {% endfor %}
+                        {% set inserted = details.time_plan.inserted_segment %}
+                        <label for="stage-minutes-{{ entry.id }}-{{ inserted.id }}" class="mb-2 grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-3 text-xs font-semibold text-slate-700">
+                          <span>Новый этап с проверенным упражнением «{{ exercise.title }}»</span>
+                          <span class="flex items-center gap-1"><input id="stage-minutes-{{ entry.id }}-{{ inserted.id }}" type="number" name="stage_minutes_{{ inserted.id }}" min="5" max="20" value="{{ inserted.minutes }}" required class="min-h-11 w-full rounded-lg border border-slate-300 px-2 text-sm"><span>мин.</span></span>
+                        </label>
+                        <label for="stage-purpose-{{ entry.id }}" class="block text-xs font-semibold text-slate-700">Содержание и глубина нового этапа</label>
+                        <textarea id="stage-purpose-{{ entry.id }}" name="stage_purpose" rows="3" minlength="20" maxlength="500" required class="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-800">{{ inserted.purpose }}</textarea>
+                        <p class="mt-2 mb-0 text-xs text-slate-500">Если времени не хватает или гибкий резерв исчерпан, сервер отклонит изменение. Проверенное условие упражнения останется привязано к этапу.</p>
+                      </fieldset>
+                    {% endif %}
+                    <button class="bs-button bs-button-primary min-h-[44px]" type="submit">Подтвердить и сохранить план урока</button>
+                  </form>
+                  <form method="post" action="{{ url_for('main.adaptive_learning_action', user_id=target_user.id) }}" class="mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="review">
+                    <input type="hidden" name="proposal_id" value="{{ entry.id }}">
+                    <input type="hidden" name="decision" value="rejected">
+                    <button class="bs-button bs-button-secondary min-h-[44px]" type="submit">Отклонить предложение</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
 
     <!-- 3. MAIN CONTENT (2 Columns: Left 7 cols, Right 5 cols) -->
     <div class="profile-main-grid grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-start">
@@ -3131,17 +3622,117 @@ function renderTelegramConnection(status) {
   if (linked) panel.hidden = true;
 }
 
-async function refreshTelegramStatus() {
-  return null; // Telegram feature marked as Скоро
+let tgPollingInterval = null;
+
+function stopTelegramStatusPolling() {
+  if (tgPollingInterval) {
+    clearInterval(tgPollingInterval);
+    tgPollingInterval = null;
+  }
+}
+
+function startTelegramStatusPolling(durationMs = 120000, intervalMs = 3000) {
+  stopTelegramStatusPolling();
+  const startTime = Date.now();
+  tgPollingInterval = setInterval(async () => {
+    if (Date.now() - startTime > durationMs) {
+      stopTelegramStatusPolling();
+      return;
+    }
+    const res = await refreshTelegramStatus(true);
+    if (res && res.linked) {
+      stopTelegramStatusPolling();
+      telegramNotify('success', 'Telegram успешно подключен к аккаунту!');
+    }
+  }, intervalMs);
+}
+
+async function refreshTelegramStatus(silent = false) {
+  const pill = document.getElementById('tg-status-pill');
+  try {
+    if (pill && !silent) pill.textContent = 'Проверяем статус…';
+    const response = await fetch('/api/telegram/status', { headers: profileApiHeaders() });
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить статус');
+    renderTelegramConnection(data);
+    if (data.linked) {
+      stopTelegramStatusPolling();
+    }
+    return data;
+  } catch (error) {
+    if (pill && !silent) {
+      pill.className = 'inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700';
+      pill.textContent = 'Статус недоступен';
+    }
+    if (!silent) {
+      telegramNotify('error', error.message || 'Не удалось получить статус Telegram');
+    }
+    return null;
+  }
 }
 
 async function startTelegramConnection() {
+  const button = document.getElementById('tg-connect-button');
+  const panel = document.getElementById('tg-link-panel');
+  try {
+    if (button) button.disabled = true;
+    const response = await fetch('/api/telegram/link-code', {
+      method: 'POST',
+      headers: profileApiHeaders('application/json'),
+      body: '{}',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success || !data.code) throw new Error(data.error || 'Не удалось создать код');
+
+    telegramConnectionState.code = data.code;
+    const codeElem = document.getElementById('tg-link-code');
+    if (codeElem) codeElem.textContent = data.code;
+    const expiryElem = document.getElementById('tg-link-expiry');
+    if (expiryElem) {
+      expiryElem.innerHTML = '<i class="ph-bold ph-clock"></i><span>Действует 15 минут</span>';
+    }
+    const deepLink = document.getElementById('tg-deep-link');
+    if (deepLink) {
+      const linkUrl = data.deep_link || (data.bot_username ? `https://t.me/${data.bot_username}?start=${data.link_token || data.code}` : null);
+      if (linkUrl) {
+        deepLink.href = linkUrl;
+        deepLink.classList.remove('hidden');
+        deepLink.hidden = false;
+        const linkSpan = deepLink.querySelector('span');
+        if (linkSpan && data.bot_username) {
+          linkSpan.textContent = `Открыть бота (@${data.bot_username})`;
+        }
+      } else {
+        deepLink.classList.add('hidden');
+        deepLink.hidden = true;
+      }
+    }
+    if (panel) {
+      panel.hidden = false;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    startTelegramStatusPolling();
+    telegramNotify('info', data.deep_link ? 'Откройте бота по ссылке или отправьте код в чат.' : 'Скопируйте код и отправьте его боту.');
+  } catch (error) {
+    telegramNotify('error', error.message || 'Не удалось начать привязку Telegram');
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 async function copyTelegramLinkCode() {
   if (!telegramConnectionState.code) return;
   try {
     await navigator.clipboard.writeText(telegramConnectionState.code);
+    const btn = document.getElementById('tg-copy-code-btn');
+    if (btn) {
+      const span = btn.querySelector('span');
+      if (span) {
+        const orig = span.textContent;
+        span.textContent = 'Скопировано!';
+        setTimeout(() => { span.textContent = orig; }, 2000);
+      }
+    }
     telegramNotify('success', 'Код скопирован. Отправьте его в чат с ботом.');
   } catch (_) {
     telegramNotify('info', `Код привязки: ${telegramConnectionState.code}`);
@@ -3170,6 +3761,7 @@ async function unlinkTelegram() {
     const response = await fetch('/api/telegram/unlink', { method: 'POST', headers: profileApiHeaders() });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось отвязать Telegram');
+    stopTelegramStatusPolling();
     document.getElementById('tg-link-panel').hidden = true;
     renderTelegramConnection({ linked: false, notifications_enabled: true });
     telegramNotify('success', 'Telegram отвязан от профиля.');
@@ -3185,10 +3777,10 @@ function generateTgCode() {
 
 document.addEventListener('DOMContentLoaded', () => {
   if (!document.getElementById('telegram-connection')) return;
-  refreshTelegramStatus();
-  window.addEventListener('focus', refreshTelegramStatus);
+  refreshTelegramStatus(true);
+  window.addEventListener('focus', () => refreshTelegramStatus(true));
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshTelegramStatus();
+    if (!document.hidden) refreshTelegramStatus(true);
   });
   if (new URLSearchParams(window.location.search).get('telegram') === 'connect') {
     startTelegramConnection();

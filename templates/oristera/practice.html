@@ -1,0 +1,76 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}Практика | Oristera{% endblock %}
+
+{% block content %}
+{% set requested_task = request.args.get('task_no', type=int) %}
+{% set selected_topic = namespace(title=None, number=None, area=None, evidence=0) %}
+{% if requested_task %}
+  {% for area in constellations %}
+    {% for topic in area.stars %}
+      {% if topic.num == requested_task %}
+        {% set selected_topic.title = topic.title %}
+        {% set selected_topic.number = topic.num %}
+        {% set selected_topic.area = area.tag or area.name %}
+        {% set selected_topic.evidence = topic.evidence_count|int %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+{% endif %}
+
+<div class="ori-field-page ori-practice-field" id="ori-practice-sanctum">
+  <header class="ori-field-intro">
+    <div>
+      <p class="ori-field-eyebrow">ПРАКТИКА / PYTHON</p>
+      <h1 class="ori-field-title">Рабочее место для кода</h1>
+      <p class="ori-field-lede">Запускайте Python-код в изолированной среде и смотрите вывод рядом с редактором.</p>
+    </div>
+    <div class="ori-practice-header-actions">
+      <a href="/task-workspace/?from=oristera" class="ori-field-button ori-field-button-secondary">Полный Task Workspace <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <div class="ori-practice-layout">
+    <aside class="ori-field-panel ori-practice-context" aria-label="Контекст практики">
+      {% if selected_topic.title %}
+      <p class="ori-field-eyebrow">ТЕМА №{{ selected_topic.number }} · {{ selected_topic.area }}</p>
+      <h2 class="ori-panel-title">{{ selected_topic.title }}</h2>
+      <p class="ori-practice-context-copy">Каталог Atlas содержит тему и доступные наблюдения, но условие задачи здесь пока не подключено. Откройте полный Task Workspace для работы с реальным условием.</p>
+      <p class="ori-data-integrity-note">Подтверждённых наблюдений: {{ selected_topic.evidence }}. Показатель освоения не рассчитывается.</p>
+      {% else %}
+      <p class="ori-field-eyebrow">САМОСТОЯТЕЛЬНАЯ РАБОТА</p>
+      <h2 class="ori-panel-title">Пишите и проверяйте идеи</h2>
+      <p class="ori-practice-context-copy">Редактор запускает введённый вами код. Для назначенных задач с условием и проверкой используйте полный Task Workspace.</p>
+      {% endif %}
+
+      <a href="/task-workspace/?from=oristera" class="ori-field-button ori-field-button-primary">Открыть Task Workspace <span aria-hidden="true">→</span></a>
+
+      <div class="ori-practice-assignments">
+        <div class="ori-panel-heading"><div><p class="ori-field-eyebrow">ИЗ ВАШЕГО СПИСКА</p><h3>Назначенные задания</h3></div></div>
+        {% if active_assignments %}
+        <ul class="ori-practice-assignment-list">
+          {% for asgn in active_assignments[:4] %}
+          <li>
+            {% if asgn.submission_id %}<a href="/assignments/submission/{{ asgn.submission_id }}">{{ asgn.title or 'Практическое задание' }}</a>{% else %}<span>{{ asgn.title or 'Практическое задание' }}</span>{% endif %}
+            <small>{% if asgn.status == 'SUBMITTED' %}На проверке{% elif asgn.status == 'RETURNED' %}Нужно доработать{% elif asgn.status == 'IN_PROGRESS' %}В работе{% else %}Назначено{% endif %} · {{ asgn.deadline_formatted or 'Без срока' }}</small>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="ori-child-empty">Назначенных активных заданий пока нет.</p>
+        {% endif %}
+      </div>
+    </aside>
+
+    <section class="ori-practice-code-panel" aria-label="Редактор Python и вывод программы">
+      <div class="ori-code-header">
+        <label for="ori-code-editor" class="ori-code-title">Редактор Python</label>
+        <button type="button" id="ori-run-code-btn" class="ori-field-button ori-code-run-button"><span>Запустить код</span></button>
+      </div>
+      <textarea id="ori-code-editor" class="ori-code-editor" spellcheck="false" aria-label="Код на Python" placeholder="# Ваш код Python"></textarea>
+      <div class="ori-code-output-heading"><span>ВЫВОД</span><span>Ограничение выполнения: 5 секунд</span></div>
+      <pre id="ori-console-output" class="ori-code-output" role="status" aria-live="polite">Введите код и нажмите «Запустить код».</pre>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}Студия преподавателя | Oristera{% endblock %}
+
+{% block content %}
+<div class="ori-field-page ori-teacher-field">
+  <header class="ori-field-intro">
+    <div>
+      <p class="ori-field-eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО ПРЕПОДАВАТЕЛЯ</p>
+      <h1 class="ori-field-title">{{ greeting }}, {{ teacher.full_name or teacher.username }}</h1>
+      <p class="ori-field-lede">{{ date_formatted }} · расписание, ученики и работы на проверку.</p>
+    </div>
+    <div class="ori-field-facts" aria-label="Рабочая сводка">
+      <div class="ori-field-fact"><span class="ori-field-fact-value">{{ active_students_count }}</span><span class="ori-field-fact-label">активных учеников</span></div>
+      <div class="ori-field-fact"><span class="ori-field-fact-value">{{ today_lessons|length }}</span><span class="ori-field-fact-label">занятий сегодня</span></div>
+      <div class="ori-field-fact"><span class="ori-field-fact-value">{{ pending_submissions|length }}</span><span class="ori-field-fact-label">работ в очереди · показано до 10</span></div>
+    </div>
+  </header>
+
+  <section class="ori-nexus-priority ori-teacher-priority" aria-labelledby="ori-teacher-focus-title">
+    <div class="ori-priority-copy">
+      <p class="ori-field-eyebrow">БЛИЖАЙШИЙ УРОК</p>
+      {% if active_lesson %}
+        <p class="ori-priority-state is-live"><span class="ori-status-dot" aria-hidden="true"></span>Занятие идёт</p>
+        <h2 class="ori-priority-title" id="ori-teacher-focus-title">{{ active_lesson.topic or 'Тема не указана' }}</h2>
+        <p class="ori-priority-description">Ученик: {{ active_lesson.student.name if active_lesson.student else 'Имя ученика недоступно' }}. Откройте текущую комнату урока.</p>
+        <a href="/lesson/{{ active_lesson.lesson_id }}/room?from=oristera" class="ori-field-button ori-field-button-primary">Открыть комнату <span aria-hidden="true">→</span></a>
+      {% elif today_lessons %}
+        <p class="ori-priority-state">В расписании на сегодня</p>
+        <h2 class="ori-priority-title" id="ori-teacher-focus-title">{{ today_lessons[0].topic or 'Тема не указана' }}</h2>
+        <p class="ori-priority-description">Ученик: {{ today_lessons[0].student.name if today_lessons[0].student else 'Имя ученика недоступно' }}.</p>
+        <div class="ori-priority-meta">{{ today_lessons[0].lesson_date.strftime('%H:%M') if today_lessons[0].lesson_date else 'Время не назначено' }} · МСК</div>
+        <a href="/lesson/{{ today_lessons[0].lesson_id }}/room?from=oristera" class="ori-field-button ori-field-button-primary">Подготовить урок <span aria-hidden="true">→</span></a>
+      {% elif upcoming_lessons %}
+        <p class="ori-priority-state">Следующее занятие</p>
+        <h2 class="ori-priority-title" id="ori-teacher-focus-title">{{ upcoming_lessons[0].topic or 'Тема не указана' }}</h2>
+        <p class="ori-priority-description">Ученик: {{ upcoming_lessons[0].student.name if upcoming_lessons[0].student else 'Имя ученика недоступно' }}.</p>
+        <div class="ori-priority-meta">{{ upcoming_lessons[0].lesson_date.strftime('%d.%m.%Y · %H:%M') if upcoming_lessons[0].lesson_date else 'Дата не назначена' }} · МСК</div>
+        <a href="/lesson/{{ upcoming_lessons[0].lesson_id }}/room?from=oristera" class="ori-field-button ori-field-button-primary">Открыть занятие <span aria-hidden="true">→</span></a>
+      {% else %}
+        <p class="ori-priority-state">Расписание</p>
+        <h2 class="ori-priority-title" id="ori-teacher-focus-title">Ближайших занятий нет</h2>
+        <p class="ori-priority-description">Проверьте очередь работ или откройте расписание, чтобы продолжить подготовку.</p>
+        <a href="/schedule" class="ori-field-button ori-field-button-primary">Открыть расписание <span aria-hidden="true">→</span></a>
+      {% endif %}
+    </div>
+    <div class="ori-priority-annotation" aria-hidden="true">
+      <div class="ori-priority-contour contour-one"></div>
+      <div class="ori-priority-contour contour-two"></div>
+      <div class="ori-priority-contour contour-three"></div>
+      <div class="ori-priority-index"><span>СТУДИЯ</span><strong>02</strong></div>
+      <div class="ori-priority-compass"><span></span></div>
+    </div>
+  </section>
+
+  <div class="ori-nexus-support-grid ori-teacher-work-grid">
+    <section class="ori-field-panel" aria-labelledby="ori-students-title">
+      <div class="ori-panel-heading">
+        <div><p class="ori-field-eyebrow">ПЕДАГОГИЧЕСКАЯ РАБОТА</p><h2 class="ori-panel-title" id="ori-students-title">Ученики</h2></div>
+        <span class="ori-atlas-count">{{ active_students_count }} активных</span>
+      </div>
+      {% if students %}
+      <ul class="ori-teacher-student-list">
+        {% for st in students[:6] %}
+        <li class="ori-teacher-student-row">
+          <span class="ori-student-avatar" aria-hidden="true">{{ st.name[0]|upper if st.name else 'У' }}</span>
+          <div class="ori-student-copy">
+            <strong>{{ st.name }}</strong>
+            <span>{{ st.category or 'Категория не указана' }} · {{ st.completed_lessons }} завершённых занятий</span>
+          </div>
+          {% if st.next_lesson and st.next_lesson.lesson_date %}<span class="ori-student-next">{{ st.next_lesson.lesson_date.strftime('%d.%m') }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="ori-field-empty"><span class="ori-empty-line" aria-hidden="true"></span><p>Назначенные ученики появятся здесь после привязки к вашему профилю.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="ori-field-panel" aria-labelledby="ori-review-queue-title">
+      <div class="ori-panel-heading">
+        <div><p class="ori-field-eyebrow">ОБРАТНАЯ СВЯЗЬ</p><h2 class="ori-panel-title" id="ori-review-queue-title">Работы на проверку</h2></div>
+        <a href="/assignments/review" class="ori-field-text-link">Открыть очередь <span aria-hidden="true">→</span></a>
+      </div>
+      {% if pending_submissions %}
+      <ul class="ori-assignment-list">
+        {% for sub in pending_submissions[:5] %}
+        <li class="ori-assignment-row">
+          <span class="ori-assignment-index" aria-hidden="true">{{ '%02d'|format(loop.index) }}</span>
+          <div class="ori-assignment-content">
+            <span class="ori-assignment-title">{{ sub.assignment.title if sub.assignment else 'Задание #' ~ sub.assignment_id }}</span>
+            <span class="ori-assignment-meta">{{ sub.student.name if sub.student else 'Имя ученика недоступно' }} · {{ 'На проверке' if sub.status == 'SUBMITTED' else 'Нужна ручная проверка' }}</span>
+          </div>
+          <a href="/assignments/submission/{{ sub.submission_id }}" class="ori-row-arrow" aria-label="Открыть работу на проверку">→</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="ori-field-empty"><span class="ori-empty-line" aria-hidden="true"></span><p>В очереди пока нет отправленных работ.</p></div>
+      {% endif %}
+    </section>
+  </div>
+
+  <nav class="ori-teacher-quick-links" aria-label="Инструменты преподавателя">
+    <span class="ori-field-eyebrow">ИНСТРУМЕНТЫ BOOSTUDY</span>
+    <a href="/assignments/create" class="ori-field-button ori-field-button-secondary">Создать задание <span aria-hidden="true">→</span></a>
+    <a href="/task-bank" class="ori-field-button ori-field-button-secondary">Банк заданий <span aria-hidden="true">→</span></a>
+    <a href="/schedule" class="ori-field-button ori-field-button-secondary">Расписание <span aria-hidden="true">→</span></a>
+  </nav>
+</div>
+{% endblock %}

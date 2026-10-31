@@ -29,6 +29,10 @@ def test_is_task_manual_review_detection():
 
     # 4. Standard auto-graded short answer
     task_mock.task_type = 'short_answer'
+    task_mock.course_id = None
+    task_mock.task_number = None
+    task_mock.verification_type = 'auto'
+    task_mock.answer_spec = {'type': 'short_answer', 'grading_mode': 'auto'}
     assert _is_task_manual_review(at_mock, task_mock) is False
 
 
@@ -64,72 +68,74 @@ def test_templates_support_4_state_stepper_and_answer_hiding():
     assert 'Ответ отправлен на проверку преподавателю' in task_detail_html
 
 
-def test_safe_answer_hint_hidden_from_student_until_reviewed():
+def test_safe_answer_hint_hidden_from_student_until_reviewed(app):
     from app.task_workspace.service import WorkspaceContext
     from core.db_models import Tasks
 
-    fake_task = Tasks(task_id=999, answer="secret_answer", starter_code="print(1)")
+    with app.app_context():
+        fake_task = Tasks(task_id=999, answer="secret_answer", starter_code="print(1)")
 
-    # 1. Student before review -> answer MUST be hidden ("")
-    ctx_student = WorkspaceContext(
-        context_type="submission_task",
-        context_id=1,
-        task_id=999,
-        task=fake_task,
-        title="Task 999",
-        subtitle="",
-        source_label="",
-        assignment_title="Assignment",
-        return_url="/",
-        student_id=10,
-        student_user_id=20,
-        can_edit=True,
-        can_review=False,
-        is_reviewed=False,
-        is_manual=True,
-    )
-    payload_student = ctx_student.as_payload()
-    assert payload_student["answer_hint"] == ""
+        # 1. Student before review -> answer MUST be hidden ("")
+        ctx_student = WorkspaceContext(
+            context_type="submission_task",
+            context_id=1,
+            task_id=999,
+            task=fake_task,
+            title="Task 999",
+            subtitle="",
+            source_label="",
+            assignment_title="Assignment",
+            return_url="/",
+            student_id=10,
+            student_user_id=20,
+            can_edit=True,
+            can_review=False,
+            is_reviewed=False,
+            is_manual=True,
+        )
+        payload_student = ctx_student.as_payload()
+        assert payload_student["answer_hint"] == ""
 
-    # 2. Student after review -> answer is visible
-    ctx_reviewed = WorkspaceContext(
-        context_type="submission_task",
-        context_id=1,
-        task_id=999,
-        task=fake_task,
-        title="Task 999",
-        subtitle="",
-        source_label="",
-        assignment_title="Assignment",
-        return_url="/",
-        student_id=10,
-        student_user_id=20,
-        can_edit=False,
-        can_review=False,
-        is_reviewed=True,
-        is_manual=True,
-    )
-    payload_reviewed = ctx_reviewed.as_payload()
-    assert payload_reviewed["answer_hint"] == "secret_answer"
+        # 2. Student after review and published -> answer is visible
+        ctx_reviewed = WorkspaceContext(
+            context_type="submission_task",
+            context_id=1,
+            task_id=999,
+            task=fake_task,
+            title="Task 999",
+            subtitle="",
+            source_label="",
+            assignment_title="Assignment",
+            return_url="/",
+            student_id=10,
+            student_user_id=20,
+            can_edit=False,
+            can_review=False,
+            is_reviewed=True,
+            is_published=True,
+            is_manual=True,
+        )
+        payload_reviewed = ctx_reviewed.as_payload()
+        assert payload_reviewed["answer_hint"] == "secret_answer"
 
-    # 3. Teacher -> answer is visible even if not reviewed
-    ctx_teacher = WorkspaceContext(
-        context_type="submission_task",
-        context_id=1,
-        task_id=999,
-        task=fake_task,
-        title="Task 999",
-        subtitle="",
-        source_label="",
-        assignment_title="Assignment",
-        return_url="/",
-        student_id=10,
-        student_user_id=20,
-        can_edit=False,
-        can_review=True,
-        is_reviewed=False,
-        is_manual=True,
-    )
-    payload_teacher = ctx_teacher.as_payload()
-    assert payload_teacher["answer_hint"] == "secret_answer"
+        # 3. Teacher -> answer is visible even if not reviewed
+        ctx_teacher = WorkspaceContext(
+            context_type="submission_task",
+            context_id=1,
+            task_id=999,
+            task=fake_task,
+            title="Task 999",
+            subtitle="",
+            source_label="",
+            assignment_title="Assignment",
+            return_url="/",
+            student_id=10,
+            student_user_id=20,
+            can_edit=False,
+            can_review=True,
+            is_reviewed=False,
+            is_manual=True,
+        )
+        payload_teacher = ctx_teacher.as_payload()
+        assert payload_teacher["answer_hint"] == "secret_answer"
 

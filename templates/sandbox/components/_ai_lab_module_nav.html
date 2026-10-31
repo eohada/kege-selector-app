@@ -1,0 +1,80 @@
+<style>
+  .ai-lab-global-nav-shell {
+    width: min(100%, 1400px);
+    margin: clamp(12px, 1.8vw, 22px) auto 0;
+    padding-inline: clamp(16px, 2.4vw, 36px);
+  }
+  .ai-lab-global-nav {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    padding: 5px;
+    overflow-x: auto;
+    border: 1px solid var(--bs-border);
+    border-radius: var(--bs-radius-lg, 20px);
+    background: var(--bs-bg-surface-soft);
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ai-lab-global-nav-label {
+    flex: 0 0 auto;
+    padding-inline: 12px 8px;
+    color: var(--bs-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .ai-lab-global-nav a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--bs-radius-md, 14px);
+    color: var(--bs-text-secondary);
+    font-size: 12px;
+    font-weight: 750;
+    text-decoration: none;
+    transition: background var(--bs-motion-fast, 120ms) ease, color var(--bs-motion-fast, 120ms) ease, border-color var(--bs-motion-fast, 120ms) ease;
+  }
+  .ai-lab-global-nav a i { color: var(--bs-primary); font-size: 16px; }
+  .ai-lab-global-nav a:hover { border-color: var(--bs-border); background: var(--bs-bg-surface); color: var(--bs-text-primary); }
+  .ai-lab-global-nav a[aria-current="page"] { border-color: var(--bs-border); background: var(--bs-bg-surface); color: var(--bs-primary); box-shadow: var(--bs-shadow-e0); }
+  .ai-lab-global-nav a:focus-visible { outline: 3px solid var(--bs-primary-soft); outline-offset: 2px; }
+  .bs-admin-content-shell:has(#ai-lab-module-nav) { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .bs-admin-content-shell:has(#ai-lab-module-nav) > main nav[aria-label="Разделы AI Lab"] { display: none !important; }
+  @media (max-width: 600px) {
+    .ai-lab-global-nav-shell { margin-top: 10px; padding-inline: 12px; }
+    .ai-lab-global-nav { border-radius: var(--bs-radius-md, 14px); }
+    .ai-lab-global-nav-label { display: none; }
+    .ai-lab-global-nav a { padding-inline: 10px; font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ai-lab-global-nav a { transition-duration: .01ms; }
+  }
+</style>
+<div class="ai-lab-global-nav-shell">
+  <nav class="ai-lab-global-nav" id="ai-lab-module-nav" aria-label="Переходы между AI-модулями">
+    <span class="ai-lab-global-nav-label">AI Lab</span>
+    {% set module_links = [
+      ('admin.admin_ai_lab', 'Обзор', 'ph-squares-four'),
+      ('ai_lab.knowledge_base_page', 'База знаний', 'ph-books'),
+      ('ai_lab.lesson_intelligence_page', 'AI Lesson', 'ph-chalkboard-teacher'),
+      ('ai_lab.tutor_core_page', 'Tutor Core', 'ph-brain'),
+      ('ai_lab.studio', 'AI Homework', 'ph-notebook'),
+      ('ai_lab.analytics_page', 'Analytics', 'ph-chart-line-up'),
+      ('ai_lab.practice_page', 'Practice', 'ph-lightning'),
+      ('ai_lab.course_page', 'AI Course', 'ph-map-trifold')
+    ] %}
+    {% for endpoint, label, icon in module_links %}
+      <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint and (endpoint != 'admin.admin_ai_lab' or request.args.get('section', 'overview') == 'overview') %} aria-current="page"{% endif %}>
+        <i class="ph {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+</div>

@@ -1,4 +1,4 @@
-{% if (is_demo_user is defined and is_demo_user) or (current_user is defined and current_user.is_authenticated and current_user.is_demo_user) %}
+{% if config.ENABLE_DEMO_CONCEPT and ((is_demo_user is defined and is_demo_user) or (current_user is defined and current_user.is_authenticated and current_user.is_demo_user)) %}
 <!-- BooStudy Demo Experience Companion Component -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/demo/demo_companion.css') }}?v=23">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/demo/demo_cinematic_overrides.css') }}?v=16">

@@ -1,0 +1,108 @@
+{
+  "protocol": "ai-lab-knowledge-v5-development",
+  "protocol_version": 1,
+  "synthetic_only": true,
+  "scope": "Frozen technical spot checks and retrieval expectations. These are not teacher approval or independent holdout results.",
+  "technical_cases": [
+    {
+      "case_id": "logic-boundary-new-values",
+      "knowledge_key": "ege.inf.logic-boundaries.v1",
+      "input": {"values": [-3, 0, 8]},
+      "expected": {"positive": [false, false, true], "nonnegative": [false, true, true]}
+    },
+    {
+      "case_id": "number-base-round-trip",
+      "knowledge_key": "ege.inf.positional-number-systems.v1",
+      "input": {"binary": "101101101", "decimal": 236},
+      "expected": {"binary_decimal": 365, "hexadecimal": "EC"}
+    },
+    {
+      "case_id": "spreadsheet-new-selection",
+      "knowledge_key": "ege.inf.spreadsheet-aggregates.v1",
+      "input": {"rows": [{"include": true, "value": 11}, {"include": false, "value": 100}, {"include": true, "value": 15}, {"include": true, "value": 21}]},
+      "expected": {"count": 3, "sum": 47, "minimum": 11, "maximum": 21, "mean": 15.666666666666666}
+    },
+    {
+      "case_id": "python-negative-parity",
+      "knowledge_key": "ege.inf.python-integer-parity.v1",
+      "input": {"values": [-1001, -1000, -1, 0, 1, 1000, 1001]},
+      "expected": {"odd": [true, false, true, false, true, false, true]}
+    },
+    {
+      "case_id": "graph-degree-handshake",
+      "knowledge_key": "ege.inf.graph-degree.v1",
+      "input": {"vertices": ["A", "B", "C", "D", "E"], "edges": [["A", "B"], ["A", "C"], ["B", "C"], ["C", "D"]]},
+      "expected": {"degrees": {"A": 2, "B": 2, "C": 3, "D": 1, "E": 0}, "degree_sum": 8, "edge_count": 4}
+    },
+    {
+      "case_id": "ipv4-new-prefix-boundary",
+      "knowledge_key": "ege.inf.ip-prefix-mask.v1",
+      "input": {"address": "10.42.19.173/27"},
+      "expected": {"network": "10.42.19.160", "broadcast": "10.42.19.191", "addresses": 32, "hosts": 30}
+    },
+    {
+      "case_id": "sql-join-new-data",
+      "knowledge_key": "ege.inf.sql-relational-query.v1",
+      "input": {"students": [["S1", "Ira"], ["S2", "Lev"]], "scores": [["S1", 4], ["S1", 5], ["S2", 3]]},
+      "expected": {"rows": [["Ira", 2, 9], ["Lev", 1, 3]]}
+    }
+  ],
+  "search_cases": [
+    {
+      "case_id": "exact-skill",
+      "query": "позиционные системы счисления основание перевод",
+      "must_include": ["ege.inf.positional-number-systems.v1"],
+      "must_exclude": [],
+      "expected_keys": ["ege.inf.positional-number-systems.v1"]
+    },
+    {
+      "case_id": "informal-boundary-question",
+      "query": "почему ноль не положительное строгое сравнение",
+      "must_include": ["ege.inf.logic-boundaries.v1"],
+      "must_exclude": [],
+      "expected_keys": ["ege.inf.logic-boundaries.v1"]
+    },
+    {
+      "case_id": "misconception-description",
+      "query": "забыл корень дважды при подсчете положительных делителей",
+      "must_include": ["ege.inf.python-divisor-count.v1"],
+      "must_exclude": [],
+      "expected_keys": ["ege.inf.python-divisor-count.v1"]
+    },
+    {
+      "case_id": "combined-skill",
+      "query": "двоичная запись перевод числа и Python проверка чётности",
+      "must_include": ["ege.inf.positional-number-systems.v1", "ege.inf.python-integer-parity.v1"],
+      "must_exclude": [],
+      "expected_keys": ["ege.inf.positional-number-systems.v1", "ege.inf.python-integer-parity.v1"]
+    },
+    {
+      "case_id": "no-material",
+      "query": "квантовая криптография оптический интерферометр",
+      "must_include": [],
+      "must_exclude": [],
+      "expected_keys": []
+    },
+    {
+      "case_id": "ambiguous-mask-terms",
+      "query": "маска файла и маска подсети",
+      "must_include": ["ege.inf.ip-prefix-mask.v1", "ege.inf.file-mask-search.v1"],
+      "must_exclude": [],
+      "expected_keys": ["ege.inf.ip-prefix-mask.v1", "ege.inf.file-mask-search.v1"]
+    },
+    {
+      "case_id": "subject-mismatch",
+      "query": "SQL JOIN таблицы внешний ключ запрос",
+      "must_include": ["ege.inf.sql-relational-query.v1"],
+      "must_exclude": ["ege.inf.ip-prefix-mask.v1"],
+      "expected_keys": ["ege.inf.sql-relational-query.v1"]
+    },
+    {
+      "case_id": "project-only-claim",
+      "query": "проект ЕГЭ 2027 обязательное новое требование",
+      "must_include": [],
+      "must_exclude": [],
+      "expected_keys": []
+    }
+  ]
+}

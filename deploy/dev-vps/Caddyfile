@@ -1,0 +1,31 @@
+# deploy/dev-vps/Caddyfile
+# BooStudy Mini App Dev Edge Proxy (No Cloudflare, Direct RU Access)
+# Auto-HTTPS with Let's Encrypt / ZeroSSL
+
+{
+    email admin@boostudy.ru
+}
+
+dev-tg.boostudy.ru {
+    # Reverse proxy to loopback reverse SSH tunnel port
+    reverse_proxy 127.0.0.1:5055 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto https
+
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 45s
+        }
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+}

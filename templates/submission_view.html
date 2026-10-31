@@ -31,8 +31,8 @@
 </style>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/codemirror/codemirror.min.css') }}?v=5.65.16">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/codemirror/dracula.min.css') }}?v=5.65.16">
     <style>
         /* Редактор кода: в тёмной теме фон и текст по переменным темы */
         [data-theme="dark"] .code-editor-panel .CodeMirror { background: var(--surface-1); color: var(--text-primary); }
@@ -600,7 +600,11 @@
                 {% for task_item in tasks_view %}
                 {% set ti_answer = task_item.answer %}
                 {% set nav_state_class = '' %}
-                {% if task_item.is_triplet_19_21 %}
+                {% if submission.status == 'RETURNED' and ti_answer and ti_answer.needs_revision %}
+                    {% set nav_state_class = 'needs-revision border-amber-300 bg-amber-50 text-amber-900 ring-2 ring-amber-200' %}
+                {% elif submission.status == 'RETURNED' and ti_answer and not ti_answer.needs_revision and ti_answer.is_correct %}
+                    {% set nav_state_class = 'correct' %}
+                {% elif task_item.is_triplet_19_21 %}
                     {% if task_item.triplet_state == 'all_correct' %}
                         {% set nav_state_class = 'correct' %}
                     {% elif task_item.triplet_state == 'all_incorrect' %}
@@ -633,7 +637,9 @@
         <form id="submission-form" class="task-single-shell space-y-6">
             {% for task_item in tasks_view %}
             {% set card_state_class = '' %}
-            {% if task_item.is_triplet_19_21 %}
+            {% if submission.status == 'RETURNED' and task_item.answer and task_item.answer.needs_revision %}
+                {% set card_state_class = ' task-needs-revision border-amber-300 shadow-[0_4px_0_#F59E0B]' %}
+            {% elif task_item.is_triplet_19_21 %}
                 {% if task_item.triplet_state == 'all_correct' %}
                     {% set card_state_class = ' task-correct' %}
                 {% elif task_item.triplet_state == 'all_incorrect' %}
@@ -653,6 +659,17 @@
                     <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
                         <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
                         <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
+                        {% if submission.status == 'RETURNED' %}
+                            {% if task_item.answer and task_item.answer.needs_revision %}
+                            <span class="submission-type-chip" style="background:#fffbeb; color:#b45309; border:1px solid #fcd34d; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; display:flex; align-items:center; gap:4px;">
+                                <i class="ph-bold ph-arrow-u-up-left"></i> Требуется доработка
+                            </span>
+                            {% elif task_item.answer and not task_item.answer.needs_revision and task_item.answer.is_correct %}
+                            <span class="submission-type-chip" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; display:flex; align-items:center; gap:4px;">
+                                <i class="ph-bold ph-check-circle"></i> Принято
+                            </span>
+                            {% endif %}
+                        {% endif %}
                         {% if task_item.difficulty_label %}
                         <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">{{ task_item.difficulty_label }}</span>
                         {% endif %}
@@ -2296,10 +2313,10 @@
         })();
         {% endif %}
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/codemirror/codemirror.min.js') }}?v=5.65.16"></script>
+    <script src="{{ url_for('static', filename='vendor/codemirror/python.min.js') }}?v=5.65.16"></script>
+    <script src="{{ url_for('static', filename='vendor/codemirror/closebrackets.min.js') }}?v=5.65.16"></script>
+    <script src="{{ url_for('static', filename='vendor/codemirror/matchbrackets.min.js') }}?v=5.65.16"></script>
     <script>if (typeof window._initReadonlyEditors === 'function') window._initReadonlyEditors();</script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     <script>

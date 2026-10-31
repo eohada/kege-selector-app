@@ -1,0 +1,159 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}Карта знаний | Oristera{% endblock %}
+
+{% block content %}
+{% set atlas_totals = namespace(topics=0, observations=0, observed_topics=0) %}
+{% for area in constellations %}
+  {% set atlas_totals.topics = atlas_totals.topics + (area.stars|length) %}
+  {% for topic in area.stars %}
+    {% set atlas_totals.observations = atlas_totals.observations + (topic.evidence_count|int) %}
+    {% if topic.evidence_count|int > 0 %}{% set atlas_totals.observed_topics = atlas_totals.observed_topics + 1 %}{% endif %}
+  {% endfor %}
+{% endfor %}
+
+<div class="ori-field-page ori-atlas-field" id="ori-atlas-universe">
+  <header class="ori-field-intro ori-atlas-intro">
+    <div>
+      <p class="ori-field-eyebrow">ОРИСТЕРА / КАРТА ЗНАНИЙ</p>
+      <div class="ori-atlas-heading-line">
+        <button type="button" class="ori-field-back hidden" id="ori-atlas-reset-btn" aria-label="Вернуться ко всем областям">← Все области</button>
+        <span class="ori-field-level" id="ori-atlas-view-level">Обзор предмета</span>
+      </div>
+      <h1 class="ori-field-title" id="ori-atlas-view-title">Связи между темами</h1>
+      <p class="ori-field-lede" id="ori-atlas-view-subtitle">Исследуйте карту информатики. Метки показывают только подтверждённые наблюдения; отсутствие данных не означает отсутствие знаний.</p>
+    </div>
+    <div class="ori-atlas-total" aria-label="Сводка каталога тем">
+      <strong>{{ atlas_totals.topics }}</strong>
+      <span>тем в каталоге</span>
+    </div>
+  </header>
+
+  <nav class="ori-atlas-nav" aria-label="Навигация по карте знаний">
+    <div class="ori-atlas-tabs">
+      {% for area in constellations %}
+      <button type="button" class="ori-atlas-tab" aria-label="{{ area.name }} — {{ area.stars|length }} тем" aria-pressed="false" data-cid="{{ area.id }}">
+        <span class="ori-tab-index">{{ '%02d'|format(loop.index) }}</span>
+        <span class="ori-tab-title">{{ area.tag or area.name }}</span>
+        <span class="ori-tab-count" aria-hidden="true">{{ area.stars|length }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    <a href="{{ url_for('oristera.practice') }}" class="ori-field-button ori-field-button-secondary">К практике <span aria-hidden="true">→</span></a>
+  </nav>
+
+  {% if constellations %}
+  <section class="ori-atlas-stage" id="ori-atlas-stage" aria-label="Карта областей знаний">
+    <div class="ori-atlas-map-frame" role="group" aria-label="Интерактивная карта областей и тем">
+      <div class="ori-map-corner-note"><span>КАТАЛОГ ТЕМ</span><span>{{ constellations|length }} ОБЛАСТЕЙ</span></div>
+      <svg id="ori-atlas-svg" class="ori-atlas-svg" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Карта областей знаний. Выберите область или тему для деталей.">
+        <defs>
+          <pattern id="ori-map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="ori-map-grid-line" />
+          </pattern>
+        </defs>
+        <rect class="ori-map-ground" width="1000" height="650" />
+        <rect class="ori-map-grid" width="1000" height="650" fill="url(#ori-map-grid)" />
+        <g class="ori-map-topography" aria-hidden="true">
+          <path d="M22 140 C110 76 184 82 243 133 S370 187 432 146 S573 76 636 119 S770 171 852 106 S956 88 1000 124" />
+          <path d="M0 177 C101 116 184 119 246 167 S372 222 439 182 S572 112 642 154 S782 208 860 145 S964 126 1000 158" />
+          <path d="M0 495 C98 444 183 448 250 494 S376 546 443 509 S581 438 649 481 S784 538 865 477 S964 454 1000 490" />
+          <path d="M0 530 C95 478 185 481 252 529 S378 581 447 544 S583 472 653 516 S788 573 869 512 S964 488 1000 524" />
+        </g>
+
+        {% for area in constellations %}
+          {% set cx = area.x|int * 10 %}
+          {% set cy = area.y|int * 6.5 %}
+        <g class="ori-constellation-cluster ori-region-{{ loop.index }}" id="cluster-{{ area.id }}" data-cid="{{ area.id }}" data-center-x="{{ cx }}" data-center-y="{{ cy }}" data-title="{{ area.name }}" data-count="{{ area.stars|length }}" role="group">
+          <path class="ori-map-region" tabindex="0" role="button" aria-pressed="false" aria-label="Открыть область {{ area.name }}, {{ area.stars|length }} тем" d="M {{ cx - 138 }} {{ cy - 28 }} C {{ cx - 116 }} {{ cy - 102 }}, {{ cx - 28 }} {{ cy - 124 }}, {{ cx + 39 }} {{ cy - 100 }} C {{ cx + 112 }} {{ cy - 92 }}, {{ cx + 148 }} {{ cy - 26 }}, {{ cx + 127 }} {{ cy + 34 }} C {{ cx + 105 }} {{ cy + 105 }}, {{ cx + 25 }} {{ cy + 124 }}, {{ cx - 48 }} {{ cy + 98 }} C {{ cx - 117 }} {{ cy + 85 }}, {{ cx - 158 }} {{ cy + 29 }}, {{ cx - 138 }} {{ cy - 28 }} Z" />
+          <circle class="ori-map-contour contour-outer" cx="{{ cx }}" cy="{{ cy }}" r="112" />
+          <circle class="ori-map-contour contour-inner" cx="{{ cx }}" cy="{{ cy }}" r="84" />
+          <text class="ori-region-name" x="{{ cx }}" y="{{ cy - 92 }}" text-anchor="middle">{{ area.tag or area.name }}</text>
+          <text class="ori-region-count" x="{{ cx }}" y="{{ cy - 72 }}" text-anchor="middle">{{ area.stars|length }} тем</text>
+          <g class="ori-map-links" aria-hidden="true">
+            {% for topic in area.stars %}
+              {% set nx = cx + ((loop.index0 % 3) - 1) * 58 %}
+              {% set ny = cy + ((loop.index0 // 3) * 56) - 24 %}
+            <path d="M {{ cx }} {{ cy }} L {{ nx }} {{ ny }}" />
+            {% endfor %}
+          </g>
+          {% for topic in area.stars %}
+            {% set nx = cx + ((loop.index0 % 3) - 1) * 58 %}
+            {% set ny = cy + ((loop.index0 // 3) * 56) - 24 %}
+          <g class="ori-star-node" data-num="{{ topic.num }}" data-name="{{ topic.title }}" data-status="{{ topic.status }}" data-evidence-count="{{ topic.evidence_count|int }}" transform="translate({{ nx }} {{ ny }})" tabindex="0" role="button" aria-label="Тема номер {{ topic.num }}: {{ topic.title }}. {{ topic.evidence_count|int }} подтверждённых наблюдений">
+            <circle class="ori-node-hit" r="31" />
+            <circle class="ori-node-mark" r="13" />
+            <text class="ori-node-number" x="0" y="4" text-anchor="middle">{{ topic.num }}</text>
+          </g>
+          {% endfor %}
+          <circle class="ori-region-center" cx="{{ cx }}" cy="{{ cy }}" r="4" aria-hidden="true" />
+        </g>
+        {% endfor %}
+      </svg>
+      <div class="ori-map-scale" aria-hidden="true"><span>ОБЩИЙ ОБЗОР</span><span class="ori-map-scale-line"></span><span>ТЕМА</span></div>
+    </div>
+
+    <aside class="ori-field-inspector" aria-label="Информация о выбранной области или теме">
+      <div id="ori-atlas-overview-card" class="ori-atlas-overview-card">
+        <p class="ori-field-eyebrow">КАК ЧИТАТЬ КАРТУ</p>
+        <h2 class="ori-inspector-heading">Тема за темой</h2>
+        <p class="ori-inspector-copy">Области объединяют темы по разделам информатики. Выберите область, чтобы открыть её состав, затем выберите тему для просмотра данных.</p>
+        <div class="ori-evidence-summary">
+          <div><strong>{{ atlas_totals.observations }}</strong><span>наблюдений записано</span></div>
+          <div><strong>{{ atlas_totals.observed_topics }}</strong><span>тем с данными</span></div>
+        </div>
+        <p class="ori-data-integrity-note">Уровень освоения здесь не рассчитывается. Если подтверждений нет, карта сообщает об отсутствии данных.</p>
+        <ul class="ori-area-index">
+          {% for area in constellations %}
+          <li>
+            <button type="button" class="ori-area-jump" data-cid="{{ area.id }}">
+              <span class="ori-area-index-number">{{ '%02d'|format(loop.index) }}</span>
+              <span class="ori-area-index-name">{{ area.tag or area.name }}</span>
+              <span class="ori-area-index-count">{{ area.stars|length }}</span>
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div id="ori-cluster-inspector" class="ori-cluster-inspector hidden" aria-live="polite">
+        <p class="ori-field-eyebrow">ОБЛАСТЬ КАРТЫ</p>
+        <h2 class="ori-inspector-heading" id="ori-cluster-title"></h2>
+        <p class="ori-inspector-copy" id="ori-cluster-summary"></p>
+        <p class="ori-list-label">ТЕМЫ ЭТОЙ ОБЛАСТИ</p>
+        <ul class="ori-cluster-topic-list" id="ori-cluster-topics"></ul>
+      </div>
+
+      <section id="ori-skill-inspector" class="ori-skill-inspector hidden" aria-live="polite" aria-label="Данные по выбранной теме">
+        <div class="ori-inspector-topline">
+          <span class="ori-inspector-tag" id="ori-insp-badge">Данные темы</span>
+          <button type="button" class="ori-inspector-close" id="ori-insp-close" aria-label="Закрыть сведения о теме">Закрыть</button>
+        </div>
+        <p class="ori-inspector-num" id="ori-insp-num"></p>
+        <h2 class="ori-inspector-heading" id="ori-insp-title"></h2>
+        <p class="ori-inspector-copy" id="ori-insp-desc"></p>
+        <div class="ori-evidence-stat">
+          <span>Подтверждённые наблюдения</span>
+          <strong id="ori-insp-evidence-count">0</strong>
+        </div>
+        <p class="ori-data-integrity-note" id="ori-insp-evidence"></p>
+        <a href="{{ url_for('oristera.practice') }}" class="ori-field-button ori-field-button-primary ori-inspect-practice" id="ori-insp-practice-link">Практика по теме <span aria-hidden="true">→</span></a>
+      </section>
+    </aside>
+  </main>
+  {% else %}
+  <section class="ori-atlas-empty" aria-live="polite">
+    <h2>Карта пока недоступна</h2>
+    <p>Каталог тем не получен. Попробуйте открыть страницу позже.</p>
+  </section>
+  {% endif %}
+
+  <footer class="ori-atlas-legend" aria-label="Обозначения подтверждений">
+    <span><i class="ori-legend-mark is-repeated" aria-hidden="true"></i>Есть повторные подтверждения</span>
+    <span><i class="ori-legend-mark is-observed" aria-hidden="true"></i>Есть отдельные наблюдения</span>
+    <span><i class="ori-legend-mark is-unobserved" aria-hidden="true"></i>Нет данных о подтверждениях</span>
+    <span class="ori-legend-note">Клавиши 1–{{ constellations|length }} — области · Esc — назад</span>
+  </footer>
+</div>
+{% endblock %}
+

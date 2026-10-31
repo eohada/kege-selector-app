@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from app.ai_lab.config import code_judge_limits, setting
+from app.ai_lab.config import code_judge_docker_api_timeout_seconds, code_judge_limits, setting
 
 
 logger = logging.getLogger("boostudy.code_judge_runner")
@@ -106,7 +106,7 @@ class DockerExecutor:
         )}
         try:
             import docker
-            self.client = docker.from_env(timeout=8)
+            self.client = docker.from_env(timeout=code_judge_docker_api_timeout_seconds())
             self.client.ping()
             self._ensure_image()
             self._verify_isolation_profile()

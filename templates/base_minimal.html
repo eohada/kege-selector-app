@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     <title>{% block title %}BooStudy{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    {% block head_fonts %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}?v=20261029">
+    {% endblock %}
     <link rel="icon" href="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260708-v1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/phosphor/phosphor.css') }}?v=2.1.2">
+    <script src="{{ url_for('static', filename='vendor/phosphor/index.js') }}?v=2.1.2"></script>
     {% block head_css %}{% endblock %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -55,6 +57,7 @@
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
 
     {% include 'sandbox/components/_feedback_system.html' %}
+    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
 
     {% block scripts_extra %}{% endblock %}
 </body>

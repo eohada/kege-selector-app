@@ -1,0 +1,92 @@
+{
+  "dataset_id": "boostudy-ai-lab-product-validation-dev-v1",
+  "dataset_version": 1,
+  "split": "development",
+  "synthetic_only": true,
+  "real_student_data": false,
+  "frozen_before_live_model_runs": true,
+  "task": {
+    "scenario_id": "py-digit-sum-16",
+    "assignment_id": "ai-lab.python.digit-sum",
+    "assignment_version": 1,
+    "test_set_scenario_id": "digit-sum-evidence-v1",
+    "test_set_version": 1,
+    "rubric_version": 1,
+    "title": "Сумма цифр digit_sum(n)",
+    "condition": "Реализуй функцию digit_sum(n), которая возвращает сумму цифр целого неотрицательного числа n. Число 0 должно давать 0. В решении можно использовать любой корректный алгоритм; совпадение с эталонным способом не требуется.",
+    "criteria": [
+      {"id": "multi-digit", "title": "Сумма цифр многозначного числа", "max_score": 1},
+      {"id": "zero-single", "title": "Ноль и однозначные числа", "max_score": 1},
+      {"id": "embedded-zero", "title": "Внутренние и завершающие нули", "max_score": 1}
+    ]
+  },
+  "generation": {
+    "model": "GigaChat-3-Pro",
+    "homework_prompt_version": "v0.3",
+    "temperature": 0.1,
+    "top_p": null,
+    "max_tokens": 3200,
+    "response_format": "json_schema_strict",
+    "code_judge_enabled": true,
+    "max_logical_generations": 5,
+    "max_completion_posts_with_one_controlled_retry": 10
+  },
+  "cases": [
+    {
+      "case_id": "product-digit-sum-correct-loop",
+      "solution_kind": "correct_reference_style",
+      "solution": "def digit_sum(n):\n    total = 0\n    while n > 0:\n        total += n % 10\n        n //= 10\n    return total",
+      "expert_expectation": {
+        "score_awarded": 3,
+        "max_score": 3,
+        "criteria": {"multi-digit": 1, "zero-single": 1, "embedded-zero": 1},
+        "confirmed_errors": []
+      }
+    },
+    {
+      "case_id": "product-digit-sum-correct-alternative",
+      "solution_kind": "correct_alternative_string_algorithm",
+      "solution": "def digit_sum(n):\n    return sum(int(char) for char in str(n))",
+      "expert_expectation": {
+        "score_awarded": 3,
+        "max_score": 3,
+        "criteria": {"multi-digit": 1, "zero-single": 1, "embedded-zero": 1},
+        "confirmed_errors": [],
+        "must_recognize_alternative_algorithm": true
+      }
+    },
+    {
+      "case_id": "product-digit-sum-partial-two-part-split",
+      "solution_kind": "partial_multi_digit_logic_error",
+      "solution": "def digit_sum(n):\n    return n % 10 + n // 10",
+      "expert_expectation": {
+        "score_awarded": 1,
+        "max_score": 3,
+        "criteria": {"multi-digit": 0, "zero-single": 1, "embedded-zero": 0},
+        "confirmed_errors": ["multi-digit_logic", "embedded-zero_logic"]
+      }
+    },
+    {
+      "case_id": "product-digit-sum-incorrect-last-digit-only",
+      "solution_kind": "incorrect_last_digit_only",
+      "solution": "def digit_sum(n):\n    return n % 10",
+      "expert_expectation": {
+        "score_awarded": 1,
+        "max_score": 3,
+        "criteria": {"multi-digit": 0, "zero-single": 1, "embedded-zero": 0},
+        "confirmed_errors": ["multi-digit_logic", "embedded-zero_logic"]
+      }
+    },
+    {
+      "case_id": "product-digit-sum-zero-boundary-error",
+      "solution_kind": "boundary_error_at_zero",
+      "solution": "def digit_sum(n):\n    if n == 0:\n        return 1\n    return sum(int(char) for char in str(n))",
+      "expert_expectation": {
+        "score_awarded": 2,
+        "max_score": 3,
+        "criteria": {"multi-digit": 1, "zero-single": 0, "embedded-zero": 1},
+        "confirmed_errors": ["zero_single_boundary"]
+      }
+    }
+  ]
+}

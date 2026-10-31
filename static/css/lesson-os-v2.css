@@ -458,7 +458,66 @@ body.bs-lesson-room main.room-lesson-shell {
 }
 .room-lesson-os #sidebar-drawer-panel.translate-x-0 { transform: translateX(0) !important; }
 .room-lesson-os #code-window #editor-canvas-container { flex: 1 1 auto; }
-.room-lesson-os #code-window #editor-status-bar { display: flex !important; flex: 0 0 auto; }
+.room-lesson-os #code-window {
+  container-type: inline-size;
+  container-name: code-window;
+}
+
+.room-lesson-os #code-window #editor-status-bar {
+  display: flex !important;
+  flex: 0 0 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+  padding: 0 10px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+.room-lesson-os #code-window #editor-status-bar > div {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+@container (max-width: 580px) {
+  .room-lesson-os #code-window #editor-tabs-bar .room-editor-runtime span {
+    display: none !important;
+  }
+  .room-lesson-os #code-window #editor-tabs-bar .room-editor-runtime {
+    padding: 0 6px !important;
+  }
+  .room-lesson-os #code-window #editor-tabs-bar #editor-tracer-toggle-btn span {
+    display: none !important;
+  }
+  .room-lesson-os #code-window #editor-tabs-bar #editor-tracer-toggle-btn {
+    padding: 6px 8px !important;
+  }
+  .room-lesson-os #code-window #editor-tabs-bar #hw-single-file-header span.text-\[10px\] {
+    display: none !important;
+  }
+  .room-lesson-os #code-window #editor-tabs-bar #hw-code-save-text {
+    display: none !important;
+  }
+
+  .room-lesson-os #code-window #editor-status-bar #status-bar-char-count,
+  .room-lesson-os #code-window #editor-status-bar #status-bar-file-type,
+  .room-lesson-os #code-window #editor-status-bar .bg-slate-100\/90,
+  .room-lesson-os #code-window #editor-status-bar #status-bar-exec-indicator {
+    display: none !important;
+  }
+  .room-lesson-os #code-window #editor-status-bar span.w-px {
+    display: none !important;
+  }
+}
+
 .room-lesson-os #code-window.lesson-os-statusbar-hidden #editor-status-bar { display: none !important; }
 .room-lesson-os .lesson-os-code-resize { position: absolute; right: 0; bottom: 0; z-index: 10; width: 18px; height: 18px; cursor: se-resize; }
 .room-lesson-os #task-window {
@@ -495,6 +554,29 @@ body.bs-lesson-room main.room-lesson-shell {
   background: rgba(255, 255, 255, .96) !important;
   box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04) !important;
 }
+.room-lesson-os .glass-os-window.is-window-active:not(#canvas-window),
+.room-lesson-os #code-window.is-window-active {
+  border-color: rgba(99, 102, 241, 0.55) !important;
+  box-shadow: 0 16px 40px -4px rgba(99, 102, 241, 0.18), 0 0 0 2px rgba(99, 102, 241, 0.4) !important;
+}
+.room-lesson-os .glass-os-window.is-dragging {
+  transition: none !important;
+  will-change: left, top !important;
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+.room-lesson-os .lesson-os-permission-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  line-height: 1.3;
+  user-select: none;
+  transition: all 0.2s ease;
+}
 .room-lesson-os #terminal-window {
   border-color: #e2e8f0 !important;
   background: #ffffff !important;
@@ -527,24 +609,37 @@ body.bs-lesson-room main.room-lesson-shell {
   background: linear-gradient(105deg, #fff6e8, #fffaf2);
 }
 .room-lesson-os #board-dock {
-  height: 68px;
-  gap: 8px;
-  padding: 3px 12px;
-  border: 1px solid rgba(222, 224, 245, .9);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, .86);
-  box-shadow: 0 12px 34px rgba(68, 70, 142, .14);
-  backdrop-filter: blur(16px);
+  height: auto !important;
+  gap: 12px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
 }
 .room-lesson-os #board-dock > .board-dock-item,
 .room-lesson-os #lesson-os-add > summary.board-dock-item {
-  flex-basis: 72px;
-  width: 72px !important;
-  height: 70px !important;
-  gap: 3px;
-  color: #34427d !important;
-  font-size: 11px;
-  font-weight: 700;
+  flex: 0 0 48px !important;
+  width: 48px !important;
+  height: 48px !important;
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  color: #475569 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 .room-lesson-os #board-dock > .board-dock-item > i,
 .room-lesson-os #lesson-os-add > summary.board-dock-item > i {
@@ -784,26 +879,24 @@ body.bs-lesson-room main.room-lesson-shell {
 .room-lesson-os #board-dock > .board-dock-divider,
 .room-lesson-os #lesson-os-add,
 .room-lesson-os #booai-popover { display: none !important; }
-.room-lesson-os #board-dock { height: 68px; gap: 8px; padding: 2px 10px; overflow: visible; }
+.room-lesson-os #board-dock { height: auto !important; gap: 12px; padding: 0; overflow: visible; background: transparent !important; box-shadow: none !important; border: none !important; pointer-events: none !important; }
 .room-lesson-os #board-dock > .board-dock-item,
-.room-lesson-os #lesson-os-add > summary.board-dock-item { order: 0; flex: 0 0 83px; width: 83px !important; height: 64px !important; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; background: transparent !important; box-shadow: none !important; color: #25346b !important; cursor: pointer; font-size: 11px; font-weight: 750; list-style: none; }
-.room-lesson-os #board-dock > .board-dock-item::after { content: attr(data-room-label); }
+.room-lesson-os #lesson-os-add > summary.board-dock-item { order: 0; flex: 0 0 48px !important; width: 48px !important; height: 48px !important; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(226, 232, 240, 0.85) !important; border-radius: 14px !important; background: rgba(255, 255, 255, 0.88) !important; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important; color: #475569 !important; cursor: pointer; list-style: none; pointer-events: auto !important; }
+.room-lesson-os #board-dock > .board-dock-item::after { display: none !important; }
 .room-lesson-os #board-dock > .board-dock-item > i,
 .room-lesson-os #lesson-os-add > summary.board-dock-item > i { display: flex; align-items: center; justify-content: center; width: auto; height: auto; border: none !important; border-radius: 0; background: transparent !important; color: inherit !important; box-shadow: none !important; font-size: 20px; }
 .room-lesson-os #board-dock > .board-dock-item.is-active > i { border: none !important; background: transparent !important; color: #4f46e5 !important; box-shadow: none !important; }
 .room-lesson-os #board-dock > .board-dock-item > span { display: none; }
 .room-lesson-os #board-dock > button.board-dock-item,
 .room-lesson-os #lesson-os-add > summary.board-dock-item {
-  flex: 0 0 83px !important;
-  width: 83px !important;
-  height: 64px !important;
-  font-size: 12px;
+  flex: 0 0 48px !important;
+  width: 48px !important;
+  height: 48px !important;
 }
 .room-lesson-os #board-dock > button.board-dock-item > i,
 .room-lesson-os #lesson-os-add > summary.board-dock-item > i {
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
+  width: auto;
+  height: auto;
 }
 .room-lesson-os #dock-icon-code-window { order: 0; }
 .room-lesson-os #dock-icon-theory-window { order: 0; }
@@ -1087,9 +1180,10 @@ body.bs-lesson-room main.room-lesson-shell {
   outline-offset: 2px;
 }
 .room-lesson-os #board-dock {
-  border-color: var(--lesson-window-border);
-  background: rgba(255, 254, 253, .93);
-  box-shadow: 0 14px 32px rgba(58, 42, 110, .13);
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
 }
 .room-lesson-os #board-dock > .board-dock-item > i,
 .room-lesson-os #lesson-os-add > summary.board-dock-item > i {
@@ -1125,7 +1219,11 @@ body.bs-lesson-room main.room-lesson-shell {
 
 @media (max-width: 1199px) {
   .room-lesson-os #board-command-bar { left: 20px; }
-  .lesson-os-system-bar { grid-template-columns: 1fr auto; }
+  .lesson-os-system-bar { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 0 12px; }
+  .lesson-os-system-left, .lesson-os-system-right { gap: 6px; }
+  .lesson-os-duration, .lesson-os-control-badge { display: none; }
+  .lesson-os-presence-wrap > #lesson-os-presence-toggle { width: 36px; padding: 0; }
+  #lesson-os-participants { display: none; }
   .lesson-os-system-center { display: none; }
   .lesson-os-system-right > .lesson-os-system-action:not(#lesson-os-board-actions-toggle):not(#lesson-os-chat-toggle) { display: none; }
   .lesson-os-live-actions .lesson-os-system-action span { display: none; }
@@ -1387,6 +1485,32 @@ body.bs-lesson-room main.room-lesson-shell {
   background: #fee2e2;
   color: #b91c1c;
   border-color: #fca5a5;
+}
+.lesson-os-unban-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 4px;
+  justify-self: end;
+}
+.lesson-os-unban-btn:hover {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #7dd3fc;
+}
+.lesson-os-presence-banned-person {
+  opacity: 0.85;
+  background: #f8fafc;
+  border-left: 3px solid #f43f5e;
 }
 
 /* Top Laser Pointer Layer */
@@ -1692,6 +1816,174 @@ body.bs-lesson-room main.room-lesson-shell {
   color: #7e22ce !important;
   border-color: #d8b4fe !important;
 }
+
+/* ==========================================================================
+   BOOSTUDY OS — SPRINT 9 PREMIUM VISUAL SYSTEM (DEFECT 6)
+   Tactile 3D Cards, 3D Elevation, Canon Typography, Truncation Protection
+   ========================================================================== */
+
+/* 1. All 16 OS Windows: Tactile 3D Card Elevation */
+.room-lesson-os .glass-os-window:not(#canvas-window) {
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 0 #cbd5e1, 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+.room-lesson-os .glass-os-window.is-window-active:not(#canvas-window),
+.room-lesson-os #code-window.is-window-active {
+  border-color: #6366f1 !important;
+  box-shadow: 0 16px 40px -4px rgba(99, 102, 241, 0.22), 0 4px 0 #4f46e5, 0 0 0 2px rgba(99, 102, 241, 0.35) !important;
+}
+
+/* 2. All Window Headers (16 Windows Unified) */
+.room-lesson-os .glass-os-window:not(#canvas-window):not(#terminal-window) :is(.lesson-os-code-titlebar, [id$="-header"], .glass-os-window-header) {
+  border-bottom: 2px solid #e2e8f0 !important;
+  background: linear-gradient(108deg, #fffdfb 0%, #fbf9ff 56%, #f4f1ff 100%) !important;
+  color: #1e293b !important;
+  min-height: 42px !important;
+  height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 14px !important;
+}
+
+/* Title text & icon protection against awkward line-wrap / clipping */
+.room-lesson-os .glass-os-window:not(#canvas-window) :is(.lesson-os-code-titlebar, [id$="-header"], .glass-os-window-header) > :first-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  max-width: fit-content !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+  cursor: grab !important;
+}
+
+.room-lesson-os .glass-os-window:not(#canvas-window) :is(.lesson-os-code-titlebar, [id$="-header"], .glass-os-window-header) {
+  cursor: grab !important;
+  user-select: none !important;
+}
+
+/* Header Action Controls (buttons, icons) must never shrink or distort */
+.room-lesson-os .glass-os-window:not(#canvas-window) :is(.lesson-os-code-titlebar, [id$="-header"], .glass-os-window-header) > :last-child {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+/* 3. Tactile 3D Buttons inside OS Windows */
+.room-lesson-os .glass-os-window button.btn-3d-primary {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border: 1px solid #4338ca !important;
+  border-bottom: 3px solid #3730a3 !important;
+  border-radius: 12px !important;
+  padding: 6px 14px !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25) !important;
+  transition: all 0.1s ease !important;
+  cursor: pointer !important;
+}
+.room-lesson-os .glass-os-window button.btn-3d-primary:active {
+  transform: translateY(2px) !important;
+  border-bottom-width: 1px !important;
+}
+
+.room-lesson-os .glass-os-window button.btn-3d-secondary {
+  background: #ffffff !important;
+  color: #334155 !important;
+  font-weight: 800 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-bottom: 3px solid #94a3b8 !important;
+  border-radius: 12px !important;
+  padding: 6px 14px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.1s ease !important;
+  cursor: pointer !important;
+}
+.room-lesson-os .glass-os-window button.btn-3d-secondary:active {
+  transform: translateY(2px) !important;
+  border-bottom-width: 1px !important;
+}
+
+/* 4. Floating Dock Tactile 3D Pods */
+.room-lesson-os #board-dock {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}
+
+/* Dock item tactile feedback */
+.room-lesson-os #board-dock > .board-dock-item {
+  transition: transform 0.1s ease, color 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+}
+.room-lesson-os #board-dock > .board-dock-item:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12) !important;
+}
+.room-lesson-os #board-dock > .board-dock-item:active {
+  transform: translateY(1px) scale(0.97) !important;
+}
+.room-lesson-os #board-dock > .board-dock-item.is-active {
+  color: #4f46e5 !important;
+  border-color: #6366f1 !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25) !important;
+}
+.room-lesson-os #board-dock > .board-dock-item.is-active::after {
+  display: none !important;
+}
+
+/* 5. Viewport Indicators & Orbit Controls */
+.room-lesson-os .board-student-viewport-box {
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+.room-lesson-os .board-student-viewport-badge {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12), 0 2px 0 rgba(0, 0, 0, 0.08) !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+}
+.room-lesson-os .board-student-viewport-jump-btn:active {
+  transform: translateY(1px) !important;
+  border-bottom-width: 1px !important;
+}
+
+/* 6. Strict Russian Typography Polish (no hyphen breaks or clipped words) */
+.room-lesson-os {
+  hyphens: manual !important;
+  -webkit-hyphens: manual !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* 7. Authoritative OS Window Minimum Sizes */
+.room-lesson-os #code-window { min-width: 440px !important; min-height: 280px !important; }
+.room-lesson-os #task-window { min-width: 380px !important; min-height: 240px !important; }
+.room-lesson-os #homework-window { min-width: 380px !important; min-height: 240px !important; }
+.room-lesson-os #homework-answer-window { min-width: 460px !important; min-height: 320px !important; }
+.room-lesson-os #homework-files-window { min-width: 320px !important; min-height: 200px !important; }
+.room-lesson-os #review-grade-window { min-width: 440px !important; min-height: 340px !important; }
+.room-lesson-os #terminal-window { min-width: 360px !important; min-height: 200px !important; }
+.room-lesson-os #tracer-window { min-width: 340px !important; min-height: 200px !important; }
+.room-lesson-os #notes-window { min-width: 300px !important; min-height: 180px !important; }
+.room-lesson-os #theory-window { min-width: 340px !important; min-height: 220px !important; }
+.room-lesson-os #files-window { min-width: 320px !important; min-height: 200px !important; }
+
 
 
 

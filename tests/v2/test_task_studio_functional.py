@@ -5,6 +5,7 @@ sys.path.insert(0, os.path.abspath('.'))
 sys.stdout.reconfigure(encoding='utf-8')
 
 import unittest
+from unittest.mock import patch
 from app import create_app, db
 from app.models import User, Tasks, TaskBookmark, TaskTemplate, TemplateTask, TaskSolution
 
@@ -23,6 +24,16 @@ class TestTaskStudioFunctionalV2(unittest.TestCase):
                 teacher = User.query.filter_by(role='teacher').first()
             if not teacher:
                 teacher = User.query.first()
+            if not teacher:
+                teacher = User(
+                    username='synthetic_task_studio_teacher',
+                    email='synthetic-task-studio@example.test',
+                    role='tutor',
+                    is_active=True,
+                )
+                teacher.set_password('synthetic-test-only')
+                db.session.add(teacher)
+                db.session.commit()
             self.teacher_id = teacher.id
 
             # Ensure we have at least one test task
@@ -164,6 +175,59 @@ class TestTaskStudioFunctionalV2(unittest.TestCase):
         with self.app.app_context():
             TaskBookmark.query.filter_by(user_id=self.teacher_id, task_id=self.task_id).delete()
             db.session.commit()
+
+class TestSyntheticDraftPickerSafety(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config['TESTING'] = True
+        self.app.config['WTF_CSRF_ENABLED'] = False
+        self.client = self.app.test_client()
+        with self.app.app_context():
+            db.create_all()
+            teacher = User(username='synthetic-draft-picker-test', role='creator')
+            db.session.add(teacher)
+            db.session.commit()
+            self.teacher_id = teacher.id
+
+        with self.client.session_transaction() as sess:
+            sess['_user_id'] = str(self.teacher_id)
+            sess['_fresh'] = True
+
+    def test_synthetic_draft_tasks_only_show_in_verified_allowlist_mode(self):
+        source_key = 'boostudy.synthetic.adaptive-v1/test/task-picker-allowlist'
+        with self.app.app_context():
+            task = Tasks(
+                bank_category='synthetic_adaptive_draft',
+                task_number=9999,
+                source_key=source_key,
+                content_html='<p>Synthetic draft picker security check</p>',
+                answer='5',
+                answer_spec={'type': 'short_answer'},
+                created_by_id=self.teacher_id,
+                is_active=True,
+            )
+            db.session.add(task)
+            db.session.commit()
+            task_id = task.task_id
+
+        ordinary = self.client.get('/task-generator/bank/picker/list?per_page=100')
+        self.assertEqual(ordinary.status_code, 200)
+        self.assertNotIn(task_id, {item['task_id'] for item in ordinary.get_json()['items']})
+        ordinary_all = self.client.get('/task-generator/bank/picker/list?per_page=100&bank_category=all')
+        self.assertEqual(ordinary_all.status_code, 200)
+        self.assertNotIn(task_id, {item['task_id'] for item in ordinary_all.get_json()['items']})
+
+        with patch('app.ai_lab.database_safety.has_verified_safe_ai_lab_db', return_value=True), \
+             patch('app.ai_lab.provider.is_local_ai_lab_enabled', return_value=True), \
+             patch('app.ai_lab.platform_homework._allowlisted_user_ids', return_value=set()), \
+             patch('app.ai_lab.platform_homework._allowlisted_actor_ids', return_value={self.teacher_id}), \
+             patch('app.ai_lab.platform_homework._allowlisted_task_author_ids', return_value={self.teacher_id}):
+            allowed = self.client.get('/task-generator/bank/picker/list?per_page=100')
+
+        self.assertEqual(allowed.status_code, 200)
+        items = {item['task_id']: item for item in allowed.get_json()['items']}
+        self.assertIn(task_id, items)
+        self.assertEqual(items[task_id]['bank_category'], 'synthetic_adaptive_draft')
 
 
 if __name__ == '__main__':

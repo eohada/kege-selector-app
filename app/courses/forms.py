@@ -55,6 +55,7 @@ class CourseLessonForm(FlaskForm):
         ('cancelled', 'Отменён'),
     ], default='planned', validators=[DataRequired()])
     studio_scenario = TextAreaField('Сценарий Studio', validators=[Optional(), Length(max=12000)])
+    pedagogy_contract_json = StringField('Педагогическая структура', validators=[Optional(), Length(max=30000)])
     content = TextAreaField('Теория и материалы к уроку', validators=[Optional(), Length(max=16000)])
     homework = TextAreaField('Домашнее задание', validators=[Optional(), Length(max=12000)])
     teacher_note = TextAreaField('Заметка преподавателя', validators=[Optional(), Length(max=4000)])

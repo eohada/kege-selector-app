@@ -18,6 +18,7 @@
         <label>Условие<textarea id="rb-condition" rows="7" maxlength="8000" placeholder="Что требуется сделать? Какие входы, выходы и допустимые решения?"></textarea></label>
         <label>Эталонный ответ <small>необязательно</small><textarea id="rb-reference" rows="5" maxlength="8000"></textarea></label>
         <label>Требования преподавателя <small>необязательно</small><textarea id="rb-requirements" rows="3" maxlength="4000" placeholder="Явные ограничения и допустимые варианты"></textarea></label>
+        <details class="rb-identity"><summary>Привязать к версии задания <small>необязательно</small></summary><p class="rb-note">При повторном открытии рубрика будет переиспользована только для того же стабильного ID, версии и содержания задания. Для изменённого условия укажите новую версию.</p><div class="rb-field-pair"><label>Стабильный ID задания<input id="rb-assignment-id" maxlength="120" placeholder="Например, course.python.sum.v1"></label><label>Версия задания<input id="rb-assignment-version" type="number" min="1" max="999999999" step="1" value="1"></label></div></details>
         <div class="rb-generate-row"><label>Модель<select id="rb-model"><option value="">Загрузка моделей…</option></select></label><button class="rb-button rb-button-primary" id="rb-generate" type="button" {% if not ai_lab_enabled %}disabled{% endif %}><i class="ph ph-sparkle" aria-hidden="true"></i>Предложить критерии</button></div>
       </div>
     </section>

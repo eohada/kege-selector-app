@@ -3,7 +3,7 @@
 {% block title %}Вход в систему · BooStudy{% endblock %}
 
 {% block head_extra %}
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="{{ url_for('static', filename='vendor/tailwind.min.js') }}"></script>
 <script>
   tailwind.config = {
     darkMode: 'class',
@@ -24,7 +24,7 @@
     }
   }
 </script>
-<script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+<script src="{{ url_for('static', filename='vendor/phosphor/index.js') }}?v=2.1.2" defer></script>
 <style>
   :root, html, body {
     color-scheme: light !important;
@@ -152,9 +152,11 @@
                     <i class="ph-bold ph-user-plus text-base"></i> Создать аккаунт
                 </a>
 
+                {% if config.ENABLE_DEMO_CONCEPT %}
                 <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors mt-1 no-underline">
                     <i class="ph-bold ph-sparkles text-amber-500"></i> Попробовать демо без регистрации
                 </a>
+                {% endif %}
 
                 <div class="pt-2 border-t border-slate-100/60 mt-1">
                     <a href="{{ url_for('main.legal_hub') }}" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-indigo-600 transition-colors no-underline">

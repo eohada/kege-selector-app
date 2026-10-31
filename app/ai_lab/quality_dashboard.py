@@ -24,7 +24,11 @@ def _tariff(name: str) -> float | None:
 
 
 def quality_snapshot() -> dict:
-    experiments = AiLabExperiment.query.order_by(AiLabExperiment.id.asc()).all()
+    experiments = (AiLabExperiment.query
+                   .filter(~AiLabExperiment.scenario_id.in_(
+                       ("ai-course-analysis", "ai-lesson-intelligence", "ai-practice-feedback")
+                   ))
+                   .order_by(AiLabExperiment.id.asc()).all())
     rubrics = AiLabRubricVersion.query.order_by(AiLabRubricVersion.id.asc()).all()
     signals = {key: [] for key in ("score_match", "criteria_alignment", "error_detection")}
     models: dict[str, dict] = defaultdict(lambda: {"runs": 0, "reviewed": 0, "tokens": 0})

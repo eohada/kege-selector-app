@@ -23,44 +23,67 @@ from app import csrf
 from app.runtime_state import db_is_ready, migrations_are_ready, redis_ping, socketio_is_ready
 from app.utils.schema_contract import schema_contract_is_ready
 
+def _is_dev_impersonation_allowed() -> bool:
+    """Безопасный dev-gate: имперсонация строго запрещена в production.
+    Включается в dev/local/sandbox при явном флаге BOOSTUDY_DEV_IMPERSONATION!=0 или в тестах.
+    """
+    env = (os.environ.get('ENVIRONMENT') or '').strip().lower()
+    flask_env = (os.environ.get('FLASK_ENV') or '').strip().lower()
+    app_env = (current_app.config.get('ENV') or '').strip().lower() if current_app else ''
+    if env == 'production' or flask_env == 'production' or app_env == 'production':
+        return False
+    if current_app and (current_app.config.get('TESTING') or current_app.config.get('DEBUG')):
+        return True
+    flag = os.environ.get('BOOSTUDY_DEV_IMPERSONATION', '1').strip().lower()
+    if flag in {'0', 'false', 'no', 'off', 'disabled'}:
+        return False
+    return env in {'local', 'development', 'dev', 'sandbox', ''}
+
+
 def get_active_role():
     """
-    Возвращает активную роль пользователя:
-    В режиме DEBUG/TESTING отдает session['sandbox_role'] (если задана панелью Dev Role Switcher),
-    иначе возвращает current_user.role.
+    Возвращает активную роль пользователя для отображения интерфейса:
+    В режиме dev-имперсонации может отдавать session['sandbox_role'] (если задана панелью Dev Role Switcher),
+    иначе возвращает current_user.role (или 'student').
+    Для серверных проверок безопасности (RBAC) всегда используется current_user.role.
     """
     from flask import session, current_app
-    if (
-        (current_app.config.get('DEBUG') or current_app.config.get('TESTING'))
-        and session.get('sandbox_role')
-        and _synthetic_role_switch_enabled()
-    ):
-        return session['sandbox_role']
+    if _is_dev_impersonation_allowed():
+        sandbox_role = session.get('sandbox_role')
+        if sandbox_role:
+            return sandbox_role
     if current_user and current_user.is_authenticated:
         return getattr(current_user, 'role', 'student')
     return 'student'
 
+
 @main_bp.context_processor
 def inject_active_role():
-    user_can_dev = False
-    if current_user and getattr(current_user, 'is_authenticated', False):
-        user_role = (getattr(current_user, 'role', '') or '').lower()
-        if (
-            getattr(current_user, 'is_admin', lambda: False)() or 
-            getattr(current_user, 'is_creator', lambda: False)() or 
-            getattr(current_user, 'is_chief_tester', lambda: False)() or
-            getattr(current_user, 'is_tester', lambda: False)() or
-            user_role in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
-            session.get('is_impersonating', False)
-        ):
-            user_can_dev = True
-
     return {
         'get_active_role': get_active_role,
-        'show_dev_tools': bool(
-            current_app.config.get('DEBUG') or current_app.config.get('TESTING') or user_can_dev
-        ),
+        'show_dev_tools': _is_dev_impersonation_allowed(),
     }
+
+
+@main_bp.route('/landing/preview')
+def landing_rebirth_preview():
+    """Изолированный просмотр новой публичной сцены вне production."""
+    environment = {
+        (os.environ.get('ENVIRONMENT') or '').strip().lower(),
+        (os.environ.get('FLASK_ENV') or '').strip().lower(),
+        (current_app.config.get('ENV') or '').strip().lower(),
+        (current_app.config.get('ENVIRONMENT') or '').strip().lower(),
+    }
+    preview_environments = {'local', 'development', 'dev', 'sandbox', 'preview', 'staging', 'test'}
+    hostname = request.host.split(':', 1)[0].strip('[]').lower()
+    is_loopback_host = hostname in {'localhost', '127.0.0.1'} or request.host.startswith('[::1]')
+    production = bool(environment & {'production', 'prod'})
+    if (production and not is_loopback_host) or not (
+        current_app.debug or current_app.testing or environment & preview_environments or is_loopback_host
+    ):
+        abort(404)
+    template = 'landing_rebirth_preview_2_3.html' if request.args.get('sprint') == '2.3' else 'landing_rebirth_preview.html'
+    return render_template(template)
 
 
 @main_bp.before_app_request
@@ -465,9 +488,9 @@ def landing():
     is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
     if is_admin_env:
         return redirect(url_for('remote_admin.dashboard'))
-    # На демо-сайте или при заходе на демо-хост — сразу страница выбора экзамена
-    is_demo = current_app.config.get('DEMO_SITE')
-    if not is_demo and current_app.config.get('DEMO_HOST'):
+    # На демо-сайте или при заходе на демо-хост — только если включен концепт демо
+    is_demo = current_app.config.get('DEMO_SITE') and current_app.config.get('ENABLE_DEMO_CONCEPT', False)
+    if not is_demo and current_app.config.get('DEMO_HOST') and current_app.config.get('ENABLE_DEMO_CONCEPT', False):
         req_host = (request.host or '').split(':')[0].lower()
         is_demo = req_host == current_app.config.get('DEMO_HOST')
     if is_demo:
@@ -1283,6 +1306,13 @@ def student_dashboard():
         (item for item in course_items_all if item.status == 'in_progress'),
         next((item for item in course_items_all if item.status in {'planned', 'overdue'}), None),
     )
+    course_next_lesson = None
+    if student and selected_course and current_learning_item and current_learning_item.lesson_id:
+        course_next_lesson = Lesson.query.filter_by(
+            lesson_id=current_learning_item.lesson_id,
+            student_id=student.student_id,
+            learning_trajectory_id=selected_course.course_id,
+        ).first()
     learning_path = []
     for module in course_modules:
         module_items = [item for item in course_items_all if item.module_id == module.module_id]
@@ -1575,6 +1605,7 @@ def student_dashboard():
         course_items_all=course_items_all,
         learning_path=learning_path,
         current_learning_item=current_learning_item,
+        course_next_lesson=course_next_lesson,
         schedule_lessons=schedule_lessons,
         today_lessons=today_lessons,
         today_display_date=today_display_date,
@@ -3456,6 +3487,78 @@ def legacy_profile_redirect(user_id=None, username=None):
     return redirect(url_for('main.workspace_profile' if current_user.is_authenticated else 'auth.login'))
 
 
+@main_bp.post('/teacher/students/<int:user_id>/adaptive-learning')
+@login_required
+def adaptive_learning_action(user_id: int):
+    """Teacher-facing entry to the same synthetic Tutor Core decision services."""
+    from app.ai_lab.tutor_core import (
+        TutorCoreError,
+        _require_synthetic_profile_access,
+        assign_tutor_diagnostic,
+        create_tutor_proposal,
+        review_tutor_proposal,
+        rollback_tutor_copy_decision,
+    )
+
+    target = User.query.get_or_404(user_id)
+    profile_id = f'platform-student:{int(target.id)}'
+    viewer_role = str(get_active_role() or '').casefold()
+    if viewer_role not in {'teacher', 'tutor'}:
+        abort(403)
+    try:
+        _require_synthetic_profile_access(int(current_user.id), profile_id)
+        action = str(request.form.get('action') or '').strip().casefold()
+        if action == 'preview':
+            create_tutor_proposal(int(current_user.id), profile_id, include_model=False)
+            flash('Предварительный просмотр Tutor Core сохранён. План не менялся.', 'success')
+        elif action == 'review':
+            proposal_id = int(request.form.get('proposal_id') or 0)
+            decision = str(request.form.get('decision') or '').strip().casefold()
+            exercise_roles = {}
+            for field, value in request.form.items():
+                if field.startswith('exercise_role_'):
+                    task_id = field.removeprefix('exercise_role_')
+                    if not task_id.isdigit():
+                        raise TutorCoreError('exercise_sequence_invalid', 'В роли упражнения передан некорректный ID.', 400)
+                    exercise_roles[int(task_id)] = str(value or '').strip().lower()
+            stage_minutes = {}
+            for field, value in request.form.items():
+                if field.startswith('stage_minutes_'):
+                    stage_id = field.removeprefix('stage_minutes_')
+                    if not stage_id or any(char not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-' for char in stage_id):
+                        raise TutorCoreError('adaptation_time_plan_invalid', 'В ID этапа передано недопустимое значение.', 400)
+                    try:
+                        stage_minutes[stage_id] = int(str(value).strip())
+                    except (TypeError, ValueError) as exc:
+                        raise TutorCoreError('adaptation_time_plan_invalid', 'Длительность этапа должна быть целым числом минут.', 400) from exc
+            record = review_tutor_proposal(
+                int(current_user.id), proposal_id, decision,
+                teacher_focus_text=request.form.get('teacher_focus'),
+                exercise_roles=exercise_roles or None,
+                stage_minutes=stage_minutes or None,
+                stage_purpose=request.form.get('stage_purpose'),
+            )
+            flash('Решение преподавателя сохранено; индивидуальная копия обновлена.' if decision == 'accepted'
+                  and (record.result_json or {}).get('course_copy_mutated')
+                  else 'Решение преподавателя сохранено; программа не менялась.' if decision == 'accepted'
+                  else 'Предложение отклонено; программа не менялась.', 'success')
+        elif action == 'assign_diagnostic':
+            assign_tutor_diagnostic(int(current_user.id), int(request.form.get('proposal_id') or 0))
+            flash('Диагностика назначена через штатные домашние работы; программа курса не менялась.', 'success')
+        elif action == 'rollback':
+            rollback_tutor_copy_decision(int(current_user.id), int(request.form.get('decision_id') or 0))
+            flash('Изменение индивидуальной копии отменено; история решения сохранена.', 'success')
+        else:
+            raise TutorCoreError('unknown_action', 'Действие Tutor Core не распознано.', 400)
+    except TutorCoreError as exc:
+        if exc.status_code == 403:
+            abort(403)
+        flash(str(exc), 'warning')
+    except (TypeError, ValueError) as exc:
+        flash(str(getattr(exc, 'message', None) or exc), 'warning')
+    return redirect(url_for('main.universal_profile_view', user_id=target.id, _anchor='adaptive-learning-summary'))
+
+
 @main_bp.route('/workspace/people/<int:user_id>', methods=['GET'])
 def universal_profile_view(user_id=None):
     """Единый архитектурный стандарт публичных/приватных профилей V2 Sandbox."""
@@ -3490,6 +3593,16 @@ def universal_profile_view(user_id=None):
     can_manage_student = bool(
         not is_owner and role == 'student' and is_staff_viewer
     )
+    if can_manage_student and viewer_role not in {'creator', 'admin', 'chief_admin'}:
+        from app.utils.relationship_scope import can_user_access_student
+        from core.db_models import Student
+
+        managed_student = Student.query.filter_by(user_id=target_user.id).first()
+        can_manage_student = can_user_access_student(
+            viewer,
+            student_user_id=target_user.id,
+            student_platform_id=getattr(managed_student, 'student_id', None),
+        )
 
     # Проверка права оставлять отзыв: авторизован, не владелец профиля, у зрителя роль STUDENT, а цель — преподаватель
     can_leave_review = bool(
@@ -3584,9 +3697,7 @@ def universal_profile_view(user_id=None):
     elif role == 'student':
         from core.db_models import Student, Submission, Lesson, StudentLearningPlanItem
         student_obj = Student.query.filter_by(user_id=target_user.id).first()
-        student_ids = [target_user.id]
-        if student_obj:
-            student_ids.append(student_obj.student_id)
+        student_ids = [int(student_obj.student_id)] if student_obj else [int(target_user.id)]
         submissions = Submission.query.filter(Submission.student_id.in_(student_ids)).all()
         completed_submissions = [
             sub for sub in submissions
@@ -3961,10 +4072,14 @@ def universal_profile_view(user_id=None):
                 learner = next((item for item in state.get('learners', [])
                                 if target_student and item.get('student_id') == target_student.student_id), None)
                 if target_student:
+                    from app.ai_lab.tutor_core import _platform_profile_cases
+                    subject_id = f"platform-student:{int(target_user.id)}"
+                    platform_cases = _platform_profile_cases(int(viewer.id))
+                    platform_case = next((item for item in platform_cases
+                                          if item.get('profile_id') == subject_id), None)
                     comparison = (learner.get('comparison') or {}) if learner else {}
                     decision = comparison.get('decision') or {}
                     from app.ai_lab.analytics import all_analytics_evidence
-                    subject_id = f"platform-student:{int(target_user.id)}"
                     source_rows = [
                         ('ai_classwork', 'Классная работа'),
                         ('ai_homework', 'Домашняя работа'),
@@ -3984,15 +4099,146 @@ def universal_profile_view(user_id=None):
                     ]
                     if viewer_role in {'creator', 'admin', 'chief_admin'}:
                         details_url = url_for('ai_lab.tutor_core_page')
+                        details_note = None
+                    elif viewer_role in {'teacher', 'tutor'} and can_manage_student:
+                        details_url = None
+                        details_note = (
+                            'Основания текущего шага и ограничения показаны в этой сводке; '
+                            'отдельная страница AI Lab недоступна роли преподавателя.'
+                        )
                     else:
-                        details_url = url_for('students.student_practice', student_id=target_student.student_id)
+                        details_url = None
+                        details_note = (
+                            'Подробные основания и решения этого synthetic-профиля пока доступны '
+                            'только в AI Lab для creator/admin.'
+                        )
+                    proposal_history = []
+                    if viewer_role in {'teacher', 'tutor'} and can_manage_student:
+                        from app.ai_lab.tutor_core import tutor_history
+                        proposal_history = tutor_history(int(viewer.id), subject_id)[-5:]
+                    case_proposal = (platform_case or {}).get('proposal') or {}
+                    action_labels = {
+                        'maintain_plan': 'Сохранить план и собрать подтверждённые результаты',
+                        'diagnostic_without_mastery_claim': 'Предложить отдельную диагностику без вывода об освоении',
+                        'targeted_diagnostic_and_review': 'Предложить короткую адресную проверку',
+                        'extension_with_alternative_method': 'Проверить перенос навыка на другой способ',
+                        'teacher_focus_overlay': 'Уточнить фокус будущего урока без изменения времени',
+                        'exercise_sequence_adjustment': 'Перераспределить упражнения между занятием и домашней работой',
+                    }
+                    next_step_value = decision.get('title') or case_proposal.get('action')
+                    next_step = action_labels.get(next_step_value, next_step_value)
+                    next_lesson = (platform_case or {}).get('next_lesson') or {}
+                    adaptation_target = (platform_case or {}).get('adaptation_target_lesson') or {}
+                    target_lesson = adaptation_target or next_lesson
+                    course_id = (platform_case or {}).get('course_copy_id')
+                    evidence_context_diagnostics = []
+                    current_plan = (platform_case or {}).get('current_plan') or []
+                    current_course_version = int((platform_case or {}).get('course_version') or 1)
+                    if course_id and next_lesson:
+                        for evidence in (platform_case or {}).get('evidence') or []:
+                            evidence_context = evidence.get('course_context')
+                            if (evidence.get('lesson_evidence_scope') != 'another_lesson_same_version'
+                                    or not isinstance(evidence_context, dict)):
+                                continue
+                            try:
+                                context_course_id = int(evidence_context.get('course_id') or 0)
+                                context_version = int(evidence_context.get('course_version') or 0)
+                                context_lesson_id = int(evidence_context.get('lesson_id') or 0)
+                                current_lesson_id = int(next_lesson.get('lesson_id') or 0)
+                            except (TypeError, ValueError):
+                                continue
+                            if (context_course_id != int(course_id)
+                                    or context_version != current_course_version
+                                    or context_lesson_id == current_lesson_id):
+                                continue
+                            bound_lesson = next((item for item in current_plan
+                                                 if str(item.get('lesson_id') or '') == str(context_lesson_id)), {})
+                            history_use = evidence.get('skill_history_use')
+                            evidence_context_diagnostics.append({
+                                'bound_lesson_order': bound_lesson.get('order'),
+                                'bound_lesson_title': bound_lesson.get('title') or bound_lesson.get('topic') or 'другой урок',
+                                'current_lesson_order': next_lesson.get('order'),
+                                'current_lesson_title': next_lesson.get('title') or next_lesson.get('topic') or 'следующий урок',
+                                'history_note': (
+                                    'Событие остаётся отдельным наблюдением в истории навыка.'
+                                    if history_use == 'retained_as_item_observation_for_stable_skill'
+                                    else 'Событие сохранено, но его использование как наблюдения навыка не подтверждено.'
+                                ),
+                            })
+                    curriculum = None
+                    trajectory_profile = None
+                    if course_id and target_lesson:
+                        time_plan = case_proposal.get('time_plan') or {}
+                        curriculum = {
+                            'status': 'linked',
+                            'course_title': (platform_case or {}).get('course_title') or '',
+                            'course_version': (platform_case or {}).get('course_version') or 1,
+                            'module_title': target_lesson.get('module_title') or '',
+                            'lesson_topic': target_lesson.get('title') or target_lesson.get('topic') or '',
+                            'lesson_duration': target_lesson.get('duration_minutes') or 60,
+                            'target_lesson_order': target_lesson.get('order'),
+                            'target_lesson_id': target_lesson.get('lesson_id'),
+                            'is_future_focus': bool((platform_case or {}).get('adaptation_target_lesson')),
+                            'current_lesson_topic': next_lesson.get('title') or next_lesson.get('topic') or '',
+                            'target_segment': adaptation_target.get('segment_title'),
+                            'teacher_focus': case_proposal.get('teacher_focus'),
+                            'target_learning_goal': adaptation_target.get('learning_goal'),
+                            'target_original_content': adaptation_target.get('original_content'),
+                            'criterion_coverage': case_proposal.get('criteria_coverage') or [],
+                            'selected_exercise': case_proposal.get('selected_exercise'),
+                            'time_impact': time_plan.get('explanation') or case_proposal.get('text') or '',
+                            'separate_activity': case_proposal.get('separate_activity'),
+                            'preview_available': bool((platform_case or {}).get('can_generate')),
+                        }
+                    if platform_case:
+                        from app.ai_lab.trajectory_profile import build_teacher_trajectory_profile
+                        trajectory_profile = build_teacher_trajectory_profile(platform_case)
+                    cohort_comparison = None
+                    if platform_case and viewer_role in {'teacher', 'tutor', 'creator', 'admin', 'chief_admin'}:
+                        from app.ai_lab.trajectory_comparison import build_teacher_cohort_comparison
+                        cohort_comparison = build_teacher_cohort_comparison(
+                            platform_cases,
+                            selected_profile_id=subject_id,
+                            actor_user_id=int(viewer.id),
+                        )
+                        for cohort_learner in cohort_comparison.get('learners', []):
+                            cohort_learner['profile_url'] = url_for(
+                                'main.universal_profile_view', user_id=cohort_learner['user_id'],
+                            ) + '#adaptive-learning-summary'
+                            cohort_learner['plan_editor_url'] = url_for(
+                                'courses.course_lesson_new',
+                                course_id=cohort_learner['course_id'],
+                                adaptive_v2=1,
+                            )
+                            cohort_learner['plan_editor_label'] = 'Персонализировать будущую программу'
                     context['adaptive_learning_summary'] = {
-                        'event_count': int(learner.get('event_count') or 0) if learner else 0,
-                        'next_step': decision.get('title') or 'Пока нет основания менять следующий шаг',
-                        'reason': decision.get('reason') or 'Нужно собрать подтверждённые учебные события по этому профилю.',
+                        'event_count': int((learner or platform_case or {}).get('event_count') or 0),
+                        'next_step': next_step or 'Пока нет основания менять следующий шаг',
+                        'reason': decision.get('reason') or case_proposal.get('text') or 'Нужно собрать подтверждённые учебные события по этому профилю.',
                         'source_evidence': source_evidence,
+                        'evidence_context_diagnostics': evidence_context_diagnostics,
+                        'current_lesson_url': (
+                            url_for('lessons.lesson_interactive_room', lesson_id=int(next_lesson['lesson_id']))
+                            if next_lesson.get('lesson_id') and viewer_role in {'teacher', 'tutor'} and can_manage_student
+                            else None
+                        ),
                         'details_url': details_url,
-                        'curriculum_status': learner.get('curriculum_status') or 'not_linked',
+                        'details_note': details_note,
+                        'curriculum_status': ('linked' if curriculum else
+                                              ((platform_case or {}).get('curriculum_resolution') or {}).get('status')
+                                              or 'not_linked'),
+                        'subject_id': subject_id,
+                        'skills': ((learner.get('state_b') or {}).get('skills') or []) if learner else [],
+                        'curriculum': curriculum,
+                        'trajectory_profile': trajectory_profile,
+                        'cohort_comparison': cohort_comparison,
+                        'needs_future_lesson': bool(course_id and not next_lesson and not adaptation_target),
+                        'course_plan_url': (
+                            url_for('courses.course_lesson_new', course_id=int(course_id))
+                            if course_id and viewer_role in {'teacher', 'tutor'} and can_manage_student
+                            else None
+                        ),
+                        'proposal_history': proposal_history,
                     }
             except Exception:
                 logger.exception('Unable to build synthetic adaptive learning profile summary')
@@ -4201,18 +4447,9 @@ def api_enroll_mentor_program(teacher_id):
 # =========================================================================
 # DEV ROLE SWITCHER & IMPERSONATION API
 # =========================================================================
-def _is_dev_or_sandbox():
-    env = (os.environ.get('ENVIRONMENT') or 'local').strip().lower()
-    return bool(
-        current_app.config.get('DEBUG')
-        or current_app.config.get('TESTING')
-        or env in {'local', 'development', 'dev', 'sandbox'}
-    )
-
-
 def _synthetic_role_switch_enabled():
-    """Allow dev role switching in dev/sandbox/testing or when safe AI lab is active."""
-    if _is_dev_or_sandbox():
+    """Allow role switching only in isolated tests or a verified synthetic AI Lab DB."""
+    if current_app.config.get('TESTING'):
         return True
     try:
         from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
@@ -4223,6 +4460,22 @@ def _synthetic_role_switch_enabled():
         return False
 
 
+def _synthetic_student_user_ids():
+    configured = current_app.config.get('AI_LAB_PLATFORM_TEST_USER_IDS')
+    if configured is None:
+        configured = os.environ.get('AI_LAB_PLATFORM_TEST_USER_IDS', '')
+    values = configured if isinstance(configured, (list, tuple, set)) else str(configured or '').split(',')
+    result = set()
+    for value in values:
+        try:
+            user_id = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if user_id > 0:
+            result.add(user_id)
+    return result
+
+
 def _safe_synthetic_student_user(user):
     """Only allow a linked, active demo learner from the verified synthetic DB."""
     if (
@@ -4230,6 +4483,10 @@ def _safe_synthetic_student_user(user):
         or not user.is_active
         or (user.role or '').lower() != 'student'
         or not (user.username or '').startswith(('demo_', 'synthetic_'))
+    ):
+        return False
+    if not current_app.config.get('TESTING') and (
+        not _synthetic_role_switch_enabled() or int(user.id) not in _synthetic_student_user_ids()
     ):
         return False
     from app.models import Student
@@ -4247,8 +4504,10 @@ _CANONICAL_DEV_IMPERSONATION_USERS = {
 
 
 def _require_dev_tools(*, administrator_only=False):
-    """Allow QA identity switching only to staff in dev/sandbox or verified synthetic lab."""
-    if not _synthetic_role_switch_enabled():
+    """Allow QA identity switching only in dev/sandbox with dev-gate enabled.
+    In production environment, immediately rejects with 403.
+    """
+    if not _is_dev_impersonation_allowed():
         abort(403)
 
     actor_id = session.get('impersonator_id') or session.get('_user_id')
@@ -4257,20 +4516,17 @@ def _require_dev_tools(*, administrator_only=False):
     except (TypeError, ValueError):
         authenticated_user = None
 
-    if not authenticated_user or not authenticated_user.is_active:
-        abort(403)
-    user_role = (authenticated_user.role or '').lower()
-    privileged_roles = {'creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'}
-    if user_role not in privileged_roles:
-        abort(403)
-    if administrator_only and user_role not in {'creator', 'admin', 'chief_admin'}:
-        abort(403)
+    if authenticated_user:
+        if not authenticated_user.is_active:
+            abort(403)
+        user_role = (authenticated_user.role or '').lower()
+        if administrator_only and user_role not in {'creator', 'admin', 'chief_admin'}:
+            abort(403)
 
 
 @main_bp.route('/api/dev/users', methods=['GET'])
 @main_bp.route('/sandbox/api/impersonate/users', methods=['GET'])
 @main_bp.route('/api/impersonate/users', methods=['GET'])
-@login_required
 def dev_get_users_api():
     """API отдачи 15 сбалансированных пользователей (по 3 на каждую роль) для виджета Dev Role Switcher (Alt + I)."""
     _require_dev_tools()
@@ -4322,6 +4578,23 @@ def dev_get_users_api():
             }
             for user in User.query.filter(User.is_active.is_(True)).order_by(User.id.asc()).limit(200).all()
         ]
+    elif _synthetic_role_switch_enabled():
+        allowed_ids = _synthetic_student_user_ids()
+        if allowed_ids:
+            existing_names = {item['username'] for item in target_pool}
+            synthetic_students = User.query.filter(
+                User.id.in_(allowed_ids), User.is_active.is_(True), User.role == 'student'
+            ).order_by(User.id.asc()).all()
+            for user in synthetic_students:
+                if user.username in existing_names or not _safe_synthetic_student_user(user):
+                    continue
+                target_pool.append({
+                    'username': user.username,
+                    'role': user.role,
+                    'custom_status': getattr(user, 'custom_status', None) or '🧪 Синтетический ученик',
+                    'email': user.email,
+                })
+                existing_names.add(user.username)
     target_usernames = [t['username'] for t in target_pool]
 
     # Загружаем только реальные активные аккаунты в заданном порядке.
@@ -4376,7 +4649,6 @@ def dev_get_users_api():
 
 @main_bp.route('/api/dev/switch_role', methods=['POST'])
 @main_bp.route('/sandbox/api/dev/switch_role', methods=['POST'])
-@login_required
 def dev_switch_role_api():
     """API быстрой смены активной роли в сессии."""
     _require_dev_tools()
@@ -4396,7 +4668,6 @@ def dev_switch_role_api():
 @main_bp.route('/sandbox/impersonate/<int:user_id>', methods=['GET'])
 @main_bp.route('/impersonate/<target_identifier>', methods=['GET'])
 @main_bp.route('/impersonate/<int:user_id>', methods=['GET'])
-@login_required
 def dev_impersonate_user(target_identifier=None, user_id=None):
     """Быстрый вход/переключение под выбранным пользователем."""
     _require_dev_tools()
@@ -4404,7 +4675,7 @@ def dev_impersonate_user(target_identifier=None, user_id=None):
 
     user = None
     if isinstance(target, int) or (isinstance(target, str) and target.isdigit()):
-        user = User.query.get(int(target))
+        user = db.session.get(User, int(target))
     
     if not user and target:
         user = User.query.filter_by(username=str(target)).first()
@@ -4418,7 +4689,6 @@ def dev_impersonate_user(target_identifier=None, user_id=None):
             user.username in _CANONICAL_DEV_IMPERSONATION_USERS
             or _safe_synthetic_student_user(user)
             or current_app.config.get('TESTING')
-            or _is_dev_or_sandbox()
         )
     )
     if not allowed_target:
@@ -4440,22 +4710,26 @@ def dev_impersonate_user(target_identifier=None, user_id=None):
 
 
 @main_bp.route('/sandbox/impersonate/revert', methods=['GET'])
-@login_required
 def dev_revert_impersonation():
-    """Сброс имперсонации к исходному пользователю."""
+    """Сброс имперсонации к исходному пользователю или выход."""
+    _require_dev_tools()
     imp_id = session.get('impersonator_id')
     if imp_id:
-        orig_user = User.query.get(imp_id)
-        if orig_user:
+        orig_user = db.session.get(User, int(imp_id))
+        if orig_user and orig_user.is_active:
             session['_user_id'] = str(orig_user.id)
             login_user(orig_user, remember=False)
-    # Нельзя оставлять маркеры прошлой имперсонации: они подменяют активную
-    # роль после возврата и способны снова открыть ученический кабинет.
+        else:
+            logout_user()
+    else:
+        logout_user()
     session.pop('impersonator_id', None)
     session.pop('is_impersonating', None)
     session.pop('sandbox_role', None)
     
-    return redirect(url_for('main.dashboard'))
+    if current_user and current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    return redirect(url_for('auth.login'))
 
 
 
@@ -5283,4 +5557,3 @@ def api_get_telegram_status():
         'telegram_id': current_user.telegram_id or current_user.telegram_chat_id,
         'telegram_linked_at': linked_at_str
     })
-

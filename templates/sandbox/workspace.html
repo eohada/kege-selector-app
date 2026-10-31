@@ -4,15 +4,15 @@
 <!-- CSRF Meta Tag -->
 <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
 
-<!-- KaTeX Auto-Render CDN -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
+<!-- KaTeX Auto-Render Local -->
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}?v=0.16.8">
+<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}?v=0.16.8"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}?v=0.16.8" onload="initKaTeX()"></script>
 
 <!-- Prism.js Light Theme Syntax Highlighting for Python -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/prism/prism.min.css') }}?v=1.29.0">
+<script src="{{ url_for('static', filename='vendor/prism/prism.min.js') }}?v=1.29.0"></script>
+<script src="{{ url_for('static', filename='vendor/prism/prism-python.min.js') }}?v=1.29.0"></script>
 
 <style>
   /* Custom Light Syntax Overlay styles for Textarea */

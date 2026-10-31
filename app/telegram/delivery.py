@@ -9,6 +9,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from core.db_models import TelegramDelivery, UserNotification, UserProfile, db, utc_now
+from app.telegram.config import is_delivery_permitted
 from app.telegram.notifications import send_telegram_message, send_telegram_photo
 from app.telegram.user_notify import (
     _KIND_TO_ATTR, _QUIET_HOURS_BYPASS, _in_quiet_hours,
@@ -25,7 +26,21 @@ def make_dedupe_key(user_id, text, kind=None, notification_id=None):
     return 'telegram:%s' % hashlib.sha256(raw.encode()).hexdigest()
 
 
-def enqueue_delivery(user_id, text, *, kind=None, notification_id=None, priority='normal', dedupe_key=None, reply_markup=None, photo_url=None, caption=None):
+def enqueue_delivery(
+    user_id,
+    text,
+    *,
+    kind=None,
+    notification_id=None,
+    priority='normal',
+    dedupe_key=None,
+    reply_markup=None,
+    photo_url=None,
+    caption=None,
+    meta=None,
+    lesson_id=None,
+    student_id=None,
+):
     kind = normalize_notification_kind(kind) or 'generic'
     dedupe_key = dedupe_key or make_dedupe_key(user_id, text, kind, notification_id)
     existing = TelegramDelivery.query.filter_by(dedupe_key=dedupe_key).first()
@@ -38,10 +53,22 @@ def enqueue_delivery(user_id, text, *, kind=None, notification_id=None, priority
     if photo_url:
         payload['photo_url'] = photo_url
         payload['caption'] = caption if caption is not None else text
-    row = TelegramDelivery(user_id=int(user_id), notification_id=notification_id,
-                           telegram_chat_id=getattr(profile, 'telegram_chat_id', None),
-                           kind=kind, payload=payload, priority=priority,
-                           dedupe_key=dedupe_key)
+    if meta:
+        payload['meta'] = meta
+    if lesson_id is not None:
+        payload['lesson_id'] = int(lesson_id)
+    if student_id is not None:
+        payload['student_id'] = int(student_id)
+
+    row = TelegramDelivery(
+        user_id=int(user_id),
+        notification_id=notification_id,
+        telegram_chat_id=getattr(profile, 'telegram_chat_id', None),
+        kind=kind,
+        payload=payload,
+        priority=priority,
+        dedupe_key=dedupe_key,
+    )
     try:
         with db.session.begin_nested():
             db.session.add(row)
@@ -77,10 +104,16 @@ def enqueue_direct_delivery(user_id, chat_id, text, *, kind='demo_lead', dedupe_
 
 def claim_due_deliveries(limit=50):
     now = utc_now()
-    rows = (TelegramDelivery.query
-            .filter(TelegramDelivery.status.in_(['pending', 'retry']), TelegramDelivery.next_attempt_at <= now)
-            .order_by(TelegramDelivery.priority.desc(), TelegramDelivery.created_at.asc())
-            .with_for_update(skip_locked=True).limit(int(limit)).all())
+    query = (
+        TelegramDelivery.query
+        .filter(TelegramDelivery.status.in_(['pending', 'retry']), TelegramDelivery.next_attempt_at <= now)
+        .order_by(TelegramDelivery.priority.desc(), TelegramDelivery.created_at.asc())
+    )
+    # SQLite does not support FOR UPDATE SKIP LOCKED
+    if db.engine.dialect.name != 'sqlite':
+        query = query.with_for_update(skip_locked=True)
+
+    rows = query.limit(int(limit)).all()
     for row in rows:
         row.status = 'processing'
         row.processing_started_at = now
@@ -118,6 +151,12 @@ def _finish(row, status, error=None, next_attempt_at=None):
             n = db.session.get(UserNotification, row.notification_id)
             if n:
                 n.telegram_sent = True
+    elif status == 'simulated':
+        row.sent_at = utc_now()
+        if row.notification_id:
+            n = db.session.get(UserNotification, row.notification_id)
+            if n:
+                n.telegram_sent = False
     db.session.commit()
     logger.info('telegram_delivery_finished delivery_id=%s status=%s attempts=%s', row.delivery_id, status, row.attempt_count)
 
@@ -128,22 +167,45 @@ def deliver_one(delivery_id):
         return {'ok': False, 'status': 'skipped'}
     direct_chat_id = (row.payload or {}).get('direct_chat_id')
     profile = UserProfile.query.filter_by(user_id=row.user_id).first()
-    chat_id = int(direct_chat_id) if direct_chat_id else (getattr(profile, 'telegram_chat_id', None) or row.telegram_chat_id)
-    if not chat_id:
-        _finish(row, 'cancelled', 'telegram chat is not linked')
-        return {'ok': False, 'status': 'cancelled'}
+    if not direct_chat_id:
+        chat_id = getattr(profile, 'telegram_chat_id', None)
+        if not chat_id:
+            _finish(row, 'cancelled', 'telegram chat is not linked')
+            return {'ok': False, 'status': 'cancelled'}
+    else:
+        chat_id = int(direct_chat_id)
+
     if not direct_chat_id and not getattr(profile, 'telegram_notifications_enabled', False):
         _finish(row, 'cancelled', 'telegram notifications disabled')
         return {'ok': False, 'status': 'cancelled'}
+
+    # Respect user category preference without hardcoded exemption
     attr = _KIND_TO_ATTR.get(row.kind)
-    if not direct_chat_id and attr and row.kind not in {'lesson_scheduled', 'lesson_reminder'} and not getattr(profile, attr, True):
-        _finish(row, 'cancelled', 'notification kind disabled')
+    if not direct_chat_id and attr and not getattr(profile, attr, True):
+        _finish(row, 'cancelled', f'notification kind disabled: {row.kind}')
         return {'ok': False, 'status': 'cancelled'}
+
+    # Verify family tie if student-specific notification to parent
+    student_id = (row.payload or {}).get('student_id') or ((row.payload or {}).get('meta') or {}).get('student_id')
+    if student_id and row.user_id != int(student_id):
+        from app.models import FamilyTie
+        tie = FamilyTie.query.filter_by(parent_id=row.user_id, student_id=int(student_id), is_confirmed=True).first()
+        if not tie:
+            _finish(row, 'cancelled', 'family tie unconfirmed or revoked')
+            return {'ok': False, 'status': 'cancelled'}
+
     if not direct_chat_id and row.kind not in _QUIET_HOURS_BYPASS and _in_quiet_hours(profile):
         row.status = 'retry'
         row.next_attempt_at = _quiet_release(profile)
         db.session.commit()
         return {'ok': False, 'status': 'deferred_quiet_hours'}
+
+    # Safety guard: Dev allowlist enforcement
+    if not is_delivery_permitted(chat_id, user_id=row.user_id):
+        logger.info('telegram_delivery_dev_dry_run delivery_id=%s user_id=%s chat_id=%s (not in allowlist)', row.delivery_id, row.user_id, chat_id)
+        _finish(row, 'simulated', error='[dev_dry_run] delivered simulated to non-allowlisted dev chat')
+        return {'ok': True, 'status': 'simulated', 'dry_run': True}
+
     try:
         if row.payload.get('photo_url'):
             result = send_telegram_photo(
@@ -186,3 +248,24 @@ def recover_stale_processing(timeout_minutes=10):
         row.last_error = 'recovered stale processing claim'
     db.session.commit()
     return len(rows)
+
+
+def invalidate_pending_lesson_deliveries(lesson_id: int, reason: str = 'lesson_rescheduled') -> int:
+    """Cancels any pending or retrying deliveries for a given lesson (e.g. after reschedule or cancellation)."""
+    deliveries = TelegramDelivery.query.filter(
+        TelegramDelivery.status.in_(['pending', 'retry']),
+        TelegramDelivery.kind.in_(['lesson_reminder', 'lesson_scheduled', 'lesson_rescheduled'])
+    ).all()
+    count = 0
+    lid_str = str(lesson_id)
+    for d in deliveries:
+        payload = d.payload or {}
+        p_lid = payload.get('lesson_id') or (payload.get('meta') or {}).get('lesson_id')
+        if p_lid == lesson_id or (p_lid is None and lid_str in json.dumps(payload)):
+            d.status = 'cancelled'
+            d.last_error = f'invalidated: {reason}'
+            count += 1
+    if count:
+        db.session.commit()
+        logger.info('invalidated_lesson_deliveries lesson_id=%s count=%s reason=%s', lesson_id, count, reason)
+    return count

@@ -549,7 +549,7 @@ def _can_manage_roles(role: str) -> bool:
 
 
 def _is_teacher(role: str) -> bool:
-    return role in ('creator', 'chief_admin', 'admin', 'tutor', 'content_maker')
+    return role in ('creator', 'chief_admin', 'admin', 'tutor', 'mentor', 'content_maker', 'teacher')
 
 
 def _is_student(role: str) -> bool:
@@ -561,7 +561,7 @@ def _is_parent(role: str) -> bool:
 
 
 def _has_access_role(role: str) -> bool:
-    return role in {'creator', 'chief_admin', 'admin', 'tutor', 'content_maker', 'parent', 'student', 'designer'}
+    return role in {'creator', 'chief_admin', 'admin', 'tutor', 'mentor', 'content_maker', 'teacher', 'parent', 'student', 'designer'}
 
 
 # ---------------------------------------------------------------------------
@@ -1649,6 +1649,27 @@ async def _send_settings(send_fn, chat_id: int) -> None:
         f'⚙️ <b>Настройки уведомлений</b>\n\n{status_line}\n\nНажми на пункт чтобы переключить:',
         parse_mode='HTML',
         reply_markup=_settings_keyboard(profile),
+    )
+
+
+async def cmd_miniapp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send pilot Mini App WebApp button strictly to allowlisted testers."""
+    user = update.effective_user
+    if not user or not update.effective_message:
+        return
+    from app.telegram.config import is_mini_app_permitted_for_chat_id, get_mini_app_url
+    if not is_mini_app_permitted_for_chat_id(user.id):
+        return
+
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+    app_url = get_mini_app_url()
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📱 Открыть Mini App (Pilot)", web_app=WebAppInfo(url=app_url))]
+    ])
+    await update.effective_message.reply_text(
+        "👋 <b>BooStudy Mini App (Pilot)</b>\n\nНажми кнопку ниже для открытия мобильного кабинета:",
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
 
 
@@ -4858,29 +4879,40 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         await _send_blitz_to_chat(update.message, chat_id)
         return
 
-    elif text_val in ["📅 Уроки на сегодня", "📅 Мое расписание", "Мои уроки"]:
+    elif text_val in ["📅 Уроки на сегодня", "📅 Мое расписание", "Мои уроки", "/schedule", "/lessons"]:
         session = get_session()
         try:
-            now_utc = datetime.now(timezone.utc)
-            t_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
-            t_end = now_utc.replace(hour=23, minute=59, second=59, microsecond=999999).replace(tzinfo=None)
-            lessons = session.execute(text("""
-                SELECT l.lesson_date, COALESCE(st.name, up.first_name, u.username, 'Группа/Ученик') AS student_name, COALESCE(NULLIF(l.topic, ''), 'Занятие') AS topic
-                FROM "Lessons" l
-                LEFT JOIN "Students" st ON st.student_id = l.student_id
-                LEFT JOIN "Users" u ON u.id = st.user_id
-                LEFT JOIN "UserProfiles" up ON up.user_id = u.id
-                WHERE l.lesson_date >= :t_start AND l.lesson_date <= :t_end
-                ORDER BY l.lesson_date ASC
-            """), {'t_start': t_start, 't_end': t_end}).fetchall()
+            if not user or not user.get('id'):
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
+            from app.models import User as DBUser
+            from app.telegram.application import build_today_view, resolve_active_context
+            db_user = session.get(DBUser, int(user['id']))
+            if not db_user:
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
+            creator_mode = context.user_data.get('creator_mode')
+            active_context = resolve_active_context(db_user, creator_mode)
+            view = build_today_view(db_user, active_context)
+            try:
+                zone = ZoneInfo(view.timezone)
+            except Exception:
+                zone = ZoneInfo("Europe/Moscow")
 
-            if not lessons:
-                text_msg = "☕ <b>На сегодня запланированных уроков нет.</b>\nОтличный повод отдохнуть или подготовить материалы!"
+            if not view.lessons:
+                text_msg = "☕ <b>Запланированных уроков нет.</b>\nОтличный повод отдохнуть или подготовить материалы!"
             else:
-                lines = ["📅 <b>Запланированные уроки на сегодня:</b>\n"]
-                for l_date, st_name, topic in lessons:
-                    time_str = l_date.strftime("%H:%M") if hasattr(l_date, 'strftime') else str(l_date)[11:16]
-                    lines.append(f"• <b>{time_str}</b> — {esc(st_name)} ({esc(topic)})")
+                if active_context in ("teacher", "tutor", "creator"):
+                    hdr = "📅 <b>Ваши запланированные уроки:</b>\n"
+                elif active_context == "parent":
+                    hdr = "📅 <b>Расписание уроков детей:</b>\n"
+                else:
+                    hdr = "📅 <b>Ваше расписание уроков:</b>\n"
+                lines = [hdr]
+                for item in view.lessons[:10]:
+                    t_val = item.get("starts_at")
+                    time_str = t_val.astimezone(zone).strftime("%d.%m %H:%M") if t_val else "—"
+                    lines.append(f"• <b>{time_str}</b> — {esc(item.get('topic') or 'Урок')}")
                 text_msg = "\n".join(lines)
 
             await send_or_edit(update.message, text_msg, parse_mode='HTML')
@@ -4888,26 +4920,34 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
             close_session(session)
         return
 
-    elif text_val in ["📥 На проверку", "📝 Очередь ДЗ"]:
+    elif text_val in ["📝 Очередь ДЗ", "📚 Мои ДЗ", "/hw", "/homework"]:
         session = get_session()
         try:
-            pending_subs = session.execute(text("""
-                SELECT s.status, COALESCE(st.name, up.first_name, u.username, 'Ученик') AS student_name, COALESCE(a.title, 'Домашняя работа') AS task_title
-                FROM "Submissions" s
-                LEFT JOIN "Students" st ON st.student_id = s.student_id
-                LEFT JOIN "Users" u ON u.id = st.user_id
-                LEFT JOIN "UserProfiles" up ON up.user_id = u.id
-                LEFT JOIN "Assignments" a ON a.assignment_id = s.assignment_id
-                WHERE s.status IN ('SUBMITTED', 'IN_PROGRESS', 'ASSIGNED')
-                LIMIT 10
-            """)).fetchall()
+            if not user or not user.get('id'):
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
+            from app.models import User as DBUser
+            from app.telegram.application import build_student_assignments, effective_timezone_name
+            db_user = session.get(DBUser, int(user['id']))
+            if not db_user:
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
 
-            if not pending_subs:
-                text_msg = "🎉 <b>Все домашние работы проверены / выполнены!</b>\nОчередь пуста."
+            try:
+                zone = ZoneInfo(effective_timezone_name(db_user))
+            except Exception:
+                zone = ZoneInfo("Europe/Moscow")
+
+            assignments = build_student_assignments(db_user, status_filter='pending')
+            if not assignments:
+                text_msg = "🎉 <b>Все домашние работы выполнены!</b>\nАктивных заданий нет."
             else:
-                lines = ["📥 <b>Очередь домашних работ:</b>\n"]
-                for idx, (st_status, st_name, as_title) in enumerate(pending_subs, 1):
-                    lines.append(f"{idx}. <b>{esc(st_name)}</b> — {esc(as_title)} <code>[{st_status}]</code>")
+                lines = ["📝 <b>Ваши текущие домашние задания:</b>\n"]
+                for idx, a in enumerate(assignments[:10], 1):
+                    dl = a.get("deadline")
+                    dl_str = dl.astimezone(zone).strftime("%d.%m %H:%M") if dl else "Без дедлайна"
+                    cat = "В проверке" if a.get("category") == "in_review" else "Требует решения"
+                    lines.append(f"{idx}. <b>{esc(a.get('title') or 'Задание')}</b> — {cat} (дедлайн: {dl_str})")
                 text_msg = "\n".join(lines)
 
             await send_or_edit(update.message, text_msg, parse_mode='HTML')
@@ -4915,30 +4955,101 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
             close_session(session)
         return
 
-    elif text_val in ["📊 Мой прогресс"]:
+    elif text_val in ["📥 На проверку", "/review", "/reviews"]:
         session = get_session()
         try:
-            if user:
+            if not user or not user.get('id'):
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
+            from app.models import User as DBUser
+            from app.telegram.application import build_teacher_review_queue, effective_timezone_name
+            db_user = session.get(DBUser, int(user['id']))
+            if not db_user:
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
+
+            try:
+                zone = ZoneInfo(effective_timezone_name(db_user))
+            except Exception:
+                zone = ZoneInfo("Europe/Moscow")
+
+            review_queue = build_teacher_review_queue(db_user)
+            if not review_queue:
+                text_msg = "🎉 <b>Все работы ваших учеников проверены!</b>\nОчередь проверок пуста."
+            else:
+                lines = [f"📥 <b>Работы ваших учеников на проверку ({len(review_queue)}):</b>\n"]
+                for idx, item in enumerate(review_queue[:10], 1):
+                    sub_at = item.submitted_at.astimezone(zone).strftime("%d.%m %H:%M") if item.submitted_at else "—"
+                    lines.append(f"{idx}. <b>{esc(item.student_name)}</b> — {esc(item.assignment_title)} ({sub_at})")
+                text_msg = "\n".join(lines)
+
+            await send_or_edit(update.message, text_msg, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["📊 Мой прогресс", "/progress"]:
+        session = get_session()
+        try:
+            if not user or not user.get('id'):
+                await send_or_edit(update.message, PROFILE_NOT_LINKED, parse_mode='HTML')
+                return
+            from app.models import User as DBUser
+            from app.telegram.application import build_student_progress
+            db_user = session.get(DBUser, int(user['id']))
+            prog = build_student_progress(db_user) if db_user else None
+
+            if prog:
+                solved = len([s for s in prog.get('submissions', []) if str(s.get('status', '')).upper() in ('CHECKED', 'GRADED', 'COMPLETED', 'PASSED')])
+                pending = prog.get('pending_homework', 0)
+                msg_text = (
+                    f"📊 <b>Ваш учебный прогресс:</b>\n\n"
+                    f"✅ Выполнено заданий: <b>{solved}</b>\n"
+                    f"📝 В процессе / ожидает: <b>{pending}</b>\n"
+                    f"🎯 Статус: <b>Активное обучение</b>"
+                )
+            else:
+                # Fallback прямой подсчет
                 uid = user.get('id')
-                solved = session.execute(text('SELECT COUNT(*) FROM "Submissions" s JOIN "Students" st ON st.student_id = s.student_id WHERE st.user_id = :uid AND s.status = \'PASSED\''), {'uid': uid}).scalar() or 0
-                score = session.execute(text('SELECT COALESCE(SUM(s.score), 0) FROM "Submissions" s JOIN "Students" st ON st.student_id = s.student_id WHERE st.user_id = :uid'), {'uid': uid}).scalar() or 0
-                msg_text = f"📊 <b>Ваш учебный прогресс:</b>\n\n✅ Решено задач: <b>{solved}</b>\n⭐ Баллы / XP: <b>{score}</b>\n🎯 Статус: <b>В процессе обучения</b>"
-            else:
-                msg_text = "🔒 Сначала привяжите аккаунт по коду из профиля."
+                solved = session.execute(text('SELECT COUNT(*) FROM "Submissions" s JOIN "Students" st ON st.student_id = s.student_id WHERE st.user_id = :uid AND s.status IN (\'PASSED\', \'CHECKED\', \'GRADED\', \'COMPLETED\')'), {'uid': uid}).scalar() or 0
+                msg_text = f"📊 <b>Ваш учебный прогресс:</b>\n\n✅ Решено задач: <b>{solved}</b>\n🎯 Статус: <b>В процессе обучения</b>"
+
             await send_or_edit(update.message, msg_text, parse_mode='HTML')
         finally:
             close_session(session)
         return
 
-    elif text_val in ["⚙️ Профиль"]:
+    elif text_val in ["⚙️ Профиль", "/profile"]:
         session = get_session()
         try:
             if user:
-                uname = user.get('username') or 'User'
-                urole = (user.get('role') or 'student').upper()
-                msg_text = f"👤 <b>Ваш профиль в BooStudy:</b>\n\nЛогин: <b>{esc(uname)}</b>\nРоль: <b>{esc(urole)}</b>\nЧасовой пояс: <b>Europe/Moscow</b>\nTelegram ID: <code>{chat_id}</code>"
+                from app.models import User as DBUser
+                from app.telegram.application import resolve_active_context, effective_timezone_name
+                db_user = session.get(DBUser, int(user['id'])) if user.get('id') else None
+                creator_mode = context.user_data.get('creator_mode')
+                active_role = resolve_active_context(db_user, creator_mode) if db_user else (user.get('role') or 'student')
+                uname = (db_user.username if db_user else user.get('username')) or 'User'
+                tz_name = effective_timezone_name(db_user) if db_user else 'Europe/Moscow'
+
+                role_labels = {
+                    'creator': 'Создатель (👑 Creator)',
+                    'teacher': 'Преподаватель (👨‍🏫 Teacher)',
+                    'tutor': 'Тьютор (👨‍🏫 Tutor)',
+                    'admin': 'Администратор (🛡️ Admin)',
+                    'chief_admin': 'Главный администратор (🛡️ Chief Admin)',
+                    'student': 'Ученик (🎓 Student)',
+                    'parent': 'Родитель (👨‍👩‍👧 Parent)',
+                }
+                display_role = role_labels.get(active_role.lower(), active_role.upper())
+                msg_text = (
+                    f"👤 <b>Ваш профиль в BooStudy:</b>\n\n"
+                    f"Логин: <b>{esc(uname)}</b>\n"
+                    f"Роль: <b>{esc(display_role)}</b>\n"
+                    f"Часовой пояс: <b>{esc(tz_name)}</b>\n"
+                    f"Telegram ID: <code>{chat_id}</code>"
+                )
             else:
-                msg_text = "🔒 Сначала привяжите аккаунт по коду из профиля."
+                msg_text = PROFILE_NOT_LINKED
             await send_or_edit(update.message, msg_text, parse_mode='HTML')
         finally:
             close_session(session)

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ORISTERA — Living Learning Universe{% endblock %}</title>
+
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+
+  <!-- Oristera Light Cosmic Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-tokens.css') }}?v=2.1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-shell.css') }}?v=2.0.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-motion.css') }}?v=2.1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-spaces.css') }}?v=2.0.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-renaissance.css') }}?v=1.0.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-nexus-genesis.css') }}?v=2.5.6">
+  <link rel="stylesheet" href="{{ url_for('static', filename='oristera/css/oristera-visual-evolution.css') }}?v=1.3.1">
+
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="oristera-body{% if active_space == 'nexus' and current_user.is_student() %} ori-genesis-body{% endif %}">
+  <div class="ori-stage-wrapper">
+    <!-- Spatial Island Topbar -->
+    {% include 'oristera/components/_topbar.html' %}
+
+    <!-- Main Spatial Stage -->
+    <main class="ori-container ori-space-enter" id="ori-main-stage" data-ori-motion-scope>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Oristera Motion & Spatial Controllers -->
+  <script src="{{ url_for('static', filename='oristera/js/oristera-motion.js') }}?v=3.5.0"></script>
+  <script src="{{ url_for('static', filename='oristera/js/oristera-nexus-genesis.js') }}?v=1.0.1"></script>
+  <script src="{{ url_for('static', filename='oristera/js/oristera-shell.js') }}?v=2.0.0"></script>
+  <script src="{{ url_for('static', filename='oristera/js/oristera-atlas.js') }}?v=3.1.0"></script>
+  <script src="{{ url_for('static', filename='oristera/js/oristera-practice.js') }}?v=2.0.0"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

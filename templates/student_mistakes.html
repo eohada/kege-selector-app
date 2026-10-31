@@ -4,9 +4,9 @@
 
 {% block extra_head %}
 <!-- KaTeX для идеального рендеринга математических формул -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}?v=0.16.8">
+<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}?v=0.16.8"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}?v=0.16.8"></script>
 
 <style>
   /* Стили для математических формул и условий задач */

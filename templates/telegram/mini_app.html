@@ -1,947 +1,1743 @@
 {% extends "base_minimal.html" %}
 
-{% block title %}BooStudy{% endblock %}
+{% block title %}BooStudy Mobile Cabinet{% endblock %}
+
+{% block head_fonts %}{% endblock %}
 
 {% block head_extra %}
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script src="{{ url_for('static', filename='js/vendor/telegram-web-app.js') }}"></script>
+<script>
+  if (!window.Telegram || !window.Telegram.WebApp) {
+    document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');
+  }
+</script>
 <style>
   :root {
-    --c-bg:       var(--tg-theme-bg-color, #f4f5f9);
-    --c-surface:  var(--tg-theme-secondary-bg-color, #ffffff);
-    --c-text:     var(--tg-theme-text-color, #1a1a2e);
-    --c-hint:     var(--tg-theme-hint-color, #6b7280);
-    --c-accent:   var(--tg-theme-button-color, #7b5cff);
-    --c-accent-t: var(--tg-theme-button-text-color, #ffffff);
-    --c-link:     var(--tg-theme-link-color, #7b5cff);
-    --r-card:     16px;
-    --r-btn:      12px;
-    --shadow:     0 4px 20px rgba(0,0,0,.07);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--c-bg); color: var(--c-text); font-family: -apple-system, 'Golos Text', BlinkMacSystemFont, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    --c-bg: var(--tg-theme-bg-color, #0f172a);
+    --c-surface: var(--tg-theme-secondary-bg-color, #1e293b);
+    --c-surface-card: #1e293b;
+    --c-surface-elevated: #27354f;
+    --c-text: var(--tg-theme-text-color, #f8fafc);
+    --c-hint: var(--tg-theme-hint-color, #94a3b8);
+    --c-accent: var(--tg-theme-button-color, #6366f1);
+    --c-accent-hover: #4f46e5;
+    --c-accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --c-link: var(--tg-theme-link-color, #818cf8);
+    --c-border: rgba(255, 255, 255, 0.08);
+    --c-border-subtle: rgba(255, 255, 255, 0.04);
+    --c-success: #10b981;
+    --c-warning: #f59e0b;
+    --c-danger: #ef4444;
+    --c-info: #0284c7;
 
-  /* Layout */
-  #app { max-width: 480px; margin: 0 auto; padding: 12px 14px 90px; min-height: 100vh; }
+    --r-card: 18px;
+    --r-btn: 14px;
+    --r-pill: 9999px;
+
+    --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.25), 0 2px 6px -1px rgba(0, 0, 0, 0.15);
+    --shadow-elevated: 0 10px 30px -5px rgba(0, 0, 0, 0.35);
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Light Theme Detection */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --c-bg: var(--tg-theme-bg-color, #f8fafc);
+      --c-surface: var(--tg-theme-secondary-bg-color, #ffffff);
+      --c-surface-card: #ffffff;
+      --c-surface-elevated: #f1f5f9;
+      --c-text: var(--tg-theme-text-color, #0f172a);
+      --c-hint: var(--tg-theme-hint-color, #64748b);
+      --c-border: rgba(0, 0, 0, 0.08);
+      --c-border-subtle: rgba(0, 0, 0, 0.04);
+      --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--c-bg);
+    color: var(--c-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Golos Text', 'Inter', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  /* Layout container */
+  #app-root {
+    max-width: 540px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: calc(10px + var(--safe-top)) 14px calc(88px + var(--safe-bottom));
+    position: relative;
+  }
 
   /* Header */
-  .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .app-header .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
-  .app-header .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-accent); }
-  .user-chip { background: var(--c-surface); border-radius: 999px; padding: 4px 12px 4px 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow); }
-  .role-badge { font-size: 10px; background: var(--c-accent); color: var(--c-accent-t); border-radius: 999px; padding: 1px 7px; }
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 2px 14px;
+    gap: 10px;
+  }
+  .brand-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: var(--c-text);
+  }
+  .brand-badge {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    box-shadow: 0 0 10px var(--c-accent);
+    animation: pulseDot 2s infinite ease-in-out;
+  }
+  @keyframes pulseDot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.7; }
+  }
 
-  /* Tab bar */
-  .tab-bar { display: flex; background: var(--c-surface); border-radius: var(--r-card); padding: 4px; gap: 2px; margin-bottom: 16px; box-shadow: var(--shadow); }
-  .tab-btn { flex: 1; text-align: center; padding: 8px 4px; border-radius: 11px; border: none; background: none; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--c-hint); transition: background .15s, color .15s; line-height: 1.3; }
-  .tab-btn span.icon { display: block; font-size: 18px; line-height: 1; margin-bottom: 2px; }
-  .tab-btn.active { background: var(--c-accent); color: var(--c-accent-t); }
-  .tab-panel { display: none; animation: fadeUp .25s ease-out; }
-  .tab-panel.active { display: block; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .user-badge-pill {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-pill);
+    padding: 5px 12px 5px 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: var(--shadow-card);
+  }
+  .user-avatar-circle {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    color: var(--c-accent-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .role-tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: var(--r-pill);
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--c-link);
+    font-weight: 700;
+  }
 
-  /* Cards */
-  .card { background: var(--c-surface); border-radius: var(--r-card); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 10px; }
-  .card-title { font-size: 12px; font-weight: 700; color: var(--c-hint); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
-  .card-empty { text-align: center; padding: 24px 0; color: var(--c-hint); font-size: 13px; }
+  .btn-context-switch {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    color: var(--c-text);
+    border-radius: var(--r-pill);
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .btn-context-switch:active { transform: scale(0.96); }
 
-  /* Lesson row */
-  .lesson-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .lesson-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .lesson-time { font-size: 11px; font-weight: 700; color: var(--c-hint); min-width: 36px; padding-top: 2px; }
-  .lesson-info { flex: 1; }
-  .lesson-topic { font-weight: 600; font-size: 13px; line-height: 1.3; }
-  .lesson-meta { font-size: 11px; color: var(--c-hint); margin-top: 2px; }
-  .lesson-btn { flex-shrink: 0; background: var(--c-accent); color: var(--c-accent-t); border-radius: var(--r-btn); padding: 5px 10px; font-size: 11px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; }
+  /* Tactile 3D Cards */
+  .t-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-card);
+    padding: 16px;
+    box-shadow: var(--shadow-card);
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .t-card.clickable { cursor: pointer; }
+  .t-card.clickable:active { transform: scale(0.985); }
 
-  /* Status pill */
-  .pill { display: inline-flex; align-items: center; gap: 3px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
-  .pill-pending  { background: #fef3c7; color: #92400e; }
-  .pill-progress { background: #dbeafe; color: #1e40af; }
-  .pill-returned { background: #fde8e8; color: #991b1b; }
-  .pill-graded   { background: #d1fae5; color: #065f46; }
-  .pill-auto     { background: #ede9fe; color: #5b21b6; }
+  .card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .card-headline {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--c-hint);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-action-link {
+    font-size: 12px;
+    color: var(--c-link);
+    text-decoration: none;
+    font-weight: 600;
+  }
 
-  /* Assignment row */
-  .assign-row { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .assign-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .assign-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-  .assign-meta  { font-size: 11px; color: var(--c-hint); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  /* Hero Banner */
+  .hero-banner {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: var(--r-card);
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-card);
+    position: relative;
+  }
+  .hero-banner .title { font-size: 17px; font-weight: 800; margin-bottom: 4px; }
+  .hero-banner .subtitle { font-size: 13px; color: var(--c-hint); margin-bottom: 12px; line-height: 1.4; }
 
-  /* Progress bars */
-  .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .stat-label { font-size: 12px; color: var(--c-hint); }
-  .stat-val { font-size: 15px; font-weight: 700; }
-  .pbar-wrap { height: 6px; background: rgba(0,0,0,.06); border-radius: 999px; overflow: hidden; margin-bottom: 12px; }
-  .pbar-fill  { height: 100%; border-radius: 999px; background: var(--c-accent); transition: width .5s; }
+  /* Action Buttons */
+  .btn-brand {
+    background: var(--c-accent);
+    color: var(--c-accent-text);
+    border: none;
+    border-radius: var(--r-btn);
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: transform 0.1s, opacity 0.15s;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  }
+  .btn-brand:active { transform: scale(0.97); }
+  .btn-brand.btn-full { width: 100%; }
 
-  /* Gradebook */
-  .gb-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .gb-row:last-child { border-bottom: none; }
-  .gb-title { font-size: 12px; color: var(--c-text); flex: 1; margin-right: 8px; }
-  .gb-score { font-weight: 700; font-size: 14px; }
+  .btn-secondary {
+    background: var(--c-surface-elevated);
+    color: var(--c-text);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-btn);
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: transform 0.1s;
+  }
+  .btn-secondary:active { transform: scale(0.97); }
 
-  /* Toggle switch */
-  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .toggle-row:last-child { border-bottom: none; }
-  .toggle-label { font-size: 13px; }
-  .toggle-switch { position: relative; width: 42px; height: 24px; cursor: pointer; }
-  .toggle-switch input { opacity: 0; width: 0; height: 0; }
-  .toggle-track { position: absolute; inset: 0; background: #d1d5db; border-radius: 999px; transition: background .2s; }
-  .toggle-switch input:checked + .toggle-track { background: var(--c-accent); }
-  .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .toggle-switch input:checked ~ .toggle-thumb { left: 21px; }
+  /* Pill Badges */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--r-pill);
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .status-assigned   { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }
+  .status-progress   { background: rgba(2, 132, 199, 0.18); color: #38bdf8; }
+  .status-submitted  { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+  .status-graded     { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+  .status-returned   { background: rgba(239, 68, 68, 0.18); color: #f87171; }
 
-  /* Student table (creator) */
-  .student-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .student-row:last-child { border-bottom: none; }
-  .student-name { font-weight: 600; font-size: 13px; }
-  .student-meta  { font-size: 11px; color: var(--c-hint); margin-top: 1px; }
-  .tg-badge { font-size: 11px; color: #059669; font-weight: 600; }
-  .tg-badge-no { font-size: 11px; color: var(--c-hint); }
+  /* Pill Tab Row */
+  .pill-filters {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    scrollbar-width: none;
+  }
+  .pill-filters::-webkit-scrollbar { display: none; }
+  .filter-pill-btn {
+    flex-shrink: 0;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-pill);
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--c-hint);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .filter-pill-btn.active {
+    background: var(--c-accent);
+    color: var(--c-accent-text);
+    border-color: var(--c-accent);
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+  }
 
-  /* Bug report */
-  .report-row { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
-  .report-row:last-child { border-bottom: none; }
-  .report-meta { font-size: 11px; color: var(--c-hint); margin-bottom: 4px; display: flex; gap: 8px; }
-  .report-msg  { font-size: 12px; line-height: 1.4; color: var(--c-text); margin-bottom: 6px; }
-  .btn-reply { background: var(--c-accent); color: var(--c-accent-t); border: none; border-radius: var(--r-btn); padding: 5px 14px; font-size: 11px; font-weight: 600; cursor: pointer; }
-  .btn-sm { background: var(--c-surface); border: 1.5px solid var(--c-accent); color: var(--c-accent); border-radius: var(--r-btn); padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-primary { background: var(--c-accent); color: var(--c-accent-t); border: none; border-radius: var(--r-btn); padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; text-align: center; }
+  /* List Items */
+  .item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--c-border-subtle);
+    gap: 10px;
+  }
+  .item-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .item-row:first-child { padding-top: 0; }
+  .item-col { flex: 1; min-width: 0; }
+  .item-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--c-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .item-meta {
+    font-size: 11.5px;
+    color: var(--c-hint);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
 
-  /* Broadcast compose */
-  textarea { width: 100%; background: var(--c-bg); border: 1.5px solid rgba(0,0,0,.1); border-radius: var(--r-btn); padding: 10px 12px; font-size: 13px; resize: vertical; min-height: 90px; color: var(--c-text); }
-  textarea:focus { outline: none; border-color: var(--c-accent); }
+  /* Action Center Item */
+  .action-bubble {
+    background: var(--c-surface-elevated);
+    border-left: 3px solid var(--c-accent);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .action-bubble:active { transform: scale(0.985); }
+  .action-bubble.critical { border-left-color: var(--c-danger); }
+  .action-bubble.warning  { border-left-color: var(--c-warning); }
+  .action-title { font-size: 13px; font-weight: 700; color: var(--c-text); margin-bottom: 2px; }
+  .action-desc { font-size: 11.5px; color: var(--c-hint); line-height: 1.35; }
 
-  /* Stats grid */
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .stat-card { background: var(--c-surface); border-radius: var(--r-card); padding: 12px 14px; box-shadow: var(--shadow); }
-  .stat-card .val { font-size: 24px; font-weight: 800; color: var(--c-accent); }
-  .stat-card .lbl { font-size: 11px; color: var(--c-hint); margin-top: 2px; }
+  /* Calendar Week Bar */
+  .week-bar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .day-cell {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    padding: 8px 2px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .day-cell .day-name { font-size: 10px; font-weight: 700; color: var(--c-hint); text-transform: uppercase; margin-bottom: 2px; }
+  .day-cell .day-num { font-size: 13px; font-weight: 800; color: var(--c-text); }
+  .day-cell.has-lesson::after {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    margin: 3px auto 0;
+  }
+  .day-cell.active {
+    background: var(--c-accent);
+    border-color: var(--c-accent);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  }
+  .day-cell.active .day-name, .day-cell.active .day-num { color: #fff; }
+  .day-cell.active::after { background: #fff; }
 
-  /* Search */
-  .search-wrap { position: relative; margin-bottom: 10px; }
-  .search-wrap input { width: 100%; background: var(--c-surface); border: none; border-radius: var(--r-btn); padding: 9px 12px 9px 36px; font-size: 13px; color: var(--c-text); box-shadow: var(--shadow); }
-  .search-wrap input:focus { outline: none; }
-  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--c-hint); font-size: 15px; }
+  /* Progress Stats Grid */
+  .stats-matrix {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .matrix-box {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-card);
+    padding: 14px;
+    box-shadow: var(--shadow-card);
+  }
+  .matrix-box .val { font-size: 24px; font-weight: 900; color: var(--c-accent); letter-spacing: -0.03em; }
+  .matrix-box .lbl { font-size: 11.5px; color: var(--c-hint); margin-top: 3px; font-weight: 600; }
 
-  /* Loading */
-  #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 10px; }
-  .spinner { width: 32px; height: 32px; border: 3px solid rgba(0,0,0,.1); border-top-color: var(--c-accent); border-radius: 50%; animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Search input */
+  .search-box {
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .search-box input {
+    width: 100%;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-btn);
+    padding: 11px 14px 11px 38px;
+    font-size: 13.5px;
+    color: var(--c-text);
+    box-shadow: var(--shadow-card);
+  }
+  .search-box input:focus { outline: none; border-color: var(--c-accent); }
+  .search-box .icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--c-hint);
+    font-size: 15px;
+  }
 
-  /* Error screen */
-  #error-screen { display: none; text-align: center; padding: 40px 16px; }
-  #error-screen h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-  #error-screen p { font-size: 13px; color: var(--c-hint); }
+  /* Toggle Row */
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--c-border-subtle);
+  }
+  .toggle-item:last-child { border-bottom: none; }
+  .toggle-title { font-size: 13.5px; font-weight: 600; }
+  .toggle-desc { font-size: 11.5px; color: var(--c-hint); margin-top: 2px; }
 
-  /* Reply modal */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: flex-end; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal-sheet { background: var(--c-surface); border-radius: 20px 20px 0 0; padding: 20px 16px 28px; width: 100%; max-width: 480px; }
-  .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-  .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
-  .btn-cancel { flex: 1; background: var(--c-bg); color: var(--c-hint); border: none; border-radius: var(--r-btn); padding: 11px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-send { flex: 2; background: var(--c-accent); color: var(--c-accent-t); border: none; border-radius: var(--r-btn); padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .ios-switch {
+    position: relative;
+    width: 46px;
+    height: 26px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ios-switch input { opacity: 0; width: 0; height: 0; }
+  .ios-track {
+    position: absolute;
+    inset: 0;
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 999px;
+    transition: background 0.25s ease;
+  }
+  .ios-switch input:checked + .ios-track { background: var(--c-accent); }
+  .ios-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: #ffffff;
+    border-radius: 50%;
+    transition: transform 0.25s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  .ios-switch input:checked ~ .ios-thumb { transform: translateX(20px); }
 
-  /* Filter tabs (mini) */
-  .filter-row { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; }
-  .filter-btn { flex-shrink: 0; border: 1.5px solid rgba(0,0,0,.1); background: none; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--c-hint); cursor: pointer; }
-  .filter-btn.active { border-color: var(--c-accent); color: var(--c-accent); background: rgba(123,92,255,.07); }
+  /* Bottom Navigation Bar */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 540px;
+    background: var(--c-surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--c-border);
+    padding: 8px 6px calc(6px + var(--safe-bottom));
+    display: flex;
+    justify-content: space-around;
+    z-index: 100;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  }
+  .nav-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 4px 0;
+    color: var(--c-hint);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10.5px;
+    font-weight: 600;
+    transition: color 0.15s, transform 0.1s;
+    position: relative;
+  }
+  .nav-btn .icon { font-size: 19px; line-height: 1; }
+  .nav-btn.active { color: var(--c-accent); font-weight: 700; }
+  .nav-btn:active { transform: scale(0.92); }
+  .nav-badge-dot {
+    position: absolute;
+    top: 2px;
+    right: 22%;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--c-danger);
+    box-shadow: 0 0 4px var(--c-danger);
+  }
 
-  /* Toast */
-  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: #fff; padding: 9px 20px; border-radius: 999px; font-size: 13px; font-weight: 600; transition: transform .3s; z-index: 200; pointer-events: none; }
-  #toast.show { transform: translateX(-50%) translateY(0); }
+  /* Drawer Modal Sheet */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .drawer-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .drawer-sheet {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 16px 20px calc(24px + var(--safe-bottom));
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-elevated);
+  }
+  .drawer-overlay.active .drawer-sheet { transform: translateY(0); }
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--c-hint);
+    opacity: 0.3;
+    margin: 0 auto 14px;
+  }
+  .sheet-title { font-size: 18px; font-weight: 800; color: var(--c-text); margin-bottom: 6px; }
+  .sheet-subtitle { font-size: 12.5px; color: var(--c-hint); margin-bottom: 14px; }
+
+  /* Empty state */
+  .empty-state-box {
+    text-align: center;
+    padding: 32px 16px;
+  }
+  .empty-state-icon { font-size: 36px; margin-bottom: 8px; }
+  .empty-state-title { font-size: 14px; font-weight: 700; color: var(--c-text); margin-bottom: 4px; }
+  .empty-state-desc { font-size: 12px; color: var(--c-hint); }
+
+  /* Spinner */
+  .loader-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 12px;
+  }
+  .spinner-circle {
+    width: 34px;
+    height: 34px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--c-accent);
+    border-radius: 50%;
+    animation: spinCircle 0.75s linear infinite;
+  }
+  @keyframes spinCircle { to { transform: rotate(360deg); } }
+
+  /* Toast notification */
+  #tma-toast {
+    position: fixed;
+    bottom: calc(76px + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    background: rgba(15, 23, 42, 0.95);
+    color: #ffffff;
+    padding: 9px 18px;
+    border-radius: var(--r-pill);
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s;
+    z-index: 300;
+    white-space: nowrap;
+  }
+  #tma-toast.active { transform: translateX(-50%) translateY(0); opacity: 1; }
 </style>
 {% endblock %}
 
 {% block body_class %}{% endblock %}
 
 {% block body %}
-<div id="app" style="display:none">
+<div id="tma-loading" class="loader-center">
+  <div class="spinner-circle"></div>
+  <div style="font-size: 13px; color: var(--c-hint); font-weight: 600;">Загрузка мобильного кабинета…</div>
+</div>
 
+<div id="tma-error" style="display: none; text-align: center; padding: 60px 20px;">
+  <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
+  <h2 style="font-size: 18px; font-weight: 800; margin-bottom: 6px;">Ошибка авторизации</h2>
+  <p id="tma-error-desc" style="font-size: 13px; color: var(--c-hint); max-width: 320px; margin: 0 auto 16px;"></p>
+  <button class="btn-brand" onclick="location.reload()">Попробовать снова</button>
+</div>
+
+<div id="app-root" style="display: none;">
   <!-- HEADER -->
-  <div class="app-header">
-    <div class="logo">
-      <div class="logo-dot"></div>
+  <header class="app-header">
+    <div class="brand-chip">
+      <div class="brand-badge"></div>
       BooStudy
     </div>
-    <div class="user-chip">
-      <span id="user-name-chip" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
-      <span id="role-badge" class="role-badge" style="display:none"></span>
-      <button id="context-switch-btn" class="filter-btn" style="display:none" onclick="switchCreatorContext()">Режим</button>
-    </div>
-  </div>
-
-  <!-- ROLE-AWARE HOME / ACTION CENTER -->
-  <section id="home-panel" class="card" style="margin:12px 0;display:none">
-    <div id="home-title" class="section-title">Что важно сейчас</div>
-    <div id="home-summary" class="muted">Загрузка…</div>
-    <div id="home-actions" style="margin-top:10px"></div>
-  </section>
-
-  <!-- STUDENT TABS -->
-  <div id="student-tabs" style="display:none">
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="schedule" onclick="switchTab('schedule','student-tabs')">
-        <span class="icon">📅</span>Расписание
+    <div class="header-actions">
+      <button id="header-context-switch" class="btn-context-switch" style="display: none;" onclick="handleContextToggle()">
+        Режим: Учитель
       </button>
-      <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks','student-tabs')">
-        <span class="icon">📚</span>Задания
-      </button>
-      <button class="tab-btn" data-tab="progress" onclick="switchTab('progress','student-tabs')">
-        <span class="icon">📊</span>Прогресс
-      </button>
-      <button class="tab-btn" data-tab="profile" onclick="switchTab('profile','student-tabs')">
-        <span class="icon">👤</span>Профиль
-      </button>
-    </div>
-
-    <!-- Расписание -->
-    <div id="tab-schedule" class="tab-panel active"></div>
-
-    <!-- Задания -->
-    <div id="tab-tasks" class="tab-panel">
-      <div class="filter-row">
-        <button class="filter-btn active" onclick="loadAssignments('pending',this)">Активные</button>
-        <button class="filter-btn" onclick="loadAssignments('graded',this)">Проверенные</button>
-        <button class="filter-btn" onclick="loadAssignments(null,this)">Все</button>
+      <div class="user-badge-pill">
+        <div id="user-avatar-initials" class="user-avatar-circle">U</div>
+        <span id="user-display-name" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
+        <span id="user-role-label" class="role-tag">Ученик</span>
       </div>
-      <div id="tasks-content"></div>
     </div>
+  </header>
 
-    <!-- Прогресс -->
-    <div id="tab-progress" class="tab-panel"></div>
+  <!-- MAIN TAB PANELS -->
+  <main id="tma-content">
+    <!-- Tab panels will be injected dynamically -->
+  </main>
 
-    <!-- Профиль -->
-    <div id="tab-profile" class="tab-panel"></div>
-  </div>
-
-  <!-- PARENT TABS -->
-  <div id="parent-tabs" style="display:none">
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="p-children" onclick="switchTab('p-children','parent-tabs')">
-        <span class="icon">👪</span>Дети
-      </button>
-      <button class="tab-btn" data-tab="p-schedule" onclick="switchTab('p-schedule','parent-tabs')">
-        <span class="icon">📅</span>Расписание
-      </button>
-    </div>
-    <div id="tab-p-children" class="tab-panel active"></div>
-    <div id="tab-p-schedule" class="tab-panel"></div>
-  </div>
-
-  <!-- TEACHER TABS -->
-  <div id="teacher-tabs" style="display:none">
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="t-review" onclick="switchTab('t-review','teacher-tabs')">
-        <span class="icon">📥</span>Проверка
-      </button>
-      <button class="tab-btn" data-tab="t-schedule" onclick="switchTab('t-schedule','teacher-tabs')">
-        <span class="icon">🎓</span>Уроки
-      </button>
-    </div>
-    <div id="tab-t-review" class="tab-panel active"></div>
-    <div id="tab-t-schedule" class="tab-panel"></div>
-  </div>
-
-  <!-- CREATOR TABS -->
-  <div id="creator-tabs" style="display:none">
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="c-students" onclick="switchTab('c-students','creator-tabs')">
-        <span class="icon">👥</span>Ученики
-      </button>
-      <button class="tab-btn" data-tab="c-broadcast" onclick="switchTab('c-broadcast','creator-tabs')">
-        <span class="icon">📢</span>Рассылка
-      </button>
-      <button class="tab-btn" data-tab="c-bugs" onclick="switchTab('c-bugs','creator-tabs')">
-        <span class="icon">🐛</span>Репорты
-      </button>
-      <button class="tab-btn" data-tab="c-stats" onclick="switchTab('c-stats','creator-tabs')">
-        <span class="icon">📊</span>Статистика
-      </button>
-    </div>
-
-    <div id="tab-c-students" class="tab-panel active"></div>
-    <div id="tab-c-broadcast" class="tab-panel"></div>
-    <div id="tab-c-bugs" class="tab-panel"></div>
-    <div id="tab-c-stats" class="tab-panel"></div>
-  </div>
-
+  <!-- ROLE-AWARE BOTTOM NAVIGATION -->
+  <nav id="tma-bottom-nav" class="bottom-nav">
+    <!-- Populated dynamically based on verified active context -->
+  </nav>
 </div>
 
-<!-- LOADING -->
-<div id="loading">
-  <div class="spinner"></div>
-  <p style="font-size:13px;color:var(--c-hint)">Загрузка…</p>
-</div>
-
-<!-- ERROR -->
-<div id="error-screen">
-  <h2>⚠️ Ошибка</h2>
-  <p id="error-msg">Не удалось загрузить данные.</p>
-</div>
-
-<!-- TOAST -->
-<div id="toast"></div>
-
-<!-- REPLY MODAL -->
-<div id="reply-modal" class="modal-overlay" onclick="closeModal(event)">
-  <div class="modal-sheet">
-    <div class="modal-title">💬 Ответ на репорт</div>
-    <textarea id="reply-text" placeholder="Введи ответ ученику…" rows="4"></textarea>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
-      <button class="btn-send" onclick="sendReply()">Отправить</button>
-    </div>
+<!-- UNIVERSAL DETAIL DRAWER / MODAL SHEET -->
+<div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="drawer-sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div id="drawer-title" class="sheet-title">—</div>
+    <div id="drawer-subtitle" class="sheet-subtitle">—</div>
+    <div id="drawer-body"></div>
   </div>
 </div>
+
+<!-- FLOATING TOAST -->
+<div id="tma-toast">Уведомление</div>
 
 <script>
+/**
+ * BooStudy Telegram Mini App V2 - Core Engine
+ * Full mobile-first Single Page Application for Telegram WebApp.
+ */
 const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
-
-const initData = tg?.initData || '';
-let _currentUser = null;
-let _isCreator = false;
-let _activeContext = null;
-let _replyReportId = null;
-
-// ──────────────────────────────────────────────
-// Bootstrap
-// ──────────────────────────────────────────────
-async function boot() {
+if (tg) {
+  tg.ready();
+  tg.expand();
   try {
-    const dash = await api('/tg-app/api/dashboard', {});
-    const context = await api('/tg-app/api/context', {});
-    _activeContext = context.active_context || null;
-    const home = await api('/tg-app/api/home', { active_context: _activeContext });
-    _currentUser = dash.user;
-    _isCreator = dash.creator_mode || false;
+    tg.setHeaderColor(tg.themeParams?.secondary_bg_color || '#1e293b');
+    tg.setBackgroundColor(tg.themeParams?.bg_color || '#0f172a');
+  } catch (e) {}
+}
 
-    document.getElementById('user-name-chip').textContent =
-      (dash.user?.name || 'Пользователь').split(' ')[0];
+const rawInitData = tg?.initData || '';
+let _state = {
+  user: null,
+  context: null,
+  today: null,
+  actions: [],
+  notifications: {},
+  creatorMode: false,
+  activeTab: 'home',
+  navStack: [],
+  assignmentsFilter: 'all',
+  selectedChildId: null,
+};
 
-    const badge = document.getElementById('role-badge');
-    if (_isCreator) { badge.textContent = 'Создатель'; badge.style.display = ''; }
-    else if (['tutor','content_maker'].includes(dash.user?.role)) {
-      badge.textContent = 'Учитель'; badge.style.display = '';
+// ---------------------------------------------------------------------------
+// Telegram Haptics & BackButton
+// ---------------------------------------------------------------------------
+function haptic(type = 'light') {
+  try {
+    if (type === 'light' || type === 'medium' || type === 'heavy') {
+      tg?.HapticFeedback?.impactOccurred(type);
+    } else if (type === 'success' || type === 'warning' || type === 'error') {
+      tg?.HapticFeedback?.notificationOccurred(type);
     }
-    if (_isCreator && context.available_contexts?.includes('teacher') && context.available_contexts?.includes('creator')) {
-      const switchBtn = document.getElementById('context-switch-btn');
-      switchBtn.style.display = '';
-      switchBtn.textContent = _activeContext === 'teacher' ? 'Режим: учитель' : 'Режим: создатель';
-    }
+  } catch (e) {}
+}
 
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('app').style.display = '';
-    renderHome(home);
+function showToast(text) {
+  const el = document.getElementById('tma-toast');
+  el.textContent = text;
+  el.classList.add('active');
+  setTimeout(() => el.classList.remove('active'), 2400);
+}
 
-    if (_isCreator) {
-      document.getElementById('creator-tabs').style.display = '';
-      document.getElementById('student-tabs').style.display = 'none';
-      loadCreatorStudents();
-    } else if (dash.user?.role === 'parent') {
-      document.getElementById('parent-tabs').style.display = '';
-      document.getElementById('student-tabs').style.display = 'none';
-      loadParentChildren();
-    } else if (['teacher', 'tutor', 'content_maker'].includes(dash.user?.role)) {
-      document.getElementById('teacher-tabs').style.display = '';
-      document.getElementById('student-tabs').style.display = 'none';
-      loadTeacherReviewQueue();
-    } else {
-      document.getElementById('student-tabs').style.display = '';
-      document.getElementById('creator-tabs').style.display = 'none';
-      renderSchedule(dash.schedule || []);
-      loadProgress();
-    }
-  } catch(e) {
-    showError('Не удалось подключиться к BooStudy. Попробуй позже.');
+function syncBackButton() {
+  if (!tg?.BackButton) return;
+  if (_state.navStack.length > 0 || _state.activeTab !== 'home') {
+    tg.BackButton.show();
+  } else {
+    tg.BackButton.hide();
   }
 }
 
-async function switchCreatorContext() {
-  if (!_isCreator || !_activeContext) return;
-  const next = _activeContext === 'teacher' ? 'creator' : 'teacher';
-  const button = document.getElementById('context-switch-btn');
-  button.disabled = true;
-  try {
-    const context = await api('/tg-app/api/context/switch', { active_context: next });
-    _activeContext = context.active_context;
-    const home = await api('/tg-app/api/home', { active_context: _activeContext });
-    renderHome(home);
-    button.textContent = _activeContext === 'teacher' ? 'Режим: учитель' : 'Режим: создатель';
-  } catch (e) {
-    showToast('Не удалось переключить режим');
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function loadTeacherReviewQueue() {
-  const el = document.getElementById('tab-t-review');
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
-  try {
-    const data = await api('/tg-app/api/teacher/review-queue', {});
-    const items = data.items || [];
-    if (!items.length) {
-      el.innerHTML = '<div class="card"><div class="card-empty">✅ Работ на проверку нет</div></div>';
+if (tg?.BackButton) {
+  tg.BackButton.onClick(() => {
+    haptic('light');
+    if (document.getElementById('drawer-overlay').classList.contains('active')) {
+      closeDrawer();
       return;
     }
-    el.innerHTML = `<div class="card">${items.map(item => {
-      const link = item.deep_link ? `<a href="${item.deep_link}" style="color:var(--c-link);font-size:11px">Открыть →</a>` : '';
-      return `<div class="assign-row"><div class="assign-title">${esc(item.student_name)} · ${esc(item.assignment_title)}</div><div class="assign-meta">${esc(item.status)} ${link}</div></div>`;
-    }).join('')}</div>`;
-  } catch (e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Не удалось загрузить очередь</div></div>';
-  }
-}
-
-async function loadParentChildren() {
-  const el = document.getElementById('tab-p-children');
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
-  try {
-    const data = await api('/tg-app/api/parent/children-summary', {});
-    const children = data.children || [];
-    if (!children.length) {
-      el.innerHTML = '<div class="card"><div class="card-empty">Нет подтверждённых детей</div></div>';
+    if (_state.navStack.length > 0) {
+      const prevTab = _state.navStack.pop();
+      switchTab(prevTab, false);
       return;
     }
-    el.innerHTML = `<div class="card">${children.map(child => {
-      const lesson = child.next_lesson;
-      const lessonText = lesson?.starts_at ? `Следующий урок: ${fmtDate(lesson.starts_at)}` : 'Ближайших уроков нет';
-      const state = child.overdue_assignments ? `🔴 Просрочено: ${child.overdue_assignments}` : '🟢 Просрочек нет';
-      return `<div class="assign-row"><div class="assign-title">${esc(child.name)}</div><div class="assign-meta">${lessonText} · Активных ДЗ: ${child.active_assignments} · ${state}</div><button class="mini-btn" onclick="switchParentChild(${child.student_id})">✅ Выбрать</button><button class="mini-btn" onclick="loadParentDigest(${child.student_id}, this)">📊 Сводка недели</button><div class="child-digest" id="child-digest-${child.student_id}"></div></div>`;
-    }).join('')}</div>`;
-  } catch (e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Не удалось загрузить данные</div></div>';
-  }
-}
-
-async function switchParentChild(studentId) {
-  try {
-    await api('/tg-app/api/parent/context/switch', { student_id: studentId });
-    const home = await api('/tg-app/api/home', { active_context: 'parent' });
-    renderHome(home);
-    document.getElementById('home-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (e) { /* the current list remains visible; API enforces scope */ }
-}
-
-async function loadParentDigest(studentId, button) {
-  const target = document.getElementById(`child-digest-${studentId}`);
-  button.disabled = true;
-  try {
-    const data = await api('/tg-app/api/parent/digest', { student_id: studentId });
-    const digest = data.digest || {};
-    target.textContent = `За неделю: выполнено ${digest.completed_count}, активно ${digest.active_count}, просрочено ${digest.overdue_count}.` + (digest.latest_results?.length ? ` Результаты: ${digest.latest_results.join('%, ')}%.` : '');
-  } catch (e) { target.textContent = 'Сводка недоступна'; }
-  button.disabled = false;
-}
-
-function renderHome(home) {
-  const panel = document.getElementById('home-panel');
-  const summary = document.getElementById('home-summary');
-  const actions = document.getElementById('home-actions');
-  panel.style.display = '';
-  const lessons = home.lessons || [];
-  const assignments = home.assignments || [];
-  const bits = [];
-  if (lessons.length) bits.push(`Ближайший урок: ${lessons[0].topic || 'Урок'}`);
-  if (home.pending_review_count) bits.push(`На проверке: ${home.pending_review_count}`);
-  if (home.overdue_count) bits.push(`Просрочено: ${home.overdue_count}`);
-  summary.textContent = bits.join(' · ') || 'Срочных действий нет';
-  actions.replaceChildren();
-  (home.actions || []).slice(0, 5).forEach(item => {
-    const row = document.createElement('div');
-    row.className = 'action-row';
-    row.textContent = `${item.priority === 'high' ? '🔴' : '🟡'} ${item.title}${item.description ? ` — ${item.description}` : ''}`;
-    if (item.deep_link) {
-      row.style.cursor = 'pointer';
-      row.onclick = () => window.open(item.deep_link, '_blank', 'noopener');
+    if (_state.activeTab !== 'home') {
+      switchTab('home', false);
     }
-    actions.appendChild(row);
   });
 }
 
-// ──────────────────────────────────────────────
-// API helper
-// ──────────────────────────────────────────────
-async function api(path, body) {
+// ---------------------------------------------------------------------------
+// API Helper
+// ---------------------------------------------------------------------------
+async function callApi(path, payload = {}) {
   const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ init_data: initData, ...body }),
+    body: JSON.stringify({ init_data: rawInitData, ...payload }),
   });
-  if (!res.ok) throw new Error(res.status);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `HTTP ${res.status}`);
+  }
   return res.json();
 }
 
-// ──────────────────────────────────────────────
-// Tabs
-// ──────────────────────────────────────────────
-function switchTab(tabId, groupId) {
-  const group = document.getElementById(groupId);
-  group.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
-  group.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const panel = document.getElementById('tab-' + tabId);
-  if (panel) {
-    panel.classList.add('active');
-    if (!panel.dataset.loaded) {
-      panel.dataset.loaded = '1';
-      if (tabId === 'tasks')      { /* handled by filter buttons */ }
-      if (tabId === 'progress')   loadProgress();
-      if (tabId === 'profile')    loadProfile();
-      if (tabId === 'c-broadcast') loadBroadcasts();
-      if (tabId === 'c-bugs')     loadBugReports('new');
-      if (tabId === 'c-stats')    loadCreatorStats();
+// ---------------------------------------------------------------------------
+// Bootstrap & Initialization
+// ---------------------------------------------------------------------------
+async function initMiniApp() {
+  try {
+    const data = await callApi('/tg-app/api/bootstrap', {});
+    _state.user = data.user;
+    _state.context = data.context;
+    _state.today = data.today;
+    _state.actions = data.actions || [];
+    _state.creatorMode = data.creator_mode || false;
+    _state.notifications = data.notifications || {};
+
+    setupHeader();
+    setupBottomNav();
+    parseDeepLinks();
+
+    document.getElementById('tma-loading').style.display = 'none';
+    document.getElementById('app-root').style.display = 'block';
+
+    renderCurrentView();
+  } catch (err) {
+    document.getElementById('tma-loading').style.display = 'none';
+    const errBox = document.getElementById('tma-error');
+    errBox.style.display = 'block';
+    const desc = document.getElementById('tma-error-desc');
+    if (err.message === 'not_linked') {
+      desc.textContent = 'Твой Telegram-аккаунт ещё не привязан к платформе BooStudy. Нажми /start в боте для получения кода привязки.';
+    } else if (err.message === 'invalid_init_data') {
+      desc.textContent = 'Ошибка проверки подписи Telegram initData. Пожалуйста, открой приложение напрямую из меню бота.';
+    } else if (err.message === 'telegram_id_not_allowlisted') {
+      desc.textContent = 'Доступ к тестовому кабинету ограничен: ваш Telegram ID не внесён в список доверенных тестировщиков разработчика.';
+    } else if (err.message === 'mini_app_disabled') {
+      desc.textContent = 'Мобильный кабинет временно недоступен. Ведутся технические работы.';
+    } else {
+      desc.textContent = `Не удалось загрузить мобильный кабинет (${err.message}). Попробуй позже.`;
     }
   }
 }
 
-// ──────────────────────────────────────────────
-// STUDENT — Расписание
-// ──────────────────────────────────────────────
-function renderSchedule(lessons) {
-  const el = document.getElementById('tab-schedule');
-  if (!lessons?.length) {
-    el.innerHTML = `<div class="card"><div class="card-empty">📅 Ближайших уроков пока нет</div></div>`;
+function setupHeader() {
+  const name = _state.user?.name || _state.user?.username || 'Пользователь';
+  document.getElementById('user-display-name').textContent = name.split(' ')[0];
+  document.getElementById('user-avatar-initials').textContent = (name[0] || 'U').toUpperCase();
+
+  const roleLabels = {
+    student: 'Ученик',
+    teacher: 'Учитель',
+    tutor: 'Учитель',
+    parent: 'Родитель',
+    admin: 'Админ',
+    creator: 'Создатель'
+  };
+  const activeCtx = _state.context?.active_context || _state.user?.role || 'student';
+  document.getElementById('user-role-label').textContent = roleLabels[activeCtx] || activeCtx;
+
+  // Creator role toggle
+  const switchBtn = document.getElementById('header-context-switch');
+  if (_state.creatorMode && _state.context?.available_contexts?.includes('teacher')) {
+    switchBtn.style.display = 'inline-block';
+    switchBtn.textContent = activeCtx === 'teacher' ? 'Режим: Учитель' : 'Режим: Создатель';
+  } else {
+    switchBtn.style.display = 'none';
+  }
+}
+
+async function handleContextToggle() {
+  haptic('medium');
+  const next = _state.context?.active_context === 'teacher' ? 'creator' : 'teacher';
+  const btn = document.getElementById('header-context-switch');
+  btn.disabled = true;
+  try {
+    const res = await callApi('/tg-app/api/context/switch', { active_context: next });
+    _state.context.active_context = res.active_context;
+    setupHeader();
+    setupBottomNav();
+    // Reload dashboard
+    const homeData = await callApi('/tg-app/api/home', { active_context: res.active_context });
+    _state.today = homeData;
+    _state.actions = homeData.actions || [];
+    renderCurrentView();
+    showToast(`Переключено: ${res.active_context === 'teacher' ? 'Учитель' : 'Создатель'}`);
+  } catch (e) {
+    showToast('Ошибка смены режима');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function parseDeepLinks() {
+  const params = new URLSearchParams(window.location.search);
+  const startParam = tg?.initDataUnsafe?.start_param || params.get('startapp') || params.get('tab');
+  if (!startParam) return;
+
+  if (startParam.startsWith('hw_')) {
+    _state.activeTab = 'tasks';
+    const hwId = parseInt(startParam.replace('hw_', ''), 10);
+    setTimeout(() => openAssignmentModal(hwId), 500);
+  } else if (startParam.startsWith('lesson_')) {
+    _state.activeTab = 'schedule';
+  } else if (startParam === 'review') {
+    _state.activeTab = 'review';
+  } else if (startParam === 'profile') {
+    _state.activeTab = 'profile';
+  } else if (startParam === 'schedule') {
+    _state.activeTab = 'schedule';
+  } else if (startParam === 'tasks') {
+    _state.activeTab = 'tasks';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Navigation Bar
+// ---------------------------------------------------------------------------
+function setupBottomNav() {
+  const nav = document.getElementById('tma-bottom-nav');
+  const role = _state.context?.active_context || 'student';
+
+  let items = [];
+  if (role === 'student') {
+    items = [
+      { id: 'home', icon: '⚡', label: 'Главная' },
+      { id: 'schedule', icon: '📅', label: 'Уроки' },
+      { id: 'tasks', icon: '📚', label: 'Задания', badge: (_state.today?.overdue_count || 0) > 0 },
+      { id: 'progress', icon: '📊', label: 'Прогресс' },
+      { id: 'profile', icon: '⚙️', label: 'Профиль' },
+    ];
+  } else if (role === 'teacher' || role === 'tutor') {
+    items = [
+      { id: 'home', icon: '⚡', label: 'Главная' },
+      { id: 'review', icon: '📥', label: 'Очередь', badge: (_state.today?.pending_review_count || 0) > 0 },
+      { id: 'students', icon: '👥', label: 'Ученики' },
+      { id: 'schedule', icon: '📅', label: 'Уроки' },
+      { id: 'profile', icon: '⚙️', label: 'Профиль' },
+    ];
+  } else if (role === 'parent') {
+    items = [
+      { id: 'home', icon: '⚡', label: 'Главная' },
+      { id: 'children', icon: '👪', label: 'Дети' },
+      { id: 'schedule', icon: '📅', label: 'Расписание' },
+      { id: 'profile', icon: '⚙️', label: 'Профиль' },
+    ];
+  } else {
+    // Admin / Creator
+    items = [
+      { id: 'home', icon: '⚡', label: 'Сводка' },
+      { id: 'operations', icon: '🐛', label: 'Баги' },
+      { id: 'students', icon: '👥', label: 'Ученики' },
+      { id: 'broadcast', icon: '📢', label: 'Рассылка' },
+      { id: 'profile', icon: '⚙️', label: 'Профиль' },
+    ];
+  }
+
+  nav.innerHTML = items.map(item => `
+    <button class="nav-btn ${item.id === _state.activeTab ? 'active' : ''}" onclick="switchTab('${item.id}')">
+      <span class="icon">${item.icon}</span>
+      <span>${item.label}</span>
+      ${item.badge ? '<span class="nav-badge-dot"></span>' : ''}
+    </button>
+  `).join('');
+}
+
+function switchTab(tabId, pushHistory = true) {
+  if (_state.activeTab === tabId) return;
+  haptic('light');
+  if (pushHistory) {
+    _state.navStack.push(_state.activeTab);
+  }
+  _state.activeTab = tabId;
+
+  // Update nav highlight
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${tabId}'`));
+  });
+
+  syncBackButton();
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  const container = document.getElementById('tma-content');
+  const role = _state.context?.active_context || 'student';
+  const tab = _state.activeTab;
+
+  if (tab === 'home') renderHomeTab(container);
+  else if (tab === 'schedule') renderScheduleTab(container);
+  else if (tab === 'tasks') renderTasksTab(container);
+  else if (tab === 'progress') renderProgressTab(container);
+  else if (tab === 'profile') renderProfileTab(container);
+  else if (tab === 'review') renderReviewQueueTab(container);
+  else if (tab === 'students') renderStudentsTab(container);
+  else if (tab === 'children') renderChildrenTab(container);
+  else if (tab === 'operations') renderOperationsTab(container);
+  else if (tab === 'broadcast') renderBroadcastTab(container);
+  else renderHomeTab(container);
+}
+
+// ---------------------------------------------------------------------------
+// 1. HOME TAB (Universal Role-Adaptive Action Center)
+// ---------------------------------------------------------------------------
+function renderHomeTab(container) {
+  const today = _state.today || {};
+  const lessons = today.lessons || [];
+  const assignments = today.assignments || [];
+  const actions = _state.actions || [];
+
+  let nextLessonHtml = '';
+  if (lessons.length > 0) {
+    const l = lessons[0];
+    const startsAt = l.starts_at ? new Date(l.starts_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const roomBtn = l.lesson_url ? `<a href="${l.lesson_url}" class="btn-brand" style="margin-top:10px;">🚀 Войти в урок</a>` : '';
+    nextLessonHtml = `
+      <div class="hero-banner">
+        <div class="status-pill status-progress" style="margin-bottom:8px;">Ближайший урок в ${startsAt}</div>
+        <div class="title">${escape(l.topic || 'Занятие')}</div>
+        <div class="subtitle">${l.duration_minutes || 60} мин · Индивидуальный класс</div>
+        ${roomBtn}
+      </div>
+    `;
+  } else {
+    nextLessonHtml = `
+      <div class="hero-banner">
+        <div class="title">🎉 На сегодня уроков нет</div>
+        <div class="subtitle">Отличное время повторить теорию или доделать домашние задания.</div>
+      </div>
+    `;
+  }
+
+  // Action Center Items
+  let actionListHtml = '';
+  if (actions.length > 0) {
+    actionListHtml = actions.slice(0, 4).map(a => `
+      <div class="action-bubble ${a.priority === 'high' ? 'critical' : a.priority === 'normal' ? 'warning' : ''}" onclick="handleActionClick('${a.type}', '${a.entity_id || ''}')">
+        <span style="font-size:16px;">${a.priority === 'high' ? '🔴' : '🟡'}</span>
+        <div class="item-col">
+          <div class="action-title">${escape(a.title)}</div>
+          <div class="action-desc">${escape(a.description || '')}</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    actionListHtml = `<div class="empty-state-desc" style="padding:10px 0;">Все текущие задачи закрыты!</div>`;
+  }
+
+  // Quick Stats
+  let statsHtml = '';
+  if (_state.context?.active_context === 'student') {
+    const activeTasks = assignments.filter(s => ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'].includes(s.status)).length;
+    statsHtml = `
+      <div class="stats-matrix">
+        <div class="matrix-box">
+          <div class="val">${activeTasks}</div>
+          <div class="lbl">Активных заданий</div>
+        </div>
+        <div class="matrix-box">
+          <div class="val">${today.overdue_count || 0}</div>
+          <div class="lbl" style="color:${today.overdue_count ? 'var(--c-danger)' : 'var(--c-hint)'}">Срочных дедлайнов</div>
+        </div>
+      </div>
+    `;
+  } else if (_state.context?.active_context === 'teacher') {
+    statsHtml = `
+      <div class="stats-matrix">
+        <div class="matrix-box">
+          <div class="val">${today.pending_review_count || 0}</div>
+          <div class="lbl">Работ на проверке</div>
+        </div>
+        <div class="matrix-box">
+          <div class="val">${lessons.length}</div>
+          <div class="lbl">Занятий впереди</div>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    ${nextLessonHtml}
+    ${statsHtml}
+    <div class="t-card">
+      <div class="card-header-row">
+        <div class="card-headline">⚡ Требует внимания</div>
+      </div>
+      ${actionListHtml}
+    </div>
+  `;
+}
+
+function handleActionClick(type, id) {
+  haptic('medium');
+  if (type.startsWith('assignment') && id) {
+    _state.activeTab = 'tasks';
+    setupBottomNav();
+    renderCurrentView();
+    setTimeout(() => openAssignmentModal(parseInt(id, 10)), 300);
+  } else if (type.startsWith('submission')) {
+    switchTab('review');
+  } else {
+    showToast('Действие зафиксировано');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. SCHEDULE TAB (Interactive Calendar)
+// ---------------------------------------------------------------------------
+async function renderScheduleTab(container) {
+  container.innerHTML = `<div class="loader-center"><div class="spinner-circle"></div></div>`;
+  try {
+    const isTeacher = ['teacher', 'tutor', 'creator'].includes(_state.context?.active_context);
+    const endpoint = isTeacher ? '/tg-app/api/teacher/schedule' : '/tg-app/api/student/schedule';
+    const data = await callApi(endpoint, {});
+    const lessons = data.schedule || [];
+
+    // Week day strip
+    const now = new Date();
+    const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    let weekHtml = '<div class="week-bar">';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() + i);
+      const isToday = i === 0;
+      const dayName = days[d.getDay()];
+      const dayNum = d.getDate();
+      weekHtml += `
+        <div class="day-cell ${isToday ? 'active' : ''}">
+          <div class="day-name">${dayName}</div>
+          <div class="day-num">${dayNum}</div>
+        </div>
+      `;
+    }
+    weekHtml += '</div>';
+
+    let lessonsHtml = '';
+    if (lessons.length === 0) {
+      lessonsHtml = `
+        <div class="t-card">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">📅</div>
+            <div class="empty-state-title">Занятий не найдено</div>
+            <div class="empty-state-desc">В ближайшее время уроков не запланировано.</div>
+          </div>
+        </div>
+      `;
+    } else {
+      lessonsHtml = lessons.map((l, idx) => {
+        const dt = l.starts_at ? new Date(l.starts_at) : null;
+        const timeStr = dt ? dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+        const dateStr = dt ? dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—';
+        const statusLabel = l.status === 'in_progress' ? '<span class="status-pill status-progress">Идёт урок</span>' : '';
+        const roomBtn = l.lesson_url ? `<a href="${l.lesson_url}" class="btn-brand" style="padding:6px 12px;font-size:12px;">Войти</a>` : '';
+        return `
+          <div class="t-card">
+            <div class="card-header-row">
+              <span class="status-pill status-assigned">Урок #${idx + 1} · ${l.duration || 60} мин</span>
+              ${statusLabel}
+            </div>
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">${escape(l.topic || 'Занятие')}</div>
+            <div class="item-meta" style="margin-bottom:12px;">
+              <span>🕒 ${dateStr} в ${timeStr}</span>
+              ${l.student_name ? `<span>👤 ${escape(l.student_name)}</span>` : ''}
+            </div>
+            <div style="display:flex;justify-content:flex-end;">
+              ${roomBtn}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    container.innerHTML = `
+      <div class="card-headline" style="margin-bottom:8px;">📅 Расписание занятий</div>
+      ${weekHtml}
+      ${lessonsHtml}
+    `;
+  } catch (e) {
+    container.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка загрузки расписания (${e.message})</div></div></div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. TASKS / ASSIGNMENTS TAB (Student)
+// ---------------------------------------------------------------------------
+async function renderTasksTab(container) {
+  container.innerHTML = `
+    <div class="pill-filters">
+      <button class="filter-pill-btn ${!_state.assignmentsFilter || _state.assignmentsFilter === 'all' ? 'active' : ''}" onclick="filterTasks('all')">Все</button>
+      <button class="filter-pill-btn ${_state.assignmentsFilter === 'pending' ? 'active' : ''}" onclick="filterTasks('pending')">К сдаче</button>
+      <button class="filter-pill-btn ${_state.assignmentsFilter === 'graded' ? 'active' : ''}" onclick="filterTasks('graded')">Проверено</button>
+    </div>
+    <div id="tasks-list"><div class="loader-center"><div class="spinner-circle"></div></div></div>
+  `;
+
+  loadTasksList();
+}
+
+async function filterTasks(filter) {
+  haptic('light');
+  _state.assignmentsFilter = filter;
+  document.querySelectorAll('.filter-pill-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick')?.includes(`'${filter}'`));
+  });
+  loadTasksList();
+}
+
+async function loadTasksList() {
+  const el = document.getElementById('tasks-list');
+  try {
+    const filterArg = _state.assignmentsFilter === 'all' ? null : _state.assignmentsFilter;
+    const data = await callApi('/tg-app/api/student/assignments', { status_filter: filterArg });
+    const items = data.assignments || [];
+
+    if (items.length === 0) {
+      el.innerHTML = `
+        <div class="t-card">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">📚</div>
+            <div class="empty-state-title">Заданий нет</div>
+            <div class="empty-state-desc">В этом разделе нет активных или проверенных заданий.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = items.map(s => {
+      const statusPill = getStatusPill(s.status);
+      const dlStr = s.deadline ? fmtDate(s.deadline) : 'Бессрочно';
+      const scoreStr = s.percentage !== null && s.percentage !== undefined ? `<b>${s.percentage}%</b>` : '';
+      return `
+        <div class="t-card clickable" onclick="openAssignmentModal(${s.assignment_id || s.id})">
+          <div class="card-header-row">
+            ${statusPill}
+            <span style="font-size:12px;color:var(--c-hint);">Срок: ${dlStr}</span>
+          </div>
+          <div class="item-title" style="font-size:14px;margin-bottom:6px;">${escape(s.title)}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--c-link);">Подробнее →</span>
+            ${scoreStr ? `<span style="font-size:13px;color:var(--c-success);">${scoreStr}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка загрузки заданий</div></div></div>`;
+  }
+}
+
+async function openAssignmentModal(assignmentId) {
+  haptic('medium');
+  openDrawer('Задание', 'Загрузка…', '<div class="loader-center"><div class="spinner-circle"></div></div>');
+  try {
+    const data = await callApi('/tg-app/api/student/assignment/detail', { assignment_id: assignmentId });
+    const a = data.assignment;
+    const sub = data.submission;
+
+    const deadlineStr = a.deadline ? fmtDate(a.deadline) : 'Бессрочно';
+    const subStatusPill = sub ? getStatusPill(sub.status) : '<span class="status-pill status-assigned">Назначено</span>';
+    const gradeHtml = sub && sub.percentage !== null ? `<div style="font-size:22px;font-weight:900;color:var(--c-success);margin:8px 0;">${sub.percentage}%</div>` : '';
+    const commentHtml = sub?.teacher_comment ? `
+      <div style="background:var(--c-surface-elevated);border-left:3px solid var(--c-accent);padding:10px 12px;border-radius:10px;margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--c-hint);margin-bottom:2px;">КОММЕНТАРИЙ ПРЕПОДАВАТЕЛЯ:</div>
+        <div style="font-size:13px;">${escape(sub.teacher_comment)}</div>
+      </div>
+    ` : '';
+
+    const webLink = a.web_url ? `<a href="${a.web_url}" class="btn-brand btn-full" style="margin-top:16px;">💻 Открыть задание на платформе</a>` : '';
+
+    openDrawer(
+      a.title,
+      `Срок: ${deadlineStr} · Макс. балл: ${a.max_score}`,
+      `
+        <div>${subStatusPill}</div>
+        ${gradeHtml}
+        <div style="font-size:13.5px;color:var(--c-text);margin:12px 0;line-height:1.5;">${escape(a.description || 'Индивидуальное домашнее задание.')}</div>
+        ${commentHtml}
+        ${webLink}
+      `
+    );
+  } catch (e) {
+    openDrawer('Ошибка', 'Не удалось открыть задание', `<div class="empty-state-desc">${e.message}</div>`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. PROGRESS TAB (Student)
+// ---------------------------------------------------------------------------
+async function renderProgressTab(container) {
+  container.innerHTML = `<div class="loader-center"><div class="spinner-circle"></div></div>`;
+  try {
+    const data = await callApi('/tg-app/api/progress', {});
+    const subs = data.submissions || [];
+    const graded = subs.filter(s => s.percentage !== null && s.percentage !== undefined);
+    const avgScore = graded.length ? Math.round(graded.reduce((acc, s) => acc + s.percentage, 0) / graded.length) : null;
+
+    let gradebookHtml = '';
+    if (graded.length > 0) {
+      gradebookHtml = graded.slice(0, 10).map(g => `
+        <div class="item-row">
+          <div class="item-col">
+            <div class="item-title">${escape(g.title)}</div>
+            <div class="item-meta">${g.updated_at ? fmtDate(g.updated_at) : '—'}</div>
+          </div>
+          <div style="font-size:15px;font-weight:800;color:${g.percentage >= 80 ? 'var(--c-success)' : g.percentage >= 60 ? 'var(--c-warning)' : 'var(--c-danger)'}">
+            ${g.percentage}%
+          </div>
+        </div>
+      `).join('');
+    } else {
+      gradebookHtml = `<div class="empty-state-desc">Пока нет проверенных работ.</div>`;
+    }
+
+    container.innerHTML = `
+      <div class="stats-matrix">
+        <div class="matrix-box">
+          <div class="val">${avgScore !== null ? avgScore + '%' : '—'}</div>
+          <div class="lbl">Средний результат</div>
+        </div>
+        <div class="matrix-box">
+          <div class="val">${graded.length}</div>
+          <div class="lbl">Сдано заданий</div>
+        </div>
+      </div>
+
+      <div class="t-card">
+        <div class="card-headline" style="margin-bottom:12px;">🏆 Последние оценки</div>
+        ${gradebookHtml}
+      </div>
+    `;
+  } catch (e) {
+    container.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка загрузки успеваемости</div></div></div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. TEACHER REVIEW QUEUE
+// ---------------------------------------------------------------------------
+async function renderReviewQueueTab(container) {
+  container.innerHTML = `<div class="loader-center"><div class="spinner-circle"></div></div>`;
+  try {
+    const data = await callApi('/tg-app/api/teacher/review-queue', {});
+    const items = data.items || [];
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="t-card">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">✅</div>
+            <div class="empty-state-title">Очередь чиста</div>
+            <div class="empty-state-desc">Все сданные учениками работы проверены!</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="card-headline" style="margin-bottom:12px;">📥 Очередь на проверку (${items.length})</div>
+      ${items.map(it => `
+        <div class="t-card">
+          <div class="card-header-row">
+            <span class="status-pill status-submitted">Ждёт проверки</span>
+            <span style="font-size:11px;color:var(--c-hint);">${it.submitted_at ? fmtDate(it.submitted_at) : ''}</span>
+          </div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px;">👤 ${escape(it.student_name)}</div>
+          <div style="font-size:13px;color:var(--c-text);margin-bottom:10px;">📋 ${escape(it.assignment_title)}</div>
+          <div style="display:flex;justify-content:flex-end;">
+            ${it.deep_link ? `<a href="${it.deep_link}" class="btn-brand" style="padding:6px 14px;font-size:12px;">Проверить работу →</a>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) {
+    container.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка загрузки очереди (${e.message})</div></div></div>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. TEACHER / ADMIN STUDENTS TAB
+// ---------------------------------------------------------------------------
+async function renderStudentsTab(container) {
+  container.innerHTML = `
+    <div class="search-box">
+      <span class="icon">🔍</span>
+      <input type="search" placeholder="Поиск ученика…" oninput="handleStudentSearch(this.value)">
+    </div>
+    <div id="students-container"><div class="loader-center"><div class="spinner-circle"></div></div></div>
+  `;
+  loadStudentsList();
+}
+
+async function loadStudentsList(query = '') {
+  const el = document.getElementById('students-container');
+  try {
+    const isCreator = _state.creatorMode && _state.context?.active_context === 'creator';
+    const endpoint = isCreator ? '/tg-app/api/creator/students' : '/tg-app/api/teacher/students';
+    const data = await callApi(endpoint, { query });
+    const students = data.students || [];
+
+    if (students.length === 0) {
+      el.innerHTML = `
+        <div class="t-card">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">👥</div>
+            <div class="empty-state-title">Учеников не найдено</div>
+            <div class="empty-state-desc">Попробуй изменить поисковый запрос.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="t-card">
+        <div class="card-headline">Всего: ${students.length}</div>
+        ${students.map(s => `
+          <div class="item-row">
+            <div class="item-col">
+              <div class="item-title">${escape(s.name || 'Ученик')}</div>
+              <div class="item-meta">
+                ${s.telegram_linked ? '<span style="color:var(--c-success)">📱 В боте</span>' : '<span style="color:var(--c-hint)">Не привязан</span>'}
+                ${s.active_assignments !== undefined ? `<span>Активных ДЗ: ${s.active_assignments}</span>` : ''}
+                ${s.in_review ? `<span style="color:var(--c-warning)">На проверке: ${s.in_review}</span>` : ''}
+              </div>
+            </div>
+            ${s.deep_link ? `<a href="${s.deep_link}" class="btn-secondary" style="padding:4px 8px;font-size:11px;">Открыть</a>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка загрузки учеников</div></div></div>`;
+  }
+}
+
+let _searchTimeout = null;
+function handleStudentSearch(val) {
+  clearTimeout(_searchTimeout);
+  _searchTimeout = setTimeout(() => loadStudentsList(val.trim()), 300);
+}
+
+// ---------------------------------------------------------------------------
+// 7. PARENT CHILDREN TAB
+// ---------------------------------------------------------------------------
+async function renderChildrenTab(container) {
+  container.innerHTML = `<div class="loader-center"><div class="spinner-circle"></div></div>`;
+  try {
+    const data = await callApi('/tg-app/api/parent/children-summary', {});
+    const children = data.children || [];
+
+    if (children.length === 0) {
+      container.innerHTML = `
+        <div class="t-card">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">👪</div>
+            <div class="empty-state-title">Дети не привязаны</div>
+            <div class="empty-state-desc">В твоём аккаунте пока нет подтверждённых связей опекун-ученик.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="card-headline" style="margin-bottom:12px;">👪 Мои дети</div>
+      ${children.map(c => `
+        <div class="t-card clickable" onclick="openChildDetailModal(${c.student_id})">
+          <div class="card-header-row">
+            <span style="font-size:16px;font-weight:800;">${escape(c.name)}</span>
+            <span style="font-size:12px;color:var(--c-link);">Сводка →</span>
+          </div>
+          <div class="item-meta" style="margin-bottom:8px;">
+            <span>Активных ДЗ: <b>${c.active_assignments}</b></span>
+            <span>Просрочено: <b style="color:${c.overdue_assignments ? 'var(--c-danger)' : 'var(--c-success)'}">${c.overdue_assignments}</b></span>
+          </div>
+          <div style="font-size:12px;color:var(--c-hint);">
+            ${c.next_lesson?.starts_at ? `Следующий урок: ${fmtDate(c.next_lesson.starts_at)}` : 'Уроков впереди нет'}
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) {
+    container.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка (${e.message})</div></div></div>`;
+  }
+}
+
+async function openChildDetailModal(studentId) {
+  haptic('medium');
+  openDrawer('Ученик', 'Загрузка…', '<div class="loader-center"><div class="spinner-circle"></div></div>');
+  try {
+    const data = await callApi('/tg-app/api/parent/child/detail', { student_id: studentId });
+    const st = data.student;
+    const lessons = data.lessons || [];
+    const assignments = data.assignments || [];
+
+    let body = `
+      <div class="stats-matrix" style="margin-top:10px;">
+        <div class="matrix-box">
+          <div class="val">${st.average_score !== null ? st.average_score + '%' : '—'}</div>
+          <div class="lbl">Средний балл</div>
+        </div>
+        <div class="matrix-box">
+          <div class="val">${st.active_assignments_count}</div>
+          <div class="lbl">Активных ДЗ</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin:12px 0 6px;">Ближайшие уроки:</div>
+      ${lessons.length ? lessons.map(l => `<div class="item-meta" style="margin-bottom:4px;">📅 ${escape(l.topic)} — ${fmtDate(l.starts_at)}</div>`).join('') : '<div class="item-meta">Уроков нет</div>'}
+      <div style="font-size:13px;font-weight:700;margin:14px 0 6px;">Последние задания:</div>
+      ${assignments.length ? assignments.map(a => `<div class="item-meta" style="margin-bottom:4px;">📋 ${escape(a.title)}: ${a.status}</div>`).join('') : '<div class="item-meta">Заданий нет</div>'}
+    `;
+
+    openDrawer(st.name, `Цель: ${st.target_score || '100'} баллов`, body);
+  } catch (e) {
+    openDrawer('Ошибка', 'Не удалось загрузить данные', `<div class="empty-state-desc">${e.message}</div>`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 8. CREATOR / ADMIN OPERATIONS TAB (Bug reports & Platform health)
+// ---------------------------------------------------------------------------
+async function renderOperationsTab(container) {
+  container.innerHTML = `<div class="loader-center"><div class="spinner-circle"></div></div>`;
+  try {
+    const [bugsData, healthData] = await Promise.all([
+      callApi('/tg-app/api/creator/bug-reports', { status: 'new' }),
+      callApi('/tg-app/api/operations/health', {}).catch(() => ({})),
+    ]);
+    const reports = bugsData.reports || [];
+    const health = healthData.summary || {};
+
+    let healthHtml = '';
+    if (health.users) {
+      healthHtml = `
+        <div class="stats-matrix">
+          <div class="matrix-box">
+            <div class="val">${health.users}</div>
+            <div class="lbl">Пользователей</div>
+          </div>
+          <div class="matrix-box">
+            <div class="val">${health.active_students}</div>
+            <div class="lbl">Учеников</div>
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = `
+      <div class="card-headline" style="margin-bottom:12px;">🐛 Обращения и баг-репорты (${reports.length})</div>
+      ${healthHtml}
+      ${reports.length === 0 ? `
+        <div class="t-card">
+          <div class="empty-state-box">
+            <div class="empty-state-icon">🎉</div>
+            <div class="empty-state-title">Новых репортов нет</div>
+            <div class="empty-state-desc">Все обращения от учеников закрыты.</div>
+          </div>
+        </div>
+      ` : reports.map(r => `
+        <div class="t-card">
+          <div class="card-header-row">
+            <span style="font-weight:700;font-size:13px;">${escape(r.student_name)}</span>
+            <span style="font-size:11px;color:var(--c-hint);">${r.created_at ? fmtDate(r.created_at) : ''}</span>
+          </div>
+          <div style="font-size:13px;line-height:1.4;margin:8px 0;background:var(--c-surface-elevated);padding:10px;border-radius:10px;">
+            ${escape(r.message)}
+          </div>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="btn-brand" style="padding:6px 14px;font-size:12px;" onclick="openBugReplyModal(${r.report_id})">💬 Ответить ученику</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) {
+    container.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Ошибка (${e.message})</div></div></div>`;
+  }
+}
+
+function openBugReplyModal(reportId) {
+  haptic('medium');
+  openDrawer(
+    'Ответ ученику',
+    'Сообщение будет отправлено напрямую в Telegram-чат ученика',
+    `
+      <textarea id="reply-input-text" placeholder="Текст ответа…" style="width:100%;height:100px;background:var(--c-bg);color:var(--c-text);border:1px solid var(--c-border);border-radius:12px;padding:10px;font-size:13px;margin-bottom:12px;"></textarea>
+      <button class="btn-brand btn-full" onclick="submitBugReply(${reportId})">Отправить ответ</button>
+    `
+  );
+}
+
+async function submitBugReply(reportId) {
+  const text = document.getElementById('reply-input-text')?.value?.trim();
+  if (!text) {
+    showToast('Введи текст ответа');
     return;
   }
-  const rows = lessons.map(l => {
-    const dt = l.starts_at || l.date;
-    const dateObj = dt ? new Date(dt) : null;
-    const timeStr = dateObj ? dateObj.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '—';
-    const dateStr = dateObj ? dateObj.toLocaleDateString('ru-RU', {day:'numeric',month:'short'}) : '—';
-    const btnHtml = l.lesson_url
-      ? `<a href="${l.lesson_url}" class="lesson-btn">Войти</a>` : '';
-    const statusHtml = l.status === 'in_progress' ? '<span class="pill pill-progress">Идёт</span> ' : '';
-    return `<div class="lesson-row">
-      <div class="lesson-time">${timeStr}</div>
-      <div class="lesson-info">
-        <div class="lesson-topic">${statusHtml}${esc(l.topic || 'Урок')}</div>
-        <div class="lesson-meta">${dateStr} · ${l.duration || 60} мин</div>
-      </div>
-      ${btnHtml}
-    </div>`;
-  }).join('');
-  el.innerHTML = `<div class="card"><div class="card-title">Ближайшие уроки</div>${rows}</div>`;
-}
-
-// ──────────────────────────────────────────────
-// STUDENT — Задания
-// ──────────────────────────────────────────────
-async function loadAssignments(filter, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  const el = document.getElementById('tasks-content');
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  haptic('medium');
   try {
-    const data = await api('/tg-app/api/student/assignments', { status_filter: filter });
-    const subs = data.assignments || [];
-    if (!subs.length) {
-      el.innerHTML = '<div class="card"><div class="card-empty">✅ Заданий в этом разделе нет</div></div>';
-      return;
-    }
-    const rows = subs.map(s => {
-      const pill = pillHtml(s.status);
-      const dl = s.deadline ? `<span>до ${fmtDate(s.deadline)}</span>` : '';
-      const link = s.url ? `<a href="${s.url}" style="color:var(--c-link);font-size:11px">Открыть →</a>` : '';
-      return `<div class="assign-row">
-        <div class="assign-title">${esc(s.title)}</div>
-        <div class="assign-meta">${pill} ${dl} ${link}</div>
-      </div>`;
-    }).join('');
-    el.innerHTML = `<div class="card">${rows}</div>`;
-  } catch(e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+    await callApi('/tg-app/api/creator/bug-reports/reply', { report_id: reportId, reply: text });
+    haptic('success');
+    closeDrawer();
+    showToast('✅ Ответ отправлен ученику!');
+    renderCurrentView();
+  } catch (e) {
+    showToast(`Ошибка: ${e.message}`);
   }
 }
 
-// ──────────────────────────────────────────────
-// STUDENT — Прогресс
-// ──────────────────────────────────────────────
-async function loadProgress() {
-  const el = document.getElementById('tab-progress');
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
-  try {
-    const data = await api('/tg-app/api/progress', {});
-    const subs = data.submissions || [];
-    const gb = data.gradebook || [];
-    const pending = data.pending_homework || 0;
-
-    const graded = subs.filter(s => ['GRADED','CHECKED','COMPLETED','SUBMITTED'].includes(String(s.status || '').toUpperCase()));
-    const pct = graded.length ? Math.round(graded.filter(s => (s.percentage||0) >= 80).length / graded.length * 100) : null;
-
-    let html = '';
-
-    // Сводка
-    html += `<div class="card">
-      <div class="card-title">Сводка</div>
-      <div class="stat-row"><span class="stat-label">📋 Активных заданий</span><span class="stat-val">${pending}</span></div>
-      <div class="stat-row"><span class="stat-label">✅ Выполнено работ</span><span class="stat-val">${graded.length}</span></div>
-      ${pct !== null ? `<div class="stat-row"><span class="stat-label">💪 Отлично (≥80%)</span><span class="stat-val">${pct}%</span></div>` : ''}
-    </div>`;
-
-    // Последние оценки
-    if (gb.length) {
-      const rows = gb.map(g => {
-        const scoreColor = g.score >= 80 ? '#059669' : g.score >= 60 ? '#d97706' : '#dc2626';
-        const barW = Math.min(100, Math.max(0, g.score || 0));
-        return `<div class="gb-row">
-          <div class="gb-title">${esc(g.title)}</div>
-          <div class="gb-score" style="color:${scoreColor}">${g.score !== null ? g.score + '%' : '—'}</div>
-        </div>
-        <div class="pbar-wrap"><div class="pbar-fill" style="width:${barW}%;background:${scoreColor}"></div></div>`;
-      }).join('');
-      html += `<div class="card"><div class="card-title">Последние работы</div>${rows}</div>`;
-    }
-
-    el.innerHTML = html || '<div class="card"><div class="card-empty">📊 Пока нет данных для прогресса</div></div>';
-  } catch(e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
-  }
-}
-
-// ──────────────────────────────────────────────
-// STUDENT — Профиль
-// ──────────────────────────────────────────────
-async function loadProfile() {
-  const el = document.getElementById('tab-profile');
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
-  try {
-    const [profData, notifData] = await Promise.all([
-      api('/tg-app/api/profile', {}),
-      api('/tg-app/api/profile/notifications', {}),
-    ]);
-    const p = profData.profile || {};
-    const n = notifData.notifications || {};
-
-    const sub = p.subscription;
-    const subHtml = sub
-      ? `<div style="font-size:12px;color:${sub.status === 'active' ? '#059669' : '#dc2626'}">
-          ${sub.status === 'active' ? '✅ Подписка активна' : '⚠️ ' + sub.status}
-          ${sub.ends_at ? ' · до ' + fmtDate(sub.ends_at) : ''}
-        </div>`
-      : `<div style="font-size:12px;color:var(--c-hint)">Подписка не найдена</div>`;
-
-    const notifRows = [
-      { key: 'tg_notify_homework_checked',      label: 'Проверка ДЗ' },
-      { key: 'tg_notify_homework_returned',     label: 'ДЗ на доработку' },
-      { key: 'tg_notify_lesson_scheduled',      label: 'Расписание уроков' },
-      { key: 'tg_notify_lesson_reminder',       label: 'Напоминания (30 мин)' },
-      { key: 'tg_notify_news',                  label: 'Новости и рассылки' },
-      { key: 'tg_notify_daily_digest',          label: 'Утренний дайджест' },
-      { key: 'tg_notify_subscription_expiring', label: 'Напоминание о подписке' },
-    ].map(({ key, label }) => {
-      const checked = n[key] !== false ? 'checked' : '';
-      return `<div class="toggle-row">
-        <span class="toggle-label">${label}</span>
-        <label class="toggle-switch" onchange="toggleNotif('${key}',this)">
-          <input type="checkbox" ${checked}>
-          <span class="toggle-track"></span>
-          <span class="toggle-thumb"></span>
-        </label>
-      </div>`;
-    }).join('');
-
-    const unlinkUrl = p.unlink?.profile_url || '#';
-
-    el.innerHTML = `
-      <div class="card">
-        <div class="card-title">Профиль</div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(p.name || p.username || '—')}</div>
-        ${p.email ? `<div style="font-size:12px;color:var(--c-hint)">${esc(p.email)}</div>` : ''}
-        <div style="margin-top:8px">${subHtml}</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Уведомления</div>
-        <div class="toggle-row">
-          <span class="toggle-label" style="font-weight:700">Все уведомления</span>
-          <label class="toggle-switch" onchange="toggleNotif('telegram_notifications_enabled',this)">
-            <input type="checkbox" ${n.telegram_notifications_enabled !== false ? 'checked' : ''}>
-            <span class="toggle-track"></span>
-            <span class="toggle-thumb"></span>
-          </label>
-        </div>
-        ${notifRows}
-      </div>
-      <div class="card" style="text-align:center">
-        <a href="${unlinkUrl}" style="color:var(--c-hint);font-size:13px;text-decoration:none">Отвязать Telegram-аккаунт →</a>
-      </div>`;
-  } catch(e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки профиля</div></div>';
-  }
-}
-
-async function toggleNotif(key, label) {
-  const val = label.querySelector('input').checked;
-  try {
-    await api('/tg-app/api/profile/notifications', { updates: { [key]: val } });
-    showToast(val ? '✅ Включено' : '🔕 Выключено');
-  } catch(e) {
-    showToast('⚠️ Ошибка сохранения');
-  }
-}
-
-// ──────────────────────────────────────────────
-// CREATOR — Ученики
-// ──────────────────────────────────────────────
-async function loadCreatorStudents() {
-  const el = document.getElementById('tab-c-students');
-  el.innerHTML = `
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input id="student-search" type="search" placeholder="Поиск по имени…" oninput="filterStudents(this.value)">
+// ---------------------------------------------------------------------------
+// 9. CREATOR BROADCAST TAB
+// ---------------------------------------------------------------------------
+async function renderBroadcastTab(container) {
+  container.innerHTML = `
+    <div class="t-card">
+      <div class="card-headline" style="margin-bottom:10px;">📢 Новая рассылка</div>
+      <textarea id="broadcast-input-msg" placeholder="Текст рассылки всем ученикам…" style="width:100%;height:90px;background:var(--c-bg);color:var(--c-text);border:1px solid var(--c-border);border-radius:12px;padding:10px;font-size:13px;margin-bottom:10px;"></textarea>
+      <button class="btn-brand btn-full" onclick="handleSendBroadcast()">Запустить рассылку</button>
     </div>
-    <div id="students-list"><div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div></div>`;
+    <div id="broadcast-history-container"><div class="loader-center"><div class="spinner-circle"></div></div></div>
+  `;
+  loadBroadcastHistory();
+}
 
+async function loadBroadcastHistory() {
+  const el = document.getElementById('broadcast-history-container');
   try {
-    const data = await api('/tg-app/api/creator/students', {});
-    window._studentsData = data.students || [];
-    renderStudents(window._studentsData);
-  } catch(e) {
-    document.getElementById('students-list').innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
-  }
-}
-
-function filterStudents(q) {
-  const filtered = (window._studentsData || []).filter(s =>
-    (s.name || '').toLowerCase().includes(q.toLowerCase())
-  );
-  renderStudents(filtered);
-}
-
-function renderStudents(list) {
-  const el = document.getElementById('students-list');
-  if (!list.length) { el.innerHTML = '<div class="card"><div class="card-empty">Нет учеников</div></div>'; return; }
-  const rows = list.map(s => {
-    const tgHtml = s.telegram_linked
-      ? `<span class="tg-badge">📱 В боте</span>`
-      : `<span class="tg-badge-no">Не привязан</span>`;
-    const lastStr = s.last_activity_at ? fmtDate(s.last_activity_at) : 'никогда';
-    return `<div class="student-row">
-      <div>
-        <div class="student-name">${esc(s.name || '—')}</div>
-        <div class="student-meta">Активность: ${lastStr}</div>
-      </div>
-      ${tgHtml}
-    </div>`;
-  }).join('');
-  const total = (window._studentsData || []).length;
-  el.innerHTML = `<div class="card"><div class="card-title">Учеников: ${total}</div>${rows}</div>`;
-}
-
-// ──────────────────────────────────────────────
-// CREATOR — Рассылка
-// ──────────────────────────────────────────────
-async function loadBroadcasts() {
-  const el = document.getElementById('tab-c-broadcast');
-  el.innerHTML = `
-    <div class="card">
-      <div class="card-title">Новая рассылка</div>
-      <textarea id="broadcast-text" placeholder="Текст рассылки…"></textarea>
-      <div style="margin-top:10px">
-        <input id="broadcast-photo" type="url" placeholder="URL картинки (опционально)" style="width:100%;background:var(--c-bg);border:1.5px solid rgba(0,0,0,.1);border-radius:var(--r-btn);padding:8px 12px;font-size:13px;color:var(--c-text)">
-      </div>
-      <button class="btn-primary" style="margin-top:10px" onclick="sendBroadcast()">📢 Отправить всем ученикам</button>
-    </div>
-    <div id="broadcasts-history"><div style="text-align:center;padding:16px;color:var(--c-hint)">Загрузка истории…</div></div>`;
-
-  try {
-    const data = await api('/tg-app/api/creator/broadcasts', {});
+    const data = await callApi('/tg-app/api/creator/broadcasts', {});
     const items = data.broadcasts || [];
     if (!items.length) {
-      document.getElementById('broadcasts-history').innerHTML = '<div class="card"><div class="card-empty">Рассылок пока не было</div></div>';
+      el.innerHTML = `<div class="t-card"><div class="empty-state-box"><div class="empty-state-desc">Рассылок ещё не проводилось.</div></div></div>`;
       return;
     }
-    const rows = items.map(b => {
-      const statusColor = { completed:'#059669', running:'#d97706', failed:'#dc2626', pending:'#6b7280' }[b.status] || '#6b7280';
-      return `<div class="assign-row">
-        <div class="assign-title">${esc(b.message_preview)}${b.message_preview.length >= 100 ? '…' : ''}</div>
-        <div class="assign-meta">
-          <span style="color:${statusColor}">${b.status}</span>
-          <span>${b.sent_ok} из ${b.total_planned}</span>
-          <span>${fmtDate(b.created_at)}</span>
-        </div>
-      </div>`;
-    }).join('');
-    document.getElementById('broadcasts-history').innerHTML = `<div class="card"><div class="card-title">История рассылок</div>${rows}</div>`;
-  } catch(e) {}
-}
-
-async function sendBroadcast() {
-  const text = (document.getElementById('broadcast-text')?.value || '').trim();
-  const photoUrl = (document.getElementById('broadcast-photo')?.value || '').trim();
-  if (!text) { showToast('⚠️ Введи текст рассылки'); return; }
-  try {
-    const data = await api('/tg-app/api/broadcast/create', { message: text, photo_url: photoUrl || null });
-    if (data.ok) {
-      showToast('✅ Рассылка запущена!');
-      document.getElementById('broadcast-text').value = '';
-      document.getElementById('broadcast-photo').value = '';
-      document.getElementById('tab-c-broadcast').dataset.loaded = '';
-      loadBroadcasts();
-    }
-  } catch(e) { showToast('⚠️ Ошибка при создании рассылки'); }
-}
-
-// ──────────────────────────────────────────────
-// CREATOR — Баг-репорты
-// ──────────────────────────────────────────────
-async function loadBugReports(statusFilter) {
-  const el = document.getElementById('tab-c-bugs');
-  const html = `
-    <div class="filter-row">
-      <button class="filter-btn active" onclick="reloadBugReports('new',this)">Новые</button>
-      <button class="filter-btn" onclick="reloadBugReports('answered',this)">Отвечены</button>
-      <button class="filter-btn" onclick="reloadBugReports('all',this)">Все</button>
-    </div>
-    <div id="bugs-list"></div>`;
-  el.innerHTML = html;
-  await fetchAndRenderBugs(statusFilter || 'new');
-}
-
-async function reloadBugReports(filter, btn) {
-  document.querySelectorAll('#tab-c-bugs .filter-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  await fetchAndRenderBugs(filter);
-}
-
-async function fetchAndRenderBugs(filter) {
-  const el = document.getElementById('bugs-list');
-  el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--c-hint)">Загрузка…</div>';
-  try {
-    const data = await api('/tg-app/api/creator/bug-reports', { status: filter });
-    const reports = data.reports || [];
-    if (!reports.length) {
-      el.innerHTML = '<div class="card"><div class="card-empty">✅ Репортов в этом разделе нет</div></div>';
-      return;
-    }
-    const rows = reports.map(r => {
-      const statusLabel = { new:'🆕 Новый', in_progress:'🔄 В работе', answered:'✅ Отвечен', closed:'🔒 Закрыт' }[r.status] || r.status;
-      const replyBtn = ['new','in_progress'].includes(r.status)
-        ? `<button class="btn-reply" onclick="openReply(${r.report_id})">💬 Ответить</button>` : '';
-      return `<div class="report-row">
-        <div class="report-meta">
-          <span><b>${esc(r.student_name)}</b></span>
-          <span>${fmtDate(r.created_at)}</span>
-          <span>${statusLabel}</span>
-          ${r.has_screenshot ? '<span>📎 Скрин</span>' : ''}
-        </div>
-        <div class="report-msg">${esc(r.message)}</div>
-        ${r.admin_reply ? `<div style="font-size:11px;color:#059669;margin-bottom:4px">💬 ${esc(r.admin_reply)}</div>` : ''}
-        ${replyBtn}
-      </div>`;
-    }).join('');
-    el.innerHTML = `<div class="card">${rows}</div>`;
-  } catch(e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
-  }
-}
-
-function openReply(reportId) {
-  _replyReportId = reportId;
-  document.getElementById('reply-text').value = '';
-  document.getElementById('reply-modal').classList.add('open');
-}
-
-function closeModal(e) {
-  // Called either directly (no event) or on backdrop click
-  if (!e || e.target === document.getElementById('reply-modal')) {
-    document.getElementById('reply-modal').classList.remove('open');
-  }
-}
-
-async function sendReply() {
-  const text = (document.getElementById('reply-text').value || '').trim();
-  if (!text) { showToast('⚠️ Введи текст ответа'); return; }
-  try {
-    const data = await api('/tg-app/api/creator/bug-reports/reply', {
-      report_id: _replyReportId,
-      reply: text,
-    });
-    if (data.ok) {
-      closeModal();
-      showToast('✅ Ответ отправлен ученику!');
-      fetchAndRenderBugs('new');
-    }
-  } catch(e) { showToast('⚠️ Ошибка при отправке'); }
-}
-
-// ──────────────────────────────────────────────
-// CREATOR — Статистика
-// ──────────────────────────────────────────────
-async function loadCreatorStats() {
-  const el = document.getElementById('tab-c-stats');
-  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
-  try {
-    const data = await api('/tg-app/api/creator/stats', {});
-    const s = data.stats || {};
     el.innerHTML = `
-      <div class="stats-grid">
-        ${statCard(s.total_users, 'Всего пользователей')}
-        ${statCard(s.active_students, 'Активных учеников')}
-        ${statCard(s.tg_linked, 'В боте')}
-        ${statCard(s.lessons_today, 'Уроков сегодня')}
-        ${statCard(s.pending_submissions, 'Ожидают проверки')}
-        ${statCard(s.active_subscriptions, 'Подписок')}
-        ${statCard(s.new_bug_reports, 'Новых репортов')}
-        ${statCard(s.broadcasts_total, 'Рассылок')}
-      </div>`;
-  } catch(e) {
-    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+      <div class="t-card">
+        <div class="card-headline">История рассылок</div>
+        ${items.map(b => `
+          <div class="item-row">
+            <div class="item-col">
+              <div class="item-title">${escape(b.message_preview)}</div>
+              <div class="item-meta">
+                <span>Статус: <b>${b.status}</b></span>
+                <span>Доставлено: ${b.sent_ok} из ${b.total_planned}</span>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = '';
   }
 }
 
-function statCard(val, label) {
-  return `<div class="stat-card"><div class="val">${val ?? '—'}</div><div class="lbl">${label}</div></div>`;
+async function handleSendBroadcast() {
+  const text = document.getElementById('broadcast-input-msg')?.value?.trim();
+  if (!text) {
+    showToast('Введи текст сообщения');
+    return;
+  }
+  haptic('medium');
+  try {
+    await callApi('/tg-app/api/broadcast/create', { message: text });
+    haptic('success');
+    showToast('✅ Рассылка запущена!');
+    document.getElementById('broadcast-input-msg').value = '';
+    loadBroadcastHistory();
+  } catch (e) {
+    showToast(`Ошибка: ${e.message}`);
+  }
 }
 
-// ──────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────
-function pillHtml(status) {
-  const map = {
-    'ASSIGNED':     ['pill-pending',  '📝 Назначено'],
-    'IN_PROGRESS':  ['pill-progress', '🔄 В процессе'],
-    'RETURNED':     ['pill-returned', '↩️ Доработка'],
-    'GRADED':       ['pill-graded',   '✅ Проверено'],
-    'SUBMITTED':    ['pill-progress', '📤 Сдано'],
-    'NEEDS_MANUAL_REVIEW': ['pill-progress', '🔍 Требует проверки'],
-  };
-  const [cls, txt] = map[status] || ['pill-pending', status];
-  return `<span class="pill ${cls}">${txt}</span>`;
+// ---------------------------------------------------------------------------
+// 10. PROFILE & NOTIFICATIONS SETTINGS TAB
+// ---------------------------------------------------------------------------
+async function renderProfileTab(container) {
+  const u = _state.user || {};
+  const notifs = _state.notifications || {};
+  const sub = u.subscription;
+
+  const toggleItems = [
+    { key: 'telegram_notifications_enabled', title: 'Все Telegram-уведомления', desc: 'Главный переключатель доставки в бота' },
+    { key: 'tg_notify_homework_checked', title: 'Проверка домашних заданий', desc: 'Оповещения об оценке и замечаниях' },
+    { key: 'tg_notify_homework_returned', title: 'ДЗ на доработку', desc: 'Замечания преподавателя к исправлению' },
+    { key: 'tg_notify_lesson_scheduled', title: 'Назначение уроков', desc: 'Новые запланированные занятия' },
+    { key: 'tg_notify_lesson_reminder', title: 'Напоминания об уроках', desc: 'За 30 минут до начала онлайн-класса' },
+    { key: 'tg_notify_daily_digest', title: 'Утренний дайджест', desc: 'Сводка планов и дедлайнов на день' },
+  ].map(item => `
+    <div class="toggle-item">
+      <div>
+        <div class="toggle-title">${item.title}</div>
+        <div class="toggle-desc">${item.desc}</div>
+      </div>
+      <label class="ios-switch">
+        <input type="checkbox" ${notifs[item.key] !== false ? 'checked' : ''} onchange="handleNotifToggle('${item.key}', this.checked)">
+        <span class="ios-track"></span>
+        <span class="ios-thumb"></span>
+      </label>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="t-card">
+      <div class="card-header-row">
+        <div class="card-headline">👤 Профиль аккаунта</div>
+        <span class="role-tag">${_state.context?.active_context || u.role}</span>
+      </div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:2px;">${escape(u.name || u.username)}</div>
+      <div style="font-size:12px;color:var(--c-hint);margin-bottom:12px;">@${escape(u.username)} ${u.email ? `· ${escape(u.email)}` : ''}</div>
+      ${sub ? `
+        <div class="status-pill status-graded" style="font-size:12px;padding:4px 10px;">
+          ⭐️ Подписка: ${sub.status} ${sub.ends_at ? `до ${fmtDate(sub.ends_at)}` : ''}
+        </div>
+      ` : '<div style="font-size:12px;color:var(--c-hint);">Тариф: базовый</div>'}
+    </div>
+
+    <div class="t-card">
+      <div class="card-headline" style="margin-bottom:8px;">🔔 Настройки уведомлений</div>
+      ${toggleItems}
+    </div>
+
+    <div class="t-card" style="text-align:center;">
+      <a href="/workspace/profile" target="_blank" class="card-action-link" style="font-size:13px;">
+        ⚙️ Управление аккаунтом на веб-платформе →
+      </a>
+      <div style="font-size:11px;color:var(--c-hint);margin-top:10px;">BooStudy Mobile Cabinet v2.0 · Bot V3 Connected</div>
+    </div>
+  `;
+}
+
+async function handleNotifToggle(key, value) {
+  haptic('light');
+  _state.notifications[key] = value;
+  try {
+    await callApi('/tg-app/api/profile/notifications', { updates: { [key]: value } });
+    showToast(value ? '✅ Включено' : '🔕 Выключено');
+  } catch (e) {
+    showToast('Ошибка сохранения');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Drawer Modal Sheet Helpers
+// ---------------------------------------------------------------------------
+function openDrawer(title, subtitle, bodyHtml) {
+  document.getElementById('drawer-title').textContent = title;
+  document.getElementById('drawer-subtitle').textContent = subtitle;
+  document.getElementById('drawer-body').innerHTML = bodyHtml;
+  document.getElementById('drawer-overlay').classList.add('active');
+  syncBackButton();
+}
+
+function closeDrawer(e) {
+  if (!e || e.target === document.getElementById('drawer-overlay') || e.target.classList.contains('sheet-handle')) {
+    haptic('light');
+    document.getElementById('drawer-overlay').classList.remove('active');
+    syncBackButton();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Utility Helpers
+// ---------------------------------------------------------------------------
+function getStatusPill(status) {
+  const s = String(status || '').toUpperCase();
+  if (['CHECKED', 'GRADED', 'COMPLETED'].includes(s)) return '<span class="status-pill status-graded">🟢 Проверено</span>';
+  if (['SUBMITTED', 'IN_REVIEW', 'NEEDS_MANUAL_REVIEW'].includes(s)) return '<span class="status-pill status-submitted">🟡 На проверке</span>';
+  if (s === 'RETURNED') return '<span class="status-pill status-returned">🔴 Доработка</span>';
+  if (s === 'IN_PROGRESS') return '<span class="status-pill status-progress">🔄 В процессе</span>';
+  return '<span class="status-pill status-assigned">⚪ Назначено</span>';
 }
 
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
+function escape(str) {
+  const p = document.createElement('p');
+  p.textContent = str || '';
+  return p.innerHTML;
 }
 
-function showError(msg) {
-  document.getElementById('loading').style.display = 'none';
-  const err = document.getElementById('error-screen');
-  err.style.display = '';
-  document.getElementById('error-msg').textContent = msg;
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ──────────────────────────────────────────────
-// Start
-// ──────────────────────────────────────────────
-boot();
+// ---------------------------------------------------------------------------
+// Run Bootstrap
+// ---------------------------------------------------------------------------
+initMiniApp();
 </script>
 {% endblock %}

@@ -1148,7 +1148,8 @@
 
     setupDraggablePip() {
       const pip = document.getElementById('video-floating-pip');
-      if (!pip) return;
+      if (!pip || this._pipDraggableInitialized) return;
+      this._pipDraggableInitialized = true;
 
       let isDragging = false;
       let startX = 0, startY = 0;

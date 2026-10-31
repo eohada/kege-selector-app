@@ -1,0 +1,105 @@
+{
+  "dataset_id": "boostudy-ai-lab-sprint7-synthetic-v1",
+  "dataset_version": 1,
+  "synthetic_only": true,
+  "real_student_data": false,
+  "frozen_before_live_model_runs": true,
+  "cases": [
+    {
+      "case_id": "s7-classify-alternative-ai",
+      "module": "ai_homework",
+      "split": "development",
+      "input": {"pair_id": "classify-alternative", "mode": "ai_only", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n > 0, (n & 1) == 0)"},
+      "expert_expectation": {"score": 4, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 1, "zero": 1, "parity": 1}, "alternative_valid": true, "confirmed_error_codes": []},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-alternative-hybrid",
+      "module": "ai_homework",
+      "split": "development",
+      "input": {"pair_id": "classify-alternative", "mode": "hybrid", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n > 0, (n & 1) == 0)"},
+      "expert_expectation": {"score": 4, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 1, "zero": 1, "parity": 1}, "alternative_valid": true, "confirmed_error_codes": []},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-partial-ai",
+      "module": "ai_homework",
+      "split": "development",
+      "input": {"pair_id": "classify-partial", "mode": "ai_only", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n > 0, n % 2 == 1)"},
+      "expert_expectation": {"score": 3, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 1, "zero": 1, "parity": 0}, "confirmed_error_codes": ["parity_logic"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-partial-hybrid",
+      "module": "ai_homework",
+      "split": "development",
+      "input": {"pair_id": "classify-partial", "mode": "hybrid", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n > 0, n % 2 == 1)"},
+      "expert_expectation": {"score": 3, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 1, "zero": 1, "parity": 0}, "confirmed_error_codes": ["parity_logic"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-wrong-ai",
+      "module": "ai_homework",
+      "split": "regression",
+      "input": {"pair_id": "classify-wrong", "mode": "ai_only", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n == 0, n % 2 == 1)"},
+      "expert_expectation": {"score": 1, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 0, "zero": 0, "parity": 0}, "confirmed_error_codes": ["positive_logic", "zero_boundary", "parity_logic"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-wrong-hybrid",
+      "module": "ai_homework",
+      "split": "regression",
+      "input": {"pair_id": "classify-wrong", "mode": "hybrid", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n == 0, n % 2 == 1)"},
+      "expert_expectation": {"score": 1, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 0, "zero": 0, "parity": 0}, "confirmed_error_codes": ["positive_logic", "zero_boundary", "parity_logic"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-boundary-ai",
+      "module": "ai_homework",
+      "split": "regression",
+      "input": {"pair_id": "classify-boundary", "mode": "ai_only", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n >= 0, n % 2 == 0)"},
+      "expert_expectation": {"score": 3, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 1, "zero": 0, "parity": 1}, "confirmed_error_codes": ["zero_boundary"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-classify-boundary-hybrid",
+      "module": "ai_homework",
+      "split": "regression",
+      "input": {"pair_id": "classify-boundary", "mode": "hybrid", "scenario_id": "py-classify-judge-17", "test_set_scenario_id": "classify-logic-errors", "solution": "def classify(n):\n    return (n >= 0, n % 2 == 0)"},
+      "expert_expectation": {"score": 3, "max_score": 4, "criterion_scores": {"structure": 1, "positive": 1, "zero": 0, "parity": 1}, "confirmed_error_codes": ["zero_boundary"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-course-no-finding",
+      "module": "ai_course",
+      "split": "development",
+      "input": {"frozen_sprint6_case_id": "course-dev-no-finding"},
+      "expert_expectation": {"deterministic_findings": [], "unsupported_finding_count": 0, "must_preserve_meaning": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-course-prerequisite-order",
+      "module": "ai_course",
+      "split": "regression",
+      "input": {"frozen_sprint6_case_id": "course-regression-prerequisite-order"},
+      "expert_expectation": {"deterministic_findings": ["prerequisite_after_topic"], "material_proposal_may_be_empty": true, "must_not_claim": ["обязательная ошибка курса"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-lesson-explicit-difficulty",
+      "module": "ai_lesson_intelligence",
+      "split": "development",
+      "input": {"frozen_sprint6_case_id": "lesson-dev-explicit-difficulty"},
+      "expert_expectation": {"may_propose": "python.boundary_cases", "source_refs": ["s6-l1"], "status": "ai_inference_pending_review", "no_numeric_grade": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "s7-lesson-later-resolution",
+      "module": "ai_lesson_intelligence",
+      "split": "regression",
+      "input": {"frozen_sprint6_case_id": "lesson-regression-later-resolution"},
+      "expert_expectation": {"must_mark_resolved": true, "current_difficulty": false, "source_refs": ["s6-r1", "s6-r3"], "no_numeric_grade": true},
+      "expert_review_status": "pending"
+    }
+  ]
+}

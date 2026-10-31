@@ -9,6 +9,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, s
 from flask_login import login_required, current_user
 
 from app.schedule import schedule_bp
+from app.lessons.lifecycle import LessonLifecycleError, transition_lesson_status
 from app.models import (
     Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ,
     LessonTask, LessonTaskTeacherComment, LessonTaskAttempt,
@@ -75,12 +76,17 @@ def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
 
     student_ids: list[int] = []
     try:
-        # Прямой поиск всех привязанных к преподавателю/тьютору учеников (mentor_id == current_user.id)
+        # Прямой поиск всех привязанных к преподавателю/тьютору учеников (mentor_id / enrollments)
         if current_user and current_user.is_authenticated:
-            my_students = Student.query.filter(
-                (Student.mentor_id == current_user.id) | (Student.user_id == current_user.id)
-            ).all()
-            student_ids.extend([s.student_id for s in my_students if s])
+            if current_user.is_tutor():
+                from app.schedule.ownership_service import get_accessible_students_for_teacher
+                tutor_students = get_accessible_students_for_teacher(current_user)
+                student_ids.extend([s['student_id'] for s in tutor_students if s.get('student_id')])
+            else:
+                my_students = Student.query.filter(
+                    (Student.mentor_id == current_user.id) | (Student.user_id == current_user.id)
+                ).all()
+                student_ids.extend([s.student_id for s in my_students if s])
 
         by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all() if user_ids else []
         student_ids.extend([s.student_id for s in by_user_id if s])
@@ -121,6 +127,10 @@ def _resolve_accessible_student_ids_for_user(user: User) -> list[int] | None:
         return []
 
     student_ids: list[int] = []
+    if getattr(user, 'is_tutor', None) and user.is_tutor():
+        from app.schedule.ownership_service import get_accessible_students_for_teacher
+        tutor_students = get_accessible_students_for_teacher(user)
+        student_ids.extend([s['student_id'] for s in tutor_students if s.get('student_id')])
     try:
         by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
         student_ids.extend([s.student_id for s in by_user_id if s])
@@ -157,14 +167,41 @@ def _can_manage_schedule() -> bool:
     )
 
 
-def _require_lesson_in_scope(lesson: Lesson) -> bool:
-    """Проверка, что урок в области видимости пользователя."""
+def _require_lesson_in_scope(lesson: Lesson, require_write: bool = False) -> bool:
+    """Проверка, что урок в области видимости пользователя с изоляцией прав."""
     if not current_user.is_authenticated:
         return False
     user_role = getattr(current_user, 'role', '')
     sb_role = session.get('sandbox_role', '')
     if user_role in ['creator', 'admin', 'chief_admin'] or sb_role in ['creator', 'admin'] or current_user.is_creator() or current_user.is_admin():
         return True
+
+    from app.schedule.ownership_service import can_user_modify_lesson, can_user_view_lesson
+
+    # Серверная изоляция для преподавателей (чтение и запись)
+    if current_user.is_tutor():
+        if getattr(lesson, 'lesson_id', None) is None and getattr(lesson, 'teacher_id', None) is None:
+            from app.schedule.ownership_service import get_active_tutor_ids_for_student
+            student = db.session.get(Student, lesson.student_id) if lesson.student_id else None
+            return bool(student and current_user.id in get_active_tutor_ids_for_student(student))
+
+        if require_write:
+            allowed_write, _ = can_user_modify_lesson(current_user, lesson)
+            return allowed_write
+        else:
+            allowed_read, _ = can_user_view_lesson(current_user, lesson)
+            return allowed_read
+
+    # Серверная изоляция для учеников
+    if current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if not student:
+            return False
+        if require_write:
+            return False  # Ученик не имеет прав на редактирование/удаление уроков
+        return int(lesson.student_id) == int(student.student_id)
+
+    # Родители и общие роли
     allowed = _resolve_accessible_student_ids_for_current_user()
     if allowed is None:
         return True
@@ -364,76 +401,58 @@ def _absolute_app_url(path: str) -> str:
     return path
 
 
-def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, actor_user_id: int | None = None) -> None:
+def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, actor_user_id: int | None = None, old_dt: datetime | None = None) -> None:
     """Direct Telegram delivery for lesson creation/reschedule with rich notification format."""
     try:
+        from app.telegram.delivery import invalidate_pending_lesson_deliveries
+        is_reschedule = 'перенес' in (headline or '').lower()
+        if is_reschedule:
+            invalidate_pending_lesson_deliveries(lesson.lesson_id, reason='lesson_rescheduled')
+
         topic = (lesson.topic or '').strip() or 'Занятие по расписанию'
         lesson_url = _absolute_app_url(url_for('lessons.lesson_view', lesson_id=lesson.lesson_id))
-        markup = {'inline_keyboard': [[{'text': '🔗 Открыть урок в BooStudy', 'url': lesson_url}]]}
 
         from app.models import User
         tutor_user = User.query.get(actor_user_id) if actor_user_id else None
         tutor_name = tutor_user.username if tutor_user else 'Преподаватель'
+        student_name = getattr(student, 'name', None) or 'Ученик'
 
-        def _send(uid: int | None):
-            if not uid:
-                return
-            date_str = _lesson_local_time_for_user(lesson, uid)
-            msg = (
-                f"📅 <b>{headline.upper()}</b>\n\n"
-                f"📌 <b>Тема:</b> {topic}\n"
-                f"⏰ <b>Время:</b> {date_str}\n"
-                f"👨‍🏫 <b>Преподаватель:</b> {tutor_name}\n\n"
-                f"<i>Урок добавлен в ваш личный кабинет BooStudy.</i>"
-            )
-            print(f"[LESSON NOTIFY] Sending Telegram alert for lesson_id={lesson.lesson_id} to user_id={uid}")
-            notify_user_by_id(int(uid), msg, kind='lesson_scheduled', reply_markup=markup)
+        kind = 'lesson_rescheduled' if is_reschedule else 'lesson_scheduled'
+        from app.notifications.service import notify_user
 
-        _send(actor_user_id)
-        if student and student.user_id:
-            _send(int(student.user_id))
+        meta = {
+            'lesson_id': lesson.lesson_id,
+            'topic': topic,
+            'start_time': lesson.lesson_date,
+            'teacher_name': tutor_name,
+            'student_name': student_name,
+            'student_id': getattr(student, 'student_id', None),
+        }
+        if old_dt:
+            meta['old_start_time'] = old_dt
+
+        # Notify tutor
+        if actor_user_id:
+            notify_user(actor_user_id, kind=kind, title=headline, link_url=lesson_url, meta=meta)
+        # Notify student
+        if student and getattr(student, 'user_id', None):
+            notify_user(int(student.user_id), kind=kind, title=headline, link_url=lesson_url, meta=meta)
+        # Notify parents
         for parent_id in _student_parent_user_ids(student.student_id if student else None):
-            _send(int(parent_id))
+            parent_meta = dict(meta)
+            parent_meta['parent_id'] = int(parent_id)
+            notify_user(int(parent_id), kind=kind, title=headline, link_url=lesson_url, meta=parent_meta)
     except Exception as e:
-        print(f"[LESSON NOTIFY ERROR] Failed to send TG alert: {str(e)}")
         logger.warning('Direct lesson_scheduled notify failed: %s', e)
 
 
 def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
     """
     Проверка пересечения по преподавателю (чтобы не поставить 2 урока одновременно).
-    Работает по области видимости тьютора (через Enrollment→scope→student_ids→Student.student_id).
+    Использует строгую изоляцию уроков конкретного преподавателя (без ложных блокировок от чужих уроков общих учеников).
     """
-    if not tutor_user_id or not start_dt or not duration_min:
-        return False
-    start_dt_utc = lesson_storage_to_utc(start_dt)
-    end_dt_utc = lesson_storage_to_utc(start_dt + timedelta(minutes=duration_min))
-    if not start_dt_utc or not end_dt_utc:
-        return False
-
-    allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
-    if not allowed_student_ids:
-        return False
-
-    q = Lesson.query.filter(
-        Lesson.student_id.in_(allowed_student_ids),
-        Lesson.status != 'cancelled',
-        Lesson.lesson_date.isnot(None),
-    )
-    if exclude_lesson_id:
-        q = q.filter(Lesson.lesson_id != exclude_lesson_id)
-
-    candidates = q.all()
-    for l in candidates:
-        if not l.lesson_date or _is_lesson_test(l):
-            continue
-        l_start = lesson_storage_to_utc(l.lesson_date)
-        l_end = lesson_storage_to_utc(l.lesson_date + timedelta(minutes=int(l.duration or 60)))
-        if not l_start or not l_end:
-            continue
-        if (l_start < end_dt_utc) and (start_dt_utc < l_end):
-            return True
-    return False
+    from app.schedule.ownership_service import check_tutor_conflict_isolated
+    return check_tutor_conflict_isolated(tutor_user_id, start_dt, duration_min, exclude_lesson_id)
 
 @schedule_bp.route('/schedule')
 @login_required
@@ -448,7 +467,12 @@ def schedule():
             flash('У вас недостаточно прав для просмотра расписания.', 'danger')
             return redirect(url_for('main.dashboard'))
 
-    week_offset = request.args.get('week', 0, type=int)
+    try:
+        week_offset = int(request.args.get('week', 0))
+    except (ValueError, TypeError):
+        week_offset = 0
+    # Enforce safe navigation boundaries (+/- 2 years = 104 weeks) to prevent date overflow / excessive load
+    week_offset = max(-104, min(104, week_offset))
     view_mode = (request.args.get('view') or 'week').strip().lower()
     if view_mode not in ('week', 'agenda', 'day', 'month'):
         view_mode = 'week'
@@ -518,6 +542,15 @@ def schedule():
     allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
     if is_creator:
         query = Lesson.query.order_by(Lesson.lesson_date.desc())
+    elif current_user.is_tutor():
+        # Строгая изоляция: преподаватель видит только свои уроки
+        query = Lesson.query.filter(Lesson.teacher_id == current_user.id).order_by(Lesson.lesson_date.desc())
+    elif current_user.is_student():
+        st_user = Student.query.filter_by(user_id=current_user.id).first()
+        if st_user:
+            query = Lesson.query.filter(Lesson.student_id == st_user.student_id).order_by(Lesson.lesson_date.desc())
+        else:
+            query = Lesson.query.filter(False)
     else:
         query = Lesson.query.order_by(Lesson.lesson_date.desc())
         if allowed_student_ids is not None:
@@ -537,6 +570,15 @@ def schedule():
             flash('Доступ запрещен.', 'danger')
             return redirect(url_for('schedule.schedule', week=week_offset, timezone=timezone))
         query = query.filter(Lesson.student_id == student_filter)
+
+    # SQL-level half-open intervals to prevent unbounded full-table scans.
+    # Buffer +/- 2 days around period_start/period_end covers all possible viewer timezones (UTC-12 to UTC+14)
+    sql_window_start = datetime.combine(period_start - timedelta(days=2), time.min)
+    sql_window_end = datetime.combine(period_end + timedelta(days=2), time.max)
+    query = query.filter(
+        Lesson.lesson_date >= sql_window_start,
+        Lesson.lesson_date <= sql_window_end
+    )
 
     lessons = query.options(db.joinedload(Lesson.student)).all()
 
@@ -565,7 +607,7 @@ def schedule():
                 'lesson_id': lesson.lesson_id,
                 'student': lesson.student.name,
                 'student_id': lesson.student.student_id,
-                'subject': 'Информатика',
+                'subject': lesson.subject or 'Информатика',
                 'grade': f"{lesson.student.school_class} класс" if lesson.student.school_class else (lesson.student.category or 'Не указано'),
                 'status': status_text,
                 'status_code': lesson.status,
@@ -676,17 +718,15 @@ def schedule():
             month_weeks.append(week_cells)
 
     # Ученики для модалки создания урока и селектов расписания
-    allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
-    if current_user.is_tutor() or (current_user.is_creator() and request.args.get('view') != 'all'):
-        students_q = Student.query.filter(Student.is_active == True, Student.mentor_id == current_user.id)
+    from app.schedule.ownership_service import get_accessible_students_for_teacher
+    accessible_students_data = get_accessible_students_for_teacher(current_user)
+    accessible_sids = [s['student_id'] for s in accessible_students_data]
+    if current_user.is_tutor():
+        students = Student.query.filter(Student.student_id.in_(accessible_sids)).order_by(Student.name.asc()).all() if accessible_sids else []
+    elif is_creator and request.args.get('view') == 'all':
+        students = Student.query.filter_by(is_active=True).order_by(Student.name.asc()).all()
     else:
-        students_q = Student.query.filter_by(is_active=True)
-        if allowed_student_ids is not None:
-            if not allowed_student_ids:
-                students_q = students_q.filter(False)
-            else:
-                students_q = students_q.filter(Student.student_id.in_(allowed_student_ids))
-    students = students_q.order_by(Student.name).all()
+        students = Student.query.filter(Student.student_id.in_(accessible_sids)).order_by(Student.name.asc()).all() if accessible_sids else []
     statuses = ['planned', 'in_progress', 'completed', 'cancelled']
     categories = ['ЕГЭ', 'ОГЭ', 'ЛЕВЕЛАП', 'ПРОГРАММИРОВАНИЕ']
 
@@ -752,6 +792,12 @@ def schedule():
             'lesson_type': l.lesson_type or 'individual',
             'is_test': _is_lesson_test(l),
             'room_url': url_for('lessons.lesson_interactive_room', lesson_id=l.lesson_id),
+            'teacher_id': l.teacher_id,
+            'subject': l.subject or 'Информатика',
+            'recurring_slot_id': l.recurring_slot_id,
+            'is_recurring': bool(l.recurring_slot_id),
+            'is_rescheduled': bool(l.is_rescheduled),
+            'slot_origin_date': l.slot_origin_date.isoformat() if l.slot_origin_date else None,
         })
 
     active_homework = []
@@ -760,6 +806,7 @@ def schedule():
     student_notes_text = ''
     teacher_name = None
     teacher_avatar = None
+    student_tutors_map = {}
 
     if current_user.is_authenticated and current_user.is_student():
         from app.models import Submission, Assignment
@@ -769,44 +816,98 @@ def schedule():
             if cand and cand.user_id is None:
                 st_obj = cand
         if st_obj:
-            if getattr(st_obj, 'mentor_id', None):
-                mentor = User.query.get(st_obj.mentor_id)
-                if mentor:
-                    teacher_name = getattr(mentor, 'full_name', None) or mentor.username
-                    teacher_avatar = getattr(mentor, 'avatar_url', None) or '/static/images/default-avatar.svg'
+            try:
+                from core.db_models import Enrollment
+                user_id_val = getattr(st_obj, 'user_id', None) or current_user.id
+                student_id_val = getattr(st_obj, 'student_id', None)
+                enr_conditions = [Enrollment.student_id == user_id_val]
+                if student_id_val and student_id_val != user_id_val:
+                    enr_conditions.append(Enrollment.student_id == student_id_val)
+                enrollments = Enrollment.query.filter(db.or_(*enr_conditions)).all()
+                for enr in enrollments:
+                    if getattr(enr, 'tutor_id', None):
+                        t_user = User.query.get(enr.tutor_id)
+                        if t_user:
+                            student_tutors_map[enr.tutor_id] = t_user
+            except Exception:
+                pass
 
+            if getattr(st_obj, 'mentor_id', None) and st_obj.mentor_id not in student_tutors_map:
+                m_user = User.query.get(st_obj.mentor_id)
+                if m_user:
+                    student_tutors_map[st_obj.mentor_id] = m_user
+
+            if len(student_tutors_map) == 1:
+                sole_teacher = next(iter(student_tutors_map.values()))
+                teacher_name = getattr(sole_teacher, 'full_name', None) or sole_teacher.username
+                teacher_avatar = getattr(sole_teacher, 'avatar_url', None) or '/static/images/default-avatar.svg'
+            elif len(student_tutors_map) > 1:
+                # Multi-teacher scenario: prevent false attribution of an arbitrary teacher
+                teacher_name = None
+                teacher_avatar = None
+            else:
+                teacher_name = None
+                teacher_avatar = None
+
+            # Homework fetching with deduplication, timezone-aware deadlines and status support
+            seen_assignment_ids = set()
             try:
                 subs = (
                     Submission.query.join(Assignment, Submission.assignment_id == Assignment.assignment_id)
                     .filter(
                         Submission.student_id == st_obj.student_id,
-                        Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
+                        Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED', 'SUBMITTED', 'GRADED', 'ACCEPTED']),
                         Assignment.is_active == True,
                     )
                     .options(db.contains_eager(Submission.assignment))
                     .order_by(Assignment.deadline.asc().nullslast())
-                    .limit(5)
                     .all()
                 )
                 for sub in subs:
+                    if not sub.assignment or sub.assignment_id in seen_assignment_ids:
+                        continue
+                    seen_assignment_ids.add(sub.assignment_id)
+
+                    deadline_iso = None
+                    deadline_date_str = None
+                    deadline_time_str = '23:59'
+                    if sub.assignment.deadline:
+                        dl = sub.assignment.deadline
+                        if dl.tzinfo is None:
+                            dl = dl.replace(tzinfo=dt_timezone.utc)
+                        dl_local = dl.astimezone(display_tz)
+                        deadline_iso = dl_local.isoformat()
+                        deadline_date_str = dl_local.date().isoformat()
+                        deadline_time_str = dl_local.strftime('%H:%M')
+
                     active_homework.append({
                         'id': sub.assignment_id,
+                        'submission_id': sub.submission_id,
                         'title': sub.assignment.title,
-                        'deadline': sub.assignment.deadline.isoformat() if sub.assignment.deadline else None,
+                        'deadline': deadline_iso,
+                        'deadline_date': deadline_date_str,
+                        'deadline_time': deadline_time_str,
                         'url': url_for('assignments.submission_view', submission_id=sub.submission_id),
                         'status': sub.status,
                         'tasks_count': len(sub.assignment.tasks) if sub.assignment.tasks else 0,
                     })
+                    if len(active_homework) >= 10:
+                        break
             except Exception as e:
                 logger.warning(f"Error fetching active homework for schedule: {e}")
 
             for l in sorted(lessons, key=lambda x: x.lesson_date or datetime.min, reverse=True):
+                if getattr(l, 'status', None) in ('cancelled', 'canceled'):
+                    continue
                 if l.student_notes and l.student_notes.strip():
                     student_notes_text = l.student_notes.strip()
                     break
                 elif l.notes and l.notes.strip():
                     student_notes_text = l.notes.strip()
                     break
+
+            if not student_notes_text:
+                student_notes_text = "«Обрати особое внимание на ключевые темы недели и не забывай вовремя сдавать домашние задания!»"
 
             for l in lessons:
                 if l.materials and isinstance(l.materials, list):
@@ -833,9 +934,31 @@ def schedule():
                 if len(useful_materials) >= 4:
                     break
 
+            if not useful_materials:
+                useful_materials = [
+                    {
+                        'title': 'Линейные алгоритмы и логика',
+                        'url': url_for('theory.theory_index'),
+                        'type': 'theory',
+                        'pages': 'Конспект • Базовая теория'
+                    },
+                    {
+                        'title': 'Циклы for и while в Python',
+                        'url': url_for('theory.theory_index'),
+                        'type': 'theory',
+                        'pages': 'Конспект • Синтаксис и практика'
+                    },
+                    {
+                        'title': 'Обработка строк и списков',
+                        'url': url_for('theory.theory_index'),
+                        'type': 'theory',
+                        'pages': 'Конспект • Типовые задачи ЕГЭ'
+                    }
+                ]
+
     # Calculate weekly metrics for student view
-    week_start_date = week_days[0]
-    week_end_date = week_days[-1]
+    week_start_date = week_days[0] if week_days else period_start
+    week_end_date = week_days[-1] if week_days else period_end
     week_lessons = []
     for l_data in raw_lessons_payload:
         s_date_str = l_data.get('start_date')
@@ -848,28 +971,47 @@ def schedule():
                 pass
 
     conducted_count = sum(1 for l in week_lessons if l.get('status') in ('completed', 'done'))
-    planned_count = sum(1 for l in week_lessons if l.get('status') in ('planned', 'in_progress'))
+    planned_count = sum(1 for l in week_lessons if l.get('status') == 'planned')
+    cancelled_count = sum(1 for l in week_lessons if l.get('status') in ('cancelled', 'canceled'))
     test_count = sum(1 for l in week_lessons if l.get('is_test') or l.get('lesson_type') == 'test')
-    hw_count = len(active_homework)
+    week_hw = [h for h in active_homework if (h.get('deadline_date') and week_start_date.isoformat() <= h['deadline_date'] <= week_end_date.isoformat())]
+    hw_count = len(week_hw)
     total_activities = conducted_count + planned_count + hw_count + test_count
     completion_base = conducted_count + planned_count
     progress_percent = int(round((conducted_count / completion_base) * 100)) if completion_base > 0 else 0
 
+    real_streak = 0
+    if current_user.is_authenticated and current_user.is_student():
+        st_candidate = Student.query.filter_by(user_id=current_user.id).first()
+        if not st_candidate:
+            cand = Student.query.get(current_user.id)
+            if cand and cand.user_id is None:
+                st_candidate = cand
+        if st_candidate:
+            try:
+                from app.utils.streak_service import get_effective_streak
+                real_streak = get_effective_streak(st_candidate, today_date=today_display_date)
+            except Exception:
+                real_streak = int(getattr(st_candidate, 'streak_days', 0) or 0)
+
     weekly_stats = {
         'conducted': conducted_count,
         'planned': planned_count,
+        'cancelled': cancelled_count,
         'homework': hw_count,
+        'total_active_homework': len(active_homework),
         'tests': test_count,
         'total': total_activities,
         'conducted_and_planned': completion_base,
         'percent': progress_percent,
+        'streak_days': real_streak,
     }
 
     weekly_bars = []
     for day in week_days:
         day_iso = day.isoformat()
         d_lessons = [l for l in week_lessons if l.get('start_date') == day_iso]
-        d_hw = [h for h in active_homework if h.get('deadline') and h['deadline'].startswith(day_iso)]
+        d_hw = [h for h in active_homework if (h.get('deadline_date') == day_iso or (h.get('deadline') and h['deadline'].startswith(day_iso)))]
         total_day = len(d_lessons) + len(d_hw)
         intensity = min(100, max(22, total_day * 40)) if total_day > 0 else 22
         weekly_bars.append({
@@ -903,20 +1045,36 @@ def schedule():
     if len(weekly_goals) > 4:
         weekly_goals = weekly_goals[:4]
 
+    RU_WEEKDAY_NAMES_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+
     weekdays_payload = []
     for index, day in enumerate(week_days):
         day_iso = day.isoformat()
-        day_l = [l for l in week_lessons if l.get('start_date') == day_iso]
-        day_hw = [h for h in active_homework if h.get('deadline') and h['deadline'].startswith(day_iso)]
+        day_l = sorted([l for l in week_lessons if l.get('start_date') == day_iso], key=lambda x: x.get('start_time') or '00:00')
+        day_hw = [h for h in active_homework if (h.get('deadline_date') == day_iso or (h.get('deadline') and h['deadline'].startswith(day_iso)))]
         
-        main_event = None
-        if day_l:
-            first_l = day_l[0]
-            is_test = first_l.get('is_test')
-            is_webinar = first_l.get('lesson_type') == 'webinar'
-            is_done = first_l.get('status') in ('completed', 'done')
-            
-            if is_test:
+        events = []
+        # 1. Lessons on this day
+        for l in day_l:
+            is_test = l.get('is_test') or l.get('lesson_type') == 'test'
+            is_webinar = l.get('lesson_type') == 'webinar'
+            is_done = l.get('status') in ('completed', 'done')
+            is_cancelled = l.get('status') in ('cancelled', 'canceled')
+            is_in_progress = l.get('status') == 'in_progress'
+
+            if is_cancelled:
+                color = 'slate'
+                icon = 'ph-x-circle'
+                badge = 'Отменено'
+            elif is_done:
+                color = 'emerald'
+                icon = 'ph-check-circle'
+                badge = 'Проведено'
+            elif is_in_progress:
+                color = 'amber'
+                icon = 'ph-broadcast'
+                badge = 'Идёт урок'
+            elif is_test:
                 color = 'rose'
                 icon = 'ph-check-square-offset'
                 badge = 'Контрольная работа'
@@ -924,61 +1082,210 @@ def schedule():
                 color = 'violet'
                 icon = 'ph-video-camera'
                 badge = 'Вебинар'
-            elif is_done:
-                color = 'emerald'
-                icon = 'ph-check-circle'
-                badge = 'Проведено'
             else:
                 color = 'indigo'
                 icon = 'ph-laptop'
                 badge = 'Занятие'
-                
-            main_event = {
+
+            action_label = 'Материалы урока →' if is_done else 'Перейти к занятию →'
+            room_link = l.get('room_url') or url_for('lessons.lesson_interactive_room', lesson_id=l['lesson_id'])
+
+            # Multi-teacher aware teacher resolution for this specific lesson
+            lesson_tutor_name = None
+            lesson_tutor_avatar = None
+            explicit_tutor_id = getattr(l, 'teacher_id', None) or getattr(l, 'tutor_id', None) or (l.get('teacher_id') if isinstance(l, dict) else None)
+            if explicit_tutor_id:
+                t_obj = student_tutors_map.get(explicit_tutor_id) or User.query.get(explicit_tutor_id)
+                if t_obj:
+                    t_name = getattr(t_obj, 'full_name', None)
+                    if (not t_name or t_name == getattr(t_obj, 'username', '')) and hasattr(t_obj, 'id'):
+                        from core.db_models import UserProfile
+                        prof = UserProfile.query.filter_by(user_id=t_obj.id).first()
+                        if prof:
+                            cand_name = f"{prof.first_name or ''} {prof.last_name or ''}".strip()
+                            if cand_name:
+                                t_name = cand_name
+                    lesson_tutor_name = t_name or getattr(t_obj, 'username', 'Преподаватель курса')
+                    lesson_tutor_avatar = getattr(t_obj, 'avatar_url', None) or '/static/images/default-avatar.svg'
+            elif len(student_tutors_map) == 1:
+                lesson_tutor_name = teacher_name
+                lesson_tutor_avatar = teacher_avatar
+            else:
+                lesson_tutor_name = 'Преподаватель курса'
+                lesson_tutor_avatar = '/static/images/default-avatar.svg'
+
+            # Extract materials strictly belonging to THIS lesson (no cross-lesson leakage!)
+            raw_lesson_materials = l.get('materials') if isinstance(l, dict) else getattr(l, 'materials', None)
+            lesson_materials = []
+            if raw_lesson_materials and isinstance(raw_lesson_materials, list):
+                for m in raw_lesson_materials:
+                    if isinstance(m, dict) and (m.get('title') or m.get('name')):
+                        lesson_materials.append({
+                            'title': m.get('title') or m.get('name'),
+                            'url': m.get('url') or '#',
+                            'type': m.get('type') or 'material',
+                            'pages': m.get('pages', 'Материал к уроку')
+                        })
+
+            lesson_note = (l.get('student_notes') or l.get('notes') or '').strip()
+            lesson_topic = (l.get('topic') or '').strip()
+            lesson_desc = (
+                f"Урок по теме «{lesson_topic}». Разбор теории и типовых заданий ЕГЭ."
+                if lesson_topic else "Индивидуальное занятие с преподавателем."
+            )
+            lesson_subject = (l.get('subject') if isinstance(l, dict) else getattr(l, 'subject', None)) or 'Информатика'
+
+            events.append({
+                'id': f"lesson_{l['lesson_id']}",
                 'type': 'lesson',
-                'title': first_l.get('topic') or 'Урок',
-                'subtitle': f"{first_l.get('start_time', '18:00')} – {first_l.get('end_time', '19:00')}",
+                'lesson_id': l['lesson_id'],
+                'subject': lesson_subject,
+                'title': lesson_topic or 'Индивидуальное занятие',
+                'subtitle': f"{l.get('start_time', '18:00')} – {l.get('end_time', '19:00')}",
+                'time_str': f"{l.get('start_time', '18:00')} – {l.get('end_time', '19:00')}",
+                'description': lesson_desc,
+                'notes': lesson_note,
+                'student_notes': lesson_note,
+                'teacher': {
+                    'name': lesson_tutor_name or 'Преподаватель курса',
+                    'full_name': lesson_tutor_name or 'Преподаватель курса',
+                    'role': 'Преподаватель курса',
+                    'avatar': lesson_tutor_avatar or '/static/images/default-avatar.svg'
+                },
+                'materials': lesson_materials,
                 'badge': badge,
                 'color': color,
                 'icon': icon,
-                'status': first_l.get('status'),
-                'url': first_l.get('room_url') or '#',
-            }
-        elif day_hw:
-            first_h = day_hw[0]
-            deadline_str = first_h.get('deadline', '')
-            d_time = deadline_str.split('T')[1][:5] if 'T' in deadline_str else '23:59'
-            main_event = {
+                'status': l.get('status'),
+                'is_recurring': bool(l.get('is_recurring')),
+                'is_rescheduled': bool(l.get('is_rescheduled')),
+                'recurring_slot_id': l.get('recurring_slot_id'),
+                'action_label': action_label,
+                'action_url': room_link,
+                'secondary_label': 'Открыть теорию',
+                'secondary_url': url_for('theory.theory_index'),
+            })
+
+        # 2. Homework submissions due on this day
+        for h in day_hw:
+            d_time = h.get('deadline_time') or '23:59'
+            hw_status = (h.get('status') or '').upper()
+            is_hw_done = hw_status in ('SUBMITTED', 'GRADED', 'ACCEPTED')
+            is_hw_returned = hw_status == 'RETURNED'
+            is_hw_in_progress = hw_status == 'IN_PROGRESS'
+
+            if is_hw_done:
+                badge = 'ДЗ сдано'
+                color = 'emerald'
+                subtitle = 'Выполнено и отправлено'
+                action_label = 'Посмотреть решение →'
+            elif is_hw_returned:
+                badge = 'На доработке'
+                color = 'rose'
+                subtitle = f"Доработать до {d_time}"
+                action_label = 'Доработать задание →'
+            elif is_hw_in_progress:
+                badge = 'В процессе'
+                color = 'amber'
+                subtitle = f"Сдать до {d_time}"
+                action_label = 'Продолжить выполнение →'
+            else:
+                badge = 'Домашнее задание'
+                color = 'amber'
+                subtitle = f"Сдать до {d_time}"
+                action_label = 'Перейти к заданию →'
+
+            events.append({
+                'id': f"hw_{h['id']}",
                 'type': 'homework',
-                'title': first_h.get('title') or 'Домашнее задание',
-                'subtitle': f"Сдать до {d_time}",
-                'badge': 'Домашнее задание',
-                'color': 'rose',
+                'assignment_id': h['id'],
+                'subject': 'Информатика',
+                'title': h.get('title') or 'Домашнее задание',
+                'subtitle': subtitle,
+                'time_str': f"До {d_time}",
+                'description': f"Количество заданий: {h.get('tasks_count', 0)}. Реши задания и отправь на проверку преподавателю.",
+                'homework_desc': f"Количество заданий: {h.get('tasks_count', 0)}. Реши задания и отправь на проверку преподавателю.",
+                'badge': badge,
+                'color': color,
                 'icon': 'ph-file-text',
-                'status': first_h.get('status'),
-                'url': first_h.get('url') or '/submissions',
-            }
-        else:
+                'status': h.get('status'),
+                'action_label': action_label,
+                'action_url': h.get('url') or '/submissions',
+                'secondary_label': 'Открыть теорию',
+                'secondary_url': url_for('theory.theory_index'),
+            })
+
+        # 3. Free day / Self-study if no events
+        if not events:
             is_weekend = (index >= 5)
-            main_event = {
+            events.append({
+                'id': f"free_{index}",
                 'type': 'free',
-                'title': 'Выходной' if is_weekend else 'Самостоятельно',
-                'subtitle': 'Время для себя' if is_weekend else 'Повторение',
+                'title': 'Выходной • Время для себя' if is_weekend else 'Самостоятельное закрепление',
+                'subtitle': 'Отдых и восстановление' if is_weekend else 'Повторение пройденного материала',
+                'time_str': 'Весь день' if is_weekend else 'Самостоятельно',
+                'description': (
+                    'Сегодня нет обязательных занятий. Отличный день, чтобы погулять, выспаться и набраться сил на следующую неделю!'
+                    if is_weekend else
+                    'На сегодня занятий не запланировано. Рекомендуем заглянуть в теорию или порешать задания из банка.'
+                ),
                 'badge': 'Отдых' if is_weekend else 'Практика',
                 'color': 'amber' if is_weekend else 'slate',
                 'icon': 'ph-sun' if is_weekend else 'ph-sparkle',
                 'status': 'free',
-                'url': url_for('theory.theory_index'),
-            }
+                'action_label': 'Открыть теорию →',
+                'action_url': url_for('theory.theory_index'),
+                'secondary_label': 'Банк заданий',
+                'secondary_url': '/tasks',
+            })
+
+        main_event = events[0]
+        actual_events_count = len([e for e in events if e['type'] != 'free'])
+        is_today = (day == today_display_date)
+        is_past = (day < today_display_date)
+        is_future = (day > today_display_date)
+
+        # Check completion status for the day
+        has_actual = (actual_events_count > 0)
+        day_actual_events = [e for e in events if e['type'] != 'free']
+        all_lessons_done = all(e.get('status') in ('completed', 'done') for e in day_actual_events if e['type'] == 'lesson')
+        all_hw_done = all((e.get('status') or '').upper() in ('SUBMITTED', 'GRADED', 'ACCEPTED') for e in day_actual_events if e['type'] == 'homework')
+        is_completed = has_actual and all_lessons_done and all_hw_done
+        has_uncompleted_past = is_past and has_actual and not is_completed
 
         weekdays_payload.append({
             'name': day_names[index],
+            'short_name': day_names[index],
+            'full_name': RU_WEEKDAY_NAMES_FULL[index],
+            'day_name': RU_WEEKDAY_NAMES_FULL[index],
             'date': day.day,
+            'month_name': RU_MONTHS_GEN[day.month - 1],
+            'short_date_label': f"{day_names[index]}, {day.day} {RU_MONTHS_GEN[day.month - 1][:3]}",
+            'date_badge': f"Сегодня, {day.day} {RU_MONTHS_GEN[day.month - 1]}" if is_today else f"{day.day} {RU_MONTHS_GEN[day.month - 1]}",
             'iso': day_iso,
-            'is_today': day == today_display_date,
+            'is_today': is_today,
+            'is_past': is_past,
+            'is_future': is_future,
+            'is_completed': is_completed,
+            'has_uncompleted_past': has_uncompleted_past,
             'day_index': index,
+            'events': events,
             'main_event': main_event,
-            'events_count': len(day_l) + len(day_hw),
+            'events_count': actual_events_count,
         })
+
+    # Pick default selected day
+    default_selected_day_index = 0
+    today_matches = [i for i, d in enumerate(weekdays_payload) if d['is_today']]
+    if today_matches:
+        default_selected_day_index = today_matches[0]
+    else:
+        with_events = [i for i, d in enumerate(weekdays_payload) if d['events_count'] > 0]
+        if with_events:
+            default_selected_day_index = with_events[0]
+
+    if 'streak_days' not in weekly_stats:
+        weekly_stats['streak_days'] = real_streak
 
     return render_template(
         tpl_name,
@@ -987,13 +1294,16 @@ def schedule():
             'is_admin': current_user.is_admin() or current_user.is_creator(),
             'lessons': raw_lessons_payload,
             'weekdays': weekdays_payload,
+            'default_selected_day_index': default_selected_day_index,
+            'selected_day': weekdays_payload[default_selected_day_index] if weekdays_payload else None,
             'today_iso': today_display_date.isoformat(),
             'active_homework': active_homework,
             'useful_materials': useful_materials,
             'student_notes_general': student_notes_text,
-            'teacher_name': teacher_name,
-            'teacher_avatar': teacher_avatar,
+            'teacher_name': teacher_name or 'Преподаватель курса',
+            'teacher_avatar': teacher_avatar or '/static/images/schedule/mock_teacher_avatar.png',
             'weekly_stats': weekly_stats,
+            'stats': weekly_stats,
             'weekly_bars': weekly_bars,
             'weekly_goals': weekly_goals,
             'week_offset': week_offset,
@@ -1002,6 +1312,7 @@ def schedule():
             'tz_name': timezone,
             'base_url': url_for('schedule.schedule'),
             'can_manage': _can_manage_schedule(),
+            'accessible_students': accessible_students_data,
         },
         week_days=week_days,
         week_label=week_label,
@@ -1074,31 +1385,72 @@ def schedule_create_lesson():
             flash(error_message, 'danger')
             return redirect(url_for('schedule.schedule'))
 
+        # Явное разрешение преподавателя и предмета через ownership_service
+        from app.schedule.ownership_service import (
+            resolve_lesson_ownership,
+            OwnershipValidationError,
+            OwnershipSecurityError,
+        )
+        req_teacher_id = request.form.get('teacher_id', type=int)
+        req_subject = request.form.get('subject')
+        try:
+            resolved_teacher_id, resolved_subject = resolve_lesson_ownership(
+                actor_user=current_user,
+                student=student,
+                requested_teacher_id=req_teacher_id,
+                requested_subject=req_subject,
+            )
+        except (OwnershipValidationError, OwnershipSecurityError) as own_err:
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            if is_ajax:
+                return jsonify({'success': False, 'error': str(own_err)}), 403
+            flash(str(own_err), 'danger')
+            return redirect(url_for('schedule.schedule'))
+
         if lesson_mode == 'recurring' and repeat_count and repeat_count > 1:
             lessons_to_create = repeat_count
         else:
             lessons_to_create = 1
+
+        effective_tutor_id = resolved_teacher_id or (current_user.id if current_user.is_tutor() else None)
+
+        from app.schedule.ownership_service import acquire_scheduling_locks
+        acquire_scheduling_locks(student_id, effective_tutor_id)
 
         created_lessons = []
         for week_offset in range(lessons_to_create):
             lesson_datetime = base_lesson_datetime + timedelta(weeks=week_offset)
             
             if _student_has_overlap(student_id, lesson_datetime, duration):
+                if lessons_to_create == 1:
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    if is_ajax:
+                        return jsonify({'success': False, 'error': 'В это время ученик занят на другом уроке'}), 409
+                    flash('В это время ученик занят на другом уроке', 'danger')
+                    return redirect(url_for('schedule.schedule'))
                 logger.warning(
                     f"Пересечение уроков: student_id={student_id}, "
                     f"start={lesson_datetime}, duration={duration}. Пропускаем."
                 )
                 continue
 
-            if current_user.is_tutor() and _tutor_has_overlap(current_user.id, lesson_datetime, duration):
+            if effective_tutor_id and _tutor_has_overlap(effective_tutor_id, lesson_datetime, duration):
+                if lessons_to_create == 1:
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    if is_ajax:
+                        return jsonify({'success': False, 'error': 'В это время у вас уже есть занятие'}), 409
+                    flash('В это время у вас уже есть занятие', 'danger')
+                    return redirect(url_for('schedule.schedule'))
                 logger.warning(
-                    f"Пересечение уроков у преподавателя: tutor_id={current_user.id}, "
+                    f"Пересечение уроков у преподавателя: tutor_id={effective_tutor_id}, "
                     f"start={lesson_datetime}, duration={duration}. Пропускаем."
                 )
                 continue
             
             new_lesson = Lesson(
                 student_id=student_id,
+                teacher_id=resolved_teacher_id,
+                subject=resolved_subject,
                 lesson_date=lesson_datetime,
                 duration=duration,
                 lesson_type=lesson_type,
@@ -1106,6 +1458,13 @@ def schedule_create_lesson():
             )
             db.session.add(new_lesson)
             created_lessons.append(new_lesson)
+
+        if not created_lessons:
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            if is_ajax:
+                return jsonify({'success': False, 'error': 'Не удалось создать уроки из-за конфликтов расписания'}), 409
+            flash('Не удалось создать уроки из-за конфликтов расписания', 'danger')
+            return redirect(url_for('schedule.schedule'))
 
         # 1. ЖЕСТКИЙ ИЗОЛИРОВАННЫЙ КОММИТ УРОКОВ В БД
         try:
@@ -1218,22 +1577,25 @@ def schedule_create_lesson():
 
 
 @schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/reschedule', methods=['POST'])
+@schedule_bp.route('/schedule/reschedule/<int:lesson_id>', methods=['POST'])
+@schedule_bp.route('/api/schedule/lesson/<int:lesson_id>/reschedule', methods=['POST'])
+@schedule_bp.route('/api/schedule/reschedule/<int:lesson_id>', methods=['POST'])
 @login_required
 def schedule_reschedule_lesson(lesson_id: int):
-    """Перенос урока на другое время (AJAX)."""
+    """Перенос урока на другое время (AJAX и Form)."""
     if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-    if not _require_lesson_in_scope(lesson):
+    if not _require_lesson_in_scope(lesson, require_write=True):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     start_time_utc = data.get('start_time_utc')
-    date_str = (data.get('lesson_date') or '').strip()
-    time_str = (data.get('lesson_time') or '').strip()
+    date_str = (data.get('lesson_date') or data.get('new_date') or data.get('date') or '').strip()
+    time_str = (data.get('lesson_time') or data.get('new_time') or data.get('time') or '').strip()
     timezone = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
     if not start_time_utc and (not date_str or not time_str):
@@ -1245,24 +1607,29 @@ def schedule_reschedule_lesson(lesson_id: int):
         return jsonify({'success': False, 'error': f'Ошибка формата даты/времени: {e}'}), 400
 
     duration = int(lesson.duration or 60)
+    effective_tutor_id = lesson.teacher_id or (current_user.id if current_user.is_tutor() else None)
+    from app.schedule.ownership_service import acquire_scheduling_locks, check_tutor_conflict_isolated
+    acquire_scheduling_locks(lesson.student_id, effective_tutor_id)
+
     if _student_has_overlap(lesson.student_id, new_dt, duration, exclude_lesson_id=lesson.lesson_id):
-        return jsonify({'success': False, 'error': 'Есть пересечение по времени для этого ученика'}), 409
-    if current_user.is_tutor() and _tutor_has_overlap(current_user.id, new_dt, duration, exclude_lesson_id=lesson.lesson_id):
-        return jsonify({'success': False, 'error': 'У вас уже есть урок в это время'}), 409
+        return jsonify({'success': False, 'error': 'В это время ученик занят на другом уроке'}), 409
+    if effective_tutor_id and check_tutor_conflict_isolated(effective_tutor_id, new_dt, duration, exclude_lesson_id=lesson.lesson_id):
+        return jsonify({'success': False, 'error': 'В это время у вас уже есть занятие'}), 409
 
     try:
         old_dt = lesson.lesson_date
         lesson.lesson_date = new_dt
+        lesson.tg_reminder_30min_sent = False
         db.session.commit()
 
         try:
             if lesson.status == 'planned' and lesson.student:
-                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
                 _notify_lesson_scheduled(
                     lesson,
                     lesson.student,
                     'Урок перенесён',
                     actor_user_id=current_user.id,
+                    old_dt=old_dt,
                 )
                 try:
                     db.session.commit()
@@ -1327,11 +1694,89 @@ def create_schedule_lesson_api():
         is_test_req = data.get('is_test') in (True, 'true', '1', 1) or str(data.get('lesson_type', '')).strip().lower() == 'test'
         lesson_type_val = 'test' if is_test_req else (data.get('lesson_type') or 'individual').strip().lower()
 
-        if not is_test_req and _student_has_overlap(student.student_id, clean_date, duration):
-            return jsonify({'status': 'error', 'message': 'У ученика уже есть пересекающийся урок'}), 409
+        # Явное разрешение преподавателя и предмета через ownership_service
+        from app.schedule.ownership_service import (
+            resolve_lesson_ownership,
+            check_tutor_conflict_isolated,
+            acquire_scheduling_locks,
+            OwnershipValidationError,
+            OwnershipSecurityError,
+        )
+        req_teacher_id = data.get('teacher_id')
+        req_subject = data.get('subject')
+        try:
+            resolved_teacher_id, resolved_subject = resolve_lesson_ownership(
+                actor_user=current_user,
+                student=student,
+                requested_teacher_id=int(req_teacher_id) if req_teacher_id else None,
+                requested_subject=str(req_subject) if req_subject else None,
+            )
+        except (OwnershipValidationError, OwnershipSecurityError) as own_err:
+            return jsonify({'status': 'error', 'message': str(own_err)}), 403
 
-        if not getattr(student, 'mentor_id', None) and current_user and current_user.is_authenticated:
-            student.mentor_id = current_user.id
+        effective_tutor_id = resolved_teacher_id or (current_user.id if current_user.is_tutor() else None)
+
+        # Конкурентная сериализация через блокировку строк БД
+        acquire_scheduling_locks(student.student_id, effective_tutor_id)
+
+        # Проверка доступности преподавателя (Sprint 2.4)
+        if effective_tutor_id and not is_test_req and not data.get('ignore_availability'):
+            from app.schedule.recurrence_service import check_teacher_availability
+            local_dt = lesson_storage_to_local(clean_date, req_tz)
+            if local_dt:
+                is_avail, avail_reason = check_teacher_availability(
+                    effective_tutor_id,
+                    local_dt.date(),
+                    local_dt.strftime('%H:%M'),
+                    duration,
+                    req_tz,
+                )
+                if not is_avail:
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'Преподаватель недоступен: {avail_reason}',
+                        'availability_conflict': True,
+                    }), 409
+
+        # Ветка создания повторяющейся серии (Sprint 2.4)
+        if data.get('is_recurring'):
+            from app.schedule.recurrence_service import create_recurring_series
+            local_dt = lesson_storage_to_local(clean_date, req_tz)
+            end_date_str = data.get('recurrence_end_date') or data.get('end_date')
+            end_date_val = None
+            if end_date_str:
+                try:
+                    end_date_val = datetime.strptime(str(end_date_str).strip(), '%Y-%m-%d').date()
+                except Exception:
+                    pass
+            slot, gen_res = create_recurring_series(
+                actor_user=current_user,
+                student_id=student.student_id,
+                weekday=local_dt.weekday(),
+                time_hhmm=local_dt.strftime('%H:%M'),
+                duration=duration,
+                subject=resolved_subject,
+                timezone_str=req_tz,
+                start_date=local_dt.date(),
+                end_date=end_date_val,
+                topic=topic,
+                skip_conflicts=bool(data.get('skip_conflicts', True)),
+            )
+            return jsonify({
+                'status': 'success',
+                'success': True,
+                'message': f'Регулярное расписание создано! Сформировано уроков: {gen_res.get("created_count", 0)}',
+                'slot_id': slot.slot_id,
+                'created_count': gen_res.get('created_count', 0),
+                'created': gen_res.get('created', []),
+                'skipped_conflicts': gen_res.get('skipped_conflicts', []),
+            }), 201
+
+        if not is_test_req and _student_has_overlap(student.student_id, clean_date, duration):
+            return jsonify({'status': 'error', 'message': 'В это время ученик занят на другом уроке'}), 409
+
+        if effective_tutor_id and not is_test_req and check_tutor_conflict_isolated(effective_tutor_id, clean_date, duration):
+            return jsonify({'status': 'error', 'message': 'В это время у вас уже есть занятие'}), 409
 
         notes = data.get('notes') or data.get('description') or ''
         notes_val = str(notes).strip() if notes else None
@@ -1355,6 +1800,8 @@ def create_schedule_lesson_api():
 
         new_lesson = Lesson(
             student_id=student.student_id,
+            teacher_id=resolved_teacher_id,
+            subject=resolved_subject,
             lesson_date=clean_date,
             topic=topic,
             notes=notes_val,
@@ -1403,7 +1850,7 @@ def update_schedule_lesson_api(lesson_id: int):
         return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
     try:
         lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-        if not _require_lesson_in_scope(lesson):
+        if not _require_lesson_in_scope(lesson, require_write=True):
             return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
         data = request.get_json(force=True, silent=True) or request.form or {}
 
@@ -1445,8 +1892,24 @@ def update_schedule_lesson_api(lesson_id: int):
         else:
             is_test_val = _is_lesson_test(lesson)
 
+        from app.schedule.ownership_service import acquire_scheduling_locks, check_tutor_conflict_isolated
+        effective_tutor_id = lesson.teacher_id or (current_user.id if current_user.is_tutor() else None)
+        acquire_scheduling_locks(new_student_id, effective_tutor_id)
+
         if not is_test_val and _student_has_overlap(new_student_id, new_date, new_duration, exclude_lesson_id=lesson.lesson_id):
-            return jsonify({'status': 'error', 'message': 'У ученика уже есть пересекающийся урок'}), 409
+            return jsonify({'status': 'error', 'message': 'В это время ученик занят на другом уроке'}), 409
+
+        if effective_tutor_id and not is_test_val and check_tutor_conflict_isolated(effective_tutor_id, new_date, new_duration, exclude_lesson_id=lesson.lesson_id):
+            return jsonify({'status': 'error', 'message': 'В это время у вас уже есть занятие'}), 409
+
+        # Защита от несанкционированного изменения teacher_id
+        if 'teacher_id' in data and data['teacher_id'] is not None:
+            if not (current_user.is_creator() or current_user.is_admin()):
+                return jsonify({'status': 'error', 'message': 'Преподаватель не может изменять привязку урока к другому учителю'}), 403
+            lesson.teacher_id = int(data['teacher_id'])
+
+        if 'subject' in data and data['subject']:
+            lesson.subject = str(data['subject']).strip()
 
         lesson.lesson_date = new_date
         lesson.student_id = new_student_id
@@ -1454,7 +1917,16 @@ def update_schedule_lesson_api(lesson_id: int):
         if 'status' in data:
             if data['status'] not in ('planned', 'in_progress', 'completed', 'cancelled'):
                 return jsonify({'status': 'error', 'message': 'Некорректный статус'}), 400
-            lesson.status = data['status']
+            try:
+                transition_lesson_status(
+                    lesson, data['status'],
+                    source="schedule_lesson_update_api",
+                    reason="teacher_updated_schedule_lesson_status",
+                    actor_user_id=getattr(current_user, "id", None),
+                )
+            except LessonLifecycleError as exc:
+                db.session.rollback()
+                return jsonify({'status': 'error', 'message': str(exc)}), 409
 
         if 'notes' in data or 'description' in data:
             val = data.get('notes') if 'notes' in data else data.get('description')
@@ -1515,6 +1987,8 @@ def update_schedule_lesson_api(lesson_id: int):
             'id': lesson.lesson_id,
             'student_id': lesson.student_id,
             'student_name': lesson.student.name if lesson.student else 'Ученик',
+            'subject': lesson.subject or 'Информатика',
+            'teacher_id': lesson.teacher_id,
             'topic': lesson.topic,
             'status': lesson.status,
             'start_date': local_start.strftime('%Y-%m-%d') if local_start else '',
@@ -1564,6 +2038,8 @@ def get_lesson_details_api(lesson_id: int):
             'lesson_id': lesson.lesson_id,
             'student_id': lesson.student_id,
             'student_name': lesson.student.name if lesson.student else 'Ученик',
+            'subject': lesson.subject or 'Информатика',
+            'teacher_id': lesson.teacher_id,
             'topic': lesson.topic or '',
             'notes': lesson.notes or '',
             'description': lesson.notes or '',
@@ -1597,11 +2073,21 @@ def schedule_set_status(lesson_id: int):
         return jsonify({'success': False, 'error': 'Некорректный status'}), 400
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-    if not _require_lesson_in_scope(lesson):
+    if not _require_lesson_in_scope(lesson, require_write=True):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    if lesson.status == "completed" and status != "completed":
+        return jsonify({
+            'success': False,
+            'error': 'Проведённый урок нельзя вернуть в запланированные без отдельной корректировки баланса.',
+        }), 409
     try:
         old_status = lesson.status
-        lesson.status = status
+        _transitioned, balance_notice = transition_lesson_status(
+            lesson, status,
+            source="schedule_set_status_api",
+            reason="teacher_changed_lesson_status",
+            actor_user_id=getattr(current_user, "id", None),
+        )
         db.session.commit()
 
         try:
@@ -1634,6 +2120,9 @@ def schedule_set_status(lesson_id: int):
             }
         )
         return jsonify({'success': True}), 200
+    except LessonLifecycleError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 409
     except Exception as e:
         db.session.rollback()
         audit_logger.log_error(action='set_lesson_status', entity='Lesson', error=str(e))
@@ -1651,7 +2140,7 @@ def schedule_update_lesson(lesson_id: int):
         return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-    if not _require_lesson_in_scope(lesson):
+    if not _require_lesson_in_scope(lesson, require_write=True):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     duration = data.get('duration')
@@ -1694,10 +2183,16 @@ def schedule_update_lesson(lesson_id: int):
     check_duration = duration if duration is not None else (lesson.duration or 60)
     
     if new_lesson_date is not None or duration is not None:
+        effective_tutor_id = lesson.teacher_id or (current_user.id if current_user.is_tutor() else None)
+        from app.schedule.ownership_service import acquire_scheduling_locks, check_tutor_conflict_isolated
+        acquire_scheduling_locks(lesson.student_id, effective_tutor_id)
         if _student_has_overlap(lesson.student_id, check_date, check_duration, exclude_lesson_id=lesson.lesson_id):
-            return jsonify({'success': False, 'error': 'Есть пересечение по времени для этого ученика'}), 409
-        if current_user.is_tutor() and _tutor_has_overlap(current_user.id, check_date, check_duration, exclude_lesson_id=lesson.lesson_id):
-            return jsonify({'success': False, 'error': 'У вас уже есть урок в это время'}), 409
+            return jsonify({'success': False, 'error': 'В это время ученик занят на другом уроке'}), 409
+        if effective_tutor_id and check_tutor_conflict_isolated(effective_tutor_id, check_date, check_duration, exclude_lesson_id=lesson.lesson_id):
+            return jsonify({'success': False, 'error': 'В это время у вас уже есть занятие'}), 409
+
+    if 'subject' in data and data['subject']:
+        lesson.subject = str(data['subject']).strip()
 
     try:
         old = {
@@ -1773,6 +2268,7 @@ def schedule_update_lesson(lesson_id: int):
 
 
 @schedule_bp.route('/schedule/api/events')
+@schedule_bp.route('/api/schedule/events')
 @login_required
 def schedule_api_events():
     """
@@ -1782,41 +2278,62 @@ def schedule_api_events():
     if not has_permission(current_user, 'schedule.view') and not has_permission(current_user, 'tools.schedule'):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
-    start_date = _parse_date(request.args.get('start'))
-    end_date = _parse_date(request.args.get('end'))
-    timezone = _schedule_timezone_from_user()
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    start_date = _parse_date(start_str) if start_str else None
+    end_date = _parse_date(end_str) if end_str else None
+    timezone = request.args.get('timezone') or _schedule_timezone_from_user()
+    timezone = timezone_name(timezone)
     display_tz = timezone_from_name(timezone)
 
-    if not start_date or not end_date:
-        return jsonify({'success': False, 'error': 'start/end обязательны (YYYY-MM-DD)'}), 400
-
-    q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
-    allowed = _resolve_accessible_student_ids_for_current_user()
-    if allowed is not None:
-        if not allowed:
-            q = q.filter(False)
-        else:
-            q = q.filter(Lesson.student_id.in_(allowed))
+    if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()):
+        q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    elif current_user.is_tutor():
+        q = Lesson.query.filter(Lesson.teacher_id == current_user.id).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    elif current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if not student:
+            return jsonify({'success': True, 'events': []})
+        q = Lesson.query.filter(Lesson.student_id == student.student_id).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    else:
+        allowed = _resolve_accessible_student_ids_for_current_user()
+        q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+        if allowed is not None:
+            if not allowed:
+                q = q.filter(False)
+            else:
+                q = q.filter(Lesson.student_id.in_(allowed))
 
     lessons = q.all()
     out = []
     for l in lessons:
-        if not l.student:
+        if not l.student or not l.lesson_date:
             continue
         dt_display = lesson_storage_to_local(l.lesson_date, timezone)
-        if not dt_display or not (start_date <= dt_display.date() <= end_date):
+        if not dt_display:
             continue
+        if start_date and dt_display.date() < start_date:
+            continue
+        if end_date and dt_display.date() > end_date:
+            continue
+
+        start_time_str = dt_display.strftime('%H:%M')
         out.append({
+            'id': l.lesson_id,
             'lesson_id': l.lesson_id,
+            'title': l.topic or (l.subject or 'Занятие'),
             'student_id': l.student.student_id,
             'student': l.student.name,
+            'subject': l.subject or 'Информатика',
             'status_code': l.status,
             'lesson_type': l.lesson_type,
             'topic': l.topic,
             'duration_minutes': int(l.duration or 60),
+            'start': dt_display.isoformat(),
             'start_iso': format_utc_iso_z(lesson_storage_to_utc(l.lesson_date)),
             'date': dt_display.strftime('%Y-%m-%d'),
-            'start_time': dt_display.strftime('%H:%M'),
+            'start_time': start_time_str,
+            'time_str': start_time_str,
             'start_total': dt_display.hour * 60 + dt_display.minute,
             'profile_url': url_for('students.student_profile', student_id=l.student.student_id),
             'lesson_url': url_for('lessons.lesson_view', lesson_id=l.lesson_id),
@@ -1832,7 +2349,7 @@ def schedule_delete_lesson(lesson_id: int):
         return jsonify({'status': 'error', 'success': False, 'error': 'Доступ запрещен'}), 403
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-    if not _require_lesson_in_scope(lesson):
+    if not _require_lesson_in_scope(lesson, require_write=True):
         return jsonify({'status': 'error', 'success': False, 'error': 'Доступ запрещен'}), 403
 
     try:
@@ -1844,6 +2361,8 @@ def schedule_delete_lesson(lesson_id: int):
             'lesson_type': lesson.lesson_type,
             'status': lesson.status,
         }
+        from app.telegram.delivery import invalidate_pending_lesson_deliveries
+        invalidate_pending_lesson_deliveries(lesson_id, reason='lesson_deleted')
         _purge_lessons_dependencies([lesson_id])
         db.session.delete(lesson)
         db.session.commit()
@@ -1874,9 +2393,12 @@ def schedule_bulk_delete_lessons():
         deleted_ids = []
         if delete_all_test:
             q = Lesson.query.options(db.joinedload(Lesson.student))
-            allowed = _resolve_accessible_student_ids_for_current_user()
-            if allowed is not None:
-                q = q.filter(Lesson.student_id.in_(allowed))
+            if current_user.is_tutor():
+                q = q.filter(Lesson.teacher_id == current_user.id)
+            else:
+                allowed = _resolve_accessible_student_ids_for_current_user()
+                if allowed is not None:
+                    q = q.filter(Lesson.student_id.in_(allowed))
             candidates = q.all()
             for l in candidates:
                 if _is_lesson_test(l):
@@ -1887,10 +2409,13 @@ def schedule_bulk_delete_lessons():
                 q = Lesson.query.options(db.joinedload(Lesson.student)).filter(Lesson.lesson_id.in_(clean_ids))
                 lessons_to_del = q.all()
                 for l in lessons_to_del:
-                    if _require_lesson_in_scope(l):
+                    if _require_lesson_in_scope(l, require_write=True):
                         deleted_ids.append(l.lesson_id)
 
         if deleted_ids:
+            from app.telegram.delivery import invalidate_pending_lesson_deliveries
+            for dlid in deleted_ids:
+                invalidate_pending_lesson_deliveries(int(dlid), reason='bulk_lesson_deleted')
             _purge_lessons_dependencies(deleted_ids)
             Lesson.query.filter(Lesson.lesson_id.in_(deleted_ids)).delete(synchronize_session=False)
             db.session.commit()
@@ -1964,6 +2489,8 @@ def schedule_toggle_test_lesson(lesson_id: int):
 
 
 @schedule_bp.route('/schedule/export.ics')
+@schedule_bp.route('/schedule/export_ics')
+@schedule_bp.route('/api/schedule/export_ics')
 @login_required
 def schedule_export_ics():
     """Экспорт видимого расписания в iCalendar (.ics) для синхронизации."""
@@ -1974,13 +2501,23 @@ def schedule_export_ics():
     export_tzid = _schedule_timezone_from_user()
     today = datetime.now(dt_timezone.utc).astimezone(timezone_from_name(export_tzid)).date()
 
-    q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
-    allowed = _resolve_accessible_student_ids_for_current_user()
-    if allowed is not None:
-        if not allowed:
-            q = q.filter(False)
-        else:
-            q = q.filter(Lesson.student_id.in_(allowed))
+    if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()):
+        q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    elif current_user.is_tutor():
+        q = Lesson.query.filter(Lesson.teacher_id == current_user.id).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    elif current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if not student:
+            return Response("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n", mimetype="text/calendar; charset=utf-8")
+        q = Lesson.query.filter(Lesson.student_id == student.student_id).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    else:
+        allowed = _resolve_accessible_student_ids_for_current_user()
+        q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+        if allowed is not None:
+            if not allowed:
+                q = q.filter(False)
+            else:
+                q = q.filter(Lesson.student_id.in_(allowed))
 
     lessons = _lessons_in_local_window(q, export_tzid, today - timedelta(days=14), today + timedelta(days=60))
     lines = [
@@ -1996,7 +2533,7 @@ def schedule_export_ics():
             continue
         dt_start_local = _dt_to_ics_local(l.lesson_date, export_tzid)
         dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tzid)
-        summary = f"Урок: {l.student.name}"
+        summary = f"Урок [{l.subject or 'Информатика'}]: {l.student.name}"
         if l.topic:
             summary = f"{summary} · {l.topic}"
         uid = f"lesson-{l.lesson_id}@black-neon"
@@ -2036,13 +2573,23 @@ def schedule_export_ics_by_token(token: str):
     export_tzid = timezone_name(effective_timezone_name(user))
     today = datetime.now(dt_timezone.utc).astimezone(timezone_from_name(export_tzid)).date()
 
-    q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
-    allowed = _resolve_accessible_student_ids_for_user(user)
-    if allowed is not None:
-        if not allowed:
-            q = q.filter(False)
-        else:
-            q = q.filter(Lesson.student_id.in_(allowed))
+    if is_creator_or_admin(user):
+        q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    elif user.is_tutor():
+        q = Lesson.query.filter(Lesson.teacher_id == user.id).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    elif user.is_student():
+        student = Student.query.filter_by(user_id=user.id).first()
+        if not student:
+            return Response("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n", mimetype="text/calendar; charset=utf-8")
+        q = Lesson.query.filter(Lesson.student_id == student.student_id).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    else:
+        allowed = _resolve_accessible_student_ids_for_user(user)
+        q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+        if allowed is not None:
+            if not allowed:
+                q = q.filter(False)
+            else:
+                q = q.filter(Lesson.student_id.in_(allowed))
 
     lessons = _lessons_in_local_window(q, export_tzid, today - timedelta(days=14), today + timedelta(days=60))
     lines = [
@@ -2058,7 +2605,7 @@ def schedule_export_ics_by_token(token: str):
             continue
         dt_start_local = _dt_to_ics_local(l.lesson_date, export_tzid)
         dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tzid)
-        summary = f"Урок: {l.student.name}"
+        summary = f"Урок [{l.subject or 'Информатика'}]: {l.student.name}"
         if l.topic:
             summary = f"{summary} · {l.topic}"
         uid = f"lesson-{l.lesson_id}@black-neon"
@@ -2369,3 +2916,468 @@ def schedule_templates_apply_week():
         logger.warning(f"Failed to notify about lesson_scheduled (recurring slots): {e}")
 
     return jsonify({'success': True, 'created_lessons': created_payload}), 200
+
+
+# =========================================================================
+# SPRINT 2.4: RECURRING LESSONS & TEACHER AVAILABILITY API
+# =========================================================================
+
+@schedule_bp.route('/api/schedule/recurring/preview', methods=['POST'])
+@login_required
+def api_schedule_recurring_preview():
+    """Preview simulation of upcoming recurring occurrences and conflict detection."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        student_id = int(data.get('student_id'))
+        weekday = int(data.get('weekday'))
+        time_hhmm = str(data.get('time_hhmm') or '').strip()
+        duration = int(data.get('duration') or 60)
+        timezone_str = (data.get('timezone') or _schedule_timezone_from_user()).strip()
+        start_date_str = (data.get('start_date') or '').strip()
+        end_date_str = (data.get('end_date') or '').strip()
+        subject = (data.get('subject') or 'Информатика').strip()
+        ignore_avail = bool(data.get('ignore_availability'))
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Некорректные параметры: {e}'}), 400
+
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else date.today()
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+    from app.schedule.recurrence_service import preview_recurring_slot
+    preview = preview_recurring_slot(
+        teacher_id=current_user.id,
+        student_id=student_id,
+        weekday=weekday,
+        time_hhmm=time_hhmm,
+        duration=duration,
+        tz_name=timezone_str,
+        start_date=start_date,
+        end_date=end_date,
+        subject=subject,
+        ignore_availability=ignore_avail,
+    )
+    return jsonify({'success': True, 'preview': preview}), 200
+
+
+@schedule_bp.route('/api/schedule/recurring/create', methods=['POST'])
+@login_required
+def api_schedule_recurring_create():
+    """Create a recurring series and generate occurrences within horizon."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        student_id = int(data.get('student_id'))
+        weekday = int(data.get('weekday'))
+        time_hhmm = str(data.get('time_hhmm') or '').strip()
+        duration = int(data.get('duration') or 60)
+        timezone_str = (data.get('timezone') or _schedule_timezone_from_user()).strip()
+        start_date_str = (data.get('start_date') or '').strip()
+        end_date_str = (data.get('end_date') or '').strip()
+        subject = (data.get('subject') or '').strip()
+        topic = (data.get('topic') or '').strip()
+        skip_conflicts = bool(data.get('skip_conflicts', True))
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Некорректные параметры: {e}'}), 400
+
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else date.today()
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+    from app.schedule.recurrence_service import create_recurring_series, RecurrenceConflictError, TeacherAvailabilityError
+    try:
+        slot, gen_res = create_recurring_series(
+            actor_user=current_user,
+            student_id=student_id,
+            weekday=weekday,
+            time_hhmm=time_hhmm,
+            duration=duration,
+            subject=subject,
+            timezone_str=timezone_str,
+            start_date=start_date,
+            end_date=end_date,
+            topic=topic,
+            skip_conflicts=skip_conflicts,
+        )
+        return jsonify({
+            'success': True,
+            'slot_id': slot.slot_id,
+            'created_count': gen_res.get('created_count', 0),
+            'created': gen_res.get('created', []),
+            'skipped_conflicts': gen_res.get('skipped_conflicts', []),
+            'skipped_exceptions': gen_res.get('skipped_exceptions', []),
+        }), 201
+    except (RecurrenceConflictError, TeacherAvailabilityError) as err:
+        return jsonify({'success': False, 'error': str(err)}), 409
+    except Exception as e:
+        logger.error(f"Error creating recurring series: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/recurring/list', methods=['GET'])
+@login_required
+def api_schedule_recurring_list():
+    """List all recurring series belonging to current user."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    q = RecurringLessonSlot.query.options(db.joinedload(RecurringLessonSlot.student))
+    if current_user.is_tutor():
+        q = q.filter(RecurringLessonSlot.owner_user_id == current_user.id)
+
+    slots = q.order_by(RecurringLessonSlot.weekday.asc(), RecurringLessonSlot.time_hhmm.asc()).all()
+    out = []
+    for s in slots:
+        out.append({
+            'slot_id': s.slot_id,
+            'teacher_id': s.owner_user_id,
+            'student_id': s.student_id,
+            'student_name': s.student.name if s.student else f"Ученик #{s.student_id}",
+            'subject': s.subject or 'Информатика',
+            'weekday': s.weekday,
+            'time_hhmm': s.time_hhmm,
+            'duration': s.duration,
+            'timezone': s.timezone,
+            'start_date': s.start_date.isoformat() if s.start_date else None,
+            'end_date': s.end_date.isoformat() if s.end_date else None,
+            'is_active': s.is_active,
+            'topic': s.topic,
+        })
+    return jsonify({'success': True, 'series': out}), 200
+
+
+@schedule_bp.route('/api/schedule/recurring/reschedule-instance', methods=['POST'])
+@login_required
+def api_schedule_recurring_reschedule_instance():
+    """Scenario A: Reschedule a single instance of a recurring series."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json(silent=True) or {}
+    lesson_id = data.get('lesson_id')
+    new_date_str = data.get('new_date')
+    new_time_hhmm = data.get('new_time')
+    new_duration = data.get('duration')
+
+    if not lesson_id or not new_date_str or not new_time_hhmm:
+        return jsonify({'success': False, 'error': 'lesson_id, new_date, new_time обязательны'}), 400
+
+    try:
+        new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+    except Exception:
+        return jsonify({'success': False, 'error': 'Некорректная дата'}), 400
+
+    from app.schedule.recurrence_service import reschedule_recurring_instance, RecurrenceConflictError
+    try:
+        lesson = reschedule_recurring_instance(
+            lesson_id=int(lesson_id),
+            new_date=new_date,
+            new_time_hhmm=new_time_hhmm,
+            new_duration=int(new_duration) if new_duration else None,
+            actor_user=current_user,
+        )
+        return jsonify({'success': True, 'lesson_id': lesson.lesson_id, 'new_date': new_date_str, 'new_time': new_time_hhmm}), 200
+    except RecurrenceConflictError as ce:
+        return jsonify({'success': False, 'error': str(ce)}), 409
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/recurring/cancel-instance', methods=['POST'])
+@login_required
+def api_schedule_recurring_cancel_instance():
+    """Scenario D: Cancel a single instance of a recurring series."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json(silent=True) or {}
+    lesson_id = data.get('lesson_id')
+    reason = data.get('reason')
+    if not lesson_id:
+        return jsonify({'success': False, 'error': 'lesson_id обязателен'}), 400
+
+    from app.schedule.recurrence_service import cancel_recurring_instance
+    try:
+        lesson = cancel_recurring_instance(lesson_id=int(lesson_id), reason=reason, actor_user=current_user)
+        return jsonify({'success': True, 'lesson_id': lesson.lesson_id, 'status': lesson.status}), 200
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/recurring/update-future', methods=['POST'])
+@login_required
+def api_schedule_recurring_update_future():
+    """Scenario B: Modify this and all future lessons of a recurring series."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json(silent=True) or {}
+    slot_id = data.get('slot_id')
+    from_date_str = data.get('from_date')
+    new_weekday = data.get('new_weekday')
+    new_time_hhmm = data.get('new_time')
+    new_duration = data.get('duration') or 60
+
+    if not slot_id or not from_date_str or new_weekday is None or not new_time_hhmm:
+        return jsonify({'success': False, 'error': 'Все поля обязательны'}), 400
+
+    try:
+        from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
+    except Exception:
+        return jsonify({'success': False, 'error': 'Некорректная дата'}), 400
+
+    from app.schedule.recurrence_service import update_series_from_date
+    try:
+        old_s, new_s = update_series_from_date(
+            slot_id=int(slot_id),
+            from_date=from_date,
+            new_weekday=int(new_weekday),
+            new_time_hhmm=str(new_time_hhmm).strip(),
+            new_duration=int(new_duration),
+            actor_user=current_user,
+        )
+        return jsonify({'success': True, 'old_slot_id': old_s.slot_id, 'new_slot_id': new_s.slot_id}), 200
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/recurring/update-series', methods=['POST'])
+@login_required
+def api_schedule_recurring_update_series():
+    """Scenario C: Modify whole series parameters for future uncompleted lessons."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json(silent=True) or {}
+    slot_id = data.get('slot_id')
+    new_time_hhmm = data.get('new_time')
+    new_duration = data.get('duration') or 60
+    new_subject = data.get('subject')
+    topic = data.get('topic')
+
+    if not slot_id or not new_time_hhmm:
+        return jsonify({'success': False, 'error': 'slot_id и new_time обязательны'}), 400
+
+    from app.schedule.recurrence_service import update_whole_series, RecurrenceConflictError
+    try:
+        slot = update_whole_series(
+            slot_id=int(slot_id),
+            new_time_hhmm=str(new_time_hhmm).strip(),
+            new_duration=int(new_duration),
+            new_subject=str(new_subject).strip() if new_subject else None,
+            topic=str(topic).strip() if topic else None,
+            actor_user=current_user,
+        )
+        return jsonify({'success': True, 'slot_id': slot.slot_id}), 200
+    except RecurrenceConflictError as rce:
+        return jsonify({
+            'success': False,
+            'error': str(rce),
+            'conflict': True,
+            'conflict_details': getattr(rce, 'conflict_details', []),
+        }), 409
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/recurring/pause', methods=['POST'])
+@login_required
+def api_schedule_recurring_pause():
+    """Scenario E: Pause a recurring series."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json(silent=True) or {}
+    slot_id = data.get('slot_id')
+    mode = data.get('mode', 'stop_generation_only')
+    reason = data.get('reason')
+    if not slot_id:
+        return jsonify({'success': False, 'error': 'slot_id обязателен'}), 400
+
+    from app.schedule.recurrence_service import pause_recurring_series
+    try:
+        slot = pause_recurring_series(
+            slot_id=int(slot_id),
+            actor_user=current_user,
+            mode=mode,
+            reason=reason,
+        )
+        return jsonify({'success': True, 'slot_id': slot.slot_id, 'is_active': slot.is_active, 'mode': mode}), 200
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except ValueError as ve:
+        return jsonify({'success': False, 'error': str(ve)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/recurring/resume', methods=['POST'])
+@login_required
+def api_schedule_recurring_resume():
+    """Scenario E: Resume a recurring series."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json(silent=True) or {}
+    slot_id = data.get('slot_id')
+    if not slot_id:
+        return jsonify({'success': False, 'error': 'slot_id обязателен'}), 400
+
+    from app.schedule.recurrence_service import resume_recurring_series, generate_lessons_for_slot
+    try:
+        slot = resume_recurring_series(slot_id=int(slot_id), actor_user=current_user)
+        gen_res = generate_lessons_for_slot(slot=slot, horizon_days=28, actor_user=current_user)
+        return jsonify({'success': True, 'slot_id': slot.slot_id, 'is_active': slot.is_active, 'created_count': gen_res.get('created_count', 0)}), 200
+    except PermissionError as pe:
+        return jsonify({'success': False, 'error': str(pe)}), 403
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/student/schedule', methods=['GET'])
+@login_required
+def api_student_schedule_concept_d():
+    """Returns JSON schedule for current student user (Concept D)."""
+    student = None
+    if current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+    elif current_user.is_creator() or current_user.is_admin():
+        st_id = request.args.get('student_id')
+        if st_id:
+            student = db.session.get(Student, int(st_id))
+    if not student:
+        student = Student.query.filter_by(user_id=current_user.id).first()
+
+    if not student:
+        return jsonify({'status': 'success', 'lessons': []}), 200
+
+    lessons = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.asc()).all()
+    res = []
+    for l in lessons:
+        res.append({
+            'lesson_id': l.lesson_id,
+            'subject': l.subject,
+            'topic': l.topic,
+            'status': l.status,
+            'start_time': l.start_time.isoformat() if l.start_time else None,
+            'duration': l.duration,
+            'is_recurring': bool(l.recurring_slot_id),
+            'recurring_slot_id': l.recurring_slot_id,
+            'is_rescheduled': bool(l.is_rescheduled),
+            'slot_origin_date': l.slot_origin_date.isoformat() if l.slot_origin_date else None,
+        })
+    return jsonify({'status': 'success', 'lessons': res}), 200
+
+
+# =========================================================================
+# AVAILABILITY ENDPOINTS
+# =========================================================================
+
+@schedule_bp.route('/api/schedule/availability/weekly', methods=['GET', 'POST'])
+@login_required
+def api_schedule_availability_weekly():
+    """Manage weekly working hours intervals for teacher."""
+    if not _can_manage_schedule() or not current_user.is_tutor():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from app.schedule.recurrence_service import get_teacher_weekly_availability, set_teacher_weekly_availability
+    if request.method == 'GET':
+        intervals = get_teacher_weekly_availability(current_user.id)
+        return jsonify({'success': True, 'intervals': intervals}), 200
+
+    data = request.get_json(silent=True) or {}
+    intervals_in = data.get('intervals', [])
+    try:
+        saved = set_teacher_weekly_availability(current_user.id, intervals_in)
+        return jsonify({'success': True, 'intervals': saved}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@schedule_bp.route('/api/schedule/availability/exceptions', methods=['GET'])
+@login_required
+def api_schedule_availability_exceptions_list():
+    """List date exceptions for teacher."""
+    if not _can_manage_schedule() or not current_user.is_tutor():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from app.models import TeacherScheduleException
+    excs = TeacherScheduleException.query.filter_by(teacher_id=current_user.id).order_by(TeacherScheduleException.exception_date.asc()).all()
+    out = [
+        {
+            'id': e.id,
+            'exception_date': e.exception_date.isoformat(),
+            'exception_type': e.exception_type,
+            'start_time': e.start_time,
+            'end_time': e.end_time,
+            'reason': e.reason,
+        }
+        for e in excs
+    ]
+    return jsonify({'success': True, 'exceptions': out}), 200
+
+
+@schedule_bp.route('/api/schedule/availability/exceptions/add', methods=['POST'])
+@login_required
+def api_schedule_availability_exceptions_add():
+    """Add or update date exception for teacher."""
+    if not _can_manage_schedule() or not current_user.is_tutor():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    data = request.get_json(silent=True) or {}
+    exc_date_str = data.get('exception_date') or data.get('date')
+    exc_type = data.get('exception_type') or 'unavailable'
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    reason = data.get('reason')
+    resolution_action = data.get('resolution_action')
+
+    if not exc_date_str:
+        return jsonify({'success': False, 'error': 'exception_date обязательна'}), 400
+
+    try:
+        exc_date = datetime.strptime(str(exc_date_str).strip(), '%Y-%m-%d').date()
+    except Exception:
+        return jsonify({'success': False, 'error': 'Некорректная дата'}), 400
+
+    from app.schedule.recurrence_service import add_teacher_schedule_exception, TeacherExceptionConflictError
+    try:
+        exc = add_teacher_schedule_exception(
+            teacher_id=current_user.id,
+            exception_date=exc_date,
+            exception_type=exc_type,
+            start_time=start_time,
+            end_time=end_time,
+            reason=reason,
+            resolution_action=resolution_action,
+            tz_name=getattr(current_user, 'timezone', 'Europe/Moscow') or 'Europe/Moscow',
+            actor_user=current_user,
+        )
+        return jsonify({'success': True, 'exception_id': exc.id}), 201
+    except TeacherExceptionConflictError as tece:
+        return jsonify({
+            'success': False,
+            'error': str(tece),
+            'conflict': True,
+            'affected_lessons': tece.affected_lessons,
+        }), 409
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@schedule_bp.route('/api/schedule/availability/exceptions/delete/<int:exception_id>', methods=['POST'])
+@login_required
+def api_schedule_availability_exceptions_delete(exception_id: int):
+    """Delete date exception."""
+    if not _can_manage_schedule() or not current_user.is_tutor():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from app.schedule.recurrence_service import delete_teacher_schedule_exception
+    success = delete_teacher_schedule_exception(exception_id, current_user.id)
+    return jsonify({'success': success}), 200 if success else 404
+

@@ -1,0 +1,237 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}ORISTERA Nexus | Ваше учебное пространство{% endblock %}
+
+{% block content %}
+{% set display_name = user.full_name or user.username %}
+{% set next_lesson = active_lesson if active_lesson else (upcoming_lessons[0] if upcoming_lessons else none) %}
+<div class="ori-genesis-root" id="ori-genesis-root">
+  <header class="ori-genesis-header" aria-label="Управление профилем и пространством">
+    <a class="ori-genesis-brand" href="{{ url_for('oristera.nexus') }}" aria-label="ORISTERA Nexus — главная">
+      <span class="ori-genesis-brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="1.25" stroke-dasharray="2 3" />
+          <circle cx="24" cy="24" r="9" stroke="currentColor" stroke-width="1.6" />
+          <path d="M24 3v14M24 31v14M3 24h14M31 24h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <circle cx="24" cy="24" r="2.3" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="ori-genesis-brand-copy"><strong>ORISTERA</strong><small>NEXUS</small></span>
+    </a>
+
+    <div class="ori-genesis-header-actions">
+    <a class="ori-genesis-classic" href="{{ url_for('oristera.toggle_mode', to='classic', return_to=url_for('main.dashboard')) }}" id="ori-genesis-classic-toggle">
+        <span aria-hidden="true">←</span><span>BooStudy Classic</span>
+      </a>
+      <a class="ori-genesis-profile" href="{{ url_for('main.workspace_profile') }}" aria-label="Профиль: {{ display_name }}">
+        <span class="ori-genesis-avatar" aria-hidden="true">{{ display_name[0]|upper if display_name else 'У' }}</span>
+        <span class="ori-genesis-profile-copy"><strong>{{ display_name }}</strong><small><i aria-hidden="true"></i>УЧЕНИК</small></span>
+      </a>
+      <button class="ori-genesis-menu-toggle" id="ori-genesis-menu-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="ori-genesis-menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+      </button>
+      <nav class="ori-genesis-menu" id="ori-genesis-menu" aria-label="Дополнительные действия" hidden>
+        <a href="{{ url_for('main.workspace_profile') }}">Профиль и результаты <span aria-hidden="true">↗</span></a>
+        <a href="{{ url_for('oristera.lessons_space') }}">Расписание уроков <span aria-hidden="true">↗</span></a>
+        {% if student %}<a href="{{ url_for('students.student_call_request', student_id=student.student_id) }}">Связаться с наставником <span aria-hidden="true">↗</span></a>{% endif %}
+        <form action="{{ url_for('auth.logout') }}" method="post">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <button type="submit">Выйти из аккаунта <span aria-hidden="true">↗</span></button>
+        </form>
+      </nav>
+    </div>
+  </header>
+
+  <main class="ori-genesis-stage" id="ori-genesis-stage" aria-label="Ваше учебное пространство">
+    <section class="ori-genesis-context" aria-labelledby="ori-genesis-greeting">
+      <p class="ori-genesis-eyebrow">ТВОЁ УЧЕБНОЕ ПРОСТРАНСТВО</p>
+      <h1 id="ori-genesis-greeting">{{ greeting }},<br><span>{{ display_name }}</span></h1>
+      <p class="ori-genesis-context-copy">Продолжаем путь. Знания складываются в систему — шаг за шагом, в твоём темпе.</p>
+      <div class="ori-genesis-context-rule" aria-hidden="true"></div>
+      <blockquote>«Маленькие шаги в правильном направлении приводят к большим результатам».</blockquote>
+    </section>
+
+    <section class="ori-genesis-universe" id="ori-genesis-universe" aria-label="Пространства ORISTERA">
+      <svg class="ori-genesis-orbits" viewBox="0 0 1000 650" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="ori-genesis-orbit-a" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a6dfe8" stop-opacity=".2"/><stop offset=".5" stop-color="#8cabe9" stop-opacity=".34"/><stop offset="1" stop-color="#d3b9eb" stop-opacity=".12"/></linearGradient>
+          <linearGradient id="ori-genesis-orbit-b" x1="1" y1="0" x2="0" y2="1"><stop stop-color="#e9cbb5" stop-opacity=".12"/><stop offset=".52" stop-color="#a8c8e6" stop-opacity=".34"/><stop offset="1" stop-color="#a5d8d1" stop-opacity=".18"/></linearGradient>
+        </defs>
+        <ellipse cx="500" cy="315" rx="445" ry="202" transform="rotate(-16 500 315)" stroke="url(#ori-genesis-orbit-a)" stroke-width="1.25"/>
+        <ellipse cx="500" cy="315" rx="405" ry="246" transform="rotate(13 500 315)" stroke="url(#ori-genesis-orbit-b)" stroke-width="1" stroke-dasharray="3 7"/>
+        <ellipse cx="500" cy="315" rx="365" ry="170" transform="rotate(-4 500 315)" stroke="url(#ori-genesis-orbit-a)" stroke-width=".8"/>
+        <ellipse cx="500" cy="315" rx="305" ry="265" transform="rotate(29 500 315)" stroke="url(#ori-genesis-orbit-b)" stroke-width=".75" stroke-dasharray="1 9"/>
+        <circle cx="105" cy="220" r="2.4" fill="#a8cfd9"/><circle cx="845" cy="178" r="2" fill="#c4b8df"/>
+        <circle cx="731" cy="523" r="2.1" fill="#ecc7a9"/><circle cx="270" cy="496" r="1.8" fill="#a4cad5"/>
+      </svg>
+
+      <div class="ori-genesis-core" id="ori-nexus-centre" aria-label="Центральное пространство Nexus">
+        <div class="ori-genesis-core-globe" aria-hidden="true">
+          <span class="ori-genesis-core-latitude latitude-one"></span>
+          <span class="ori-genesis-core-latitude latitude-two"></span>
+          <span class="ori-genesis-core-longitude longitude-one"></span>
+          <span class="ori-genesis-core-longitude longitude-two"></span>
+          <span class="ori-genesis-core-compass" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="17"/><circle cx="24" cy="24" r="5"/><path d="M24 4v14M24 30v14M4 24h14M30 24h14"/></svg>
+          </span>
+        </div>
+        <div class="ori-genesis-core-label"><small>ВАШ</small><strong>NEXUS</strong><span>ЗНАНИЯ · ПРАКТИКА · РОСТ</span></div>
+      </div>
+
+      <a class="ori-genesis-orb orb-lessons" href="{{ url_for('oristera.lessons_space') }}" data-ori-portal="lessons" aria-label="Уроки. Изучение материала">
+        <span class="ori-genesis-orb-globe" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M7 12c7-3 12-1 17 3v24c-5-4-10-6-17-3V12ZM41 12c-7-3-12-1-17 3v24c5-4 10-6 17-3V12Z"/><path d="M24 15v24"/></svg></span>
+        <span class="ori-genesis-orb-copy"><strong>Уроки</strong><small>Изучение материала</small></span><span class="ori-genesis-orb-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <a class="ori-genesis-orb orb-atlas" href="{{ url_for('oristera.atlas') }}" data-ori-portal="atlas" aria-label="Карта знаний. Ваша траектория">
+        <span class="ori-genesis-orb-globe" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="10" r="4"/><circle cx="11" cy="34" r="4"/><circle cx="37" cy="34" r="4"/><path d="M22 14 13 30M26 14l9 16M15 34h18"/></svg></span>
+        <span class="ori-genesis-orb-copy"><strong>Карта знаний</strong><small>Ваша траектория</small></span><span class="ori-genesis-orb-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <a class="ori-genesis-orb orb-practice" href="{{ url_for('oristera.practice') }}" data-ori-portal="practice" aria-label="Практика. Применение знаний">
+        <span class="ori-genesis-orb-globe" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="8"/><path d="m19 29 15-15M27 14h7v7"/></svg></span>
+        <span class="ori-genesis-orb-copy"><strong>Практика</strong><small>Применение знаний</small></span><span class="ori-genesis-orb-arrow" aria-hidden="true">→</span>
+      </a>
+
+      {% if student %}
+      <a class="ori-genesis-orb orb-mentor" href="{{ url_for('students.student_call_request', student_id=student.student_id) }}" data-ori-portal="mentor" aria-label="Наставник. Запросить консультацию">
+      {% else %}
+      <button class="ori-genesis-orb orb-mentor" type="button" disabled aria-label="Наставник недоступен">
+      {% endif %}
+        <span class="ori-genesis-orb-globe" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="18" cy="17" r="6"/><circle cx="32" cy="20" r="5"/><path d="M7 39c1-8 5-12 11-12s10 4 11 12M27 29c7-2 12 2 14 9"/></svg></span>
+        <span class="ori-genesis-orb-copy"><strong>Наставник</strong><small>{% if mentor %}{{ mentor.full_name or mentor.username }}{% else %}Связь с преподавателем{% endif %}</small></span><span class="ori-genesis-orb-arrow" aria-hidden="true">→</span>
+      {% if student %}</a>{% else %}</button>{% endif %}
+
+      {% if active_lesson %}
+      <a class="ori-genesis-orb orb-space" href="/lesson/{{ active_lesson.lesson_id }}/room?from=oristera" data-ori-portal="space" aria-label="Space. Вернуться в текущий урок">
+      {% else %}
+      <button class="ori-genesis-orb orb-space" type="button" data-open-space-dialog aria-haspopup="dialog" aria-label="Space. Показать доступные режимы BooStudy OS">
+      {% endif %}
+        <span class="ori-genesis-orb-globe" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="m24 5 17 10v19L24 43 7 34V15L24 5Z"/><path d="m7 15 17 10 17-10M24 25v18M16 10l17 10v19"/></svg></span>
+        <span class="ori-genesis-orb-copy"><strong>Space</strong><small>{% if active_lesson %}Открыть текущий урок{% else %}Открыть BooStudy OS{% endif %}</small></span><span class="ori-genesis-orb-arrow" aria-hidden="true">→</span>
+      {% if active_lesson %}</a>{% else %}</button>{% endif %}
+    </section>
+
+    <aside class="ori-genesis-quick" id="ori-genesis-quick-access" aria-labelledby="ori-genesis-quick-title">
+      <div class="ori-genesis-quick-heading"><h2 id="ori-genesis-quick-title">Быстрый доступ</h2><span aria-hidden="true">→</span></div>
+      <nav aria-label="Быстрые действия">
+        <a class="ori-genesis-quick-item" href="{{ url_for('oristera.atlas') }}" data-ori-portal="atlas">
+          <span class="quick-icon quick-atlas" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3v26M3 16h26M7 7l18 18M25 7 7 25"/><circle cx="16" cy="16" r="5"/></svg></span>
+          <span><strong>Исследовать Atlas</strong><small>Новые темы ждут тебя</small></span><span class="quick-arrow" aria-hidden="true">›</span>
+        </a>
+        <a class="ori-genesis-quick-item" href="{{ url_for('oristera.practice') }}" data-ori-portal="practice">
+          <span class="quick-icon quick-practice" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m11 8-8 8 8 8M21 8l8 8-8 8M19 5l-6 22"/></svg></span>
+          <span><strong>Перейти в практику</strong><small>Решать задачи</small></span><span class="quick-arrow" aria-hidden="true">›</span>
+        </a>
+        {% if active_lesson %}
+        <a class="ori-genesis-quick-item" href="/lesson/{{ active_lesson.lesson_id }}/room?from=oristera">
+        {% else %}
+        <button class="ori-genesis-quick-item" type="button" data-open-space-dialog aria-haspopup="dialog">
+        {% endif %}
+          <span class="quick-icon quick-space" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m16 3 12 7v12l-12 7-12-7V10l12-7Z"/><path d="m4 10 12 7 12-7M16 17v12"/></svg></span>
+          <span><strong>Открыть BooStudy OS</strong><small>{% if active_lesson %}Вернуться в урок{% else %}Доступные учебные режимы{% endif %}</small></span><span class="quick-arrow" aria-hidden="true">›</span>
+        {% if active_lesson %}</a>{% else %}</button>{% endif %}
+        {% if next_lesson %}
+        <a class="ori-genesis-quick-item" href="{{ url_for('oristera.lesson_prep', lesson_id=next_lesson.lesson_id) }}" data-ori-portal="lessons">
+        {% else %}
+        <a class="ori-genesis-quick-item" href="{{ url_for('oristera.lessons_space') }}" data-ori-portal="lessons">
+        {% endif %}
+          <span class="quick-icon quick-lessons" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="21" rx="3"/><path d="M10 3v8M22 3v8M5 14h22M11 19h4M19 19h3M11 23h8"/></svg></span>
+          <span><strong>Подготовиться к уроку</strong><small>{% if next_lesson %}{{ next_lesson.topic or 'Материалы и заметки' }}{% else %}Открыть расписание{% endif %}</small></span><span class="quick-arrow" aria-hidden="true">›</span>
+        </a>
+        <a class="ori-genesis-quick-item" href="{{ url_for('main.workspace_profile') }}">
+          <span class="quick-icon quick-results" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 27V17h6v10M13 27V9h6v18M21 27V4h6v23"/><path d="M3 29h26"/></svg></span>
+          <span><strong>Профиль и результаты</strong><small>Данные обучения</small></span><span class="quick-arrow" aria-hidden="true">›</span>
+        </a>
+      </nav>
+    </aside>
+  </main>
+
+  <section class="ori-genesis-continuum" aria-label="Текущий учебный контекст">
+    <article class="ori-genesis-panel ori-genesis-lesson-panel" aria-labelledby="ori-genesis-lesson-title">
+      <div class="ori-genesis-panel-heading">
+        <div><p class="ori-genesis-eyebrow">ТЕКУЩЕЕ ЗАНЯТИЕ</p><h2 class="sr-only" id="ori-genesis-lesson-title">Текущее занятие</h2></div>
+        {% if active_lesson %}<span class="ori-genesis-status is-live"><i aria-hidden="true"></i>Идёт</span>
+        {% elif upcoming_lessons %}<span class="ori-genesis-status is-planned"><i aria-hidden="true"></i>Запланировано</span>
+        {% elif recent_lessons %}<span class="ori-genesis-status is-completed"><i aria-hidden="true"></i>Завершено</span>
+        {% else %}<span class="ori-genesis-status is-empty"><i aria-hidden="true"></i>Нет занятия</span>{% endif %}
+      </div>
+      {% if active_lesson %}
+        <h3>{{ active_lesson.topic or 'Индивидуальное занятие' }}</h3>
+        <div class="ori-genesis-lesson-meta"><span><i class="meta-calendar" aria-hidden="true"></i>{{ format_date(active_lesson.lesson_date) }}, {{ format_time(active_lesson.lesson_date) }}</span>{% if mentor %}<span><i class="meta-person" aria-hidden="true"></i>Наставник: {{ mentor.full_name or mentor.username }}</span>{% endif %}</div>
+        <a class="ori-genesis-primary-action" href="/lesson/{{ active_lesson.lesson_id }}/room?from=oristera">Перейти к уроку <span aria-hidden="true">→</span></a>
+      {% elif upcoming_lessons %}
+        <h3>{{ upcoming_lessons[0].topic or 'Предстоящее занятие' }}</h3>
+        <div class="ori-genesis-lesson-meta"><span><i class="meta-calendar" aria-hidden="true"></i>{{ format_date(upcoming_lessons[0].lesson_date) }}, {{ format_time(upcoming_lessons[0].lesson_date) }}</span>{% if mentor %}<span><i class="meta-person" aria-hidden="true"></i>Наставник: {{ mentor.full_name or mentor.username }}</span>{% endif %}</div>
+        <a class="ori-genesis-primary-action" href="{{ url_for('oristera.lesson_prep', lesson_id=upcoming_lessons[0].lesson_id) }}">Подготовиться <span aria-hidden="true">→</span></a>
+      {% elif recent_lessons %}
+        <h3>{{ recent_lessons[0].topic or 'Последнее занятие' }}</h3>
+        <div class="ori-genesis-lesson-meta"><span><i class="meta-calendar" aria-hidden="true"></i>{{ format_date(recent_lessons[0].lesson_date) }}</span>{% if mentor %}<span><i class="meta-person" aria-hidden="true"></i>Наставник: {{ mentor.full_name or mentor.username }}</span>{% endif %}</div>
+        <a class="ori-genesis-primary-action" href="{{ url_for('oristera.lesson_prep', lesson_id=recent_lessons[0].lesson_id) }}">Материалы занятия <span aria-hidden="true">→</span></a>
+      {% else %}
+        <h3>Занятие ещё не назначено</h3>
+        <p class="ori-genesis-empty-copy">Когда в расписании появится урок, здесь будут его тема, время и материалы.</p>
+        <a class="ori-genesis-text-action" href="{{ url_for('oristera.lessons_space') }}">Открыть расписание <span aria-hidden="true">→</span></a>
+      {% endif %}
+      <div class="ori-genesis-lesson-globe" aria-hidden="true"><span></span><span></span><span></span></div>
+    </article>
+
+    <article class="ori-genesis-panel ori-genesis-assignments-panel" aria-labelledby="ori-genesis-assignments-title">
+      <div class="ori-genesis-panel-heading"><div><p class="ori-genesis-eyebrow">ТВОЯ РАБОТА</p><h2 id="ori-genesis-assignments-title">Активные задания</h2></div><a class="ori-genesis-panel-link" href="{{ url_for('oristera.practice') }}">Открыть все <span aria-hidden="true">→</span></a></div>
+      {% if active_assignments %}
+      <ul class="ori-genesis-assignment-list">
+        {% for asgn in active_assignments[:2] %}
+        <li>
+          <span class="ori-genesis-assignment-icon {% if asgn.status == 'SUBMITTED' %}is-submitted{% elif asgn.status == 'RETURNED' %}is-returned{% else %}is-assigned{% endif %}" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 4h10l5 5v19H9z"/><path d="M19 4v6h5M13 16h7M13 21h7"/></svg></span>
+          <a class="ori-genesis-assignment-copy" href="{{ url_for('assignments.submission_view', submission_id=asgn.submission_id) }}">
+            <strong>{{ asgn.title or 'Практическое задание' }}</strong>
+            <small>{% if asgn.status == 'SUBMITTED' %}Ожидает проверки{% elif asgn.status == 'RETURNED' %}Нужно доработать{% elif asgn.status == 'IN_PROGRESS' %}В работе{% else %}Назначено{% endif %}{% if asgn.deadline_formatted %} · {{ asgn.deadline_formatted }}{% endif %}</small>
+          </a>
+          <a class="ori-genesis-assignment-arrow" href="{{ url_for('assignments.submission_view', submission_id=asgn.submission_id) }}" aria-label="Открыть задание: {{ asgn.title or 'Практическое задание' }}">›</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="ori-genesis-empty-row"><span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/></svg></span><p>Активных заданий пока нет. Выбери тему для самостоятельной практики.</p></div>
+      {% endif %}
+    </article>
+
+    <article class="ori-genesis-panel ori-genesis-path-panel" aria-labelledby="ori-genesis-path-title">
+      <div class="ori-genesis-panel-heading"><div><p class="ori-genesis-eyebrow">ТВОЯ ТРАЕКТОРИЯ</p><h2 id="ori-genesis-path-title">Путь развития</h2></div><a class="ori-genesis-panel-link" href="{{ url_for('oristera.atlas') }}">Перейти в Atlas <span aria-hidden="true">→</span></a></div>
+      {% if learning_path %}
+      <svg class="ori-genesis-path-line" viewBox="0 0 440 88" preserveAspectRatio="none" aria-hidden="true"><path d="M10 62 C60 59 62 33 104 43 S162 76 207 42 S270 17 310 39 S371 77 430 26"/></svg>
+      <ol class="ori-genesis-path-list">
+        {% for step in learning_path[:4] %}
+        <li class="{% if step.status in ['done', 'completed'] %}is-complete{% elif step.status == 'in_progress' %}is-current{% else %}is-planned{% endif %}">
+          <span class="ori-genesis-path-dot" aria-hidden="true">{% if step.status in ['done', 'completed'] %}✓{% else %}{{ loop.index }}{% endif %}</span>
+          <span class="ori-genesis-path-step"><strong>{{ step.title }}</strong><small>{% if step.status in ['done', 'completed'] %}Завершено{% elif step.status == 'in_progress' %}В работе{% else %}Запланировано{% endif %}</small></span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <div class="ori-genesis-path-empty"><svg viewBox="0 0 440 88" preserveAspectRatio="none" aria-hidden="true"><path d="M10 62 C60 59 62 33 104 43 S162 76 207 42 S270 17 310 39 S371 77 430 26"/><circle cx="104" cy="43" r="4"/><circle cx="207" cy="42" r="4"/><circle cx="310" cy="39" r="4"/></svg><p>Учебный план ещё не добавлен. Темы каталога доступны в Atlas.</p></div>
+      {% endif %}
+    </article>
+  </section>
+
+  <dialog class="ori-genesis-space-dialog" id="ori-genesis-space-dialog" aria-labelledby="ori-genesis-space-title">
+    <form method="dialog"><button class="ori-genesis-dialog-close" aria-label="Закрыть">×</button></form>
+    <p class="ori-genesis-eyebrow">SPACE · BOOSTUDY OS</p>
+    <h2 id="ori-genesis-space-title">Доступные учебные режимы</h2>
+    {% if active_lesson %}
+    <p>Текущее занятие: {{ active_lesson.topic or 'Индивидуальный урок' }}.</p>
+    <a class="ori-genesis-primary-action" href="/lesson/{{ active_lesson.lesson_id }}/room?from=oristera">Вернуться в урок <span aria-hidden="true">→</span></a>
+    {% elif upcoming_lessons %}
+    <p>Сейчас активной комнаты нет. Следующее занятие — {{ upcoming_lessons[0].topic or 'по расписанию' }}.</p>
+    <a class="ori-genesis-primary-action" href="{{ url_for('oristera.lesson_prep', lesson_id=upcoming_lessons[0].lesson_id) }}">Открыть подготовку <span aria-hidden="true">→</span></a>
+    {% else %}
+    <p>Активной комнаты нет. Откройте назначенную работу или продолжите самостоятельную практику.</p>
+    {% endif %}
+    <div class="ori-genesis-dialog-actions">
+      {% if active_assignments %}<a href="{{ url_for('assignments.submission_view', submission_id=active_assignments[0].submission_id) }}">Открыть назначенную работу <span aria-hidden="true">→</span></a>{% endif %}
+      <a href="{{ url_for('oristera.practice') }}">Самостоятельная практика <span aria-hidden="true">→</span></a>
+      <a href="{{ url_for('oristera.lessons_space') }}">Расписание уроков <span aria-hidden="true">→</span></a>
+    </div>
+  </dialog>
+</div>
+{% endblock %}

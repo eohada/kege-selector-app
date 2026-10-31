@@ -52,35 +52,40 @@ class AuditLogger:
         worker_thread = self.worker_thread
         if worker_thread is None:
             return
-        self.is_running = False
         self.log_queue.put(None)
         worker_thread.join(timeout=5)
+        if worker_thread.is_alive():
+            logger.error("AuditLogger worker did not stop before timeout")
+            return
         self.worker_thread = None
+        self.is_running = False
 
     def _worker_loop(self):
 
         time.sleep(0.5)
         
-        while self.is_running:
+        while True:
             try:
                 log_data = self.log_queue.get(timeout=1)
+            except queue.Empty:
+                if not self.is_running:
+                    break
+                continue
+
+            try:
                 if log_data is None:
                     break
-
                 if self.app:
-                    try:
-                        with self.app.app_context():
-                            self._write_log(log_data)
-                    except Exception as e:
-                        logger.error(f"Error writing audit log (with context): {e}", exc_info=True)
+                    with self.app.app_context():
+                        self._write_log(log_data)
                 else:
                     logger.warning("Cannot write audit log: app not initialized")
-                
-                self.log_queue.task_done()
-            except queue.Empty:
-                continue
             except Exception as e:
-                logger.error(f"Error in audit logger worker: {e}", exc_info=True)
+                logger.error(f"Error writing audit log (with context): {e}", exc_info=True)
+            finally:
+                self.log_queue.task_done()
+
+        self.is_running = False
 
     def _write_log(self, log_data: Dict[str, Any]):
 

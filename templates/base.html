@@ -4,19 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BooStudy{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}?v=20261029">
     <link rel="icon" href="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}">
     {% include '_boo_select_head.html' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260604-v29">
     <link rel="stylesheet" href="{{ url_for('static', filename='mobile-overrides.css') }}?v=20260715-mobile-v1">
     <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=20260528-v26">
     <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}?v=20260528-v26">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/phosphor/phosphor.css') }}?v=2.1.2">
+    <script src="{{ url_for('static', filename='vendor/phosphor/index.js') }}?v=2.1.2"></script>
     {% block head_css %}{% endblock %}
-    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}?v=2.0.4" defer></script>
+    <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}?v=3.14.8"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}?v=svg-fix-2026"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}?v=svg-fix-2026"></script>
     {% block head_js %}{% endblock %}
@@ -141,7 +140,7 @@
        valid guided scene (notably the lesson room) back to the dashboard.
        Keep the legacy player only for sessions that explicitly carry its
        historical scene payload; all new demos use the companion alone. #}
-    {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user and cinema_demo_ids is defined and cinema_demo_ids %}
+    {% if config.ENABLE_DEMO_CONCEPT and current_user is defined and current_user.is_authenticated and current_user.is_demo_user and cinema_demo_ids is defined and cinema_demo_ids %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
     {% if cinema_demo_ids is defined and cinema_demo_ids %}
     <meta name="cinema-demo-ids" content='{{ cinema_demo_ids | tojson }}'>
@@ -295,7 +294,7 @@
     {% include '_mobile_menu.html' %}
     {% include '_partials/canvas_overlay.html' %}
     
-    {% include 'sandbox/components/dev_switcher.html' %}
+    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
 
     <script>
     function showBentoToast(message, type = 'info') {

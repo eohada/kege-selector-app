@@ -4,7 +4,7 @@
 import os
 import logging
 from werkzeug.utils import secure_filename
-from flask import render_template, request, redirect, url_for, flash, jsonify, current_app, make_response, session
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app, make_response, session, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import validate_csrf, CSRFError
 import uuid
@@ -135,8 +135,8 @@ def login():
             logger.warning(f"Error checking authentication: {e}")
             is_authenticated = False
 
-        # На демо-сайте / демо-хосте авторизация отключена: редирект на выбор демо (ОГЭ/ЕГЭ)
-        if is_demo_site and not is_authenticated:
+        # На демо-сайте / демо-хосте авторизация отключена только при явном ENABLE_DEMO_CONCEPT
+        if is_demo_site and current_app.config.get('ENABLE_DEMO_CONCEPT', False) and not is_authenticated:
             if request.method == 'GET' and not request.args.get('cross_env'):
                 return redirect(url_for('auth.demo_choose'))
             if request.method == 'POST':
@@ -291,8 +291,11 @@ def logout():
 
 
 @auth_bp.route('/demo')
+@auth_bp.route('/demo/')
 def demo_choose():
-    """Каноничная точка входа в интерактивную демоверсию."""
+    """Точка входа в демоверсию (отключена: сохранена как концепт)."""
+    if not current_app.config.get('ENABLE_DEMO_CONCEPT', False):
+        abort(404)
     return redirect(url_for('demo.demo_entry'))
 
 
@@ -301,7 +304,9 @@ DEMO_ACCESS_CODE = 'test'
 
 @auth_bp.route('/demo/start')
 def demo_start():
-    """Создает временного демо-пользователя и запускает кинематографический тур. Обязателен код доступа."""
+    """Создает временного демо-пользователя (отключено: сохранено как концепт)."""
+    if not current_app.config.get('ENABLE_DEMO_CONCEPT', False):
+        abort(404)
     from app.models import StudentTaskStatistics, Subject
     from core.db_models import UserMastery, KnowledgeNode
     import random

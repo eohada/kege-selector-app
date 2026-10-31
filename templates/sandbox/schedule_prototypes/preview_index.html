@@ -1,0 +1,283 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block title %}BooStudy · Experience Rebirth Preview Hub{% endblock %}
+
+{% block extra_head %}
+<style>
+  .btn-3d-primary {
+    background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+    border-bottom: 3px solid #3730A3;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-primary:hover {
+    background: linear-gradient(180deg, #4F46E5 0%, #4338CA 100%);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.38);
+    transform: translateY(-1px);
+  }
+  .btn-3d-secondary {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-bottom: 2px solid #CBD5E1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-secondary:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+  }
+</style>
+{% endblock %}
+
+{% block sandbox_content %}
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+  {# Masthead #}
+  <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl relative overflow-hidden">
+    <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="relative z-10 max-w-3xl space-y-3">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-bold uppercase tracking-wider">
+        <i class="ph-bold ph-sparkle"></i>
+        <span>Phase 0: Product Design Exploration</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black font-display tracking-tight leading-tight">
+        BooStudy Student Schedule · Три концепции
+      </h1>
+      <p class="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
+        Интерактивный хаб для оценки и сравнительного тестирования трёх принципиально разных архитектурных концепций расписания ученика. Боевой маршрут <code class="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 text-xs font-mono">/schedule</code> не изменялся.
+      </p>
+    </div>
+  </div>
+
+  {# Phase 0.5: Concept D Featured Showcase #}
+  <div class="bg-white rounded-3xl border-2 border-indigo-500/80 p-6 sm:p-7 shadow-lg relative overflow-hidden">
+    <div class="h-2 bg-gradient-to-r from-indigo-500 via-amber-500 to-emerald-500 absolute top-0 left-0 right-0"></div>
+    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pt-1">
+      <div class="space-y-3 max-w-3xl">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm font-black shadow-xs">
+            D
+          </span>
+          <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider border border-indigo-150">
+            Phase 0.5 · Unified Student Schedule (Единый синтез)
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold border border-amber-200">
+            B (Fluid) + A (Command) + C (Boo Space)
+          </span>
+        </div>
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900 font-display">
+            Concept D: Unified Student Schedule
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-600 font-medium mt-1 leading-relaxed">
+            Четвёртый прототип, объединяющий лучшие продуктовые принципы: центральная роль расписания, эргономичная недельная лента (без 7 тяжелых карточек), равнозначные уроки нескольких преподавателей (без искусственного Hero), материалы и заметки внутри контекста каждого урока, дружелюбный Бу и отсутствие пустот.
+          </p>
+        </div>
+      </div>
+      <div class="shrink-0 w-full lg:w-auto">
+        <a href="/schedule/preview/concept-d?scenario={{ data.scenario }}" 
+           class="btn-3d-primary px-8 py-3.5 rounded-2xl text-white text-sm font-black flex items-center justify-center gap-2 no-underline shadow-md">
+          <span>Открыть Concept D (Unified) →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# 3 Base Concepts Presentation Grid #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Concept A: Learning Command Center -->
+    <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden relative group">
+      <div class="h-2 bg-indigo-600"></div>
+      <div class="p-6 flex-1 flex flex-col justify-between space-y-6">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-black border border-indigo-100">
+              A
+            </span>
+            <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+              Action & Mission First
+            </span>
+          </div>
+          <div>
+            <h2 class="text-xl font-black text-slate-900 font-display">Command Center</h2>
+            <p class="text-xs text-indigo-600 font-bold mt-0.5">Центр управления обучением</p>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed font-medium">
+            Практико-ориентированный пульт. Фокус на ближайшей задаче: карточка следующего урока с прямым входом в класс, вертикальный стек дедлайнов ДЗ и сверхлёгкий навигатор недели без дублирования названий.
+          </p>
+          <div class="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-indigo-600"></i>
+              <span>Баланс высот колонок (0 пустот)</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-indigo-600"></i>
+              <span>Карточка цели с таймером и кнопкой</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-indigo-600"></i>
+              <span>Быстрый стек дедлайнов ДЗ по срочности</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 space-y-2">
+          <a href="/schedule/preview/concept-a?scenario={{ data.scenario }}" 
+             class="btn-3d-primary w-full py-2.5 rounded-xl text-white text-xs font-black text-center flex items-center justify-center gap-2 no-underline">
+            <span>Открыть концепцию A →</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Concept B: Fluid Week -->
+    <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden relative group">
+      <div class="h-2 bg-emerald-500"></div>
+      <div class="p-6 flex-1 flex flex-col justify-between space-y-6">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-black border border-emerald-100">
+              B
+            </span>
+            <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+              Content Density-Driven
+            </span>
+          </div>
+          <div>
+            <h2 class="text-xl font-black text-slate-900 font-display">Fluid Week</h2>
+            <p class="text-xs text-emerald-600 font-bold mt-0.5">Адаптивная текучая неделя</p>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed font-medium">
+            Архитектура, управляемая плотностью контента. Свободные дни сжимаются в аккуратные компактные пилюли, а дни с уроками органично расширяются в многоуровневые активные хабы без искусственных фиксированных рамок.
+          </p>
+          <div class="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-emerald-600"></i>
+              <span>Органическая ширина дней по нагрузке</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-emerald-600"></i>
+              <span>Свободные дни не создают дыр</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-emerald-600"></i>
+              <span>Адаптивный flex-стрим событий</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 space-y-2">
+          <a href="/schedule/preview/concept-b?scenario={{ data.scenario }}" 
+             class="btn-3d-primary w-full py-2.5 rounded-xl text-white text-xs font-black text-center flex items-center justify-center gap-2 no-underline !bg-emerald-600 !border-b-emerald-800 hover:!bg-emerald-700">
+            <span>Открыть концепцию B →</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Concept C: Personal Learning Space -->
+    <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden relative group">
+      <div class="h-2 bg-amber-500"></div>
+      <div class="p-6 flex-1 flex flex-col justify-between space-y-6">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg font-black border border-amber-100">
+              C
+            </span>
+            <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+              Warm & Emotional Companion
+            </span>
+          </div>
+          <div>
+            <h2 class="text-xl font-black text-slate-900 font-display">Personal Space</h2>
+            <p class="text-xs text-amber-600 font-bold mt-0.5">Личное учебное пространство</p>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed font-medium">
+            Студийный тёплый формат с живым маскотом Бу как персональным тьютором-помощником. Единая хронологическая нить времени (Timeline) вместо изолированных разрозненных карточек и интерактивный блок заметок репетитора.
+          </p>
+          <div class="space-y-1.5 pt-2 border-t border-slate-100 text-[11px]">
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-amber-600"></i>
+              <span>Маскот Бу с контекстными советами</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-amber-600"></i>
+              <span>Единый хронологический таймлайн</span>
+            </div>
+            <div class="flex items-center gap-2 text-slate-700">
+              <i class="ph-bold ph-check text-amber-600"></i>
+              <span>Уютный блок заметок и материалов</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 space-y-2">
+          <a href="/schedule/preview/concept-c?scenario={{ data.scenario }}" 
+             class="btn-3d-primary w-full py-2.5 rounded-xl text-white text-xs font-black text-center flex items-center justify-center gap-2 no-underline !bg-amber-600 !border-b-amber-800 hover:!bg-amber-700">
+            <span>Открыть концепцию C →</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# Testing Scenarios Bar #}
+  <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <div>
+        <h3 class="text-base font-black text-slate-900 font-display">Сценарии стресс-тестирования данных</h3>
+        <p class="text-xs text-slate-500 font-medium">Проверьте поведение каждой концепции на одинаковых краевых случаях</p>
+      </div>
+      <span class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
+        Активен: <strong class="text-indigo-600">{{ data.scenario_title }}</strong>
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <a href="?scenario=standard" class="p-3.5 rounded-2xl border transition-all no-underline flex flex-col justify-between gap-2 {% if data.scenario == 'standard' %}bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200{% else %}bg-slate-50/70 border-slate-200 hover:bg-slate-100{% endif %}">
+        <div>
+          <div class="text-xs font-black text-slate-900">1. Стандартная</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">2 урока, 1 ДЗ, заметка</div>
+        </div>
+        <span class="text-[10px] font-bold text-indigo-600">Выбрать →</span>
+      </a>
+
+      <a href="?scenario=single_lesson" class="p-3.5 rounded-2xl border transition-all no-underline flex flex-col justify-between gap-2 {% if data.scenario == 'single_lesson' %}bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200{% else %}bg-slate-50/70 border-slate-200 hover:bg-slate-100{% endif %}">
+        <div>
+          <div class="text-xs font-black text-slate-900">2. Один урок</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Проверка баланса колонок</div>
+        </div>
+        <span class="text-[10px] font-bold text-indigo-600">Выбрать →</span>
+      </a>
+
+      <a href="?scenario=multi_event" class="p-3.5 rounded-2xl border transition-all no-underline flex flex-col justify-between gap-2 {% if data.scenario == 'multi_event' %}bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200{% else %}bg-slate-50/70 border-slate-200 hover:bg-slate-100{% endif %}">
+        <div>
+          <div class="text-xs font-black text-slate-900">3. Плотный день</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">2 урока тьюторов + ДЗ</div>
+        </div>
+        <span class="text-[10px] font-bold text-indigo-600">Выбрать →</span>
+      </a>
+
+      <a href="?scenario=empty_week" class="p-3.5 rounded-2xl border transition-all no-underline flex flex-col justify-between gap-2 {% if data.scenario == 'empty_week' %}bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200{% else %}bg-slate-50/70 border-slate-200 hover:bg-slate-100{% endif %}">
+        <div>
+          <div class="text-xs font-black text-slate-900">4. Пустая неделя</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Каникулы, Бу-помощник</div>
+        </div>
+        <span class="text-[10px] font-bold text-indigo-600">Выбрать →</span>
+      </a>
+
+      <a href="?scenario=long_titles" class="p-3.5 rounded-2xl border transition-all no-underline flex flex-col justify-between gap-2 {% if data.scenario == 'long_titles' %}bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200{% else %}bg-slate-50/70 border-slate-200 hover:bg-slate-100{% endif %}">
+        <div>
+          <div class="text-xs font-black text-slate-900">5. Длинные строки</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Сложные слова и hyphens</div>
+        </div>
+        <span class="text-[10px] font-bold text-indigo-600">Выбрать →</span>
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

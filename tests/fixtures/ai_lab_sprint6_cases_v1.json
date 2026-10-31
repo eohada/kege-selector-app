@@ -1,0 +1,161 @@
+{
+  "dataset_id": "boostudy-ai-lab-sprint6-synthetic-v1",
+  "dataset_version": 1,
+  "synthetic_only": true,
+  "real_student_data": false,
+  "frozen_before_live_model_runs": true,
+  "cases": [
+    {
+      "case_id": "hw-dev-correct-return",
+      "module": "ai_homework",
+      "split": "development",
+      "input": {"task": "Реализовать digit_sum(n), возвращающую сумму цифр неотрицательного целого числа.", "solution": "def digit_sum(n):\n    return sum(map(int, str(n)))", "public_examples": [{"input": 123, "expected": 6}, {"input": 0, "expected": 0}], "criteria": [{"id": "sum_digits", "max_points": 2}, {"id": "zero", "max_points": 1}]},
+      "expert_expectation": {"score": 3, "criterion_scores": {"sum_digits": 2, "zero": 1}, "must_accept_alternative": true, "must_not_claim": ["неверное решение"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "hw-regression-alternative-loop",
+      "module": "ai_homework",
+      "split": "regression",
+      "input": {"task": "Реализовать digit_sum(n), возвращающую сумму цифр неотрицательного целого числа.", "solution": "def digit_sum(n):\n    total = 0\n    while n:\n        total += n % 10\n        n //= 10\n    return total", "public_examples": [{"input": 123, "expected": 6}, {"input": 0, "expected": 0}], "criteria": [{"id": "sum_digits", "max_points": 2}, {"id": "zero", "max_points": 1}]},
+      "expert_expectation": {"score": 3, "criterion_scores": {"sum_digits": 2, "zero": 1}, "must_accept_alternative": true, "must_not_claim": ["строковый алгоритм обязателен"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "hw-holdout-boundary-error",
+      "module": "ai_homework",
+      "split": "holdout",
+      "input": {"task": "Для n >= 0 вернуть количество чисел k от 0 до n включительно, делящихся на 3.", "solution": "def count(n):\n    return n // 3", "public_examples": [{"input": 0, "expected": 1}, {"input": 3, "expected": 2}], "criteria": [{"id": "inclusive_range", "max_points": 2}, {"id": "zero_case", "max_points": 1}]},
+      "expert_expectation": {"score": 1, "criterion_scores": {"inclusive_range": 0, "zero_case": 1}, "must_detect": ["пропущено число 0", "неполная верхняя граница"], "must_not_claim": ["все случаи неверны"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "hw-holdout-insufficient-evidence",
+      "module": "ai_homework",
+      "split": "holdout",
+      "input": {"task": "Определить поведение функции для всех целых чисел.", "solution": "def f(x):\n    return x", "public_examples": [], "criteria": [{"id": "unspecified_behavior", "max_points": 3}]},
+      "expert_expectation": {"score": null, "criterion_scores": {"unspecified_behavior": null}, "status": "insufficient_data", "must_state": ["условие не задаёт требуемое поведение"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "course-dev-no-finding",
+      "module": "ai_course",
+      "split": "development",
+      "input": {"course_id": "synthetic-s6-course-valid", "course_version": 1, "title": "Сумма цифр", "topics": [{"topic_id": "python.functions", "title": "Функции", "order": 1, "prerequisite_ids": []}], "learning_goals": [], "materials": [{"material_id": "s6-material-functions", "title": "Функции", "topic_id": "python.functions", "content": "Функция может вернуть результат выражения."}], "assignments": []},
+      "expert_expectation": {"deterministic_findings": [], "unsupported_finding_count": 0, "must_preserve_meaning": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "course-regression-prerequisite-order",
+      "module": "ai_course",
+      "split": "regression",
+      "input": {"course_id": "synthetic-s6-course-order", "course_version": 1, "title": "Условия перед циклами", "topics": [{"topic_id": "python.loops", "title": "Циклы", "order": 1, "prerequisite_ids": ["python.conditions"]}, {"topic_id": "python.conditions", "title": "Условия", "order": 2, "prerequisite_ids": []}], "learning_goals": [], "materials": [{"material_id": "s6-material-loops", "title": "Циклы", "topic_id": "python.loops", "content": "Повторение команд."}, {"material_id": "s6-material-conditions", "title": "Условия", "topic_id": "python.conditions", "content": "Выбор ветви."}], "assignments": []},
+      "expert_expectation": {"deterministic_findings": ["prerequisite_after_topic"], "ai_may_qualify": "порядок стоит проверить с преподавателем", "must_not_claim": ["обязательная ошибка курса"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "course-holdout-factual-error",
+      "module": "ai_course",
+      "split": "holdout",
+      "input": {"course_id": "synthetic-s6-course-fact", "course_version": 1, "title": "Сумма цифр", "topics": [{"topic_id": "python.functions", "title": "Функции", "order": 1, "prerequisite_ids": []}], "learning_goals": [], "materials": [{"material_id": "s6-material-fact", "title": "Остаток от деления", "topic_id": "python.functions", "content": "Оператор % возвращает результат целочисленного деления."}], "assignments": []},
+      "expert_expectation": {"required_finding": "описание % смешивает остаток и частное", "must_reference": ["s6-material-fact"], "must_not_claim": ["изменить курс автоматически"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "lesson-dev-explicit-difficulty",
+      "module": "ai_lesson_intelligence",
+      "split": "development",
+      "input": {"lesson_id": "synthetic-s6-lesson-difficulty", "lesson_version": 1, "synthetic_confirmed": true, "transcript": [{"segment_id": "s6-l1", "speaker_role": "student", "text": "Я не понимаю, почему верхняя граница range не включается."}, {"segment_id": "s6-l2", "speaker_role": "teacher", "text": "В range правая граница не входит в последовательность."}]},
+      "expert_expectation": {"may_propose": "python.boundary_cases", "source_refs": ["s6-l1"], "status": "ai_inference_pending_review", "must_not_claim": ["экспертно подтверждено", "числовая оценка"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "lesson-regression-later-resolution",
+      "module": "ai_lesson_intelligence",
+      "split": "regression",
+      "input": {"lesson_id": "synthetic-s6-lesson-resolved", "lesson_version": 1, "synthetic_confirmed": true, "transcript": [{"segment_id": "s6-r1", "speaker_role": "student", "text": "Я не понимаю, почему 10 не входит."}, {"segment_id": "s6-r2", "speaker_role": "teacher", "text": "Правая граница не включается."}, {"segment_id": "s6-r3", "speaker_role": "student", "text": "Понял: чтобы включить 10, нужно передать 11."}]},
+      "expert_expectation": {"may_propose": "resolved_difficulty", "must_mark_resolved": true, "current_difficulty": false, "source_refs": ["s6-r1", "s6-r3"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "lesson-holdout-question-is-not-difficulty",
+      "module": "ai_lesson_intelligence",
+      "split": "holdout",
+      "input": {"lesson_id": "synthetic-s6-lesson-question", "lesson_version": 1, "synthetic_confirmed": true, "transcript": "Ученик: Почему цикл начинается с нуля?\nПреподаватель: Так устроена индексация в этом примере."},
+      "expert_expectation": {"observed_difficulties": [], "must_not_claim": ["подтверждённое затруднение", "навык не освоен"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "analytics-dev-two-confirmed-failures",
+      "module": "ai_analytics",
+      "split": "development",
+      "input": {"subject_id": "synthetic-s6-a", "events": [{"event_id": "s6-e1", "skill_id": "python.boundary_cases", "evidence_status": "technical_confirmed", "score_awarded": 0, "maximum_score": 1, "source_ref": "code-judge:s6-a"}, {"event_id": "s6-e2", "skill_id": "python.boundary_cases", "evidence_status": "expert_confirmed", "score_awarded": 0, "maximum_score": 1, "source_ref": "review:s6-b"}]},
+      "expert_expectation": {"confirmed_failure_count": 2, "may_recommend": "python.boundary_cases", "must_not_infer": ["общая неспособность", "диагноз по одному событию"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "analytics-holdout-unconfirmed-not-aggregated",
+      "module": "ai_analytics",
+      "split": "holdout",
+      "input": {"subject_id": "synthetic-s6-b", "events": [{"event_id": "s6-e3", "skill_id": "python.iteration", "evidence_status": "ai_inference", "score_awarded": 0, "maximum_score": 1, "source_ref": "lesson:s6-l1"}]},
+      "expert_expectation": {"confirmed_evidence_count": 0, "must_not_recommend_as_confirmed_failure": true, "must_preserve_uncertainty": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "practice-dev-prerequisites-satisfied",
+      "module": "ai_practice",
+      "split": "development",
+      "input": {"subject_id": "synthetic-s6-c", "confirmed_skill_failures": ["python.boundary_cases"], "confirmed_prerequisite_skills": ["python.conditions"], "completed_assignment_ids": [], "course_prerequisites": {"python.boundary_cases": ["python.conditions"]}, "available_assignments": [{"assignment_id": "s6-practice-boundary", "skill_id": "python.boundary_cases", "prerequisite_skill_ids": ["python.conditions"], "test_case_ids": ["public-boundary-1"]}]},
+      "expert_expectation": {"recommended_assignment_ids": ["s6-practice-boundary"], "must_explain": "навык подтверждён и предпосылка доступна", "evidence_status": "confirmed"},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "practice-holdout-prerequisite-missing",
+      "module": "ai_practice",
+      "split": "holdout",
+      "input": {"subject_id": "synthetic-s6-d", "confirmed_skill_failures": ["python.loops"], "completed_assignment_ids": [], "course_prerequisites": {"python.loops": ["python.conditions"]}, "known_skill_mastery": [], "available_assignments": [{"assignment_id": "s6-practice-loops", "skill_id": "python.loops", "prerequisite_skill_ids": ["python.conditions"], "test_case_ids": ["public-loop-1"]}]},
+      "expert_expectation": {"recommended_assignment_ids": [], "must_explain": "предпосылка python.conditions не подтверждена", "must_not_skip_prerequisite": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "hw-holdout-partial-solution",
+      "module": "ai_homework",
+      "split": "holdout",
+      "input": {"task": "Return the sum of digits of a nonnegative integer.", "solution": "def digit_sum(n):\n    total = 0\n    while n > 0:\n        total += n % 10\n        n //= 10\n    return total", "public_examples": [{"input": 123, "expected": 6}], "criteria": [{"id": "positive_digits", "max_points": 2}, {"id": "zero", "max_points": 1}]},
+      "expert_expectation": {"score": 3, "criterion_scores": {"positive_digits": 2, "zero": 1}, "must_not_claim": ["solution fails for zero"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "course-holdout-alternative-method",
+      "module": "ai_course",
+      "split": "holdout",
+      "input": {"course_id": "synthetic-s6-course-alt-method", "course_version": 1, "title": "Digit sum through strings", "topics": [{"topic_id": "python.iteration", "title": "String iteration", "order": 1, "prerequisite_ids": []}, {"topic_id": "python.functions", "title": "Functions", "order": 2, "prerequisite_ids": []}], "learning_goals": [], "materials": [{"material_id": "s6-material-alt-1", "title": "String as sequence", "topic_id": "python.iteration", "content": "Digits can be traversed as characters of a number converted to a string."}, {"material_id": "s6-material-alt-2", "title": "Return value", "topic_id": "python.functions", "content": "Return the accumulated result with return."}], "assignments": []},
+      "expert_expectation": {"deterministic_findings": [], "must_accept": ["string-based algorithm for n >= 0"], "must_not_claim": ["while loop is mandatory"]},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "lesson-holdout-no-metadata-inference",
+      "module": "ai_lesson_intelligence",
+      "split": "holdout",
+      "input": {"lesson_id": "synthetic-s6-lesson-no-metadata", "lesson_version": 1, "synthetic_confirmed": true, "transcript": [{"segment_id": "s6-no-meta-1", "text": "Check the function with input 0."}, {"segment_id": "s6-no-meta-2", "text": "It returned 0."}]},
+      "expert_expectation": {"must_not_invent": ["speaker identity or role", "timestamp", "homework"], "summary_claims_must_be_supported": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "analytics-holdout-duplicate-evidence-id",
+      "module": "ai_analytics",
+      "split": "holdout",
+      "input": {"subject_id": "synthetic-s6-dedupe", "events": [{"event_id": "s6-duplicate", "skill_id": "python.boundary_cases", "evidence_status": "technical_confirmed", "score_awarded": 0, "maximum_score": 1, "source_ref": "code-judge:run-1"}, {"event_id": "s6-duplicate", "skill_id": "python.boundary_cases", "evidence_status": "technical_confirmed", "score_awarded": 0, "maximum_score": 1, "source_ref": "code-judge:run-1"}]},
+      "expert_expectation": {"unique_event_count": 1, "must_not_double_count_duplicate": true, "recommendation_requires_repeated_distinct_assignments": true},
+      "expert_review_status": "pending"
+    },
+    {
+      "case_id": "practice-holdout-already-completed",
+      "module": "ai_practice",
+      "split": "holdout",
+      "input": {"subject_id": "synthetic-s6-completed", "confirmed_skill_failures": ["python.boundary_cases"], "completed_assignment_ids": ["s6-practice-boundary"], "course_prerequisites": {}, "available_assignments": [{"assignment_id": "s6-practice-boundary", "skill_id": "python.boundary_cases", "prerequisite_skill_ids": [], "test_case_ids": ["public-boundary-1"]}]},
+      "expert_expectation": {"recommended_assignment_ids": [], "must_not_recommend_completed_work": true},
+      "expert_review_status": "pending"
+    }
+  ]
+}

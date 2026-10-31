@@ -26,6 +26,9 @@ from core.db_models import (
     LessonAttachment,
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
     RecurringLessonSlot,
+    RecurringSlotException,
+    TeacherWeeklyAvailability,
+    TeacherScheduleException,
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
     Subject, KnowledgeNode, UserMastery, AnalyticsEvent, UserTaskMMR, RematchQueue,
     ReferralCode, ReferralUsage, UserAchievement, PromoCode, PromoCodeUsage,
@@ -830,6 +833,19 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create SubmissionAttempts table: {e}")
                     db.session.rollback()
+            else:
+                try:
+                    sub_att_tbl = _resolve_table_name(table_names, 'SubmissionAttempts')
+                    if sub_att_tbl:
+                        sub_att_cols = {col['name'] for col in inspector.get_columns(sub_att_tbl)}
+                        if 'attempt_data' not in sub_att_cols:
+                            col_type = 'JSONB' if db.engine.dialect.name == 'postgresql' else 'JSON'
+                            db.session.execute(text(f'ALTER TABLE "{sub_att_tbl}" ADD COLUMN attempt_data {col_type}'))
+                            db.session.commit()
+                            logger.info("Added attempt_data column to %s", sub_att_tbl)
+                except Exception as e:
+                    logger.warning(f"Could not add attempt_data to SubmissionAttempts: {e}")
+                    db.session.rollback()
 
             if 'SchoolGroups' not in table_names and 'schoolgroups' not in table_names:
                 try:
@@ -978,6 +994,48 @@ def ensure_schema_columns(app):
                     logger.info("RecurringLessonSlots table created")
                 except Exception as e:
                     logger.warning(f"Could not create RecurringLessonSlots table: {e}")
+                    db.session.rollback()
+            else:
+                try:
+                    rls_table = _resolve_table_name(table_names, 'RecurringLessonSlots')
+                    if rls_table:
+                        cols = {c['name'].lower() for c in inspector.get_columns(rls_table)}
+                        for cname, ctype in [
+                            ('subject', 'VARCHAR(100)'),
+                            ('topic', 'VARCHAR(300)'),
+                            ('start_date', 'DATE'),
+                            ('end_date', 'DATE'),
+                            ('series_id', 'VARCHAR(64)'),
+                        ]:
+                            if cname not in cols:
+                                db.session.execute(text(f'ALTER TABLE "{rls_table}" ADD COLUMN {cname} {ctype}'))
+                        db.session.commit()
+                except Exception as e:
+                    logger.warning(f"Could not update RecurringLessonSlots columns: {e}")
+                    db.session.rollback()
+
+            if 'RecurringSlotExceptions' not in table_names and 'recurringslotexceptions' not in table_names:
+                try:
+                    RecurringSlotException.__table__.create(db.engine)
+                    logger.info("RecurringSlotExceptions table created")
+                except Exception as e:
+                    logger.warning(f"Could not create RecurringSlotExceptions table: {e}")
+                    db.session.rollback()
+
+            if 'TeacherWeeklyAvailabilities' not in table_names and 'teacherweeklyavailabilities' not in table_names:
+                try:
+                    TeacherWeeklyAvailability.__table__.create(db.engine)
+                    logger.info("TeacherWeeklyAvailabilities table created")
+                except Exception as e:
+                    logger.warning(f"Could not create TeacherWeeklyAvailabilities table: {e}")
+                    db.session.rollback()
+
+            if 'TeacherScheduleExceptions' not in table_names and 'teacherscheduleexceptions' not in table_names:
+                try:
+                    TeacherScheduleException.__table__.create(db.engine)
+                    logger.info("TeacherScheduleExceptions table created")
+                except Exception as e:
+                    logger.warning(f"Could not create TeacherScheduleExceptions table: {e}")
                     db.session.rollback()
 
             if 'TariffGroups' not in table_names and 'tariffgroups' not in table_names:
@@ -1181,6 +1239,42 @@ def ensure_schema_columns(app):
                 'balance_deducted',
                 'BOOLEAN NOT NULL DEFAULT FALSE' if is_postgres else 'BOOLEAN DEFAULT 0',
             )
+            # Multi-teacher architecture (Sprint 2.2 / 2.3)
+            safe_add_column('teacher_id', 'INTEGER')
+            safe_add_column('subject', 'VARCHAR(128)')
+            try:
+                if is_postgres:
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_teacher_id" ON "{lessons_table}" (teacher_id)'))
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_subject" ON "{lessons_table}" (subject)'))
+                else:
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Lessons_teacher_id ON {lessons_table} (teacher_id)'))
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Lessons_subject ON {lessons_table} (subject)'))
+                db.session.commit()
+            except Exception as e:
+                logger.warning(f"Could not create multi-teacher indexes on {lessons_table}: {e}")
+                db.session.rollback()
+
+            # Recurring lessons & availability (Sprint 2.4)
+            safe_add_column('recurring_slot_id', 'INTEGER')
+            safe_add_column('recurrence_key', 'VARCHAR(64)')
+            safe_add_column(
+                'is_rescheduled',
+                'BOOLEAN NOT NULL DEFAULT FALSE' if is_postgres else 'BOOLEAN DEFAULT 0',
+            )
+            safe_add_column('slot_origin_date', 'DATE')
+            try:
+                if is_postgres:
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_recurring_slot_id" ON "{lessons_table}" (recurring_slot_id)'))
+                    db.session.execute(text(f'CREATE UNIQUE INDEX IF NOT EXISTS "ix_Lessons_recurrence_key" ON "{lessons_table}" (recurrence_key) WHERE recurrence_key IS NOT NULL'))
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_slot_origin_date" ON "{lessons_table}" (slot_origin_date)'))
+                else:
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Lessons_recurring_slot_id ON {lessons_table} (recurring_slot_id)'))
+                    db.session.execute(text(f'CREATE UNIQUE INDEX IF NOT EXISTS ix_Lessons_recurrence_key ON {lessons_table} (recurrence_key)'))
+                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Lessons_slot_origin_date ON {lessons_table} (slot_origin_date)'))
+                db.session.commit()
+            except Exception as e:
+                logger.warning(f"Could not create recurrence indexes on {lessons_table}: {e}")
+                db.session.rollback()
 
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
@@ -2201,6 +2295,16 @@ def ensure_schema_columns(app):
                             except Exception as e2:
                                 logger.warning(f"Could not add rubric_scores to {submissions_table}: {e} / {e2}")
                                 db.session.rollback()
+                    if 'results_published_at' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN results_published_at TIMESTAMP WITH TIME ZONE'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN results_published_at DATETIME'))
+                            logger.info(f"Added results_published_at to {submissions_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add results_published_at to {submissions_table}: {e}")
+                            db.session.rollback()
                     if 'is_overtime' not in cols:
                         try:
                             if _is_postgres(app):

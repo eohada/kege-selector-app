@@ -1,0 +1,52 @@
+{
+  "protocol_id": "boostudy-ai-lab-product-completion-dev-v1",
+  "dataset_id": "boostudy-ai-lab-product-completion-dev-v1",
+  "dataset_path": "tests/fixtures/ai_lab_product_completion_inputs_v1.json",
+  "dataset_sha256": "cee8c36fd7d7f562fcdd8b45faa204a4130316eca380720de0cc3c49298dc802",
+  "homework_case_dataset_path": "tests/fixtures/ai_lab_product_validation_dev_v1.json",
+  "homework_case_dataset_sha256": "494f32d0910fb8ef0043a365fed77b9681fb3998ed1d49660e355c4d2dee3215",
+  "frozen_before_live_model_runs": true,
+  "synthetic_only": true,
+  "real_student_data": false,
+  "independent_holdout": false,
+  "model": "GigaChat-3-Pro",
+  "generation_parameters": {
+    "temperature": 0.1,
+    "top_p": null,
+    "max_tokens": 3200,
+    "response_format": "json_schema_strict"
+  },
+  "prompt_versions": {
+    "homework": "v0.3",
+    "course": "ai-course-analysis.v5",
+    "course_sha256": "ac19cc90fd6a8cfb590e3d8f595dcfaf7d9de802441a3ceda293bdca4026dd91",
+    "lesson": "lesson-intelligence.v4",
+    "lesson_sha256": "9fea3b1634989ece5e7fb7c3659f21c07752d948ff7d4684ec05bf35b6a756de"
+  },
+  "planned_e2e": [
+    "Code Judge complete test suite → AI Homework with the same code and saved run → persisted experiment and student-facing evidence gate",
+    "two AI Course synthetic versions: one valid course and one structural-gap course; proposals remain drafts until teacher action",
+    "AI Lesson fresh synthetic transcript → teacher resolution review → Analytics and Practice evidence",
+    "Analytics and Practice are reloaded after writes to verify persistence"
+  ],
+  "budget": {
+    "homework_logical_generations": 5,
+    "homework_max_completion_posts": 10,
+    "course_generations": 2,
+    "lesson_generations": 1,
+    "maximum_total_completion_posts": 13,
+    "course_and_lesson_expected_chunks": 1
+  },
+  "evaluation": {
+    "measure_raw_response_separately_from_student_visible_feedback": true,
+    "retain_all_completion_attempts_and_token_usage": true,
+    "score_authority": "Code Judge when its saved report is verified; otherwise no automatic technical score claim",
+    "finite_tests_are_not_a_proof_of_universal_correctness": true,
+    "teacher_review_required_for_course_proposals_and_lesson_observations": true
+  },
+  "historical_regression_sources": {
+    "sprint6_sprint7": "Use frozen fixtures and the 22 owner-confirmed reviews as regression references only.",
+    "historical_labels_or_responses_may_be_changed": false
+  },
+  "frozen_at_utc": "2026-10-21"
+}

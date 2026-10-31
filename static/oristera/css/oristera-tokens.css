@@ -1,0 +1,134 @@
+/* ==========================================================================
+   PROJECT ORISTERA — DESIGN TOKENS (LIGHT COSMIC REBIRTH)
+   Porcelain Canvas, Pearlescent Refraction, Harmonic Orbits & Spring Physics
+   ========================================================================== */
+
+:root {
+  /* 1. Поверхности и фоны (Light Cosmic Porcelain) */
+  --ori-canvas: #FAFBFD;
+  --ori-canvas-soft: #F3F6FC;
+  --ori-canvas-pearl: #FFFFFF;
+  --ori-canvas-pure: #FFFFFF;
+
+  /* Оптические слои прозрачности и призматические преломления */
+  --ori-glass-ethereal: rgba(255, 255, 255, 0.65);
+  --ori-glass-luminous: rgba(255, 255, 255, 0.85);
+  --ori-glass-dense: rgba(255, 255, 255, 0.94);
+  --ori-glass-frost: rgba(243, 246, 252, 0.75);
+  --ori-overlay-dim: rgba(15, 23, 42, 0.28);
+  --ori-backdrop-blur: blur(20px) saturate(180%);
+
+  /* 2. Космический свет и призматические градиенты (Celestial Light Gradients) */
+  --ori-grad-celestial: linear-gradient(135deg, #7C3AED 0%, #6366F1 45%, #0284C7 100%);
+  --ori-grad-locus: linear-gradient(135deg, #4338CA 0%, #6366F1 50%, #38BDF8 100%);
+  --ori-grad-aurora: radial-gradient(circle at 50% 20%, rgba(224, 242, 254, 0.7) 0%, rgba(238, 242, 255, 0.5) 45%, rgba(250, 245, 255, 0) 80%);
+  --ori-grad-pearl: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.7) 100%);
+  --ori-grad-spectral: linear-gradient(90deg, rgba(99, 102, 241, 0.12), rgba(56, 189, 248, 0.18), rgba(167, 139, 250, 0.12));
+
+  /* 3. Авторские акцентные оттенки (Artisanal Light Accents) */
+  --ori-indigo-core: #4338CA;
+  --ori-indigo-light: #EEF2FF;
+  --ori-indigo-rim: rgba(99, 102, 241, 0.35);
+
+  --ori-sky-core: #0284C7;
+  --ori-sky-light: #E0F2FE;
+  --ori-sky-rim: rgba(56, 189, 248, 0.4);
+
+  --ori-lavender-core: #7C3AED;
+  --ori-lavender-light: #F3E8FF;
+  --ori-lavender-rim: rgba(167, 139, 250, 0.4);
+
+  --ori-mint-core: #059669;
+  --ori-mint-light: #D1FAE5;
+  --ori-mint-rim: rgba(16, 185, 129, 0.4);
+
+  --ori-gold-core: #D97706;
+  --ori-gold-light: #FEF3C7;
+  --ori-gold-rim: rgba(245, 158, 11, 0.4);
+
+  --ori-rose-core: #E11D48;
+  --ori-rose-light: #FFE4E6;
+  --ori-rose-rim: rgba(244, 63, 94, 0.4);
+
+  /* 4. Высококонтрастная редакционная типографика (Slate Space Typography) */
+  --ori-text-headline: #0F172A; /* Глубокий графит Slate 900 */
+  --ori-text-body: #334155;     /* Slate 700 для безупречной читаемости */
+  --ori-text-muted: #64748B;    /* Slate 500 */
+  --ori-text-whisper: #94A3B8;  /* Slate 400 */
+  --ori-text-inverse: #FFFFFF;
+
+  /* 5. Тонкие орбитальные границы и световые нити (Filament Borders) */
+  --ori-filament: rgba(203, 213, 225, 0.6);
+  --ori-filament-bright: rgba(148, 163, 184, 0.85);
+  --ori-filament-prism: rgba(129, 140, 248, 0.45);
+  --ori-filament-active: #4F46E5;
+
+  /* 6. Пространственные тени и неземное сияние (Ethereal Depth) */
+  --ori-shadow-ambient: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+  --ori-shadow-elevated: 0 12px 36px -6px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+  --ori-shadow-floating: 0 24px 56px -12px rgba(15, 23, 42, 0.12), 0 8px 24px -4px rgba(15, 23, 42, 0.04);
+  --ori-glow-locus: 0 0 40px -4px rgba(99, 102, 241, 0.28), 0 0 100px -10px rgba(56, 189, 248, 0.18);
+  --ori-glow-orbit: 0 0 24px -2px rgba(124, 58, 237, 0.18);
+  --ori-glow-pearl: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(15, 23, 42, 0.04);
+
+  /* 7. Орбитальные радиусы и формы */
+  --ori-rad-subtle: 10px;
+  --ori-rad-capsule: 18px;
+  --ori-rad-sanctum: 28px;
+  --ori-rad-orb: 9999px;
+
+  /* 8. Физика движения и инерции (Motion Physics & Spring Curves) */
+  --ori-dur-instant: 120ms;
+  --ori-dur-snappy: 240ms;
+  --ori-dur-flow: 420ms;
+  --ori-dur-cosmic: 680ms;
+
+  --ori-spring-in: cubic-bezier(0.16, 1, 0.3, 1);
+  --ori-spring-morph: cubic-bezier(0.4, 0, 0.2, 1);
+  --ori-spring-float: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ori-ease-glide: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ==========================================================================
+   Альтернативные художественные концепции (Creative Directions)
+   ========================================================================== */
+
+/* Концепт A: Celestial Continuum (Небесный континуум) */
+[data-ori-concept="continuum"] {
+  --ori-canvas: #F4F7FC;
+  --ori-canvas-soft: #EBF1FA;
+  --ori-grad-celestial: linear-gradient(135deg, #4F46E5 0%, #38BDF8 100%);
+  --ori-grad-locus: linear-gradient(135deg, #3B82F6 0%, #818CF8 100%);
+  --ori-glow-locus: 0 0 60px 4px rgba(56, 189, 248, 0.32);
+}
+
+/* Концепт B: Living Knowledge Landscape (Топографический ландшафт) */
+[data-ori-concept="landscape"] {
+  --ori-canvas: #F7FAF8;
+  --ori-canvas-soft: #EDF4F0;
+  --ori-grad-celestial: linear-gradient(135deg, #059669 0%, #10B981 50%, #0284C7 100%);
+  --ori-grad-locus: linear-gradient(135deg, #047857 0%, #10B981 100%);
+  --ori-glow-locus: 0 0 50px 0 rgba(16, 185, 129, 0.28);
+}
+
+/* Концепт C / Flagship: Luminous Observatory (Светлая обсерватория знаний - дефолт) */
+[data-ori-concept="observatory"] {
+  --ori-canvas: #FAFBFD;
+}
+
+/* Shared visual language for ORISTERA spaces. */
+:root {
+  --ori-ink-primary: #16324f;
+  --ori-ink-secondary: #3e5a78;
+  --ori-ink-muted: #607895;
+  --ori-surface-raised: rgba(255, 255, 255, 0.88);
+  --ori-surface-floating: rgba(249, 252, 255, 0.78);
+  --ori-surface-wash: rgba(255, 255, 255, 0.58);
+  --ori-border-surface: rgba(255, 255, 255, 0.9);
+  --ori-border-control: rgba(126, 157, 190, 0.25);
+  --ori-shadow-surface: 0 16px 40px rgba(46, 82, 119, 0.12), inset 0 1px rgba(255, 255, 255, 0.88);
+  --ori-shadow-focus: 0 0 0 3px rgba(54, 105, 183, 0.24);
+  --ori-motion-duration-interaction: 240ms;
+  --ori-motion-duration-page: 420ms;
+  --ori-motion-duration-ambient: 24s;
+}

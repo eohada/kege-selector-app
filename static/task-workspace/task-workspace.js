@@ -253,12 +253,24 @@
     }
 
     function payload() {
-        const osCode = document.body.classList.contains('tw-embedded-answer')
-            ? window.parent.document.getElementById('code-editor-textarea') : null;
-        if (osCode && code && code.value !== osCode.value) code.value = osCode.value;
+        const isEmbedded = document.body.classList.contains('tw-embedded-answer');
+        const parentWin = isEmbedded ? window.parent : null;
+        const parentWs = parentWin?.boostudyTaskWorkspace;
+        const isSameTask = Boolean(parentWs && String(parentWs.assignment_task_id) === String(ws.assignment_task_id));
+        let parentMainPy = null;
+        if (isEmbedded && isSameTask) {
+            if (typeof parentWin.getEditorMainPyCode === 'function') {
+                parentMainPy = parentWin.getEditorMainPyCode();
+            } else if (parentWin.document?.getElementById('code-editor-textarea')) {
+                parentMainPy = parentWin.document.getElementById('code-editor-textarea').value;
+            }
+        }
+        if (parentMainPy !== null && code && code.value !== parentMainPy) {
+            code.value = parentMainPy;
+        }
         let currentAnswer = answer ? answer.value : '';
-        if (osCode && ws.answer_spec?.type === 'code') {
-            currentAnswer = osCode.value;
+        if (parentMainPy !== null && ws.answer_spec?.type === 'code') {
+            currentAnswer = parentMainPy;
             if (answer) answer.value = currentAnswer;
         }
         if (!currentAnswer && codeAnswerInput?.value) {
@@ -269,17 +281,23 @@
             currentAnswer = code.value;
             if (answer) answer.value = code.value;
         }
-        return {
+        const res = {
             context_type: ws.context_type || '',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
-            code: code.value,
+            code: code ? code.value : '',
             answer: currentAnswer,
             notes: notes?.value || '',
             playback_frames: playback.frames,
             ui_state: localUiState(),
         };
+        if (isEmbedded && isSameTask && parentWin?.virtualFS && typeof parentWin.virtualFS === 'object') {
+            res.files = { ...parentWin.virtualFS };
+            res.open_tabs = Array.isArray(parentWin.openTabs) ? [...parentWin.openTabs] : ['main.py'];
+            res.active_file = parentWin.activeFileName || 'main.py';
+        }
+        return res;
     }
 
     function stateFingerprint(state) {
@@ -1046,6 +1064,30 @@
     }
 
     function scheduleAutosave() {
+        if (!ws.can_edit) {
+            dirtySinceAutosave = false;
+            if (autosaveTimer) {
+                clearTimeout(autosaveTimer);
+                autosaveTimer = null;
+            }
+            return;
+        }
+        const isEmbedded = document.body.classList.contains('tw-embedded-answer');
+        if (isEmbedded) {
+            const parentWs = window.parent?.boostudyTaskWorkspace;
+            if (parentWs && String(parentWs.assignment_task_id) !== String(ws.assignment_task_id)) {
+                dirtySinceAutosave = false;
+                if (autosaveTimer) {
+                    clearTimeout(autosaveTimer);
+                    autosaveTimer = null;
+                }
+                return;
+            }
+            try {
+                const currentAns = answer ? answer.value : '';
+                window.parent?.onEmbeddedAnswerChange?.(ws.assignment_task_id, currentAns);
+            } catch (_) {}
+        }
         dirtySinceAutosave = true;
         // Demo answers are verified by the isolated Demo API.  Once it grades
         // an answer, the ordinary Workspace autosave would correctly reject a
@@ -1055,7 +1097,7 @@
         if (autosaveTimer) clearTimeout(autosaveTimer);
         autosaveTimer = setTimeout(() => {
             autosaveTimer = null;
-            if (dirtySinceAutosave) {
+            if (dirtySinceAutosave && ws.can_edit) {
                 saveServer(true);
             }
         }, 2500);
@@ -1473,7 +1515,15 @@
 
     async function saveServer(isAutosave = false) {
         saveLocal();
+        if (!ws.can_edit) return false;
         if (!ws.context_type) return false;
+        const isEmbedded = document.body.classList.contains('tw-embedded-answer');
+        if (isEmbedded) {
+            const parentWs = window.parent?.boostudyTaskWorkspace;
+            if (parentWs && String(parentWs.assignment_task_id) !== String(ws.assignment_task_id)) {
+                return false;
+            }
+        }
         setStatus(isAutosave ? 'Автосохранение...' : 'Сохранение...', 'run');
         try {
             const resp = await fetch('/task-workspace/api/save', {
@@ -1503,10 +1553,18 @@
 
     function flushWorkspaceBeforeExit() {
         saveLocal();
+        if (!ws.can_edit) return;
         // See scheduleAutosave(): a demo answer has its own authoritative
         // verification endpoint and may already be immutable on navigation.
         if (ws.is_demo) return;
         if (!ws.context_type) return;
+        const isEmbedded = document.body.classList.contains('tw-embedded-answer');
+        if (isEmbedded) {
+            const parentWs = window.parent?.boostudyTaskWorkspace;
+            if (parentWs && String(parentWs.assignment_task_id) !== String(ws.assignment_task_id)) {
+                return;
+            }
+        }
         try {
             if (workspaceSocketReady && workspaceSocket) {
                 emitWorkspaceDraft(true);
@@ -2894,5 +2952,13 @@
     if (window.BooCanvasOverlay && ws.task_id) {
         window.BooCanvasOverlay.setContext(ws.task_id, ws.context_type === 'submission_task' ? `submission_task_${ws.assignment_task_id}` : ws.context_type, ws.context_id);
     }
+    window.saveServer = saveServer;
+    window.flushWorkspaceBeforeExit = flushWorkspaceBeforeExit;
+    window.BooTaskWorkspace = {
+        saveServer,
+        saveLocal,
+        flushWorkspaceBeforeExit,
+        payload,
+    };
     initializeWorkspaceMode();
 })();

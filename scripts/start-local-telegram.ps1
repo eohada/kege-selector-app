@@ -67,9 +67,10 @@ if ($diag) {
     if ($diag.is_dev_token) {
         Write-Host "[OK] Bot Identity:            $botUser ($($diag.masked_token), Isolated Dev Bot)" -ForegroundColor Green
     } else {
-        Write-Host "[WARN] Bot Identity:          $botUser ($($diag.masked_token), SHARED WITH PRODUCTION)" -ForegroundColor Yellow
-        Write-Host "                              Warning: If the production server is running, you will experience" -ForegroundColor DarkYellow
-        Write-Host "                              Telegram 409 Conflict. For full isolation, define TELEGRAM_DEV_BOT_TOKEN in .env." -ForegroundColor DarkYellow
+        Write-Host "[ERROR] Bot Identity:        $botUser ($($diag.masked_token), SHARED WITH PRODUCTION)" -ForegroundColor Red
+        Write-Host "                             Local poller with production token is strictly forbidden to prevent 409 Conflict." -ForegroundColor Red
+        Write-Host "                             Please define TELEGRAM_DEV_BOT_TOKEN in .env to use a dedicated Dev Bot." -ForegroundColor Red
+        exit 1
     }
 
     if ($diag.db_exists) {
@@ -78,6 +79,15 @@ if ($diag) {
 
     if ($diag.backend_running) {
         Write-Host "[OK] Web Backend:             Listening on http://127.0.0.1:5000" -ForegroundColor Green
+        $tunnelFile = "$instanceDir\mini_app_tunnel_env.json"
+        if (Test-Path $tunnelFile) {
+            try {
+                $tcfg = Get-Content $tunnelFile -Raw | ConvertFrom-Json
+                if ($tcfg.public_url) {
+                    Write-Host "[OK] Mini App Tunnel:         $($tcfg.public_url) (Allowlist: $($tcfg.allowlist_chat_ids))" -ForegroundColor Yellow
+                }
+            } catch {}
+        }
     } else {
         Write-Host "[INFO] Web Backend:           Not running on http://127.0.0.1:5000" -ForegroundColor Gray
         if ($WithBackend) {

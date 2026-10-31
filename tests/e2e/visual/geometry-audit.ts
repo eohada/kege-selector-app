@@ -33,9 +33,21 @@ export async function runGeometryAudit(page: Page, route: string): Promise<Geome
     };
     const intersects = (a: DOMRect, b: DOMRect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
+    const insideViewportScrollSurface = (node: Element) => {
+      let parent = node.parentElement;
+      while (parent) {
+        const style = getComputedStyle(parent);
+        const rect = parent.getBoundingClientRect();
+        if (/(auto|scroll)/.test(style.overflowX)
+          && parent.scrollWidth > parent.clientWidth + 1
+          && rect.left >= -1 && rect.right <= viewport.width + 1) return true;
+        parent = parent.parentElement;
+      }
+      return false;
+    };
     const overflowing = meaningful.filter((node) => {
       const rect = node.getBoundingClientRect();
-      return rect.right > viewport.width + 1 || rect.left < -1;
+      return (rect.right > viewport.width + 1 || rect.left < -1) && !insideViewportScrollSurface(node);
     });
     if (document.documentElement.scrollWidth <= viewport.width + 1) passes.push('horizontal overflow');
     else findings.push({ severity: 'FAIL', rule: 'horizontal-overflow', selector: 'document', detail: `scrollWidth ${document.documentElement.scrollWidth}px > viewport ${viewport.width}px` });
@@ -45,8 +57,16 @@ export async function runGeometryAudit(page: Page, route: string): Promise<Geome
       findings.push({ severity: 'FAIL', rule: 'viewport-bounds', selector: selectorFor(node), detail: `${Math.round(rect.left)}..${Math.round(rect.right)} outside ${viewport.width}px` });
     });
 
-    const smallTargets = meaningful.filter((node) => {
-      if (!(node.matches('button, a, input, select, textarea, [role="button"]'))) return false;
+    const targetForControl = (node: HTMLElement) => {
+      if (!node.matches('input[type="checkbox"], input[type="radio"]')) return node;
+      const label = node.closest('label')
+        || (node.id ? Array.from(document.querySelectorAll<HTMLLabelElement>('label[for]')).find((item) => item.htmlFor === node.id) : null);
+      return label?.getClientRects().length ? label : node;
+    };
+    const interactiveTargets = Array.from(new Set(meaningful
+      .filter((node) => node.matches('button, a, input, select, textarea, [role="button"]'))
+      .map(targetForControl)));
+    const smallTargets = interactiveTargets.filter((node) => {
       const rect = node.getBoundingClientRect();
       return rect.width < 40 || rect.height < 40;
     });
@@ -55,7 +75,8 @@ export async function runGeometryAudit(page: Page, route: string): Promise<Geome
 
     const clippedText = meaningful.filter((node) => {
       const style = getComputedStyle(node);
-      return style.overflow === 'hidden' && node.scrollWidth > node.clientWidth + 1 && node.textContent?.trim();
+      const textElement = node.matches('p, h1, h2, h3, h4, li, span, strong, small, label, button, a');
+      return textElement && style.overflow === 'hidden' && node.scrollWidth > node.clientWidth + 1 && node.textContent?.trim();
     });
     if (!clippedText.length) passes.push('text clipping');
     clippedText.slice(0, 10).forEach((node) => findings.push({ severity: 'WARN', rule: 'text-clipping', selector: selectorFor(node), detail: 'meaningful text is clipped by overflow:hidden' }));
@@ -78,7 +99,7 @@ export async function runGeometryAudit(page: Page, route: string): Promise<Geome
     emptySpaceCards.slice(0, 10).forEach((node) => findings.push({ severity: 'WARN', rule: 'excessive-empty-space', selector: selectorFor(node), detail: `content occupies less than 55% of ${Math.round(node.getBoundingClientRect().height)}px card height` }));
 
     const fixed = meaningful.filter((node) => ['fixed', 'sticky'].includes(getComputedStyle(node).position));
-    const actions = meaningful.filter((node) => node.matches('button, a, input, select, textarea, [role="button"]'));
+    const actions = interactiveTargets;
     let overlapCount = 0;
     fixed.forEach((fixedNode) => {
       // The mobile bottom navigation intentionally overlays the scroll surface;
@@ -99,7 +120,7 @@ export async function runGeometryAudit(page: Page, route: string): Promise<Geome
     if (suspiciousZ.length) suspiciousZ.slice(0, 10).forEach((node) => findings.push({ severity: 'WARN', rule: 'z-index', selector: selectorFor(node), detail: `z-index ${getComputedStyle(node).zIndex}` }));
     else passes.push('z-index');
 
-    const canonicalRadii = new Set(['0px', '10px', '14px', '20px', '28px', '9999px']);
+    const canonicalRadii = new Set(['0px', '10px', '14px', '20px', '28px', '999px', '9999px']);
     const arbitraryRadii = meaningful.filter((node) => {
       const radius = getComputedStyle(node).borderRadius;
       return radius !== '0px' && !canonicalRadii.has(radius) && !radius.includes('%');

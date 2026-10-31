@@ -65,19 +65,30 @@ def get_diagnostics() -> dict:
         except Exception as e:
             conflict_reason = f"Network error: {e}"
 
-        # Fast conflict check via getUpdates probe (timeout=1)
+        # Conflict check via getWebhookInfo (safe, non-destructive, never causes 409)
         if bot_info.get("username"):
             try:
-                # If username is production bot (@boostudy_bot), test if another poller is active
-                up_resp = requests.get(
-                    f"https://api.telegram.org/bot{token}/getUpdates?timeout=1&limit=1",
-                    timeout=3
-                )
-                if up_resp.status_code == 409:
-                    conflict_detected = True
-                    conflict_reason = "HTTP 409 Conflict: another getUpdates client is active"
+                wh_resp = requests.get(f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=3)
+                if wh_resp.status_code == 200:
+                    wh_data = wh_resp.json().get("result", {})
+                    if wh_data.get("url"):
+                        conflict_detected = True
+                        conflict_reason = f"Active Webhook configured ({wh_data.get('url')}), polling disabled"
             except Exception:
                 pass
+
+            # Only probe getUpdates if NOT using dev token (to detect shared prod token conflicts without self-conflicting)
+            if not is_dev_token and not conflict_detected:
+                try:
+                    up_resp = requests.get(
+                        f"https://api.telegram.org/bot{token}/getUpdates?timeout=1&limit=1",
+                        timeout=3
+                    )
+                    if up_resp.status_code == 409:
+                        conflict_detected = True
+                        conflict_reason = "HTTP 409 Conflict: another getUpdates client is active"
+                except Exception:
+                    pass
 
     # 3. Check SQLite DB
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

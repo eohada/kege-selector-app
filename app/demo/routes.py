@@ -8,7 +8,7 @@ import re
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from flask import jsonify, make_response, redirect, render_template, request, session, url_for
+from flask import abort, current_app, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask_login import current_user, logout_user
 
 from app.demo import demo_bp
@@ -41,6 +41,13 @@ def _demo_session_required():
     ):
         return jsonify({'success': False, 'error': 'demo session required'}), 403
     return None
+
+
+@demo_bp.before_request
+def _check_demo_concept_enabled():
+    """Демоверсия отключена в рантайме платформы и сохранена исключительно как концепт."""
+    if not current_app.config.get('ENABLE_DEMO_CONCEPT', False):
+        abort(404)
 
 
 @demo_bp.route('', methods=['GET'])

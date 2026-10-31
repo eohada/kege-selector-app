@@ -14,8 +14,8 @@
 {% endblock %}
 
 {% block sandbox_content %}
-{% set recent_fallback_lesson = recent_lessons[1] if recent_lessons|length > 1 else (recent_lessons[0] if recent_lessons else none) %}
-{% set next_lesson = active_lesson or upcoming_lesson or recent_fallback_lesson %}
+{% set recent_fallback_lesson = recent_lessons[0] if recent_lessons else none %}
+{% set next_lesson = active_lesson or upcoming_lesson or course_next_lesson or recent_fallback_lesson %}
 {% set primary_course_id = selected_course.course_id if selected_course else (enrollments[0].course_id if enrollments else none) %}
 {% set has_program = selected_course or enrollments %}
 {% set next_assignment = pending_submissions[0] if pending_submissions else none %}
@@ -36,10 +36,13 @@
         <div class="student-dashboard-actions">
           {% if active_lesson %}
             <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}">Войти на урок <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          {% elif course_next_lesson %}
+            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=course_next_lesson.lesson_id) }}">Продолжить обучение <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
           {% else %}
             <button type="button" class="bs-button bs-button-primary is-disabled bs-soon-target" disabled aria-disabled="true" title="Раздел курсов обновляется">Продолжить обучение <span class="bs-badge-soon">Скоро...</span></button>
           {% endif %}
           <a class="bs-button bs-button-secondary" href="{{ url_for('theory.theory_index') }}">Открыть теорию <i class="ph ph-book-open" aria-hidden="true"></i></a>
+          {% if student and student.student_id %}<a class="bs-button bs-button-secondary" href="{% if active_lesson and primary_course_id and active_lesson.learning_trajectory_id == primary_course_id and is_ai_lab_synthetic_platform_user(current_user.id) %}{{ url_for('students.student_practice', student_id=student.student_id, course_id=primary_course_id, lesson_id=active_lesson.lesson_id) }}{% else %}{{ url_for('students.student_practice', student_id=student.student_id) }}{% endif %}">Практика <i class="ph ph-code" aria-hidden="true"></i></a>{% endif %}
         </div>
       </div>
       {% if dashboard_showcase %}
@@ -64,10 +67,10 @@
             <div class="student-dashboard-progress"><span style="width: {{ goal_progress|default(0) }}%;"></span></div>
           </div>
         </div>
-        <div class="student-dashboard-goal-extra is-soon" title="Раздел курсов обновляется">
+        <div class="student-dashboard-goal-extra{% if dashboard_showcase or not course_next_lesson %} is-soon{% endif %}"{% if dashboard_showcase or not course_next_lesson %} title="Раздел курсов обновляется"{% endif %}>
           <span class="student-dashboard-goal-extra-icon"><i class="ph-bold ph-sparkle" aria-hidden="true"></i></span>
-          <span class="student-dashboard-goal-extra-copy"><small>Фокус сейчас</small><strong>{% if dashboard_showcase %}Условия и циклы{% elif next_topic %}{{ next_topic }}{% else %}Повторить теорию{% endif %}</strong></span>
-          <span class="bs-badge-soon">Скоро...</span>
+          <span class="student-dashboard-goal-extra-copy"><small>{% if course_next_lesson and not dashboard_showcase %}Ближайший урок{% else %}Фокус сейчас{% endif %}</small><strong>{% if dashboard_showcase %}Условия и циклы{% elif course_next_lesson %}{{ course_next_lesson.topic or next_topic }}{% elif next_topic %}{{ next_topic }}{% else %}Повторить теорию{% endif %}</strong></span>
+          {% if dashboard_showcase or not course_next_lesson %}<span class="bs-badge-soon">Скоро...</span>{% endif %}
         </div>
       {% else %}
         <div class="student-dashboard-empty student-dashboard-empty-compact">
@@ -83,7 +86,11 @@
     <article class="student-dashboard-continue bs-dashboard-card">
       <div class="student-dashboard-card-heading">
         <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-purple"><i class="ph-bold ph-play" aria-hidden="true"></i></span><h2>Продолжить обучение</h2></div>
-        <span class="student-dashboard-soon-link" title="Раздел курсов обновляется">Вся программа <span class="bs-badge-soon">Скоро...</span></span>
+        {% if student and student.student_id %}
+          <a class="student-dashboard-soon-link" href="{{ url_for('courses.student_courses', student_id=student.student_id) }}">Вся программа <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        {% else %}
+          <span class="student-dashboard-soon-link">Программа недоступна</span>
+        {% endif %}
       </div>
       <div class="student-dashboard-continue-layout">
         <article class="student-dashboard-next-lesson">
@@ -104,14 +111,15 @@
             <span class="student-dashboard-next-note"><i class="ph ph-sparkle" aria-hidden="true"></i>Следующий шаг в твоём плане</span>
             <img class="student-dashboard-next-art{% if dashboard_showcase %} is-python{% endif %}" src="{{ url_for('static', filename='images/dashboard/showcase-next-art.png' if dashboard_showcase else 'images/lesson/lesson_task_mascot.png') }}" alt="" aria-hidden="true" loading="lazy">
           {% else %}
-            <div class="student-dashboard-empty student-dashboard-empty-on-color"><i class="ph ph-calendar-x" aria-hidden="true"></i><strong>Ближайших занятий нет</strong><span>Когда преподаватель добавит урок, он появится здесь.</span><span class="bs-button bs-button-secondary opacity-60 cursor-not-allowed pointer-events-none" title="Технические неполадки">Расписание недоступно</span></div>
+            <div class="student-dashboard-empty student-dashboard-empty-on-color"><i class="ph ph-calendar-x" aria-hidden="true"></i><strong>Ближайших занятий нет</strong><span>Когда преподаватель добавит урок, он появится здесь.</span><a class="bs-button bs-button-secondary" href="{{ url_for('schedule.schedule') }}">Открыть расписание</a></div>
           {% endif %}
         </article>
         <div class="student-dashboard-learning-tiles">
-          <article class="student-dashboard-learning-tile is-soon" title="Раздел курсов обновляется">
+          <article class="student-dashboard-learning-tile{% if dashboard_showcase or not course_next_lesson %} is-soon{% endif %}"{% if dashboard_showcase or not course_next_lesson %} title="Раздел курсов обновляется"{% endif %}>
             <span class="student-dashboard-tile-icon is-blue"><i class="ph {% if dashboard_showcase %}ph-calendar-blank{% else %}ph-book-open{% endif %}" aria-hidden="true"></i></span>
-            <div><span class="student-dashboard-tile-label">Текущая тема</span><strong>{% if display_next_topic %}{{ display_next_topic }}{% else %}Тема ещё не выбрана{% endif %}</strong></div>
-            <span class="bs-badge-soon">Скоро...</span>
+            <div><span class="student-dashboard-tile-label">{% if course_next_lesson and not dashboard_showcase %}Следующий урок{% else %}Текущая тема{% endif %}</span><strong>{% if display_next_topic %}{{ course_next_lesson.topic if course_next_lesson and not dashboard_showcase else display_next_topic }}{% else %}Тема ещё не выбрана{% endif %}</strong></div>
+            {% if dashboard_showcase or not course_next_lesson %}<span class="bs-badge-soon">Скоро...</span>{% endif %}
+            {% if course_next_lesson and not dashboard_showcase %}<a class="student-dashboard-tile-action" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=course_next_lesson.lesson_id) }}">Открыть</a>{% endif %}
           </article>
           <article class="student-dashboard-learning-tile{% if dashboard_showcase %} is-showcase{% endif %}">
             <span class="student-dashboard-tile-icon {% if dashboard_showcase %}is-purple{% else %}is-pink{% endif %}"><i class="ph {% if dashboard_showcase %}ph-file-text{% else %}ph-notebook{% endif %}" aria-hidden="true"></i></span>
@@ -137,7 +145,7 @@
     <aside class="student-dashboard-schedule bs-dashboard-card">
       <div class="student-dashboard-card-heading">
         <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-green"><i class="ph-bold ph-calendar-blank" aria-hidden="true"></i></span><h2>Расписание</h2></div>
-        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/80 cursor-not-allowed select-none" title="Технические неполадки"><i class="ph-fill ph-warning text-amber-500"></i>Технические неполадки</span>
+        <a href="{{ url_for('schedule.schedule') }}" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1">Всё расписание <i class="ph ph-arrow-right"></i></a>
       </div>
       <div class="student-dashboard-week" aria-label="Дни текущей недели">
         {% for day in schedule_days|default([]) %}<span class="{% if day.is_today %}is-today{% endif %}"><small>{{ day.weekday }}</small><strong>{{ day.number }}</strong></span>{% endfor %}
@@ -170,15 +178,20 @@
     <section class="student-dashboard-path bs-dashboard-card{% if dashboard_showcase %} is-showcase{% endif %}" aria-label="Твой учебный путь">
     <div class="student-dashboard-card-heading">
       <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-purple"><i class="ph-bold ph-map-trifold" aria-hidden="true"></i></span><h2>Твой учебный путь</h2></div>
-      <span class="student-dashboard-soon-link" title="Раздел курсов обновляется">Карта курса <span class="bs-badge-soon">Скоро...</span></span>
+      {% if learning_path and selected_course and student and student.student_id and not dashboard_showcase %}
+        <a class="student-dashboard-soon-link" href="{{ url_for('courses.student_courses', student_id=student.student_id) }}">Открыть программу <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      {% else %}
+        <span class="student-dashboard-soon-link" title="Раздел курсов обновляется">Карта курса <span class="bs-badge-soon">Скоро...</span></span>
+      {% endif %}
     </div>
+    <p class="student-dashboard-path-note" role="note">{% if learning_path and not dashboard_showcase %}Этапы и завершение показывают состояние плана курса. Результаты отдельных заданий учитываются отдельно и сами по себе не подтверждают освоение навыка.{% else %}Статус «Скоро» относится к доступности карты уроков. Выполненные задания учитываются отдельно и не изменяют прогресс курса.{% endif %}</p>
     {% if learning_path %}
       <div class="student-dashboard-path-list">
         {% for module in learning_path[:5] %}
-          <div class="student-dashboard-path-item is-soon is-{{ module.status }}{% if module.placeholder %} is-placeholder{% endif %}" title="Раздел курсов обновляется">
+          <div class="student-dashboard-path-item{% if dashboard_showcase or module.placeholder %} is-soon{% endif %} is-{{ module.status }}{% if module.placeholder %} is-placeholder{% endif %}"{% if dashboard_showcase or module.placeholder %} title="Раздел курсов обновляется"{% endif %}>
             <span class="student-dashboard-path-number">{{ loop.index }}</span>
             <span class="student-dashboard-path-copy"><strong>{{ module.title }}</strong><small>{{ module.done }}{% if module.total %}/{{ module.total }}{% endif %}{% if not dashboard_showcase %} элементов{% endif %}</small><span class="student-dashboard-mini-progress"><i style="width: {{ module.progress_pct }}%;"></i></span></span>
-            <span class="bs-badge-soon">Скоро...</span>
+            {% if dashboard_showcase or module.placeholder %}<span class="bs-badge-soon">Скоро...</span>{% else %}<span class="student-dashboard-path-status is-{{ module.status }}">{% if module.status == 'done' %}Завершён{% elif module.status == 'current' %}В работе{% else %}В плане{% endif %}</span>{% endif %}
           </div>
         {% endfor %}
       </div>
@@ -225,7 +238,7 @@
       <div class="student-dashboard-quick-list">
         <a href="{% if next_assignment %}{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) }}{% else %}{{ url_for('assignments.assignments_list') }}{% endif %}"><i class="ph ph-pencil-line" aria-hidden="true"></i><span>{% if next_assignment %}Сдать ДЗ: {{ next_assignment.assignment.title[:20] if next_assignment.assignment else 'Активное ДЗ' }}{% else %}Все задания и ДЗ{% endif %}</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
         <a href="{{ url_for('theory.theory_index') }}"><i class="ph ph-book-open" aria-hidden="true"></i><span>Повторить теорию</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
-        <div class="opacity-60 cursor-not-allowed pointer-events-none flex items-center justify-between py-2 px-3 rounded-xl border border-slate-100 bg-slate-50" title="Технические неполадки"><div class="flex items-center gap-2.5"><i class="ph ph-calendar-blank text-slate-400 text-base" aria-hidden="true"></i><span class="text-xs font-bold text-slate-500">Посмотреть расписание</span></div><span class="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Неполадки</span></div>
+        <a href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Посмотреть расписание</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
         <a href="{% if student %}{{ url_for('students.student_analytics', student_id=student.student_id) }}{% else %}{{ url_for('theory.theory_index') }}{% endif %}"><i class="ph ph-chart-line-up" aria-hidden="true"></i><span>Мой прогресс и оценки</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
       </div>
     </article>

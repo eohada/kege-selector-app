@@ -1,0 +1,208 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Семейства заданий — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-rubric-builder.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="rb-page">
+  <header class="rb-header">
+    <div>
+      <p class="rb-eyebrow">Локальная AI Lab · проверенные шаблоны</p>
+      <h1>Семейства заданий</h1>
+      <p>Один раз свяжите проверенный шаблон, рубрику, тесты и эталон. Новые условия, тесты и критерии затем создаются из ограниченного набора параметров.</p>
+    </div>
+    <a class="rb-button rb-button-soft" href="{{ url_for('ai_lab.studio') }}">AI Homework Studio</a>
+  </header>
+
+  {% if not family_storage_ready %}
+  <section class="rb-card" role="status">
+    <h2>Схема семейств не установлена в этой базе</h2>
+    <p class="rb-note">Страница не создаёт и не мигрирует базу автоматически. Для Sprint 10 используйте отдельную изолированную AI Lab базу; рабочая локальная база проекта не менялась.</p>
+  </section>
+  {% else %}
+  <section class="rb-card" aria-labelledby="af-create-heading">
+    <div class="rb-card-heading"><span class="rb-step">01</span><div><p class="rb-eyebrow">Проверенный шаблон</p><h2 id="af-create-heading">Новая версия семейства</h2></div></div>
+    <div id="af-message" class="rb-message" role="status" aria-live="polite"></div>
+    <div class="rb-fields">
+      <label>Тип задания
+        <select id="af-template">
+          {% for template in family_templates %}<option value="{{ template.template_id }}" data-template="{{ template | tojson | forceescape }}">{{ template.title }}</option>{% endfor %}
+        </select>
+      </label>
+      <p id="af-template-description" class="rb-note"></p>
+      <div class="rb-field-pair">
+        <label>Стабильный ID<input id="af-id" readonly></label>
+        <label>Базовое задание<input id="af-assignment" readonly></label>
+      </div>
+      <label>Название<input id="af-title" readonly></label>
+      <div class="rb-field-pair">
+        <label>Утверждённая рубрика
+          <select id="af-rubric">{% for rubric in rubrics %}<option value="{{ rubric.id }}" data-assignment-id="{{ rubric.assignment_id }}" data-assignment-version="{{ rubric.assignment_version }}">#{{ rubric.id }} · {{ rubric.title }} · v{{ rubric.version_no }}</option>{% endfor %}</select>
+        </label>
+        <label>Базовый набор Code Judge
+          <select id="af-test-set">{% for item in test_sets %}<option value="{{ item.id }}" data-assignment-id="{{ item.assignment_id or '' }}" data-assignment-version="{{ item.assignment_version or '' }}">#{{ item.id }} · {{ item.title }} · v{{ item.test_set_version }}</option>{% endfor %}</select>
+        </label>
+      </div>
+      <label>Принятый эталонный запуск
+        <select id="af-reference">{% for run in history %}{% if run.run_type == 'submit' and run.status == 'accepted' and run.test_set_id %}<option value="{{ run.id }}" data-test-set-id="{{ run.test_set_id }}" data-test-set-version="{{ run.test_set_version }}">Запуск #{{ run.id }} · набор #{{ run.test_set_id }} · v{{ run.test_set_version }}</option>{% endif %}{% endfor %}</select>
+      </label>
+    </div>
+    <p class="rb-note">Система сама вычисляет SHA-256 по текущему содержимому шаблона, задания, рубрики, тестов и принятого запуска. Черновик не утверждается автоматически.</p>
+    <button id="af-create" type="button" class="rb-button rb-button-primary">Сохранить черновик версии</button>
+  </section>
+
+  <section class="rb-card" aria-labelledby="af-list-heading">
+    <div class="rb-card-heading"><span class="rb-step">02</span><div><p class="rb-eyebrow">Версии и варианты</p><h2 id="af-list-heading">Сохранённые версии</h2></div></div>
+    <div id="af-list">
+      {% for item in families %}
+      <article data-family-id="{{ item.id }}" style="border-top:1px solid var(--bs-border);padding:16px 0">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <strong>{{ item.title }} · {{ item.family_id }} v{{ item.version_no }}</strong>
+            <p>{{ item.assignment_id }} v{{ item.assignment_version }} · рубрика v{{ item.rubric_version_no }} · набор #{{ item.test_set_id }} v{{ item.test_set_version }} · эталон #{{ item.reference_run_id }}</p>
+            <p class="rb-note">Статус: {{ item.status }} · SHA-256 версии: {{ item.content_sha256 }}</p>
+            {% if item.validation.errors %}<ul>{% for error in item.validation.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div>
+            {% if item.status == 'draft' %}<button class="rb-button rb-button-soft" type="button" data-action="verify-family" data-id="{{ item.id }}">Проверить связи</button>
+            {% elif item.status == 'verified' %}<button class="rb-button rb-button-primary" type="button" data-action="approve-family" data-id="{{ item.id }}">Утвердить вручную</button>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if item.status == 'approved' and item.contract.template_id %}
+        <details class="rb-identity" style="margin-top:12px">
+          <summary>Создать вариант · параметры утверждённого шаблона</summary>
+          <p class="rb-note">Вариант будет сохранён один раз по хешу параметров. Runner проверит эталон, альтернативное решение и контрольную логическую ошибку; скрытые тесты останутся в Code Judge.</p>
+          <form class="af-materialize" data-family-version-id="{{ item.id }}">
+            <div class="rb-fields">
+              {% for parameter in item.contract.variant_parameters %}
+                {% if parameter.type == 'integer' %}
+                <label>{{ parameter.name }}<input data-parameter="{{ parameter.name }}" type="number" min="{{ parameter.minimum }}" max="{{ parameter.maximum }}" value="{{ parameter.default if parameter.default is defined else parameter.minimum }}" required></label>
+                {% elif parameter.type == 'enum' %}
+                <label>{{ parameter.name }}<select data-parameter="{{ parameter.name }}">{% for choice in parameter['values'] %}<option value="{{ choice }}" {% if parameter.default is defined and choice == parameter.default %}selected{% endif %}>{{ choice }}</option>{% endfor %}</select></label>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <button class="rb-button rb-button-primary" type="submit">Создать и проверить вариант</button>
+            <div class="rb-message" role="status" aria-live="polite"></div>
+          </form>
+        </details>
+        {% endif %}
+
+        {% for variant in family_variants if variant.family_id == item.family_id and variant.family_version == item.version_no %}
+        <div class="rb-identity" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bs-border)">
+          <strong>{{ variant.title }} · {{ variant.variant_id }}</strong>
+          <p>{{ variant.condition }}</p>
+          <p class="rb-note">Параметры: {{ variant.parameters }} · статус: {{ variant.status }} · набор #{{ variant.test_set_id }} v{{ variant.test_set_version }} · максимум {{ variant.max_score }} балла</p>
+          <p class="rb-note">Проверки: {{ variant.validation.status }} · SHA-256 варианта: {{ variant.content_sha256 }}</p>
+          {% for bundle in variant.validation.bundles or [] %}
+          <p class="rb-note">Комплект {{ bundle.number }} — {{ bundle.status }}: {% for check in bundle.checks %}{{ check.purpose }} {{ check.status }} ({{ check.passed }}/{{ check.total }}){% if not loop.last %}; {% endif %}{% endfor %}</p>
+          {% endfor %}
+          {% if variant.status == 'available' %}
+          <div class="rb-actions"><a class="rb-button rb-button-soft" href="/admin/ai-lab/code-judge">Открыть Code Judge</a><a class="rb-button rb-button-soft" href="{{ url_for('ai_lab.studio') }}">Открыть AI Homework Studio</a></div>
+          {% elif variant.validation.bundles|length < 2 %}
+          <button class="rb-button rb-button-soft" type="button" data-action="verify-variant" data-id="{{ variant.id }}">Повторить проверки · комплект 2/2</button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </article>
+      {% else %}<p>Версии семейств пока не созданы.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</main>
+<input type="hidden" id="af-csrf" value="{{ csrf_token() }}">
+{% if family_storage_ready %}
+<script>
+(() => {
+  const message = document.getElementById('af-message');
+  const csrf = document.getElementById('af-csrf').value;
+  const templateSelect = document.getElementById('af-template');
+  const selectedTemplate = () => JSON.parse(templateSelect.selectedOptions[0].dataset.template);
+  const selected = (id) => document.getElementById(id).value;
+  async function post(url, body = {}) {
+    const response = await fetch(url, {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRFToken':csrf}, body:JSON.stringify(body)});
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }
+  function updateTemplateFields() {
+    const template = selectedTemplate();
+    document.getElementById('af-id').value = template.family_id;
+    document.getElementById('af-title').value = template.title;
+    document.getElementById('af-assignment').value = `${template.assignment_id} v${template.assignment_version}`;
+    document.getElementById('af-template-description').textContent = `Тема: ${template.requirements.map(item => item.description).join(' · ')}. Параметры и правила генерации фиксируются в версии.`;
+    for (const [selectId, versionField] of [['af-rubric', 'assignment-version'], ['af-test-set', 'assignment-version']]) {
+      const select = document.getElementById(selectId);
+      const match = [...select.options].find(option => option.dataset.assignmentId === template.assignment_id && option.dataset.assignmentVersion === String(template.assignment_version));
+      if (match) select.value = match.value;
+    }
+    updateReferences();
+  }
+  function updateReferences() {
+    const testSet = document.getElementById('af-test-set').value;
+    const select = document.getElementById('af-reference');
+    const match = [...select.options].find(option => option.dataset.testSetId === testSet);
+    if (match) select.value = match.value;
+  }
+  templateSelect.addEventListener('change', updateTemplateFields);
+  document.getElementById('af-test-set').addEventListener('change', updateReferences);
+  updateTemplateFields();
+
+  document.getElementById('af-create').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const template = selectedTemplate();
+    const rubric = document.getElementById('af-rubric').selectedOptions[0];
+    const testSet = document.getElementById('af-test-set').selectedOptions[0];
+    const reference = document.getElementById('af-reference').selectedOptions[0];
+    button.disabled = true;
+    try {
+      const data = await post('/admin/ai-lab/api/assignment-families', {
+        family_id: template.family_id, title: template.title, template_id: template.template_id,
+        assignment_id: template.assignment_id, assignment_version: template.assignment_version,
+        rubric_version_id: Number(rubric.value), test_set_id: Number(testSet.value),
+        reference_run_id: Number(reference.value),
+      });
+      message.textContent = `Черновик ${data.family.family_id} v${data.family.version_no} сохранён. Источники захешированы сервером.`;
+      window.location.reload();
+    } catch (error) { message.textContent = error.message || 'Не удалось создать версию.'; button.disabled = false; }
+  });
+
+  document.getElementById('af-list').addEventListener('submit', async (event) => {
+    const form = event.target.closest('.af-materialize');
+    if (!form) return;
+    event.preventDefault();
+    const button = form.querySelector('button[type="submit"]');
+    const status = form.querySelector('[role="status"]');
+    const parameters = {};
+    for (const input of form.querySelectorAll('[data-parameter]')) {
+      parameters[input.dataset.parameter] = input.type === 'number' ? Number(input.value) : input.value;
+    }
+    button.disabled = true;
+    try {
+      const data = await post(`/admin/ai-lab/api/assignment-families/${form.dataset.familyVersionId}/variants`, {parameters});
+      status.textContent = `Вариант ${data.variant.variant_id}: ${data.variant.status}. Проверки и результаты Runner сохранены.`;
+      window.location.reload();
+    } catch (error) { status.textContent = error.message || 'Не удалось создать вариант.'; button.disabled = false; }
+  });
+
+  document.getElementById('af-list').addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+    button.disabled = true;
+    try {
+      const endpoint = action === 'verify-variant'
+        ? `/admin/ai-lab/api/assignment-family-variants/${button.dataset.id}/verify`
+        : `/admin/ai-lab/api/assignment-families/${button.dataset.id}/${action.replace('-family', '')}`;
+      const data = await post(endpoint);
+      const item = data.variant || data.family;
+      if (action === 'verify-family') message.textContent = `Проверка связей: ${item.validation.status}.`;
+      else if (action === 'approve-family') message.textContent = `Версия ${item.family_id} v${item.version_no} утверждена преподавателем.`;
+      else message.textContent = `Проверка варианта: ${item.validation.status}.`;
+      window.location.reload();
+    } catch (error) { message.textContent = error.message || 'Операция не выполнена.'; button.disabled = false; }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

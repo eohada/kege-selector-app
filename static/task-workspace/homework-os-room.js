@@ -3,6 +3,7 @@
   if (!config.homework_mode && !config.review_mode) return;
   const isHomework = Boolean((config.homework_mode || config.review_mode) && config.homework_workspace);
   const ws = isHomework ? config.homework_workspace : null;
+  window.boostudyTaskWorkspace = ws;
   const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const scope = ws ? {
     context_type: ws.context_type,
@@ -17,7 +18,12 @@
   const readJson = async (responsePromise) => {
     const response = await responsePromise;
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось выполнить действие');
+    if (!response.ok || !data.success) {
+      const err = new Error(data.message || data.error || 'Не удалось выполнить действие');
+      err.status = response.status;
+      err.data = data;
+      throw err;
+    }
     return data;
   };
   const post = (url, data) => readJson(fetch(url, {
@@ -34,32 +40,180 @@
   let notesSave = Promise.resolve();
   let codeTouched = false;
   let notesTouched = false;
-  let sources = null;
+  const taskCodeStore = {};
+  const taskAnswerStore = {};
+  const dirtyAnswers = {};
+  window.taskAnswerStore = taskAnswerStore;
+  window.dirtyAnswers = dirtyAnswers;
+
+  window.onEmbeddedAnswerChange = function(taskId, val) {
+    if (taskId !== undefined && taskId !== null) {
+      taskAnswerStore[taskId] = val;
+      dirtyAnswers[taskId] = val;
+    }
+  };
+
+  function setHwSaveStatus(status, text) {
+    const dot = document.getElementById('hw-code-save-dot');
+    const label = document.getElementById('hw-code-save-text');
+    if (label && text) label.textContent = text;
+    if (dot) {
+      if (status === 'saving') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block';
+      } else if (status === 'saved') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block';
+      } else if (status === 'error' || status === 'conflict') {
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500 inline-block';
+      } else if (status === 'offline') {
+        dot.className = 'w-2 h-2 rounded-full bg-orange-500 inline-block';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-slate-400 inline-block';
+      }
+    }
+    if (typeof setVfsSaveStatus === 'function') setVfsSaveStatus(status, text);
+  }
+  window.setHwSaveStatus = setHwSaveStatus;
 
   function syncAnswerCode() {
     const inner = answerFrame?.contentWindow;
     const field = inner?.document?.getElementById('tw-code');
-    if (field && field.value !== codeEditor.value) {
-      field.value = codeEditor.value;
+    const mainPyCode = (typeof window.getEditorMainPyCode === 'function')
+      ? window.getEditorMainPyCode()
+      : (codeEditor?.value || '');
+    if (field && field.value !== mainPyCode) {
+      field.value = mainPyCode;
       field.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    if (inner?.TASK_WORKSPACE) inner.TASK_WORKSPACE.code = codeEditor.value;
+    if (inner?.TASK_WORKSPACE) inner.TASK_WORKSPACE.code = mainPyCode;
   }
 
-  function flushCode() {
+  function flushCode(explicitTaskId) {
     if (!isHomework || !ws || !ws.can_edit) return codeSave;
     clearTimeout(codeTimer);
     codeTimer = 0;
-    const code = codeEditor?.value || '';
-    syncAnswerCode();
-    codeSave = codeSave.catch(() => {}).then(() => post('/task-workspace/api/code', { ...scope, code }));
-    codeSave.then(() => {
-      codeTouched = false;
-      const badge = document.getElementById('hw-answer-code-status');
-      if (badge) badge.textContent = `Код сохранён автоматически (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
-    }).catch((error) => notify(error.message || 'Код не сохранён', true));
+    const targetTaskId = explicitTaskId || ws.assignment_task_id;
+    if (!targetTaskId) return codeSave;
+
+    const isActive = (String(ws.assignment_task_id) === String(targetTaskId));
+    const code = isActive
+      ? ((typeof window.getEditorMainPyCode === 'function') ? window.getEditorMainPyCode() : (codeEditor?.value || ''))
+      : (taskCodeStore[targetTaskId]?.code ?? '');
+
+    if (isActive) {
+      syncAnswerCode();
+    }
+
+    const reqRevision = taskCodeStore[targetTaskId]?.revision || (isActive ? currentRevision : 1) || 1;
+    const payload = {
+      ...scope,
+      assignment_task_id: targetTaskId,
+      code,
+      files: { 'main.py': code },
+      open_tabs: ['main.py'],
+      active_file: 'main.py',
+      revision: reqRevision,
+    };
+
+    setHwSaveStatus('saving', 'Сохранение...');
+
+    const savePromise = post('/task-workspace/api/code', payload)
+      .then((data) => {
+        const rev = Number(data?.revision || reqRevision || 1);
+        if (taskCodeStore[targetTaskId]) {
+          taskCodeStore[targetTaskId].revision = Math.max(taskCodeStore[targetTaskId].revision || 1, rev);
+          if (taskCodeStore[targetTaskId].code === code) {
+            taskCodeStore[targetTaskId].dirty = false;
+          }
+          taskCodeStore[targetTaskId].lastSavedCode = code;
+          taskCodeStore[targetTaskId].hasSavedCode = true;
+        }
+        if (String(ws.assignment_task_id) === String(targetTaskId)) {
+          codeTouched = false;
+          currentRevision = Math.max(currentRevision, rev);
+          setHwSaveStatus('saved', 'Сохранено');
+          const badge = document.getElementById('hw-answer-code-status');
+          if (badge) {
+            badge.textContent = `Код сохранён автоматически (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
+          }
+        }
+        if (typeof clearVfsEmergencyBackup === 'function') clearVfsEmergencyBackup();
+        return data;
+      })
+      .catch(async (error) => {
+        if (error && error.status === 409) {
+          const match = error.message ? error.message.match(/current\s+(\d+)/) : null;
+          const serverRev = Number(
+            error.data?.current_revision ||
+            error.data?.revision ||
+            (match ? match[1] : null) ||
+            (reqRevision + 1)
+          );
+          console.warn(`[Autosave] 409 stale revision for task ${targetTaskId}. Server revision=${serverRev}, requested=${reqRevision}.`);
+          if (taskCodeStore[targetTaskId]) {
+            taskCodeStore[targetTaskId].revision = Math.max(taskCodeStore[targetTaskId].revision || 1, serverRev);
+          }
+          if (String(ws.assignment_task_id) === String(targetTaskId)) {
+            currentRevision = Math.max(currentRevision, serverRev);
+          }
+          payload.revision = serverRev;
+          try {
+            const retryData = await post('/task-workspace/api/code', payload);
+            const retryRev = Number(retryData?.revision || serverRev || 1);
+            if (taskCodeStore[targetTaskId]) {
+              taskCodeStore[targetTaskId].revision = Math.max(taskCodeStore[targetTaskId].revision || 1, retryRev);
+              if (taskCodeStore[targetTaskId].code === code) {
+                taskCodeStore[targetTaskId].dirty = false;
+              }
+              taskCodeStore[targetTaskId].lastSavedCode = code;
+              taskCodeStore[targetTaskId].hasSavedCode = true;
+            }
+            if (String(ws.assignment_task_id) === String(targetTaskId)) {
+              codeTouched = false;
+              currentRevision = Math.max(currentRevision, retryRev);
+              setHwSaveStatus('saved', 'Сохранено');
+            }
+            return retryData;
+          } catch (retryErr) {
+            if (retryErr && retryErr.status === 409) {
+              const retryMatch = retryErr.message ? retryErr.message.match(/current\s+(\d+)/) : null;
+              const secondRev = Number(
+                retryErr.data?.current_revision ||
+                retryErr.data?.revision ||
+                (retryMatch ? retryMatch[1] : null) ||
+                (serverRev + 1)
+              );
+              payload.revision = secondRev;
+              const secondRetry = await post('/task-workspace/api/code', payload);
+              const secondResRev = Number(secondRetry?.revision || secondRev || 1);
+              if (taskCodeStore[targetTaskId]) {
+                taskCodeStore[targetTaskId].revision = Math.max(taskCodeStore[targetTaskId].revision || 1, secondResRev);
+                if (taskCodeStore[targetTaskId].code === code) {
+                  taskCodeStore[targetTaskId].dirty = false;
+                }
+                taskCodeStore[targetTaskId].lastSavedCode = code;
+                taskCodeStore[targetTaskId].hasSavedCode = true;
+              }
+              if (String(ws.assignment_task_id) === String(targetTaskId)) {
+                codeTouched = false;
+                currentRevision = Math.max(currentRevision, secondResRev);
+                setHwSaveStatus('saved', 'Сохранено');
+              }
+              return secondRetry;
+            }
+            console.error('[Autosave] Retry failed:', retryErr);
+            setHwSaveStatus('error', 'Ошибка сохранения');
+            throw retryErr;
+          }
+        }
+        setHwSaveStatus('error', 'Ошибка сохранения');
+        notify(error.message || 'Код не сохранён', true);
+        throw error;
+      });
+
+    codeSave = codeSave.catch(() => {}).then(() => savePromise);
     return codeSave;
   }
+  window.flushHomeworkCode = flushCode;
 
   function bindCodeAnswerButtons() {
     document.getElementById('hw-save-code-as-answer-btn')?.addEventListener('click', async () => {
@@ -82,14 +236,39 @@
     if (!ws.can_edit) return notesSave;
     clearTimeout(notesTimer);
     notesTimer = 0;
+    const targetTaskId = ws.assignment_task_id;
     const notes = notesEditor?.value || '';
-    notesSave = notesSave.catch(() => {}).then(() => post('/task-workspace/api/notes', { ...scope, notes }));
-    notesSave.then(() => {
-      notesTouched = false;
-      const status = document.getElementById('notes-status-text');
-      if (status) status.textContent = 'Сохранено';
-    }).catch((error) => notify(error.message || 'Заметки не сохранены', true));
+    const savePromise = post('/task-workspace/api/notes', { ...scope, assignment_task_id: targetTaskId, notes })
+      .then((data) => {
+        if (String(ws.assignment_task_id) === String(targetTaskId)) {
+          notesTouched = false;
+          const status = document.getElementById('notes-status-text');
+          if (status) status.textContent = 'Сохранено';
+        }
+        return data;
+      })
+      .catch((error) => {
+        notify(error.message || 'Заметки не сохранены', true);
+        throw error;
+      });
+    notesSave = notesSave.catch(() => {}).then(() => savePromise);
     return notesSave;
+  }
+
+  async function flushAllDirtyTasks() {
+    const promises = [];
+    for (const [taskIdStr, entry] of Object.entries(taskCodeStore)) {
+      const taskId = Number(taskIdStr);
+      if (entry.dirty) {
+        promises.push(flushCode(taskId));
+      }
+    }
+    if (codeTimer || codeTouched) {
+      promises.push(flushCode(ws.assignment_task_id));
+    }
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
   }
 
   async function saveAll() {
@@ -97,8 +276,9 @@
     try {
       const promises = [];
       if (ws.can_edit) {
-        if (codeTimer || codeTouched) promises.push(flushCode());
+        promises.push(flushAllDirtyTasks());
         if (notesTimer || notesTouched) promises.push(flushNotes());
+        else if (notesSave) promises.push(notesSave);
         const afSave = answerFrame?.contentWindow?.BooTaskWorkspace?.save?.();
         if (afSave && typeof afSave.then === 'function') promises.push(afSave);
       }
@@ -106,10 +286,11 @@
         promises.push(window.BooCanvasOverlay.save());
       }
       if (promises.length > 0) {
-        await Promise.allSettled(promises);
+        await Promise.all(promises);
       }
     } catch (err) {
       console.warn('saveAll warning:', err);
+      throw err;
     }
   }
 
@@ -844,6 +1025,19 @@
 
     if (isHomework && ws) {
       if (codeEditor && !ws.can_edit) codeEditor.readOnly = true;
+
+      // Seed taskCodeStore for initial task
+      const initialCode = (typeof window.getEditorMainPyCode === 'function')
+        ? window.getEditorMainPyCode()
+        : (ws.code || codeEditor?.value || '');
+      taskCodeStore[ws.assignment_task_id] = {
+        code: initialCode,
+        revision: Number(ws.revision || 1),
+        dirty: false,
+        lastSavedCode: initialCode,
+        hasSavedCode: Boolean(ws.has_saved_code || (ws.code !== null && ws.code !== undefined)),
+      };
+
       if (notesEditor) {
         notesEditor.readOnly = !ws.can_edit;
         readJson(fetch(`/task-workspace/api/notes?${new URLSearchParams(scope)}`, { credentials: 'same-origin' }))
@@ -855,11 +1049,20 @@
           notesTimer = setTimeout(flushNotes, 750);
         });
       }
-      if (ws.can_edit) window.addEventListener('boostudy:homework-code-input', () => {
+      window.addEventListener('boostudy:homework-code-input', () => {
+        if (!ws || !ws.can_edit) return;
         codeTouched = true;
+        const curCode = (typeof window.getEditorMainPyCode === 'function')
+          ? window.getEditorMainPyCode()
+          : (codeEditor?.value || '');
+        if (taskCodeStore[ws.assignment_task_id]) {
+          taskCodeStore[ws.assignment_task_id].code = curCode;
+          taskCodeStore[ws.assignment_task_id].dirty = true;
+        }
+        setHwSaveStatus('saving', 'Сохранение...');
         syncAnswerCode();
         clearTimeout(codeTimer);
-        codeTimer = setTimeout(flushCode, 750);
+        codeTimer = setTimeout(() => flushCode(ws.assignment_task_id), 750);
       });
       answerFrame?.addEventListener('load', () => {
         try {
@@ -1329,22 +1532,67 @@
       if (contentEl) contentEl.style.opacity = '0.5';
 
       try {
-        if (ws.can_edit && typeof window.getEditorMainPyCode === 'function') {
-          ws.code = window.getEditorMainPyCode();
+        const outgoingTaskId = ws.assignment_task_id;
+        clearTimeout(codeTimer);
+        codeTimer = 0;
+
+        // 1. Capture outgoing task code into taskCodeStore
+        const currentEditorCode = (typeof window.getEditorMainPyCode === 'function')
+          ? window.getEditorMainPyCode()
+          : (codeEditor?.value || '');
+
+        if (taskCodeStore[outgoingTaskId]) {
+          if (taskCodeStore[outgoingTaskId].code !== currentEditorCode) {
+            taskCodeStore[outgoingTaskId].code = currentEditorCode;
+            taskCodeStore[outgoingTaskId].dirty = true;
+          }
+        } else {
+          taskCodeStore[outgoingTaskId] = {
+            code: currentEditorCode,
+            revision: currentRevision || 1,
+            dirty: codeTouched,
+            lastSavedCode: currentEditorCode,
+            hasSavedCode: true,
+          };
         }
 
-        // 2. Parallel execution: run dirty flushes and fetch new task context concurrently
+        // 2. Perform durable flush of outgoing task and await server ACK before switching context!
+        if (ws.can_edit && (codeTouched || taskCodeStore[outgoingTaskId]?.dirty)) {
+          setHwSaveStatus('saving', 'Сохранение задания перед переходом...');
+          await flushCode(outgoingTaskId);
+          await codeSave;
+        }
+        if (ws.can_edit && (notesTouched || notesTimer)) {
+          await flushNotes();
+          await notesSave;
+        }
+
+        if (ws.can_edit && answerFrame && answerFrame.contentWindow) {
+          try {
+            const frameWin = answerFrame.contentWindow;
+            if (typeof frameWin.saveServer === 'function') {
+              await frameWin.saveServer();
+            } else if (typeof frameWin.BooTaskWorkspace?.saveServer === 'function') {
+              await frameWin.BooTaskWorkspace.saveServer();
+            }
+            const ansInput = frameWin.document?.querySelector('input[name="answer"], textarea[name="answer"]');
+            if (ansInput) {
+              taskAnswerStore[outgoingTaskId] = ansInput.value;
+              dirtyAnswers[outgoingTaskId] = ansInput.value;
+            }
+          } catch (e) {
+            console.warn('[Homework OS] Error flushing outgoing answer frame:', e);
+          }
+        }
+
+        // 3. Fetch context for target task
         const apiUrl = `/task-workspace/api/context?context_type=submission_task&context_id=${ws.context_id}&assignment_task_id=${newAssignmentTaskId}`;
-        const fetchPromise = readJson(fetch(apiUrl, { credentials: 'same-origin' }));
-        const [_, data] = await Promise.all([
-          saveAll(),
-          fetchPromise
-        ]);
+        const data = await readJson(fetch(apiUrl, { credentials: 'same-origin' }));
 
         const newWs = data.workspace;
         if (!newWs) throw new Error('Данные задания не получены');
 
-        // Update active workspace metadata
+        // 4. Update active workspace metadata
         ws.assignment_task_id = newAssignmentTaskId;
         ws.task_id = newWs.task_id;
         ws.task_position = newWs.task_position;
@@ -1352,9 +1600,10 @@
         ws.can_edit = newWs.can_edit;
         ws.attachments = newWs.attachments || [];
         ws.content_html = newWs.content_html;
-        ws.code = newWs.code || newWs.starter_code || '';
         ws.notes = newWs.notes || '';
         ws.answer_spec = newWs.answer_spec || ws.answer_spec;
+        ws.archived_files = newWs.archived_files || {};
+        ws.has_saved_code = newWs.has_saved_code;
 
         scope.assignment_task_id = newAssignmentTaskId;
         scope.task_id = newWs.task_id;
@@ -1395,16 +1644,71 @@
           formatTaskCondition();
         }
 
-        // Update code editor & virtualFS isolated per task
-        const taskCode = newWs.code || newWs.starter_code || '';
+        // 5. Determine code for target task with proper fallback (no starter code overwrite if code was cleared!)
+        let targetCode;
+        let targetRev;
+        if (taskCodeStore[newAssignmentTaskId]) {
+          targetCode = taskCodeStore[newAssignmentTaskId].code;
+          targetRev = Math.max(Number(taskCodeStore[newAssignmentTaskId].revision || 1), Number(newWs.revision || 1));
+        } else {
+          const hasSaved = Boolean(newWs.has_saved_code || (newWs.code !== null && newWs.code !== undefined));
+          targetCode = hasSaved ? (newWs.code || '') : (newWs.starter_code || '');
+          targetRev = Number(newWs.revision || 1);
+          taskCodeStore[newAssignmentTaskId] = {
+            code: targetCode,
+            revision: targetRev,
+            dirty: false,
+            lastSavedCode: targetCode,
+            hasSavedCode: hasSaved,
+          };
+        }
+
+        currentRevision = targetRev;
+        codeTouched = false;
+
+        // 6. Update single-file editor state
+        virtualFS['main.py'] = targetCode;
+        openTabs.length = 0;
+        openTabs.push('main.py');
+        activeFileName = 'main.py';
+
         if (typeof window.setEditorMainPyCode === 'function') {
-          window.setEditorMainPyCode(taskCode);
+          window.setEditorMainPyCode(targetCode);
         } else if (codeEditor) {
-          codeEditor.value = taskCode;
+          codeEditor.value = targetCode;
           if (typeof onCodeEditorInput === 'function') onCodeEditorInput(codeEditor.value);
           else if (typeof updateCodeHighlight === 'function') updateCodeHighlight();
         }
+
+        // 7. Update read-only state for partial revision!
+        if (codeEditor) {
+          codeEditor.readOnly = !ws.can_edit;
+        }
+
+        // 8. Update archived files button in single-file header
+        window.currentArchivedFiles = newWs.archived_files || {};
+        const archBtn = document.getElementById('hw-archived-files-btn');
+        const archCount = Object.keys(newWs.archived_files || {}).length;
+        if (archBtn) {
+          if (archCount > 0) {
+            archBtn.style.display = '';
+            archBtn.innerHTML = `<i class="ph-bold ph-archive text-amber-600"></i><span>Архив файлов (${archCount})</span>`;
+          } else {
+            archBtn.style.display = 'none';
+          }
+        }
+
+        setHwSaveStatus('saved', 'Сохранено');
         syncAnswerCode();
+
+        // Keep teacher feedback banner updated across task switches
+        const feedbackBanner = document.getElementById('hw-general-feedback-banner');
+        const feedbackText = newWs.submission_meta?.teacher_feedback || ws.submission_meta?.teacher_feedback || '';
+        if (feedbackBanner) {
+          feedbackBanner.style.display = feedbackText ? '' : 'none';
+          const bodyEl = feedbackBanner.querySelector('.text-indigo-950') || feedbackBanner;
+          if (bodyEl && feedbackText) bodyEl.textContent = feedbackText;
+        }
 
         // Update notes
         if (notesEditor) {
@@ -1456,9 +1760,17 @@
         }
         if (answerFrame) {
           if (!isCodeAnswer) {
-            const newFrameSrc = `/task-workspace/?context_type=submission_task&context_id=${ws.context_id}&assignment_task_id=${newAssignmentTaskId}&embedded=answer`;
-            if (answerFrame.src !== newFrameSrc) {
-              answerFrame.src = newFrameSrc;
+            const newFrameSrc = `/task-workspace?context_type=submission_task&context_id=${ws.context_id}&assignment_task_id=${newAssignmentTaskId}&embedded=answer`;
+            try {
+              const currentUrl = new URL(answerFrame.src, window.location.origin);
+              const targetUrl = new URL(newFrameSrc, window.location.origin);
+              if (currentUrl.pathname !== targetUrl.pathname || currentUrl.search !== targetUrl.search) {
+                answerFrame.src = newFrameSrc;
+              }
+            } catch (e) {
+              if (answerFrame.src !== newFrameSrc) {
+                answerFrame.src = newFrameSrc;
+              }
             }
             answerFrame.style.display = '';
           } else {
@@ -1481,6 +1793,25 @@
         loadLineComments(newAssignmentTaskId);
         if (typeof window.closeCodeLinePopover === 'function') {
           window.closeCodeLinePopover();
+        }
+
+        // Update Revision Returned Banner
+        const revBanner = document.getElementById('hw-revision-returned-banner');
+        const revComment = document.getElementById('hw-revision-returned-comment');
+        const revCommentText = document.getElementById('hw-revision-returned-comment-text');
+        if (revBanner) {
+          const needsRevision = Boolean(newWs.needs_revision);
+          revBanner.style.display = needsRevision ? 'block' : 'none';
+          if (revComment && revCommentText) {
+            const comment = String(newWs.teacher_comment || '').trim();
+            if (needsRevision && comment) {
+              revCommentText.textContent = comment;
+              revComment.style.display = 'block';
+            } else {
+              revCommentText.textContent = '';
+              revComment.style.display = 'none';
+            }
+          }
         }
 
         console.log('[switchTaskSeamless] success for:', newAssignmentTaskId);
@@ -1516,12 +1847,12 @@
       };
 
       (ws.tasks_nav || []).forEach(item => {
-        const isCur = String(item.assignment_task_id) === String(ws.assignment_task_id);
         reviewState.scores[item.assignment_task_id] = {
           score: (item.score !== undefined && item.score !== null) ? Number(item.score) : null,
-          comment: isCur ? (ws.teacher_comment || '') : '',
+          comment: item.teacher_comment || '',
           max_score: Number(item.max_score || 1),
-          nav_status: item.nav_status || 'pending_review'
+          nav_status: item.nav_status || 'pending_review',
+          needs_revision: Boolean(item.needs_revision)
         };
       });
 
@@ -1531,6 +1862,7 @@
       const quickScoresContainer = document.getElementById('review-quick-scores');
       const commentInput = document.getElementById('review-task-comment');
       const commentStatus = document.getElementById('review-task-comment-status');
+      const returnToggle = document.getElementById('review-task-return-toggle');
       const feedbackInput = document.getElementById('review-general-feedback');
       const totalScoreDisplay = document.getElementById('review-total-score-display');
       const maxScoreDisplay = document.getElementById('review-max-score-display');
@@ -1538,6 +1870,54 @@
       const returnBtn = document.getElementById('review-action-return-btn');
       const gradeBtn = document.getElementById('review-action-grade-btn');
       const topGradeBtn = document.getElementById('hw-review-top-grade-btn');
+
+      function updateReturnToggleVisual(isChecked) {
+        const lbl = document.getElementById('review-task-return-label');
+        const badge = document.getElementById('review-task-return-status-badge');
+        if (lbl) {
+          if (isChecked) {
+            lbl.classList.remove('border-amber-200/80', 'bg-amber-50/60');
+            lbl.classList.add('border-amber-400', 'bg-amber-100/90', 'ring-2', 'ring-amber-400/40');
+          } else {
+            lbl.classList.remove('border-amber-400', 'bg-amber-100/90', 'ring-2', 'ring-amber-400/40');
+            lbl.classList.add('border-amber-200/80', 'bg-amber-50/60');
+          }
+        }
+        if (badge) {
+          badge.classList.toggle('hidden', !isChecked);
+        }
+        const curAtId = reviewState.currentAssignmentTaskId;
+        const tab = document.querySelector(`.homework-os-task-tab[data-task-id="${curAtId}"]`);
+        if (tab) {
+          let revBadge = tab.querySelector('.homework-task-return-dot');
+          if (isChecked) {
+            if (!revBadge) {
+              revBadge = document.createElement('span');
+              revBadge.className = 'homework-task-return-dot inline-block w-2 h-2 rounded-full bg-amber-500 ml-1 shrink-0';
+              revBadge.title = 'Выбрано для возврата на доработку';
+              tab.appendChild(revBadge);
+            }
+          } else if (revBadge) {
+            revBadge.remove();
+          }
+        }
+      }
+
+      if (commentInput) {
+        commentInput.value = reviewState.scores[reviewState.currentAssignmentTaskId]?.comment || ws.teacher_comment || '';
+      }
+      if (returnToggle) {
+        returnToggle.checked = Boolean(reviewState.scores[reviewState.currentAssignmentTaskId]?.needs_revision);
+        updateReturnToggleVisual(returnToggle.checked);
+        returnToggle.addEventListener('change', (e) => {
+          const atId = reviewState.currentAssignmentTaskId;
+          if (!reviewState.scores[atId]) {
+            reviewState.scores[atId] = { max_score: 1, score: null, comment: '', needs_revision: false };
+          }
+          reviewState.scores[atId].needs_revision = e.target.checked;
+          updateReturnToggleVisual(e.target.checked);
+        });
+      }
 
       const playbackContainer = document.getElementById('review-playback-container');
       const playbackPlayBtn = document.getElementById('review-playback-play-btn');
@@ -1743,33 +2123,139 @@
           if (correctBox) correctBox.textContent = newWs.correct_answer || '—';
         }
 
+        if (returnToggle) {
+          returnToggle.checked = Boolean(curEntry.needs_revision);
+          updateReturnToggleVisual(returnToggle.checked);
+        }
+
         setupPlayback(newWs.playback?.frames);
         calculateTotals();
       }
 
-      function buildPayload(status, scoresOnly = false) {
+      function buildPayload(status, scoresOnly = false, returnTaskIds = null) {
         const scores = Object.entries(reviewState.scores).map(([atId, data]) => ({
           assignment_task_id: Number(atId),
           score: (data.score !== null && data.score !== undefined) ? Number(data.score) : 0,
           comment: data.comment || ''
         }));
-        return {
+        const payload = {
           scores,
           teacher_feedback: reviewState.teacherFeedback,
           status: status || reviewState.status || 'GRADED',
           scores_only: Boolean(scoresOnly)
         };
+        if (status === 'RETURNED' && Array.isArray(returnTaskIds)) {
+          payload.return_assignment_task_ids = returnTaskIds;
+        }
+        return payload;
       }
 
-      async function submitGrade(status) {
+      function showReturnRevisionModal(onConfirm) {
+        const existing = document.getElementById('homework-return-modal');
+        if (existing) existing.remove();
+
+        const selectedIds = Object.entries(reviewState.scores)
+          .filter(([_, s]) => s.needs_revision)
+          .map(([id]) => Number(id));
+
+        const totalTasks = Object.keys(reviewState.scores).length || 1;
+        const curId = Number(reviewState.currentAssignmentTaskId);
+        const defaultSelected = selectedIds.length > 0 ? selectedIds : (curId ? [curId] : []);
+
+        const taskLabels = defaultSelected.map(id => {
+          const tab = document.querySelector(`.homework-os-task-tab[data-task-id="${id}"]`);
+          return tab ? tab.textContent.trim().replace(/\s+/g, ' ') : `Задание #${id}`;
+        }).join(', ');
+
+        const modal = document.createElement('div');
+        modal.id = 'homework-return-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'hw-return-modal-title');
+        modal.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:9999999;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:1rem;pointer-events:auto;';
+        modal.innerHTML = `
+          <div class="bg-white rounded-2xl shadow-2xl border border-slate-200/80 max-w-md w-full p-6 space-y-4 relative" style="pointer-events:auto;isolation:isolate;">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-bold ph-arrow-u-up-left"></i>
+              </div>
+              <div>
+                <h3 id="hw-return-modal-title" class="text-base font-extrabold text-slate-900">Возврат на доработку</h3>
+                <p class="text-xs text-slate-500">Выберите, какие задания отправить ученику на исправление</p>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-2">
+              <button type="button" id="hw-return-selected-btn" class="w-full text-left p-3.5 rounded-xl border border-amber-300 bg-amber-50/80 hover:bg-amber-100/80 transition-all cursor-pointer group">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <i class="ph-bold ph-check-square text-amber-700"></i>
+                    Вернуть выбранные задачи (${defaultSelected.length} из ${totalTasks})
+                  </span>
+                  <i class="ph-bold ph-arrow-right text-amber-700 group-hover:translate-x-0.5 transition-transform text-xs"></i>
+                </div>
+                <p id="homework-return-selected-tasks-summary" class="text-[11px] text-amber-900 font-semibold mt-1 pl-5">Выбрано: <strong>${taskLabels || 'Текущая задача'}</strong></p>
+                <p class="text-[11px] text-amber-800/80 mt-0.5 pl-5">Остальные задачи останутся принятыми с сохранёнными баллами</p>
+              </button>
+
+              <button type="button" id="hw-return-all-btn" class="w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer group">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <i class="ph-bold ph-arrows-clockwise text-slate-600"></i>
+                    Вернуть всю работу целиком (${totalTasks} задач)
+                  </span>
+                  <i class="ph-bold ph-arrow-right text-slate-500 group-hover:translate-x-0.5 transition-transform text-xs"></i>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1 pl-5">Ученик сможет заново отредактировать решения всех заданий</p>
+              </button>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button type="button" id="hw-return-cancel-btn" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+                Отмена
+              </button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        const closeModal = () => {
+          window.removeEventListener('keydown', handleEsc);
+          modal.remove();
+        };
+
+        const handleEsc = (e) => {
+          if (e.key === 'Escape') closeModal();
+        };
+        window.addEventListener('keydown', handleEsc);
+
+        modal.querySelector('#hw-return-cancel-btn').onclick = closeModal;
+        modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+        modal.querySelector('#hw-return-selected-btn').onclick = () => {
+          closeModal();
+          onConfirm(defaultSelected);
+        };
+        modal.querySelector('#hw-return-all-btn').onclick = () => {
+          closeModal();
+          onConfirm([]);
+        };
+
+        const selectedBtn = modal.querySelector('#hw-return-selected-btn');
+        if (selectedBtn) selectedBtn.focus();
+      }
+      window.showReturnRevisionModal = showReturnRevisionModal;
+
+      async function submitGrade(status, returnTaskIds = null) {
         if (reviewState.isSaving) return;
+        clearTimeout(reviewState.saveTimer);
         reviewState.isSaving = true;
         if (gradeBtn) gradeBtn.disabled = true;
         if (returnBtn) returnBtn.disabled = true;
         if (topGradeBtn) topGradeBtn.disabled = true;
 
         try {
-          const payload = buildPayload(status, false);
+          const payload = buildPayload(status, false, returnTaskIds);
           const res = await fetch(`/submissions/${reviewState.submissionId}/grade`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
@@ -1803,20 +2289,35 @@
         reviewState.saveTimer = setTimeout(async () => {
           try {
             const payload = buildPayload(reviewState.status, true);
-            await fetch(`/submissions/${reviewState.submissionId}/grade`, {
+            const res = await fetch(`/submissions/${reviewState.submissionId}/grade`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
               credentials: 'same-origin',
               body: JSON.stringify(payload)
             });
-            if (commentStatus) {
-              commentStatus.style.opacity = '1';
-              setTimeout(() => { commentStatus.style.opacity = '0'; }, 1800);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+              throw new Error(data.error || `Сервер не подтвердил сохранение (HTTP ${res.status})`);
             }
+            setCommentSaveStatus(true);
           } catch (err) {
             console.warn('Review grade autosave failed:', err);
+            setCommentSaveStatus(false, err.message || 'Не удалось сохранить оценку и комментарий');
           }
         }, 1000);
+      }
+
+      function setCommentSaveStatus(saved, message = '') {
+        if (!commentStatus) return;
+        commentStatus.innerHTML = saved
+          ? '<i class="ph-bold ph-check"></i> Сохранено'
+          : '<i class="ph-bold ph-warning-circle"></i> Не сохранено';
+        commentStatus.classList.toggle('text-emerald-600', saved);
+        commentStatus.classList.toggle('text-rose-600', !saved);
+        commentStatus.title = message;
+        commentStatus.style.opacity = '1';
+        clearTimeout(reviewState.commentStatusTimer);
+        reviewState.commentStatusTimer = setTimeout(() => { commentStatus.style.opacity = '0'; }, saved ? 1800 : 6000);
       }
 
       if (scoreInput) {
@@ -1843,9 +2344,9 @@
 
       if (returnBtn) {
         returnBtn.addEventListener('click', () => {
-          if (confirm('Вернуть эту работу на доработку ученику?')) {
-            submitGrade('RETURNED');
-          }
+          showReturnRevisionModal((taskIds) => {
+            submitGrade('RETURNED', taskIds);
+          });
         });
       }
 
@@ -1877,10 +2378,208 @@
         });
       }
 
+      let liveStateSnapshot = null;
+      let activeArchivedAttempt = null;
+
+      function renderAttemptsHistory() {
+        const card = document.getElementById('review-attempts-history-card');
+        const badge = document.getElementById('review-attempts-count-badge');
+        const list = document.getElementById('review-attempts-list');
+        if (!card || !list) return;
+        const attempts = Array.isArray(ws?.submission_meta?.attempts) ? ws.submission_meta.attempts : [];
+        if (!attempts.length) {
+          card.style.display = 'none';
+          return;
+        }
+        card.style.display = 'block';
+        if (badge) badge.textContent = `${attempts.length} попытк${attempts.length === 1 ? 'а' : (attempts.length >= 5 ? 'ок' : 'и')}`;
+        list.innerHTML = '';
+        attempts.forEach((att) => {
+          const item = document.createElement('div');
+          item.className = 'p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100 hover:border-indigo-300 transition-all text-xs space-y-1.5 cursor-pointer group';
+          item.dataset.attemptNo = String(att.attempt_no || 1);
+          if (activeArchivedAttempt && activeArchivedAttempt.attempt_no === att.attempt_no) {
+            item.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50/70', 'border-indigo-400');
+          }
+          const dt = att.submitted_at ? new Date(att.submitted_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+          const statusMap = {
+            'SUBMITTED': 'Сдано на проверку',
+            'RETURNED': 'Возвращено на доработку',
+            'GRADED': 'Проверено',
+            'IN_PROGRESS': 'В процессе'
+          };
+          const statusLabel = statusMap[att.status] || att.status || 'Сдано';
+          const scoreText = (att.total_score !== null && att.total_score !== undefined) ? `${att.total_score} из ${att.max_score || 0} (${Math.round(att.percentage || 0)}%)` : 'Оценка не выставлена';
+          const safeFeedback = String(att.teacher_feedback || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          item.innerHTML = `
+            <div class="flex items-center justify-between font-bold text-slate-800">
+              <span class="flex items-center gap-1.5"><i class="ph-bold ph-check-circle text-indigo-600"></i> Попытка #${att.attempt_no || 1}</span>
+              <span class="text-[11px] font-mono text-slate-500">${dt}</span>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-600">
+              <span>Статус: <strong class="text-slate-800">${statusLabel}</strong></span>
+              <span>${scoreText}</span>
+            </div>
+            ${safeFeedback ? `<div class="text-[11px] text-slate-500 italic border-l-2 border-indigo-300 pl-2 mt-1 line-clamp-2">${safeFeedback}</div>` : ''}
+          `;
+
+          item.addEventListener('click', () => {
+            selectArchivedAttempt(att);
+          });
+
+          list.appendChild(item);
+        });
+      }
+
+      function selectArchivedAttempt(att) {
+        if (!liveStateSnapshot) {
+          liveStateSnapshot = {
+            code: (typeof window.getEditorMainPyCode === 'function') ? window.getEditorMainPyCode() : (ws.code || ''),
+            plainAnswer: ws.plain_answer || '',
+            score: reviewState.scores[reviewState.currentAssignmentTaskId]?.score,
+            comment: reviewState.scores[reviewState.currentAssignmentTaskId]?.comment || '',
+            teacherFeedback: reviewState.teacherFeedback || '',
+            canEdit: ws.can_edit,
+            archivedFiles: window.currentArchivedFiles || ws.archived_files || {},
+          };
+        }
+
+        activeArchivedAttempt = att;
+        renderAttemptsHistory();
+
+        let banner = document.getElementById('review-attempt-archive-banner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'review-attempt-archive-banner';
+          banner.className = 'bg-amber-50/95 backdrop-blur border-b border-amber-300/80 px-4 py-2.5 flex items-center justify-between text-xs text-amber-950 font-medium z-50 sticky top-0 shadow-xs';
+          const card = document.getElementById('review-grade-window') || document.body;
+          card.prepend(banner);
+        }
+        const dt = att.submitted_at ? new Date(att.submitted_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        banner.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-amber-200/80 text-amber-800 flex items-center justify-center text-sm font-bold shrink-0">
+              <i class="ph-bold ph-archive"></i>
+            </span>
+            <span>Просмотр <strong>Попытки #${att.attempt_no}</strong> (${dt}). <span class="text-amber-800/80">Архивное состояние сдачи.</span></span>
+          </div>
+          <button type="button" id="review-attempt-restore-current-btn" class="px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-amber-900 font-bold hover:bg-amber-100 transition-colors shadow-2xs cursor-pointer">
+            Вернуться к текущему состоянию
+          </button>
+        `;
+
+        banner.querySelector('#review-attempt-restore-current-btn').onclick = () => {
+          restoreCurrentLiveState();
+        };
+
+        const curAtId = String(reviewState.currentAssignmentTaskId);
+        const taskAttemptData = (att.attempt_data && att.attempt_data.tasks) ? (att.attempt_data.tasks[curAtId] || att.attempt_data.tasks[Number(curAtId)]) : null;
+
+        let attemptCode = '';
+        let attemptArchivedFiles = {};
+
+        if (taskAttemptData) {
+          attemptCode = (taskAttemptData.student_code !== undefined)
+            ? (taskAttemptData.student_code || '')
+            : ((taskAttemptData.files && taskAttemptData.files['main.py']) || '');
+
+          if (taskAttemptData.files && typeof taskAttemptData.files === 'object') {
+            for (const [fn, content] of Object.entries(taskAttemptData.files)) {
+              if (fn !== 'main.py') {
+                attemptArchivedFiles[fn] = content;
+              }
+            }
+          }
+
+          const studentBox = document.getElementById('review-student-answer-box');
+          if (studentBox) studentBox.textContent = taskAttemptData.answer || '—';
+
+          try {
+            const answerFrame = document.querySelector('iframe[src*="embedded=answer"]');
+            if (answerFrame && answerFrame.contentDocument) {
+              const inp = answerFrame.contentDocument.getElementById('tw-answer');
+              if (inp) inp.value = taskAttemptData.answer || '';
+            }
+          } catch (_) {}
+        } else if (att.student_code !== undefined) {
+          attemptCode = att.student_code || '';
+        }
+
+        if (typeof window.setEditorMainPyCode === 'function') {
+          window.setEditorMainPyCode(attemptCode);
+        } else if (codeEditor) {
+          codeEditor.value = attemptCode;
+          if (typeof onCodeEditorInput === 'function') onCodeEditorInput(attemptCode);
+          else if (typeof updateCodeHighlight === 'function') updateCodeHighlight();
+        }
+
+        if (codeEditor) {
+          codeEditor.readOnly = true;
+        }
+
+        window.currentArchivedFiles = attemptArchivedFiles;
+        const archBtn = document.getElementById('hw-archived-files-btn');
+        const archCount = Object.keys(attemptArchivedFiles).length;
+        if (archBtn) {
+          if (archCount > 0) {
+            archBtn.style.display = '';
+            archBtn.innerHTML = `<i class="ph-bold ph-archive text-amber-600"></i><span>Архив файлов (${archCount})</span>`;
+          } else {
+            archBtn.style.display = 'none';
+          }
+        }
+      }
+
+      function restoreCurrentLiveState() {
+        if (!liveStateSnapshot) return;
+        if (typeof window.setEditorMainPyCode === 'function') {
+          window.setEditorMainPyCode(liveStateSnapshot.code);
+        } else if (codeEditor) {
+          codeEditor.value = liveStateSnapshot.code;
+          if (typeof onCodeEditorInput === 'function') onCodeEditorInput(liveStateSnapshot.code);
+          else if (typeof updateCodeHighlight === 'function') updateCodeHighlight();
+        }
+
+        if (codeEditor) {
+          codeEditor.readOnly = !liveStateSnapshot.canEdit;
+        }
+
+        window.currentArchivedFiles = liveStateSnapshot.archivedFiles || {};
+        const archBtn = document.getElementById('hw-archived-files-btn');
+        const archCount = Object.keys(window.currentArchivedFiles).length;
+        if (archBtn) {
+          if (archCount > 0) {
+            archBtn.style.display = '';
+            archBtn.innerHTML = `<i class="ph-bold ph-archive text-amber-600"></i><span>Архив файлов (${archCount})</span>`;
+          } else {
+            archBtn.style.display = 'none';
+          }
+        }
+
+        const studentBox = document.getElementById('review-student-answer-box');
+        if (studentBox) studentBox.textContent = liveStateSnapshot.plainAnswer || '—';
+
+        try {
+          const answerFrame = document.querySelector('iframe[src*="embedded=answer"]');
+          if (answerFrame && answerFrame.contentDocument) {
+            const inp = answerFrame.contentDocument.getElementById('tw-answer');
+            if (inp) inp.value = liveStateSnapshot.plainAnswer || '';
+          }
+        } catch (_) {}
+
+        const banner = document.getElementById('review-attempt-archive-banner');
+        if (banner) banner.remove();
+
+        activeArchivedAttempt = null;
+        liveStateSnapshot = null;
+        renderAttemptsHistory();
+      }
+
       renderQuickScores(ws.answer_max_score || 1, ws.answer_score);
       updateStatusBadge(ws.answer_score, ws.answer_max_score || 1, ws.nav_status);
       setupPlayback(ws.playback?.frames);
       calculateTotals();
+      renderAttemptsHistory();
 
       return {
         updateForTask,
@@ -1891,6 +2590,7 @@
     }
 
     if (isHomework) {
+      window.currentArchivedFiles = ws.archived_files || {};
       window.reviewGradeManager = initReviewGradeManager(ws, notify);
 
       // Static sequential task tabs without drag-and-drop
@@ -1911,30 +2611,139 @@
         }
       });
 
-      document.getElementById('homework-submit')?.addEventListener('click', async () => {
-        const codeAnswer = ws.answer_spec?.type === 'code' || ws.presentation_mode === 'code';
-        const submitButton = document.getElementById('homework-submit');
-        if (codeAnswer) {
-          if (submitButton?.dataset.submitting === 'true') return;
-          if (submitButton) {
-            submitButton.dataset.submitting = 'true';
-            submitButton.disabled = true;
+      function showPostSubmitConfirmation(res) {
+        const existing = document.getElementById('homework-submitted-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'homework-submitted-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:9999999;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:1rem;pointer-events:auto;';
+
+        const tasksCount = ws.task_count || (Array.isArray(ws.tasks_nav) ? ws.tasks_nav.length : 1);
+        const submitDate = new Date().toLocaleString('ru-RU', { dateStyle: 'long', timeStyle: 'short' });
+        const isAutoGraded = res && res.status === 'GRADED';
+        const statusText = isAutoGraded
+          ? `Автопроверка завершена! Набрано баллов: ${res.score || 0} из ${res.max_score || 0} (${Math.round(res.percentage || 0)}%)`
+          : 'Работа отправлена на проверку преподавателю.';
+
+        modal.innerHTML = `
+          <div class="bg-white/95 backdrop-blur-2xl rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.16)] border border-white/80 max-w-md w-full p-6 space-y-4 text-center" style="pointer-events:auto;isolation:isolate;">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center justify-center text-3xl mx-auto shadow-xs">
+              <i class="ph-bold ph-paper-plane-tilt"></i>
+            </div>
+            <div>
+              <h3 id="hw-post-submit-title" class="text-lg font-extrabold text-slate-900 tracking-tight">Работа успешно отправлена!</h3>
+              <p class="text-xs text-slate-500 mt-1">${statusText}</p>
+            </div>
+            <div class="bg-slate-50/80 backdrop-blur-sm rounded-xl p-3.5 border border-slate-200/50 text-left space-y-1.5 text-xs text-slate-600">
+              <div class="flex justify-between items-center"><span>Дата и время:</span><strong class="text-slate-800 font-semibold">${submitDate}</strong></div>
+              <div class="flex justify-between items-center"><span>Количество заданий:</span><strong class="text-slate-800 font-semibold">${tasksCount}</strong></div>
+              <div class="flex justify-between items-center"><span>Статус сдачи:</span><strong class="text-emerald-700 font-bold">${isAutoGraded ? 'Проверено' : 'На проверке'}</strong></div>
+            </div>
+            <div class="flex gap-2.5 pt-2">
+              <button type="button" id="hw-post-submit-stay" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-slate-700 bg-white/80 hover:bg-white border border-slate-200/80 transition-all cursor-pointer" style="box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;">
+                Остаться в окне
+              </button>
+              <button type="button" id="hw-post-submit-exit" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer" style="box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3) !important;">
+                К списку заданий
+              </button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('#hw-post-submit-stay').onclick = () => {
+          modal.remove();
+          const submitBtn = document.getElementById('homework-submit');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            submitBtn.innerHTML = '<i class="ph-bold ph-check-circle text-emerald-500"></i><span>Работа сдана</span>';
           }
+        };
+        modal.querySelector('#hw-post-submit-exit').onclick = () => {
+          window.location.href = ws.return_url || '/submissions';
+        };
+      }
+      window.showPostSubmitConfirmation = showPostSubmitConfirmation;
+
+      document.getElementById('homework-submit')?.addEventListener('click', async () => {
+        const submitButton = document.getElementById('homework-submit');
+        if (submitButton?.dataset.submitting === 'true') return;
+        if (submitButton) {
+          submitButton.dataset.submitting = 'true';
+          submitButton.disabled = true;
+          submitButton.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i><span>Отправка...</span>';
         }
         try {
-          await saveAll();
-          if (codeAnswer) {
-            await codeSave;
-            await post(`/submissions/${ws.context_id}/submit`, {});
-            window.location.href = ws.return_url || '/submissions';
-            return;
+          setHwSaveStatus('saving', 'Сохранение...');
+
+          // Single-file: get current code from active editor
+          const mainCode = (typeof window.getEditorMainPyCode === 'function')
+            ? window.getEditorMainPyCode()
+            : (document.getElementById('code-editor-textarea')?.value || '');
+
+          if (taskCodeStore[ws.assignment_task_id]) {
+            taskCodeStore[ws.assignment_task_id].code = mainCode;
+            taskCodeStore[ws.assignment_task_id].dirty = true;
           }
-          answerFrame?.contentWindow?.document?.getElementById('tw-submit-work')?.click();
+
+          // Flush all dirty tasks and await save
+          await flushAllDirtyTasks();
+          await flushCode(ws.assignment_task_id);
+          if (codeSave) await codeSave;
+          await saveAll();
+
+          // Flush active answer frame if present
+          if (answerFrame && answerFrame.contentWindow) {
+            try {
+              const frameWin = answerFrame.contentWindow;
+              if (typeof frameWin.saveServer === 'function') {
+                await frameWin.saveServer();
+              }
+              const ansInput = frameWin.document?.querySelector('input[name="answer"], textarea[name="answer"]');
+              if (ansInput) {
+                taskAnswerStore[ws.assignment_task_id] = ansInput.value;
+                dirtyAnswers[ws.assignment_task_id] = ansInput.value;
+              }
+            } catch (_) {}
+          }
+
+          setHwSaveStatus('saved', 'Сохранено');
+
+          const submitPayload = {
+            task_files: {
+              assignment_task_id: ws.assignment_task_id,
+              code: mainCode,
+              files: { 'main.py': mainCode },
+              open_tabs: ['main.py'],
+              active_file: 'main.py',
+              revision: currentRevision || 1,
+            },
+            dirty_answers: dirtyAnswers
+          };
+
+          const res = await post(`/submissions/${ws.context_id}/submit`, submitPayload);
+
+          // Lock editor on submit
+          ws.can_edit = false;
+          if (codeEditor) {
+            codeEditor.readOnly = true;
+          }
+          const textarea = document.getElementById('code-editor-textarea');
+          if (textarea) textarea.readOnly = true;
+
+          showPostSubmitConfirmation(res);
         } catch (error) {
-          if (codeAnswer && submitButton) {
+          if (submitButton) {
             submitButton.disabled = false;
             delete submitButton.dataset.submitting;
+            const isRet = Boolean(ws.submission_meta && ws.submission_meta.is_returned);
+            submitButton.innerHTML = `<i class="ph-bold ph-paper-plane-tilt"></i><span>${isRet ? 'Отправить на повторную проверку' : 'Сдать работу'}</span>`;
           }
+          setHwSaveStatus('conflict', 'Ошибка сдачи');
           notify(error.message || 'Не удалось сдать работу', true);
         }
       });

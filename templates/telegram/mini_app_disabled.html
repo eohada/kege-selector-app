@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BooStudy Mini App — Технические работы</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --hint: #94a3b8;
+      --accent: #6366f1;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text: #0f172a;
+        --hint: #64748b;
+        --accent: #4f46e5;
+      }
+    }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 90vh;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 32px 24px;
+      max-width: 400px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+    .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 12px 0;
+      font-weight: 700;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--hint);
+      margin: 0 0 24px 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔒</div>
+    <h1>Мобильный кабинет BooStudy</h1>
+    <p>В настоящее время Mini App находится в режиме закрытого пилота. Доступ предоставляется по приглашению.</p>
+    <div class="badge">Pilot Access Only</div>
+  </div>
+</body>
+</html>

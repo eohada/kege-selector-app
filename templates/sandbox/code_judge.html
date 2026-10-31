@@ -79,6 +79,14 @@
             <div class="cj-field"><label for="cj-description">Условие</label><textarea id="cj-description" maxlength="12000"></textarea></div>
             <div class="cj-field"><label for="cj-assignment">Связь с версией задания AI Homework</label><select id="cj-assignment"><option value="">Без связи · только Code Judge</option>{% for item in code_judge_assignments %}<option value="{{ item.assignment_id }}@{{ item.assignment_version }}" data-id="{{ item.assignment_id }}" data-version="{{ item.assignment_version }}">{{ item.title }}{% if 'рубрика v' not in item.title %} · v{{ item.assignment_version }}{% endif %}</option>{% endfor %}</select></div>
             <div class="cj-builder-actions"><button class="cj-button" type="button" id="cj-import-rubric">Загрузить критерии рубрики</button><a class="cj-button" href="{{ url_for('ai_lab.rubric_builder_page') }}">Генератор критериев</a></div>
+            {% if platform_homework_enabled %}
+            <div class="cj-field" id="cj-platform-binding">
+              <label for="cj-platform-task">Платформенное Python-задание</label>
+              <select id="cj-platform-task"><option value="">Загрузка доступных заданий…</option></select>
+              <div class="cj-builder-actions"><button class="cj-button" type="button" id="cj-link-platform-task">Привязать сохранённую версию</button></div>
+              <small id="cj-platform-link-status">Связь использует ID задания и версию тестов/рубрики. Ученику тесты не показываются.</small>
+            </div>
+            {% endif %}
             <div class="cj-field-row">
               <div class="cj-field"><label for="cj-mode">Режим Python</label><select id="cj-mode"><option value="function">Функция</option><option value="program">Программа</option></select></div>
               <div class="cj-field" id="cj-function-field"><label for="cj-function">Имя функции</label><input id="cj-function" maxlength="80"></div>
@@ -120,6 +128,6 @@
   </section>
 </main>
 <input type="hidden" id="cj-csrf" value="{{ csrf_token() }}">
-<script id="cj-initial-data" type="application/json">{{ {"enabled": code_judge_enabled, "test_sets": code_judge_test_sets, "selected": code_judge_selected, "history": code_judge_history, "runner": code_judge_runner, "limits": code_judge_limits, "assignments": code_judge_assignments}|tojson }}</script>
+<script id="cj-initial-data" type="application/json">{{ {"enabled": code_judge_enabled, "test_sets": code_judge_test_sets, "selected": code_judge_selected, "history": code_judge_history, "runner": code_judge_runner, "limits": code_judge_limits, "assignments": code_judge_assignments, "exam_skills": exam_skills, "platform_homework_enabled": platform_homework_enabled}|tojson }}</script>
 <script src="{{ url_for('static', filename='js/ai-lab-code-judge.js') }}" defer></script>
 {% endblock %}

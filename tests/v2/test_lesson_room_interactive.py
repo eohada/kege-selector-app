@@ -52,6 +52,38 @@ def _create_lesson_context(app, role_users, *, private_note='Только для
         return lesson.lesson_id, lesson_task.lesson_task_id
 
 
+def test_revealing_task_already_exposed_in_another_context_returns_conflict(app, client, role_users):
+    from app import db
+    from app.models import LessonTask
+
+    lesson_id, first_lesson_task_id = _create_lesson_context(app, role_users)
+    with app.app_context():
+        first = db.session.get(LessonTask, first_lesson_task_id)
+        duplicate = LessonTask(
+            lesson_id=lesson_id,
+            task_id=first.task_id,
+            assignment_type='classwork',
+            status='pending',
+            is_visible_to_student=False,
+        )
+        db.session.add(duplicate)
+        db.session.commit()
+        duplicate_id = duplicate.lesson_task_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.post(
+        f'/lesson/{lesson_id}/task/{duplicate_id}/visibility',
+        json={'visible': True},
+    )
+
+    assert response.status_code == 409
+    assert response.get_json()['success'] is False
+    assert 'уже выдавалось этому ученику' in response.get_json()['error']
+    with app.app_context():
+        duplicate = db.session.get(LessonTask, duplicate_id)
+        assert duplicate.is_visible_to_student is False
+
+
 def test_student_room_hides_private_teacher_state_and_preserves_shared_board(app, client, role_users):
     lesson_id, _lesson_task_id = _create_lesson_context(app, role_users)
     login_as(client, role_users['student_user_id'], 'student')

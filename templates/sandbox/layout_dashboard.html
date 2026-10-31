@@ -8,13 +8,12 @@
   <meta name="user-timezone-mode" content="{{ user_timezone_mode or 'auto' }}">
   <script src="{{ url_for('static', filename='js/timezone-contract.js') }}?v=20260925-v1"></script>
   <title>{% block title %}BooStudy Dashboard{% endblock %}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}?v=20261029">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/phosphor/phosphor.css') }}?v=2.1.2">
   <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20261005-release">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-design-system.css') }}?v=20261011-shell-v195">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/task-content-rich.css') }}?v=20261015">
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="{{ url_for('static', filename='vendor/phosphor/index.js') }}?v=2.1.2"></script>
   {% block extra_head %}{% endblock %}
 </head>
 {% set dashboard_admin_shell = request.path.startswith('/admin') and current_user is defined and current_user and current_user.is_authenticated %}
@@ -35,8 +34,12 @@
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes') %}is-active{% endif %}" href="/submissions"><i class="ph ph-check-square"></i><span>Задания</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/student/') and request.path.endswith('/analytics') %}is-active{% endif %}" href="{{ url_for('students.student_analytics', student_id=student_nav_profile.student_id) if student_nav_profile else url_for('main.dashboard') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
-        <div class="bs-dashboard-nav-link is-coming-soon bs-student-schedule-disabled" aria-disabled="true" role="link" aria-label="Расписание — Технические неполадки" title="Расписание временно недоступно: Технические неполадки"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span class="bs-student-schedule-label"><span>Расписание</span><small class="bs-schedule-issue-badge">Неполадки</small></span></div>
-        <div class="bs-dashboard-nav-link is-coming-soon bs-student-program-soon" aria-disabled="true" aria-label="Программа — скоро"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Скоро...</small></span></div>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Расписание</span></a>
+        {% if student_nav_profile %}
+          <a class="bs-dashboard-nav-link {% if request.path.startswith('/student/') and request.path.endswith('/courses') or request.path.startswith('/courses/') %}is-active{% endif %}" href="{{ url_for('courses.student_courses', student_id=student_nav_profile.student_id) }}"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Мои курсы и уроки</small></span></a>
+        {% else %}
+          <div class="bs-dashboard-nav-link is-coming-soon bs-student-program-soon" aria-disabled="true" aria-label="Программа недоступна"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Недоступна</small></span></div>
+        {% endif %}
       {% elif dashboard_admin_shell %}
         <a class="bs-dashboard-nav-link {% if request.path == '/admin/users' or request.path == '/admin' %}is-active{% endif %}" href="/admin/users"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/ai-lab') %}is-active{% endif %}" href="{{ url_for('admin.admin_ai_lab') }}"><i class="ph ph-flask"></i><span>AI Lab</span></a>
@@ -63,7 +66,7 @@
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.manage_list') if (current_user.is_creator() or current_user.is_tutor() or current_user.is_admin() or current_user.role in ['creator', 'teacher', 'tutor', 'admin', 'chief_admin']) else url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/courses') %}is-active{% endif %}" href="/courses"><i class="ph ph-grid-four"></i><span>Программа</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/analytics') or request.path.startswith('/teacher/analytics') %}is-active{% endif %}" href="{{ url_for('main.teacher_analytics_view') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
-        <div class="bs-dashboard-nav-link is-coming-soon bs-student-schedule-disabled" aria-disabled="true" role="link" aria-label="Расписание — Технические неполадки" title="Расписание временно недоступно: Технические неполадки"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span class="bs-student-schedule-label"><span>Расписание</span><small class="bs-schedule-issue-badge">Неполадки</small></span></div>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Расписание</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/library') or request.path.startswith('/teacher/library') %}is-active{% endif %}" href="{{ url_for('main.library_hub_view') }}"><i class="ph ph-folder"></i><span>Файлы</span></a>
         {% if current_user.is_admin() or current_user.is_creator() %}<a class="bs-dashboard-nav-link {% if request.path.startswith('/admin') %}is-active{% endif %}" href="/admin/users"><i class="ph ph-shield-check"></i><span>Админ-панель</span></a>{% endif %}
       {% endif %}
@@ -85,6 +88,10 @@
         </div>
       </div>
       <div class="bs-dashboard-topbar-actions">
+        <!-- Oristera Next Entry Switcher Button -->
+        <a href="/oristera/toggle?to=oristera" class="btn-3d px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-900 flex items-center gap-1.5 no-underline shadow-sm transition-all" title="Перейти в новую вселенную Oristera Next">
+          <span>✨ Oristera Next</span>
+        </a>
         <div class="bs-dashboard-profile-wrap" data-profile-menu-wrap>
           <button class="bs-dashboard-topbar-profile" type="button" aria-haspopup="menu" aria-expanded="false" data-profile-menu-trigger>
             <img src="{% if current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" alt="">
@@ -117,7 +124,7 @@
     <a href="/teacher/students" class="{% if request.path in ['/students', '/teacher/students'] or request.path.startswith('/teacher/students') or request.path.startswith('/student/') %}is-active{% endif %}"><i class="ph ph-users"></i><span>Ученики</span></a>
     {% endif %}
     <a href="{% if is_student_shell %}/submissions{% else %}/assignments{% endif %}" class="{% if (is_student_shell and (request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes'))) or (not is_student_shell and request.path.startswith('/assignments')) %}is-active{% endif %}"><i class="ph ph-check-square"></i><span>Задания</span></a>
-    <div class="bs-mobile-schedule-disabled" aria-disabled="true" title="Расписание: Технические неполадки"><i class="ph ph-calendar-blank"></i><span>Расписание</span><small class="bs-mobile-schedule-badge">Неполадки</small></div>
+    <a href="{{ url_for('schedule.schedule') }}" class="{% if request.path.startswith('/schedule') %}is-active{% endif %}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
     {% endif %}
     <a href="/workspace/profile" class="{% if request.path.startswith('/workspace/profile') %}is-active{% endif %}"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
   </nav>

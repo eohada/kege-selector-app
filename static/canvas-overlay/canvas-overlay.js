@@ -119,6 +119,7 @@
   let viewOffsetX = 0;
   let viewOffsetY = 0;
   let dpr = 1;
+  let lastCullingStats = null;
 
   // Laser Pointer State
   let laserTrail = [];
@@ -149,6 +150,11 @@
   let isReviewMode = false;
   let showTeacherLayer = true;
   let isTeacherDraftMode = false;
+  let currentUserId = null;
+
+  function getCurrentUserId() {
+    return currentUserId || (typeof window !== 'undefined' ? (window.trainerOsConfig?.user_id || window.trainerOsConfig?.viewer_id || null) : null);
+  }
 
   // DOM Elements
   let overlay = null;
@@ -195,6 +201,7 @@
   let currentStroke = null;
   let lassoPoints = [];
   let panStart = null;
+  let lastCameraSyncTime = 0;
   let spaceKeyHeld = false;
   let middlePanActive = false;
   let dragStartPos = { x: 0, y: 0 };
@@ -267,7 +274,31 @@
         currentPageId,
         strokes, // legacy compatibility
       };
-      localStorage.setItem(key, JSON.stringify(payload));
+      // Strip large data URL images to protect localStorage quota
+      const json = JSON.stringify(payload, (k, v) => {
+        if (k === 'src' && typeof v === 'string' && v.startsWith('data:image/') && v.length > 500) {
+          return '';
+        }
+        return v;
+      });
+      try {
+        localStorage.setItem(key, json);
+      } catch (err) {
+        if (err && (err.name === 'QuotaExceededError' || err.code === 22)) {
+          // Prune older canvas cache keys
+          try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('canvas_') || k.startsWith('boostudy_canvas_')) && k !== key) {
+                keysToRemove.push(k);
+              }
+            }
+            keysToRemove.forEach((k) => localStorage.removeItem(k));
+            localStorage.setItem(key, json);
+          } catch (_) {}
+        }
+      }
     } catch (_) {}
   }
 
@@ -1245,57 +1276,106 @@
       contextBar.appendChild(mkCtxSep());
 
       // Line style: Solid / Dashed / Dotted
-      const dashBtn = mkCtxBtn('ph-line-dashed', 'Стиль линии: сплошная / пунктир', () => {
-        const nextStyle = firstStroke?.style === 'dashed' ? 'dotted' : (firstStroke?.style === 'dotted' ? 'solid' : 'dashed');
-        selectedStrokes.forEach((s) => { s.style = nextStyle; });
-        dirty = true;
-        saveLocal();
-        redraw();
-        updateSelectionBox();
-      });
-      contextBar.appendChild(dashBtn);
+      if (firstStroke?.type !== 'stamp') {
+        const dashBtn = mkCtxBtn('ph-line-dashed', 'Стиль линии: сплошная / пунктир', () => {
+          const nextStyle = firstStroke?.style === 'dashed' ? 'dotted' : (firstStroke?.style === 'dotted' ? 'solid' : 'dashed');
+          selectedStrokes.forEach((s) => { s.style = nextStyle; });
+          dirty = true;
+          saveLocal();
+          redraw();
+          updateSelectionBox();
+        });
+        contextBar.appendChild(dashBtn);
+      }
 
-      // Thickness adjustments
+      // Thickness / Scale adjustments
       const minusBtn = mkCtxBtn('ph-minus', 'Уменьшить размер', () => {
         selectedStrokes.forEach((s) => {
-          if (s.type === 'text') s.fontSize = Math.max(10, (s.fontSize || 18) - 2);
+          if (s.type === 'stamp') {
+            s.stampScale = Math.max(0.4, Number((((s.stampScale || 1.0) * 0.85)).toFixed(2)));
+            if (s.points && s.points.length >= 2) {
+              const cx = (s.points[0].x + s.points[1].x) / 2;
+              const cy = (s.points[0].y + s.points[1].y) / 2;
+              const f = 0.85;
+              s.points = s.points.map(p => ({
+                x: cx + (p.x - cx) * f,
+                y: cy + (p.y - cy) * f,
+                rx: p.rx,
+                ry: p.ry
+              }));
+            }
+          } else if (s.type === 'note') {
+            s.width = Math.max(120, (s.width || 190) - 20);
+            s.height = Math.max(80, (s.height || 130) - 14);
+          } else if (s.type === 'text') s.fontSize = Math.max(10, (s.fontSize || 18) - 2);
           else s.width = Math.max(1, (s.width || 3) - 1);
         });
         dirty = true;
         saveLocal();
         redraw();
+        syncDomWidgets();
         updateSelectionBox();
         scheduleSave();
+        realtimeSyncAdapter?.onStrokesUpdate?.(selectedStrokes);
       });
       contextBar.appendChild(minusBtn);
 
       const sizeBadge = document.createElement('span');
       sizeBadge.className = 'ctx-size-badge';
-      const curSize = firstStroke?.type === 'text' ? (firstStroke.fontSize || 18) : (firstStroke?.width || penSize);
+      let curSize = penSize;
+      if (firstStroke?.type === 'text') {
+        curSize = firstStroke.fontSize || 18;
+      } else if (firstStroke?.type === 'stamp') {
+        curSize = `${Math.round((firstStroke.stampScale || 1.0) * 100)}%`;
+      } else if (firstStroke?.type === 'note') {
+        curSize = `${firstStroke.width || 190}×${firstStroke.height || 130}`;
+      } else {
+        curSize = firstStroke?.width || penSize;
+      }
       sizeBadge.textContent = `${curSize}`;
       contextBar.appendChild(sizeBadge);
 
       const plusBtn = mkCtxBtn('ph-plus', 'Увеличить размер', () => {
         selectedStrokes.forEach((s) => {
-          if (s.type === 'text') s.fontSize = Math.min(64, (s.fontSize || 18) + 2);
+          if (s.type === 'stamp') {
+            s.stampScale = Math.min(3.0, Number((((s.stampScale || 1.0) * 1.18)).toFixed(2)));
+            if (s.points && s.points.length >= 2) {
+              const cx = (s.points[0].x + s.points[1].x) / 2;
+              const cy = (s.points[0].y + s.points[1].y) / 2;
+              const f = 1.18;
+              s.points = s.points.map(p => ({
+                x: cx + (p.x - cx) * f,
+                y: cy + (p.y - cy) * f,
+                rx: p.rx,
+                ry: p.ry
+              }));
+            }
+          } else if (s.type === 'note') {
+            s.width = Math.min(600, (s.width || 190) + 20);
+            s.height = Math.min(450, (s.height || 130) + 14);
+          } else if (s.type === 'text') s.fontSize = Math.min(64, (s.fontSize || 18) + 2);
           else s.width = Math.min(32, (s.width || 3) + 1);
         });
         dirty = true;
         saveLocal();
         redraw();
+        syncDomWidgets();
         updateSelectionBox();
         scheduleSave();
+        realtimeSyncAdapter?.onStrokesUpdate?.(selectedStrokes);
       });
       contextBar.appendChild(plusBtn);
 
       contextBar.appendChild(mkCtxSep());
 
-      // Flip Horizontal & Vertical
-      const flipHBtn = mkCtxBtn('ph-arrows-horizontal', 'Отразить по горизонтали', () => flipSelected('h'));
-      contextBar.appendChild(flipHBtn);
+      if (firstStroke?.type !== 'stamp') {
+        // Flip Horizontal & Vertical
+        const flipHBtn = mkCtxBtn('ph-arrows-horizontal', 'Отразить по горизонтали', () => flipSelected('h'));
+        contextBar.appendChild(flipHBtn);
 
-      const flipVBtn = mkCtxBtn('ph-arrows-vertical', 'Отразить по вертикали', () => flipSelected('v'));
-      contextBar.appendChild(flipVBtn);
+        const flipVBtn = mkCtxBtn('ph-arrows-vertical', 'Отразить по вертикали', () => flipSelected('v'));
+        contextBar.appendChild(flipVBtn);
+      }
 
       // Lock / Unlock
       const lockBtn = mkCtxBtn(firstStroke?.locked ? 'ph-lock-simple' : 'ph-lock-simple-open', firstStroke?.locked ? 'Разблокировать' : 'Заблокировать', () => {
@@ -1614,6 +1694,7 @@
 
   function switchPage(pageId, skipSync = false) {
     if (!pageId) return;
+    const prevPageId = currentPageId;
     let target = pages.find((p) => p.id === pageId);
     if (!target) {
       target = { id: pageId, title: `Страница ${pages.length + 1}`, background: getActivePage()?.background || 'dots', strokes: [] };
@@ -1632,6 +1713,10 @@
     updateMinimap();
     if (!skipSync) {
       realtimeSyncAdapter?.onPageSwitch?.(pageId);
+    }
+    window.dispatchEvent(new CustomEvent('boostudy:page-changed', { detail: { prevPageId, pageId } }));
+    if (window.onLessonPageSwitch && prevPageId && prevPageId !== pageId) {
+      window.onLessonPageSwitch(prevPageId, pageId);
     }
   }
 
@@ -2580,6 +2665,7 @@
       page_id: currentPageId,
       type: 'math',
       layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
+      userId: getCurrentUserId(),
       latex,
       fontSize: 22,
       color: '#0f172a',
@@ -2602,9 +2688,7 @@
     updateSelectionBox();
     updateReviewLayerUI();
     scheduleSave();
-    if (mathObj.layer !== 'teacher') {
-      realtimeSyncAdapter?.onStrokeCommit?.(mathObj);
-    }
+    realtimeSyncAdapter?.onStrokeCommit?.(mathObj);
   }
 
   // --- Export Modal (PNG, SVG, PDF, JSON) ---
@@ -2763,11 +2847,21 @@
     const baseWidth = Math.max(3, (interactionMode === 'laser' ? laserWidth : (remoteLaserWidth || laserWidth || 6)));
 
     if (laserTrail.length > 1) {
+      // Project all points in laserTrail to current screen space for rendering
+      // This guarantees the laser trail stays firmly pinned to world coordinates during pan/zoom!
+      const projectedTrail = laserTrail.map((p) => {
+        if (p.wx !== undefined && p.wy !== undefined && typeof pointToScreen === 'function') {
+          const s = pointToScreen({ x: p.wx, y: p.wy });
+          return { x: s.x, y: s.y, t: p.t, isStart: p.isStart, wx: p.wx, wy: p.wy };
+        }
+        return p;
+      });
+
       // Group points into continuous segments by isStart
       const segments = [];
       let currentSeg = [];
-      for (let i = 0; i < laserTrail.length; i++) {
-        const pt = laserTrail[i];
+      for (let i = 0; i < projectedTrail.length; i++) {
+        const pt = projectedTrail[i];
         if (pt.isStart && currentSeg.length > 0) {
           segments.push(currentSeg);
           currentSeg = [];
@@ -2796,10 +2890,10 @@
         return chunks;
       });
 
-      // Pass 1: Outer smooth glowing neon bloom (chunked B-spline for 60-144 FPS)
+      // Pass 1: Outer smooth glowing neon bloom (Centripetal Catmull-Rom spline)
       laserCtx.save();
       laserCtx.shadowColor = lColor;
-      laserCtx.shadowBlur = 16;
+      laserCtx.shadowBlur = Math.min(8, Math.round(baseWidth * 1.1));
       segmentBatches.forEach((chunks) => {
         chunks.forEach(({ points, alpha }) => {
           laserCtx.beginPath();
@@ -2814,7 +2908,7 @@
       // Pass 2: Inner white-hot smooth core
       laserCtx.save();
       laserCtx.shadowColor = '#ffffff';
-      laserCtx.shadowBlur = 4;
+      laserCtx.shadowBlur = 2;
       segmentBatches.forEach((chunks) => {
         chunks.forEach(({ points, alpha }) => {
           laserCtx.beginPath();
@@ -2829,42 +2923,62 @@
 
     // Pass 3: Glowing laser head dot at current dragging tip
     if (laserTrail.length > 0) {
-      const tip = laserTrail[laserTrail.length - 1];
+      const lastRaw = laserTrail[laserTrail.length - 1];
+      const tip = (lastRaw.wx !== undefined && lastRaw.wy !== undefined && typeof pointToScreen === 'function')
+        ? pointToScreen({ x: lastRaw.wx, y: lastRaw.wy })
+        : lastRaw;
       laserCtx.save();
       laserCtx.beginPath();
       laserCtx.arc(tip.x + offsetX, tip.y + offsetY, baseWidth * 0.95, 0, Math.PI * 2);
       laserCtx.fillStyle = '#ffffff';
       laserCtx.shadowColor = lColor;
-      laserCtx.shadowBlur = 18;
+      laserCtx.shadowBlur = Math.min(10, Math.round(baseWidth * 1.3));
       laserCtx.fill();
       laserCtx.restore();
     }
   }
 
-  function drawSmoothSpline(c, pts, offX, offY) {
+  // Mathematically exact Centripetal Catmull-Rom Spline (alpha = 0.5)
+  // Guarantees zero cusps, zero loops, and zero self-intersections on acute corners!
+  function drawSmoothSpline(c, pts, offX = 0, offY = 0) {
     if (!pts || pts.length < 2) return;
     if (pts.length === 2) {
       c.moveTo(pts[0].x + offX, pts[0].y + offY);
       c.lineTo(pts[1].x + offX, pts[1].y + offY);
       return;
     }
+
     c.moveTo(pts[0].x + offX, pts[0].y + offY);
+    const alpha = 0.5; // Centripetal parameter
+
     for (let i = 0; i < pts.length - 1; i++) {
-      const pCurr = pts[i];
-      const pNext = pts[i + 1];
-      const midX = (pCurr.x + pNext.x) / 2 + offX;
-      const midY = (pCurr.y + pNext.y) / 2 + offY;
-      c.quadraticCurveTo(pCurr.x + offX, pCurr.y + offY, midX, midY);
+      const p0 = i > 0 ? pts[i - 1] : { x: 2 * pts[0].x - pts[1].x, y: 2 * pts[0].y - pts[1].y };
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = (i + 2 < pts.length) ? pts[i + 2] : { x: 2 * pts[pts.length - 1].x - pts[pts.length - 2].x, y: 2 * pts[pts.length - 1].y - pts[pts.length - 2].y };
+
+      const d01 = Math.max(0.0001, Math.pow(Math.hypot(p1.x - p0.x, p1.y - p0.y), alpha));
+      const d12 = Math.max(0.0001, Math.pow(Math.hypot(p2.x - p1.x, p2.y - p1.y), alpha));
+      const d23 = Math.max(0.0001, Math.pow(Math.hypot(p3.x - p2.x, p3.y - p2.y), alpha));
+
+      const d01_d12 = d01 + d12;
+      const d12_d23 = d12 + d23;
+
+      const c1x = (p1.x * (2 * d01 * d01 + 3 * d01 * d12 + d12 * d12) + p2.x * (d01 * d01) - p0.x * (d12 * d12)) / (3 * d01 * d01_d12);
+      const c1y = (p1.y * (2 * d01 * d01 + 3 * d01 * d12 + d12 * d12) + p2.y * (d01 * d01) - p0.y * (d12 * d12)) / (3 * d01 * d01_d12);
+
+      const c2x = (p2.x * (2 * d23 * d23 + 3 * d23 * d12 + d12 * d12) + p1.x * (d23 * d23) - p3.x * (d12 * d12)) / (3 * d23 * d12_d23);
+      const c2y = (p2.y * (2 * d23 * d23 + 3 * d23 * d12 + d12 * d12) + p1.y * (d23 * d23) - p3.y * (d12 * d12)) / (3 * d23 * d12_d23);
+
+      c.bezierCurveTo(c1x + offX, c1y + offY, c2x + offX, c2y + offY, p2.x + offX, p2.y + offY);
     }
-    const last = pts[pts.length - 1];
-    c.lineTo(last.x + offX, last.y + offY);
   }
 
   function startLaserLoop() {
+    if (laserAnimFrame) return;
     function loop() {
       const now = Date.now();
-      const hasTrail = laserTrail.length > 0;
-      if (hasTrail) {
+      if (laserTrail.length > 0) {
         laserTrail = laserTrail.filter((p) => now - p.t < 1200);
         drawLaserTop();
       } else if (!laserCleared) {
@@ -2887,13 +3001,17 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  let lastBgTransformKey = '';
   function syncCanvasBackgroundTransform() {
     if (!overlay) return;
     const curPage = getActivePage();
     const bgType = curPage.background || 'dots';
     if (bgType === 'plain') {
-      overlay.style.backgroundPosition = '';
-      overlay.style.backgroundSize = '';
+      if (lastBgTransformKey !== 'plain') {
+        overlay.style.backgroundPosition = '';
+        overlay.style.backgroundSize = '';
+        lastBgTransformKey = 'plain';
+      }
       return;
     }
     const baseSize = (bgType === 'ruled') ? 28 : (bgType === 'millimeter' || bgType === 'coord' ? 40 : 24);
@@ -2904,19 +3022,14 @@
     const originY = height / 2 - (height / 2) * viewScale + viewOffsetY;
     const posX = ((originX % curSize) + curSize) % curSize;
     const posY = ((originY % curSize) + curSize) % curSize;
+    const key = `${bgType}_${posX.toFixed(1)}_${posY.toFixed(1)}_${curSize.toFixed(1)}`;
+    if (key === lastBgTransformKey) return;
+    lastBgTransformKey = key;
     overlay.style.backgroundPosition = `${posX}px ${posY}px`;
     overlay.style.backgroundSize = (bgType === 'ruled') ? `100% ${curSize}px` : `${curSize}px ${curSize}px`;
   }
 
-  let redrawPending = false;
-  function scheduleRedraw() {
-    if (redrawPending) return;
-    redrawPending = true;
-    requestAnimationFrame(() => {
-      redrawPending = false;
-      redraw();
-    });
-  }
+
 
   function redraw() {
     if (!ctx) return;
@@ -2930,10 +3043,48 @@
 
     const activeRect = getActiveTaskContentRect();
 
-    // 1. Draw strokes & shapes on canvas
+    // 1. Draw strokes & shapes on canvas with robust spatial viewport culling
+    const vp = typeof getViewportWorldBounds === 'function' ? getViewportWorldBounds() : null;
+    const vpPad = Math.max(120, 200 / Math.max(viewScale, 0.1));
+    const vpMinX = vp ? vp.worldX - vpPad : -Infinity;
+    const vpMinY = vp ? vp.worldY - vpPad : -Infinity;
+    const vpMaxX = vp ? vp.worldX + vp.worldW + vpPad : Infinity;
+    const vpMaxY = vp ? vp.worldY + vp.worldH + vpPad : Infinity;
+
+    let renderedCount = 0;
+    let culledCount = 0;
+    const cullingActive = (window.BooCanvasOverlay?.__debugCullingEnabled !== false);
+
     strokes.forEach((s) => {
-      if (s.layer === 'teacher' && (!showTeacherLayer || isReadOnly)) return;
+      if (s.layer === 'teacher' && !showTeacherLayer) return;
       if (s.type === 'note' || s.type === 'widget' || s.type === 'math' || s.type === 'stamp') return;
+
+      if (cullingActive && vp && s.points && s.points.length > 0 && !s.space) {
+        if (!s._bounds) {
+          let bMinX = Infinity, bMinY = Infinity, bMaxX = -Infinity, bMaxY = -Infinity;
+          for (let i = 0; i < s.points.length; i++) {
+            const px = s.points[i].x, py = s.points[i].y;
+            if (px < bMinX) bMinX = px;
+            if (px > bMaxX) bMaxX = px;
+            if (py < bMinY) bMinY = py;
+            if (py > bMaxY) bMaxY = py;
+          }
+          if (s.type === 'text') {
+            const textLen = (s.text ? String(s.text).length : 5);
+            const fSize = Number(s.fontSize) || 20;
+            bMaxX += Math.max(300, textLen * (fSize * 0.7));
+            bMaxY += Math.max(40, fSize * 2.5);
+          }
+          const strokeMargin = Math.max(24, ((Number(s.width) || Number(s.size) || 3) * 2));
+          s._bounds = [bMinX - strokeMargin, bMinY - strokeMargin, bMaxX + strokeMargin, bMaxY + strokeMargin];
+        }
+        if (s._bounds[2] < vpMinX || s._bounds[0] > vpMaxX || s._bounds[3] < vpMinY || s._bounds[1] > vpMaxY) {
+          culledCount++;
+          return; // Skip rendering offscreen stroke to sustain 60 FPS
+        }
+      }
+
+      renderedCount++;
       if (s.layer === 'teacher') {
         ctx.save();
         ctx.shadowColor = '#f59e0b';
@@ -2945,9 +3096,16 @@
       }
     });
 
+    lastCullingStats = {
+      total: strokes.length,
+      rendered: renderedCount,
+      culled: culledCount,
+      cullingActive,
+    };
+
     if (remoteLiveStrokes.size > 0) {
       remoteLiveStrokes.forEach((s) => {
-        if (s.layer === 'teacher' && isReadOnly) return;
+        if (s.layer === 'teacher' && !showTeacherLayer) return;
         if (s.page_id && s.page_id !== currentPageId) return;
         if (strokes.some((existing) => existing.id === s.id)) return;
         if (s.type === 'note' || s.type === 'widget' || s.type === 'math' || s.type === 'stamp') return;
@@ -2978,6 +3136,17 @@
     // 4. Synchronize DOM sticky notes and interactive widgets
     syncDomWidgets(activeRect);
     updateMinimap();
+    window.renderStudentViewportIndicators?.();
+  }
+
+  let redrawScheduled = false;
+  function scheduleRedraw() {
+    if (redrawScheduled) return;
+    redrawScheduled = true;
+    requestAnimationFrame(() => {
+      redrawScheduled = false;
+      redraw();
+    });
   }
 
   function drawStroke(s, activeRect) {
@@ -3930,7 +4099,7 @@
         updateMathCardContent(el, item);
       }
 
-      if (item.layer === 'teacher' && (!showTeacherLayer || isReadOnly)) {
+      if (item.layer === 'teacher' && !showTeacherLayer) {
         el.style.display = 'none';
         return;
       } else {
@@ -3939,49 +4108,68 @@
 
       // Update position and dimensions
       const p1 = pointToScreen(item.points[0], item, curActiveRect);
+
       if (item.type === 'stamp') {
+        const stampScale = (item.stampScale || 1.0) * viewScale;
         el.style.left = `${p1.x}px`;
         el.style.top = `${p1.y}px`;
         el.style.transformOrigin = 'top left';
-        el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}scale(${viewScale})`;
+        el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}scale(${stampScale})`;
         el.style.zIndex = `${Math.max(2, strokeIndex + 2)}`;
         el.classList.toggle('is-selected', selectedIds.has(item.id));
         return;
       }
 
-      const p2 = pointToScreen(item.points[1] || item.points[0], item, curActiveRect);
-      const x = Math.min(p1.x, p2.x);
-      const y = Math.min(p1.y, p2.y);
-      const w = Math.max(item.type === 'math' ? 60 : 140, Math.abs(p2.x - p1.x));
-      const h = Math.max(item.type === 'math' ? 36 : 90, Math.abs(p2.y - p1.y));
-
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
-      if (item.type !== 'math') {
-        el.style.width = `${w}px`;
-        el.style.height = `${h}px`;
+      if (item.type === 'note') {
+        const noteW = item.width || 190;
+        const noteH = item.height || 130;
+        el.style.left = `${p1.x}px`;
+        el.style.top = `${p1.y}px`;
+        el.style.width = `${noteW}px`;
+        el.style.height = `${noteH}px`;
+        el.style.fontSize = '14px';
+        el.style.zIndex = `${Math.max(2, strokeIndex + 2)}`;
+        el.style.transformOrigin = 'top left';
+        el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}scale(${viewScale})`;
+        el.classList.toggle('is-selected', selectedIds.has(item.id));
+        if (typeof el._onResize === 'function') {
+          el._onResize(noteW, noteH);
+        }
+        return;
       }
-      el.style.zIndex = `${Math.max(2, strokeIndex + 2)}`;
 
       if (item.type === 'math') {
+        el.style.left = `${p1.x}px`;
+        el.style.top = `${p1.y}px`;
+        el.style.zIndex = `${Math.max(2, strokeIndex + 2)}`;
         el.style.transformOrigin = 'top left';
-        el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}${viewScale !== 1 ? `scale(${viewScale})` : ''}`;
+        el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}scale(${viewScale})`;
         el.classList.toggle('is-selected', selectedIds.has(item.id));
         const cardW = Math.max(60, el.offsetWidth || 120);
         const cardH = Math.max(36, el.offsetHeight || 44);
         item.points[1] = {
-          x: item.points[0].x + cardW / Math.max(viewScale, 0.1),
-          y: item.points[0].y + cardH / Math.max(viewScale, 0.1),
+          x: item.points[0].x + cardW,
+          y: item.points[0].y + cardH,
         };
-      } else {
-        el.style.transformOrigin = 'center center';
-        el.style.transform = item.rotation ? `rotate(${item.rotation}deg)` : '';
-        if (item.type === 'note') {
-          el.style.fontSize = `${Math.max(11, 14 * viewScale)}px`;
-        }
+        return;
       }
+
+      // DOM Widget (graph, interactive block)
+      const pt1 = item.points[0];
+      const pt2 = item.points[1] || { x: pt1.x + 240, y: pt1.y + 160 };
+      const worldW = Math.max(140, Math.abs(pt2.x - pt1.x));
+      const worldH = Math.max(90, Math.abs(pt2.y - pt1.y));
+
+      el.style.left = `${p1.x}px`;
+      el.style.top = `${p1.y}px`;
+      el.style.width = `${worldW}px`;
+      el.style.height = `${worldH}px`;
+      el.style.zIndex = `${Math.max(2, strokeIndex + 2)}`;
+      el.style.transformOrigin = 'top left';
+      el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}scale(${viewScale})`;
+      el.classList.toggle('is-selected', selectedIds.has(item.id));
       if (typeof el._onResize === 'function') {
-        el._onResize(w, h);
+        el._onResize(worldW, worldH);
       }
     });
   }
@@ -3990,8 +4178,10 @@
     const el = document.createElement('div');
     el.className = `boo-canvas-stamp-item boo-orbit-badge-stamp boo-master-stamp-${stamp.stampType || 'excellent'}`;
     el.dataset.objId = stamp.id;
+    const rawIcon = String(stamp.icon || '').trim();
+    const iconClass = rawIcon.startsWith('ph-') ? rawIcon : 'ph-star';
     el.innerHTML = `
-      <i class="ph-bold ${stamp.icon || 'ph-star'}"></i>
+      <i class="ph-bold ${iconClass}"></i>
       <span>${escapeHtml(stamp.label || '')}</span>
       <button type="button" class="boo-stamp-close" aria-label="Удалить"><i class="ph-bold ph-x"></i></button>
     `;
@@ -5626,7 +5816,30 @@
     if (!s.points || s.points.length === 0) return null;
     const pts = s.points.map((p) => pointToScreen(p, s, activeRect));
 
-    if (s.type === 'note' || s.type === 'image' || s.type === 'shape' || s.type === 'widget' || s.type === 'math') {
+    if (s.type === 'note') {
+      const p1 = pts[0];
+      if (!p1) return null;
+      return {
+        x: p1.x,
+        y: p1.y,
+        width: (s.width || 190) * viewScale,
+        height: (s.height || 130) * viewScale
+      };
+    }
+
+    if (s.type === 'stamp') {
+      const p1 = pts[0];
+      if (!p1) return null;
+      const sc = (s.stampScale || 1.0) * viewScale;
+      return {
+        x: p1.x,
+        y: p1.y,
+        width: 160 * sc,
+        height: 42 * sc
+      };
+    }
+
+    if (s.type === 'image' || s.type === 'shape' || s.type === 'widget' || s.type === 'math') {
       const [p1, p2] = pts;
       if (!p1 || !p2) return null;
       const x = Math.min(p1.x, p2.x);
@@ -5781,12 +5994,19 @@
 
   function canDeleteStroke(s) {
     if (!s) return false;
-    const isTeacherUser = isReviewMode || isTeacherDraftMode || (typeof window !== 'undefined' && window.trainerOsConfig?.role === 'teacher');
+    const isTeacherUser = isReviewMode || isTeacherDraftMode || (typeof window !== 'undefined' && (window.trainerOsConfig?.role === 'teacher' || window.trainerOsConfig?.is_studio_teacher || window.trainerOsConfig?.room_role === 'teacher'));
     if (s.layer === 'teacher') {
       return Boolean(isTeacherUser);
     }
     if (isReviewMode && s.layer !== 'teacher') {
       return false;
+    }
+    if (!isTeacherUser) {
+      const myUid = getCurrentUserId();
+      const strokeOwner = s.userId || s.user_id;
+      if (myUid && strokeOwner && String(strokeOwner) !== String(myUid)) {
+        return false;
+      }
     }
     return true;
   }
@@ -5847,10 +6067,19 @@
     // Laser pointer
     if (tool === 'laser') {
       interactionMode = 'laser';
-      laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: true });
+      const laserWorldPt = pointForEvent ? pointForEvent(e) : { x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale };
+      laserTrail.push({
+        x: screenX,
+        y: screenY,
+        wx: laserWorldPt.x,
+        wy: laserWorldPt.y,
+        t: Date.now(),
+        isStart: true
+      });
       drawLaserTop();
+      startLaserLoop();
       updateCursor();
-      realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: true });
+      realtimeSyncAdapter?.onLaserMove?.(laserWorldPt, true, { color: laserColor, width: laserWidth, isStart: true });
       canvas.setPointerCapture?.(e.pointerId);
       e.preventDefault();
       return;
@@ -5964,6 +6193,7 @@
       page_id: currentPageId,
       type: isConnector ? 'connector' : (shape ? 'shape' : (isHighlighter ? 'highlighter' : 'stroke')),
       layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
+      userId: getCurrentUserId(),
       brush: bId || 'ballpoint',
       shape: shape || 'rectangle',
       color: tool === 'eraser_stroke' ? null : (isHighlighter ? highlighterColor : penColor),
@@ -6003,8 +6233,17 @@
     // Laser pointer (active only on click/drag, rendered via requestAnimationFrame)
     if (tool === 'laser') {
       if (isPointerDown && interactionMode === 'laser') {
-        laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: false });
-        realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: false });
+        const laserWorldPt = pointForEvent ? pointForEvent(e) : { x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale };
+        laserTrail.push({
+          x: screenX,
+          y: screenY,
+          wx: laserWorldPt.x,
+          wy: laserWorldPt.y,
+          t: Date.now(),
+          isStart: false
+        });
+        startLaserLoop();
+        realtimeSyncAdapter?.onLaserMove?.(laserWorldPt, true, { color: laserColor, width: laserWidth, isStart: false });
       }
       e.preventDefault();
       return;
@@ -6018,9 +6257,13 @@
     if (interactionMode === 'pan' && panStart) {
       viewOffsetX = panStart.offsetX + e.clientX - panStart.x;
       viewOffsetY = panStart.offsetY + e.clientY - panStart.y;
-      scheduleRedraw();
+      redraw();
       updateSelectionBox();
-      realtimeSyncAdapter?.onCameraChange?.(viewOffsetX, viewOffsetY, viewScale);
+      const now = performance.now();
+      if (!lastCameraSyncTime || now - lastCameraSyncTime > 40) {
+        lastCameraSyncTime = now;
+        realtimeSyncAdapter?.onCameraChange?.(viewOffsetX, viewOffsetY, viewScale);
+      }
       e.preventDefault();
       return;
     }
@@ -6110,7 +6353,7 @@
       const now = performance.now();
       if (now - (lastMoveSyncTime || 0) > 28) {
         lastMoveSyncTime = now;
-        const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode));
+        const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode || isTeacherDraftMode));
         if (updated.length) {
           const syncStrokes = updated.map((s) => {
             if (s.type === 'image' && s.src) {
@@ -6164,7 +6407,7 @@
       } else {
         currentStroke.points.push(point);
       }
-      scheduleRedraw();
+      redraw();
       if (currentStroke.layer !== 'teacher') {
         realtimeSyncAdapter?.onStrokeLive?.('move', { stroke_id: currentStroke.id, stroke: currentStroke });
       }
@@ -6244,7 +6487,7 @@
     }
 
     if (interactionMode === 'move' || interactionMode === 'resize' || interactionMode === 'rotate') {
-      const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode));
+      const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode || isTeacherDraftMode));
       interactionMode = null;
       moveSnapshot = null;
       resizeSnapshot = null;
@@ -6301,9 +6544,11 @@
         finished.page_id = finished.page_id || currentPageId;
         if (finished.layer !== 'teacher') {
           realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id, page_id: finished.page_id, stroke: finished });
-          realtimeSyncAdapter?.onStrokeCommit?.(finished);
         }
+        realtimeSyncAdapter?.onStrokeCommit?.(finished);
       }
+      updateMinimap();
+      window.renderStudentViewportIndicators?.();
     }
 
     if (e && e.pointerId !== undefined) {
@@ -6377,6 +6622,29 @@
     selectedIds.forEach((id) => {
       const s = strokes.find((item) => item.id === id);
       if (!s || !s.points || s.points.length === 0) return;
+      if (s.type === 'note') {
+        const p = s.points[0];
+        const w = (s.width || 190) / viewScale;
+        const h = (s.height || 130) / viewScale;
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x + w);
+        maxY = Math.max(maxY, p.y + h);
+        count++;
+        return;
+      }
+      if (s.type === 'stamp') {
+        const p = s.points[0];
+        const sc = s.stampScale || 1.0;
+        const w = (160 * sc) / viewScale;
+        const h = (42 * sc) / viewScale;
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x + w);
+        maxY = Math.max(maxY, p.y + h);
+        count++;
+        return;
+      }
       if (s.type === 'text') {
         const p = s.points[0];
         const fSize = Math.max(12, Number(s.fontSize) || 20);
@@ -6427,6 +6695,9 @@
         resizeSnapshot.set(id, {
           points: JSON.parse(JSON.stringify(s.points)),
           fontSize: s.fontSize || 20,
+          width: s.width || 190,
+          height: s.height || 130,
+          stampScale: s.stampScale || 1.0,
         });
       }
     });
@@ -6474,9 +6745,10 @@
 
     const isCorner = ['tl', 'tr', 'bl', 'br'].includes(resizeHandle);
     const hasImage = selectedIds.size > 0 && Array.from(selectedIds).some((id) => strokes.find((s) => s.id === id)?.type === 'image');
+    const hasStamp = selectedIds.size > 0 && Array.from(selectedIds).some((id) => strokes.find((s) => s.id === id)?.type === 'stamp');
 
-    if (e.shiftKey || (hasImage && isCorner)) {
-      const s = Math.max(scaleX, scaleY);
+    if (e.shiftKey || ((hasImage || hasStamp) && isCorner) || hasStamp) {
+      const s = (Math.abs(scaleX - 1) >= Math.abs(scaleY - 1)) ? scaleX : scaleY;
       scaleX = s;
       scaleY = s;
     }
@@ -6485,6 +6757,31 @@
       const stroke = strokes.find((s) => s.id === id);
       const snapshot = resizeSnapshot?.get(id);
       if (!stroke || !snapshot) return;
+
+      if (stroke.type === 'stamp') {
+        const snapPts = snapshot.points || snapshot;
+        const p1 = snapPts[0];
+        const baseScale = snapshot.stampScale || stroke.stampScale || 1.0;
+        const curScale = (Math.abs(scaleX - 1) >= Math.abs(scaleY - 1)) ? scaleX : scaleY;
+        stroke.stampScale = Math.max(0.4, Math.min(3.0, Number((baseScale * curScale).toFixed(2))));
+        let startX = anchorX + (p1.x - anchorX) * scaleX;
+        let startY = anchorY + (p1.y - anchorY) * scaleY;
+        stroke.points = [{ x: startX, y: startY }];
+        return;
+      }
+
+      if (stroke.type === 'note') {
+        const snapPts = snapshot.points || snapshot;
+        const p1 = snapPts[0];
+        const baseW = snapshot.width || stroke.width || 190;
+        const baseH = snapshot.height || stroke.height || 130;
+        stroke.width = Math.max(120, Math.min(600, Math.round(baseW * scaleX)));
+        stroke.height = Math.max(80, Math.min(450, Math.round(baseH * scaleY)));
+        let startX = anchorX + (p1.x - anchorX) * scaleX;
+        let startY = anchorY + (p1.y - anchorY) * scaleY;
+        stroke.points = [{ x: startX, y: startY }];
+        return;
+      }
 
       if (stroke.type === 'text') {
         const snapPts = snapshot.points || snapshot;
@@ -6552,7 +6849,7 @@
     const now = performance.now();
     if (now - (lastResizeSyncTime || 0) > 28) {
       lastResizeSyncTime = now;
-      const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode));
+      const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode || isTeacherDraftMode));
       if (updated.length) {
         const syncStrokes = updated.map((s) => {
           if (s.type === 'image' && s.src) {
@@ -6681,7 +6978,7 @@
       id: generateId('note'),
       page_id: currentPageId,
       type: 'note',
-      layer: isReviewMode ? 'teacher' : 'student',
+      layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
       text: '',
       colorTheme: 'yellow',
       points: [p1, p2],
@@ -6774,6 +7071,7 @@
           page_id: currentPageId,
           type: 'image',
           layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
+          userId: getCurrentUserId(),
           src: dataUrl,
           points: [p1, p2],
           space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
@@ -6788,9 +7086,7 @@
         redraw();
         updateSelectionBox();
         scheduleSave();
-        if (newImgStroke.layer !== 'teacher') {
-          realtimeSyncAdapter?.onStrokeCommit?.(newImgStroke);
-        }
+        realtimeSyncAdapter?.onStrokeCommit?.(newImgStroke);
       };
       img.src = ev.target.result;
     };
@@ -6808,6 +7104,7 @@
       type: 'widget',
       widgetType: 'pdf',
       layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
+      userId: getCurrentUserId(),
       points: [p1, { x: p1.x + 280, y: p1.y + 180 }],
       data: { name: file.name, pagesCount: 1 },
       space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
@@ -6815,9 +7112,7 @@
     strokes.push(pdfCard);
     setTool('select');
     redraw();
-    if (pdfCard.layer !== 'teacher') {
-      realtimeSyncAdapter?.onStrokeCommit?.(pdfCard);
-    }
+    realtimeSyncAdapter?.onStrokeCommit?.(pdfCard);
   }
 
   // --- Text Editor ---
@@ -6849,6 +7144,7 @@
       page_id: currentPageId,
       type: 'text',
       layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
+      userId: getCurrentUserId(),
       text,
       color: draft.color,
       fontSize: draft.fontSize,
@@ -6866,9 +7162,7 @@
     redraw();
     updateSelectionBox();
     scheduleSave();
-    if (newText.layer !== 'teacher') {
-      realtimeSyncAdapter?.onStrokeCommit?.(newText);
-    }
+    realtimeSyncAdapter?.onStrokeCommit?.(newText);
   }
 
   function beginTextEntry(e, space, point, existingTextObj) {
@@ -7016,9 +7310,7 @@
       clone.page_id = currentPageId;
       strokes.push(clone);
       newSelected.add(clone.id);
-      if (clone.layer !== 'teacher') {
-        realtimeSyncAdapter?.onStrokeCommit?.(clone);
-      }
+      realtimeSyncAdapter?.onStrokeCommit?.(clone);
     });
 
     selectedIds = newSelected;
@@ -7047,7 +7339,7 @@
     const delSet = new Set(deletedIds);
     const broadcastIds = deletedIds.filter((id) => {
       const s = strokes.find((item) => item.id === id);
-      return s && (s.layer !== 'teacher' || isReviewMode);
+      return s && (s.layer !== 'teacher' || isReviewMode || isTeacherDraftMode);
     });
     strokes = strokes.filter((s) => !delSet.has(s.id));
     getActivePage().strokes = strokes;
@@ -7164,9 +7456,13 @@
     if (isReadOnly) return;
     if (!strokes.length) return;
 
+    const myId = getCurrentUserId();
     let idx = -1;
     for (let i = strokes.length - 1; i >= 0; i--) {
       const s = strokes[i];
+      if (myId && s.userId && String(s.userId) !== String(myId)) {
+        continue;
+      }
       if (isReviewMode || isTeacherDraftMode) {
         if (s.layer === 'teacher') { idx = i; break; }
       } else {
@@ -7180,10 +7476,11 @@
     selectedIds.clear();
     dirty = true;
     redraw();
+    syncDomWidgets();
     updateSelectionBox();
     saveLocal();
     scheduleSave();
-    if (popped && popped.id && (popped.layer !== 'teacher' || isReviewMode)) {
+    if (popped && popped.id && (popped.layer !== 'teacher' || isReviewMode || isTeacherDraftMode)) {
       realtimeSyncAdapter?.onStrokesDelete?.([popped.id]);
     }
   }
@@ -7192,9 +7489,13 @@
     if (isReadOnly) return;
     if (!redoStack.length) return;
 
+    const myId = getCurrentUserId();
     let idx = -1;
     for (let i = redoStack.length - 1; i >= 0; i--) {
       const s = redoStack[i];
+      if (myId && s.userId && String(s.userId) !== String(myId)) {
+        continue;
+      }
       if (isReviewMode || isTeacherDraftMode) {
         if (s.layer === 'teacher') { idx = i; break; }
       } else {
@@ -7207,16 +7508,21 @@
     strokes.push(restored);
     dirty = true;
     redraw();
+    syncDomWidgets();
     updateSelectionBox();
     saveLocal();
     scheduleSave();
-    if (restored && (restored.layer !== 'teacher' || isReviewMode)) {
+    if (restored) {
       realtimeSyncAdapter?.onStrokeCommit?.(restored);
     }
   }
 
   function executeClearAll() {
     if (isReadOnly) return;
+    const isTeacherUser = isReviewMode || isTeacherDraftMode || (typeof window !== 'undefined' && window.trainerOsConfig?.role === 'teacher');
+    if (typeof window !== 'undefined' && window.trainerOsConfig?.room_mode && !isTeacherUser) {
+      return;
+    }
     strokes.length = 0;
     redoStack = [];
     selectedIds.clear();
@@ -7433,7 +7739,7 @@
     const mouseY = clientY - origin.top;
 
     const prevScale = viewScale;
-    const nextScale = Math.max(0.3, Math.min(4.0, viewScale * factor));
+    const nextScale = Math.max(0.2, Math.min(4.0, viewScale * factor));
     if (Math.abs(nextScale - prevScale) < 0.001) return;
 
     const worldX = (mouseX - width / 2 - viewOffsetX) / prevScale + width / 2;
@@ -7997,7 +8303,11 @@
   function isTypingInInput(target) {
     if (!target) return false;
     const tag = target.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return true;
+    if (target.closest && target.closest('input, textarea, [contenteditable="true"], .monaco-editor, .cm-editor, .terminal-container, .terminal-input, #terminal-window, #code-window, #notes-window, .glass-os-window:not(#canvas-window)')) {
+      return true;
+    }
+    return false;
   }
 
   // --- Toolbar Drag ---
@@ -8646,7 +8956,7 @@
 
   function applyRemoteStrokeLive(payload) {
     if (!payload) return;
-    if ((payload.stroke?.layer === 'teacher' || payload.layer === 'teacher') && isReadOnly) return;
+    if ((payload.stroke?.layer === 'teacher' || payload.layer === 'teacher') && !showTeacherLayer) return;
     const strokeId = payload.stroke_id || payload.stroke?.id;
     if (!strokeId) return;
     const pageId = payload.page_id || payload.stroke?.page_id || currentPageId;
@@ -8715,7 +9025,6 @@
 
   function applyRemoteStrokeCommit(remoteStroke) {
     if (!remoteStroke || !remoteStroke.id) return;
-    if (remoteStroke.layer === 'teacher' && isReadOnly) return;
     remoteLiveStrokes.delete(remoteStroke.id);
     const targetPageId = remoteStroke.page_id || currentPageId;
     let targetPage = pages.find((p) => p.id === targetPageId);
@@ -8727,19 +9036,21 @@
     const idx = targetPage.strokes.findIndex((s) => s.id === remoteStroke.id);
     if (idx >= 0) {
       const existing = targetPage.strokes[idx];
-      // Keep newer coordinates/points from any preceding update actions, but apply src and properties
+      // Keep newer committed properties, preserving existing src if remote is empty
       targetPage.strokes[idx] = {
-        ...remoteStroke,
         ...existing,
+        ...remoteStroke,
+        userId: remoteStroke.userId || remoteStroke.user_id || existing.userId,
+        points: (remoteStroke.points && remoteStroke.points.length > 0) ? remoteStroke.points : existing.points,
         src: remoteStroke.src || existing.src,
       };
     } else {
+      remoteStroke.userId = remoteStroke.userId || remoteStroke.user_id;
       targetPage.strokes.push(remoteStroke);
     }
     if (currentPageId === targetPageId) {
       strokes = targetPage.strokes;
       redraw();
-      syncDomWidgets();
     }
   }
 
@@ -8776,7 +9087,6 @@
     if (shouldRedraw) {
       strokes = getActivePage().strokes;
       redraw();
-      syncDomWidgets();
       updateSelectionBox();
     }
   }
@@ -8794,7 +9104,6 @@
     if (shouldRedraw) {
       strokes = getActivePage().strokes;
       redraw();
-      syncDomWidgets();
       updateSelectionBox();
     }
   }
@@ -8821,14 +9130,22 @@
     }
     if (opts.color) remoteLaserColor = opts.color;
     if (opts.width || opts.size) remoteLaserWidth = Number(opts.width || opts.size);
-    const screenX = Number(worldPoint.x) * viewScale + viewOffsetX;
-    const screenY = Number(worldPoint.y) * viewScale + viewOffsetY;
+    const screenPt = pointToScreen ? pointToScreen(worldPoint) : {
+      x: Number(worldPoint.x) * viewScale + viewOffsetX,
+      y: Number(worldPoint.y) * viewScale + viewOffsetY,
+    };
+    const screenX = screenPt.x;
+    const screenY = screenPt.y;
+    const wx = Number(worldPoint.x);
+    const wy = Number(worldPoint.y);
     const now = Date.now();
 
     if (opts.isStart || laserTrail.length === 0) {
       laserTrail.push({
         x: screenX,
         y: screenY,
+        wx,
+        wy,
         t: now,
         isStart: true,
       });
@@ -8836,6 +9153,8 @@
       const lastPt = laserTrail[laserTrail.length - 1];
       const dx = screenX - lastPt.x;
       const dy = screenY - lastPt.y;
+      const dwx = wx - (lastPt.wx !== undefined ? lastPt.wx : wx);
+      const dwy = wy - (lastPt.wy !== undefined ? lastPt.wy : wy);
       const dist = Math.sqrt(dx * dx + dy * dy);
       // Sub-point interpolation: fills network gaps with silky smooth trajectory
       if (dist > 6) {
@@ -8845,6 +9164,8 @@
           laserTrail.push({
             x: lastPt.x + dx * ratio,
             y: lastPt.y + dy * ratio,
+            wx: (lastPt.wx !== undefined ? lastPt.wx : wx) + dwx * ratio,
+            wy: (lastPt.wy !== undefined ? lastPt.wy : wy) + dwy * ratio,
             t: lastPt.t + (now - lastPt.t) * ratio,
             isStart: false,
           });
@@ -8853,11 +9174,14 @@
         laserTrail.push({
           x: screenX,
           y: screenY,
+          wx,
+          wy,
           t: now,
           isStart: false,
         });
       }
     }
+    startLaserLoop();
   }
 
   function setAllStrokes(strokesList, pagesList, activePageId) {
@@ -8885,7 +9209,6 @@
     const pageMap = new Map();
     list.forEach((s) => {
       if (!s) return;
-      if (s.layer === 'teacher' && isReadOnly) return;
       const pid = s.page_id || 'page_1';
       s.page_id = pid;
       if (!pageMap.has(pid)) pageMap.set(pid, []);
@@ -9067,11 +9390,10 @@
     const origin = canvasOrigin();
     const cx = (clientX !== undefined && clientX > 0) ? clientX : (origin.left + canvas.width / (2 * Math.max(dpr, 1)));
     const cy = (clientY !== undefined && clientY > 0) ? clientY : (origin.top + canvas.height / (2 * Math.max(dpr, 1)));
-    const space = getActiveTaskContentRect();
-    const centerEv = { pageX: cx + window.scrollX, pageY: cy + window.scrollY };
-    const p1 = pointForEvent(centerEv, space);
-    const stampW = 160 / Math.max(viewScale, 0.1);
-    const stampH = 45 / Math.max(viewScale, 0.1);
+    const space = embeddedTarget ? null : getActiveTaskContentRect();
+    const centerEv = { clientX: cx, clientY: cy, pageX: cx + window.scrollX, pageY: cy + window.scrollY };
+    const pCenter = pointForEvent(centerEv, space);
+    const p1 = { x: pCenter.x, y: pCenter.y };
 
     const stampObj = {
       id: generateId('stamp'),
@@ -9081,7 +9403,9 @@
       stampType: stampType || 'excellent',
       icon: icon || 'ph-star',
       layer: isTeacherDraftMode ? 'teacher' : 'student',
-      points: [p1, { x: p1.x + stampW, y: p1.y + stampH }],
+      userId: getCurrentUserId(),
+      stampScale: 1.0,
+      points: [p1, { x: p1.x + 160 / Math.max(viewScale, 0.1), y: p1.y + 42 / Math.max(viewScale, 0.1) }],
       space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
     };
 
@@ -9094,32 +9418,38 @@
     redraw();
     syncDomWidgets();
     scheduleSave();
-    if (stampObj.layer !== 'teacher') {
-      realtimeSyncAdapter?.onStrokeCommit?.(stampObj);
-    }
+    realtimeSyncAdapter?.onStrokeCommit?.(stampObj);
     return stampObj;
   }
 
   function insertNote(colorTheme = 'yellow', clientX, clientY, text = '') {
-    if (isReadOnly) return;
+    if (typeof colorTheme === 'object' && colorTheme !== null) {
+      const opts = colorTheme;
+      text = opts.text || '';
+      clientX = opts.x !== undefined ? opts.x : (opts.clientX !== undefined ? opts.clientX : undefined);
+      clientY = opts.y !== undefined ? opts.y : (opts.clientY !== undefined ? opts.clientY : undefined);
+      colorTheme = opts.colorTheme || opts.color || 'yellow';
+    }
+    if (isReadOnly) return null;
     const origin = canvasOrigin();
     const cx = (clientX !== undefined && clientX > 0) ? clientX : (origin.left + canvas.width / (2 * Math.max(dpr, 1)));
     const cy = (clientY !== undefined && clientY > 0) ? clientY : (origin.top + canvas.height / (2 * Math.max(dpr, 1)));
-    const space = getActiveTaskContentRect();
-    const centerEv = { pageX: cx + window.scrollX, pageY: cy + window.scrollY };
-    const p1 = pointForEvent(centerEv, space);
-    const noteW = 180 / Math.max(viewScale, 0.1);
-    const noteH = 120 / Math.max(viewScale, 0.1);
-    const p2 = { x: p1.x + noteW, y: p1.y + noteH };
+    const space = embeddedTarget ? null : getActiveTaskContentRect();
+    const centerEv = { clientX: cx, clientY: cy, pageX: cx + window.scrollX, pageY: cy + window.scrollY };
+    const pCenter = pointForEvent(centerEv, space);
+    const p1 = { x: pCenter.x, y: pCenter.y };
 
     const newNote = {
       id: generateId('note'),
       page_id: currentPageId,
       type: 'note',
-      layer: isTeacherDraftMode ? 'teacher' : 'student',
+      layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
+      userId: getCurrentUserId(),
       text: text || '',
       colorTheme: colorTheme || 'yellow',
-      points: [p1, p2],
+      width: 190,
+      height: 130,
+      points: [p1, { x: p1.x + 190 / Math.max(viewScale, 0.1), y: p1.y + 130 / Math.max(viewScale, 0.1) }],
       space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
     };
 
@@ -9132,9 +9462,7 @@
     redraw();
     syncDomWidgets();
     scheduleSave();
-    if (newNote.layer !== 'teacher') {
-      realtimeSyncAdapter?.onStrokeCommit?.(newNote);
-    }
+    realtimeSyncAdapter?.onStrokeCommit?.(newNote);
 
     setTimeout(() => {
       const ta = objectLayer?.querySelector(`[data-obj-id="${newNote.id}"] textarea`);
@@ -9147,6 +9475,63 @@
     realtimeSyncAdapter = adapter;
   }
 
+  function screenToWorld(clientX, clientY) {
+    const origin = canvasOrigin();
+    const width = canvas ? (canvas.width / Math.max(dpr, 1)) : window.innerWidth;
+    const height = canvas ? (canvas.height / Math.max(dpr, 1)) : window.innerHeight;
+    const pageX = (clientX !== undefined && clientX > 0) ? clientX + window.scrollX : origin.left + width / 2;
+    const pageY = (clientY !== undefined && clientY > 0) ? clientY + window.scrollY : origin.top + height / 2;
+    const displayedX = pageX - origin.left;
+    const displayedY = pageY - origin.top;
+    const x = (displayedX - width / 2 - viewOffsetX) / viewScale + width / 2;
+    const y = (displayedY - height / 2 - viewOffsetY) / viewScale + height / 2;
+    return { x, y };
+  }
+
+  function worldToScreen(worldX, worldY) {
+    const origin = canvasOrigin();
+    const width = canvas ? (canvas.width / Math.max(dpr, 1)) : window.innerWidth;
+    const height = canvas ? (canvas.height / Math.max(dpr, 1)) : window.innerHeight;
+    const screenX = width / 2 + (worldX - width / 2) * viewScale + viewOffsetX + origin.left - window.scrollX;
+    const screenY = height / 2 + (worldY - height / 2) * viewScale + viewOffsetY + origin.top - window.scrollY;
+    return { x: screenX, y: screenY };
+  }
+
+  function getViewportWorldBounds() {
+    const width = canvas ? (canvas.width / Math.max(dpr, 1)) : window.innerWidth;
+    const height = canvas ? (canvas.height / Math.max(dpr, 1)) : window.innerHeight;
+    const worldX = (0 - width / 2 - viewOffsetX) / viewScale + width / 2;
+    const worldY = (0 - height / 2 - viewOffsetY) / viewScale + height / 2;
+    const worldW = width / viewScale;
+    const worldH = height / viewScale;
+    return {
+      worldX,
+      worldY,
+      worldW,
+      worldH,
+      viewScale,
+      viewOffsetX,
+      viewOffsetY,
+      width,
+      height,
+    };
+  }
+
+  function worldRectToScreen(worldX, worldY, worldW, worldH) {
+    const width = canvas ? (canvas.width / Math.max(dpr, 1)) : window.innerWidth;
+    const height = canvas ? (canvas.height / Math.max(dpr, 1)) : window.innerHeight;
+    const screenX = width / 2 + (worldX - width / 2) * viewScale + viewOffsetX;
+    const screenY = height / 2 + (worldY - height / 2) * viewScale + viewOffsetY;
+    const screenW = worldW * viewScale;
+    const screenH = worldH * viewScale;
+    return {
+      screenX,
+      screenY,
+      screenW,
+      screenH,
+    };
+  }
+
   window.BooCanvasOverlay = {
     open,
     openIn,
@@ -9156,6 +9541,12 @@
     setTool,
     getTool: () => tool,
     setPenColor,
+    setUserId: (id) => { currentUserId = id; },
+    getUserId: () => getCurrentUserId(),
+    screenToWorld,
+    worldToScreen,
+    getViewportWorldBounds,
+    worldRectToScreen,
     setReviewMode,
     toggleTeacherLayer,
     toggleTeacherDraftMode,
@@ -9170,6 +9561,8 @@
     zoomOut: () => zoomBy(1 / 1.2),
     zoomBy,
     save: saveToServer,
+    deleteStroke: deleteSingleStroke,
+    deleteSelected,
     hasContent: () => strokes.length > 0,
     getStrokes: () => strokes,
     getSelectedIds: () => Array.from(selectedIds),
@@ -9187,7 +9580,7 @@
     setCamera: (offsetX, offsetY, scale, broadcast = false) => {
       if (Number.isFinite(offsetX)) viewOffsetX = offsetX;
       if (Number.isFinite(offsetY)) viewOffsetY = offsetY;
-      if (Number.isFinite(scale) && scale > 0) viewScale = Math.min(5, Math.max(0.1, scale));
+      if (Number.isFinite(scale) && scale > 0) viewScale = Math.min(4.0, Math.max(0.2, scale));
       redraw();
       updateZoomBadge();
       if (broadcast) {
@@ -9197,6 +9590,7 @@
     getCamera: () => ({ offsetX: viewOffsetX, offsetY: viewOffsetY, scale: viewScale }),
     setRealtimeSync,
     setReadOnly,
+    isReadOnly: () => isReadOnly,
     applyRemoteStrokeLive,
     applyRemoteStrokeCommit,
     applyRemoteStrokesUpdate,
@@ -9209,5 +9603,10 @@
     remoteSwitchPage,
     remoteSetPageBackground,
     remoteRenamePage,
+    deleteStroke: deleteSingleStroke,
+    deleteSelected,
+    getCullingStats: () => lastCullingStats,
+    redraw,
+    scheduleRedraw,
   };
 })();

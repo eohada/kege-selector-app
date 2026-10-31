@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f1fa">
+  <meta name="description" content="Погружение в BooStudy OS — учебные окна одной реальной сессии.">
+  <title>BooStudy — ENTER BooStudy OS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing-rebirth-preview-2-3.css') }}">
+  <script defer src="{{ url_for('static', filename='js/landing-rebirth-preview-2-3.js') }}"></script>
+</head>
+<body class="s23-page">
+  <a class="s23-skip-link" href="#s23-main">Перейти к содержанию</a>
+
+  <main class="s23-story" data-s23-story id="s23-main">
+    <section class="s23-stage" data-s23-stage aria-label="ENTER BooStudy OS">
+      <div class="s23-light" aria-hidden="true"></div>
+      <div class="s23-floor" aria-hidden="true"></div>
+
+      <header class="s23-header">
+        <a class="s23-brand" href="#s23-top" aria-label="BooStudy — начало сцены" id="s23-top">
+          <span class="s23-brand__mark" aria-hidden="true">B</span>
+          <span class="s23-brand__name"><span>boo</span>study</span>
+          <span class="s23-brand__divider" aria-hidden="true"></span>
+          <span class="s23-brand__edition">ENTER OS</span>
+        </a>
+        <nav class="s23-nav" aria-label="Навигация по превью">
+          <a href="#s23-workspace" data-s23-scroll="0.28">Рабочее пространство</a>
+          <a href="/login">Войти</a>
+        </nav>
+      </header>
+
+      <div class="s23-set" data-s23-set>
+        <section class="s23-copy s23-copy--hero" data-s23-narrative="hero" aria-labelledby="s23-hero-title">
+          <p class="s23-kicker"><span></span>Учёба, в которую можно войти</p>
+          <h1 id="s23-hero-title" tabindex="-1">Всё обучение.<br><em>В одном живом пространстве.</em></h1>
+          <p class="s23-copy__body">Открой урок, разбери решение и попробуй идею — в одной учебной среде.</p>
+          <div class="s23-actions">
+            <a class="s23-button s23-button--primary" href="/register">Создать аккаунт</a>
+            <a class="s23-button s23-button--secondary" href="#s23-workspace" data-s23-scroll="0.28">
+              Открыть комнату
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+          <p class="s23-proof"><span aria-hidden="true">●</span> На экране — настоящая ученическая сессия BooStudy OS.</p>
+        </section>
+
+        <figure class="s23-capture s23-capture--overview" data-s23-window="overview" aria-labelledby="s23-overview-label" id="s23-workspace">
+          <figcaption class="s23-capture-label" id="s23-overview-label">
+            <span class="s23-capture-label__dot" aria-hidden="true"></span>
+            <span>Ученическая комната</span>
+            <span class="s23-capture-label__meta">реальный захват · 1920 × 1080</span>
+          </figcaption>
+          <div class="s23-screen" data-s23-screen>
+            <img class="s23-screen__base" data-s23-screen-image
+              src="{{ url_for('static', filename='images/landing/os-student-workspace.webp') }}"
+              alt="Настоящий экран ученической комнаты: Boo Tracer, задание, блок-схема на холсте и терминал в одной сессии"
+              width="1920" height="1080" fetchpriority="high" decoding="async">
+            <img class="s23-detail-crop s23-detail-crop--tracer" data-s23-detail="tracer"
+              src="{{ url_for('static', filename='images/landing/os-student-tracer.webp') }}"
+              alt="" aria-hidden="true" width="471" height="398" decoding="async">
+            <img class="s23-detail-crop s23-detail-crop--task" data-s23-detail="task"
+              src="{{ url_for('static', filename='images/landing/os-student-task.webp') }}"
+              alt="" aria-hidden="true" width="454" height="434" decoding="async">
+          </div>
+          <p class="s23-capture-foot">Задание, холст и Boo Tracer открыты рядом в ученической комнате.</p>
+        </figure>
+
+        <div class="s23-shared-focus" data-s23-shared-focus aria-hidden="true">
+          <div class="s23-shared-focus__image" data-s23-shared-image></div>
+          <span class="s23-shared-focus__tag">Фрагмент той же комнаты · страница 2</span>
+        </div>
+
+        <figure class="s23-capture s23-capture--canvas" data-s23-window="canvas" aria-labelledby="s23-canvas-label">
+          <figcaption class="s23-capture-label" id="s23-canvas-label">
+            <span class="s23-capture-label__dot" aria-hidden="true"></span>
+            <span>BooCanvas · вид ученика</span>
+            <span class="s23-capture-label__meta">страница 1</span>
+          </figcaption>
+          <div class="s23-screen">
+            <img src="{{ url_for('static', filename='images/landing/os-student-canvas.webp') }}"
+              alt="Ученический холст с роботом и двумя ветвями решения; рисунок подготовил преподаватель"
+              width="1088" height="800" loading="lazy" decoding="async">
+          </div>
+          <p class="s23-capture-foot">Рисунок подготовил преподаватель; ученик разбирает по нему обе ветви.</p>
+        </figure>
+
+        <figure class="s23-capture s23-capture--python" data-s23-window="python" aria-labelledby="s23-python-label">
+          <figcaption class="s23-capture-label" id="s23-python-label">
+            <span class="s23-capture-label__dot s23-capture-label__dot--mint" aria-hidden="true"></span>
+            <span>Материал теории</span>
+            <span class="s23-capture-label__meta">пример после запуска</span>
+          </figcaption>
+          <div class="s23-screen">
+            <picture>
+              <source media="(max-width: 600px)" srcset="{{ url_for('static', filename='images/landing/os-student-python-mobile.webp') }}">
+              <img src="{{ url_for('static', filename='images/landing/os-student-python.webp') }}"
+                alt="Материал теории с Python-примером и готовым результатом запуска; это не нативное окно BooStudy OS"
+                width="1330" height="770" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          <p class="s23-capture-foot">Отдельный материал теории, а не окно рабочей комнаты.</p>
+        </figure>
+
+        <section class="s23-copy s23-copy--workspace" data-s23-narrative="workspace" aria-labelledby="s23-workspace-title">
+          <p class="s23-kicker"><span></span>Урок уже открыт</p>
+          <h2 id="s23-workspace-title">Окна одной сессии.</h2>
+          <p class="s23-copy__body">Boo Tracer и задание выходят вперёд, пока комната остаётся на месте.</p>
+        </section>
+
+        <section class="s23-copy s23-copy--canvas" data-s23-narrative="canvas" aria-labelledby="s23-canvas-title">
+          <p class="s23-kicker"><span></span>Холст ученика</p>
+          <h2 id="s23-canvas-title">Мысль становится наглядной.</h2>
+          <p class="s23-copy__body">Это рисунок, подготовленный преподавателем. Камера задерживается, чтобы рассмотреть обе ветви.</p>
+        </section>
+
+        <section class="s23-copy s23-copy--python" data-s23-narrative="python" aria-labelledby="s23-python-title">
+          <p class="s23-kicker s23-kicker--mint"><span></span>Из теории — к результату</p>
+          <h2 id="s23-python-title">Пример уже выполнен.</h2>
+          <p class="s23-copy__body">Кадр показывает код и результат из доступного ученику материала теории.</p>
+        </section>
+
+        <section class="s23-copy s23-copy--ending" data-s23-narrative="ending" aria-labelledby="s23-ending-title">
+          <p class="s23-kicker"><span></span>BooStudy OS</p>
+          <h2 id="s23-ending-title">Одна среда.<br>Всё для занятия.</h2>
+          <p class="s23-copy__body">Продолжай знакомство с платформой и выбери свой темп.</p>
+          <a class="s23-button s23-button--primary" data-s23-ending-cta href="/register" tabindex="-1">Создать аккаунт</a>
+        </section>
+
+        <div class="s23-scroll-cue" data-s23-scroll-cue aria-hidden="true">
+          <span class="s23-scroll-cue__line"></span>
+          <span class="s23-scroll-cue__text">Прокрути, чтобы войти в BooStudy OS</span>
+          <svg viewBox="0 0 20 20"><path d="M10 3v13m-5-5 5 5 5-5"/></svg>
+        </div>
+      </div>
+      <div class="s23-mascot" data-s23-mascot aria-hidden="true">
+        <img class="s23-mascot__pose s23-mascot__pose--peek" src="{{ url_for('static', filename='images/landing/boo-peek-clean.png') }}" alt="" width="1322" height="1190" fetchpriority="high" decoding="async">
+        <img class="s23-mascot__pose s23-mascot__pose--point" src="{{ url_for('static', filename='images/landing/boo-pointing-clean.webp') }}" alt="" width="1312" height="1199" decoding="async">
+        <img class="s23-mascot__pose s23-mascot__pose--read" src="{{ url_for('static', filename='images/landing/boo-reading-clean.png') }}" alt="" width="1278" height="1230" decoding="async">
+      </div>
+    </section>
+  </main>
+</body>
+</html>

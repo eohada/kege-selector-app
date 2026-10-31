@@ -2,11 +2,17 @@
 Инициализация Flask приложения
 """
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 import logging
 import threading
 import time
 import uuid
 import json
+import sys
 from flask import Flask, request, jsonify
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
@@ -26,6 +32,21 @@ csrf = CSRFProtect()
 login_manager = LoginManager()
 migrate = Migrate()
 
+
+def _should_skip_database_bootstrap(config, *, argv=None, environ=None, is_test_process=False):
+    environ = os.environ if environ is None else environ
+    argv = sys.argv[1:] if argv is None else argv
+    flask_cli = environ.get('FLASK_RUN_FROM_CLI', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    cli_is_web_server = flask_cli and 'run' in argv
+    return bool(
+        config.get('SKIP_DATABASE_BOOTSTRAP')
+        or config.get('TESTING')
+        or is_test_process
+        or (flask_cli and not cli_is_web_server)
+        or environ.get('BOOSTUDY_SKIP_DATABASE_BOOTSTRAP', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    )
+
+
 def create_app(config_name=None):
     """
     Фабрика приложений Flask
@@ -42,8 +63,13 @@ def create_app(config_name=None):
     from app.json_provider import BooJSONProvider
     app.json = BooJSONProvider(app)
     
+    is_test_process = 'pytest' in sys.modules
+    safe_ai_lab_db_mode = os.environ.get('AI_LAB_SAFE_DB_MODE', '').strip().lower() in {'1', 'true', 'yes', 'on'}
     db_path = os.environ.get('SQLITE_DB_PATH') or os.path.abspath(os.path.join(base_dir, 'instance', 'boostudy_dev.db'))
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    if safe_ai_lab_db_mode and not os.environ.get('AI_LAB_SAFE_DB_PATH'):
+        raise RuntimeError('AI_LAB_SAFE_DB_PATH обязателен в безопасном режиме AI Lab.')
+    if not is_test_process and not safe_ai_lab_db_mode:
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
     database_url = os.environ.get('DATABASE_URL')
     database_url_source = None
@@ -104,7 +130,10 @@ def create_app(config_name=None):
         database_url = selected_database_url
         app.config['SQLALCHEMY_DATABASE_URI'] = selected_database_url
     else:
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+        app.config['SQLALCHEMY_DATABASE_URI'] = (
+            'sqlite:///:memory:' if is_test_process and not os.environ.get('SQLITE_DB_PATH')
+            else f'sqlite:///{db_path}'
+        )
         database_url_source = 'sqlite'
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -204,6 +233,10 @@ def create_app(config_name=None):
     _demo = (os.environ.get('DEMO_SITE') or '').strip().lower()
     app.config['DEMO_SITE'] = _demo in ('true', '1', 'yes')
     logging.getLogger(__name__).info('DEMO_SITE=%s (env raw=%r)', app.config['DEMO_SITE'], os.environ.get('DEMO_SITE'))
+    # Демо-версия сохранена как концепт (архив/исследования) и полностью отключена от маршрутов платформы.
+    # Доступ запрещен (404). Включение возможно только при явном ENABLE_DEMO_CONCEPT=true в окружении.
+    _demo_concept = (os.environ.get('ENABLE_DEMO_CONCEPT') or '').strip().lower()
+    app.config['ENABLE_DEMO_CONCEPT'] = _demo_concept in ('true', '1', 'yes')
     app.config['DEMO_BASE_URL'] = (os.environ.get('DEMO_BASE_URL') or '').strip().rstrip('/') or None
     # Демо по хосту: если запрос на этот домен — считаем инстанс демо (для одного деплоя с двумя доменами)
     app.config['DEMO_HOST'] = (os.environ.get('DEMO_HOST') or '').strip().lower() or None  # например demo.boostudy.ru
@@ -221,6 +254,40 @@ def create_app(config_name=None):
     # tables between otherwise isolated application instances.
     if isinstance(config_name, dict):
         app.config.update(config_name)
+
+    app.config['SKIP_DATABASE_BOOTSTRAP'] = _should_skip_database_bootstrap(
+        app.config,
+        is_test_process=is_test_process,
+    )
+
+    safe_ai_lab_database = None
+    if safe_ai_lab_db_mode:
+        from app.ai_lab.database_safety import validate_ai_lab_sqlite_config
+
+        safe_ai_lab_database = validate_ai_lab_sqlite_config(
+            expected_path=os.environ['AI_LAB_SAFE_DB_PATH'],
+            sqlite_db_path=os.environ.get('SQLITE_DB_PATH'),
+            database_url=os.environ.get('DATABASE_URL'),
+            configured_database_url=app.config.get('SQLALCHEMY_DATABASE_URI'),
+            skip_database_bootstrap=app.config['SKIP_DATABASE_BOOTSTRAP'],
+            runtime_environment=runtime_environment,
+        )
+        app.config['AI_LAB_SAFE_DB_PATH'] = str(safe_ai_lab_database[0])
+        app.config['AI_LAB_SAFE_DB_IDENTITY'] = safe_ai_lab_database[1]
+        app.config['AI_LAB_SAFE_DB_MODE'] = True
+        app.config['AI_LAB_PLATFORM_TEST_USER_IDS'] = os.environ.get('AI_LAB_PLATFORM_TEST_USER_IDS', '')
+
+    def is_ai_lab_synthetic_platform_user(user_id):
+        if not safe_ai_lab_db_mode or not app.config.get('AI_LAB_SAFE_DB_PATH'):
+            return False
+        allowed_ids = {
+            value.strip()
+            for value in os.environ.get('AI_LAB_PLATFORM_TEST_USER_IDS', '').replace(';', ',').split(',')
+            if value.strip()
+        }
+        return str(user_id) in allowed_ids
+
+    app.jinja_env.globals['is_ai_lab_synthetic_platform_user'] = is_ai_lab_synthetic_platform_user
 
     logger = configure_logging(base_dir=base_dir, environment=ENVIRONMENT, service_name='boostudy')
 
@@ -240,6 +307,11 @@ def create_app(config_name=None):
 
     csrf.init_app(app)
     db.init_app(app)
+    if safe_ai_lab_database:
+        from app.ai_lab.database_safety import register_sqlite_identity_guard
+
+        with app.app_context():
+            register_sqlite_identity_guard(db.engine, *safe_ai_lab_database)
     from app.task_bank.exposure import register_task_exposure_listeners
     register_task_exposure_listeners()
     # Keep Alembic independent from the current working directory.  A relative
@@ -348,7 +420,9 @@ def create_app(config_name=None):
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     logger.info(f"=== Application Initialization ===")
     logger.info(f"Environment: {ENVIRONMENT}")
-    if database_url:
+    if app.config['SKIP_DATABASE_BOOTSTRAP']:
+        logger.info('Database startup bootstrap skipped by safe execution mode')
+    elif database_url:
         logger.info(f"Using database source: {database_url_source}")
         logger.info("Database type: PostgreSQL")
         
@@ -462,32 +536,33 @@ def create_app(config_name=None):
         except Exception as schema_error:
             logger.warning("⚠ Local SQLite schema bootstrap failed: %s", schema_error)
 
-    try:
-        with app.app_context():
-            from app.utils.reserved_creator import ensure_reserved_creator
-            ensure_reserved_creator()
-            logger.info("✓ Reserved creator account ensured")
+    if not app.config['SKIP_DATABASE_BOOTSTRAP']:
+        try:
+            with app.app_context():
+                from app.utils.reserved_creator import ensure_reserved_creator
+                ensure_reserved_creator()
+                logger.info("✓ Reserved creator account ensured")
 
-            # V2 Автоматический пересчёт уровней и опыта пользователей (однократный запуск)
-            try:
-                from app.utils.db_migrations import _rebalance_v2_student_xp_and_levels
-                _rebalance_v2_student_xp_and_levels(app)
-            except Exception as rebalance_err:
-                logger.warning("⚠ V2 XP rebalance bootstrap warning: %s", rebalance_err)
-
-            if ENVIRONMENT in ('local', 'development', 'dev') and not app.config.get('TESTING'):
-                from app.utils.local_dev_profile_pool import ensure_local_dev_profile_pool
-                ensure_local_dev_profile_pool()
-                logger.info("✓ Local role-check profile pool ensured")
-
-            if not app.config.get('TESTING'):
+                # V2 Автоматический пересчёт уровней и опыта пользователей (однократный запуск)
                 try:
-                    from scripts.seed_demo_student import ensure_demo_student_bootstrap
-                    ensure_demo_student_bootstrap(app)
-                except Exception as demo_bootstrap_err:
-                    logger.warning("⚠ Demo student showcase bootstrap warning: %s", demo_bootstrap_err)
-    except Exception as creator_error:
-        logger.warning("⚠ Reserved creator bootstrap failed: %s", creator_error)
+                    from app.utils.db_migrations import _rebalance_v2_student_xp_and_levels
+                    _rebalance_v2_student_xp_and_levels(app)
+                except Exception as rebalance_err:
+                    logger.warning("⚠ V2 XP rebalance bootstrap warning: %s", rebalance_err)
+
+                if ENVIRONMENT in ('local', 'development', 'dev') and not app.config.get('TESTING'):
+                    from app.utils.local_dev_profile_pool import ensure_local_dev_profile_pool
+                    ensure_local_dev_profile_pool()
+                    logger.info("✓ Local role-check profile pool ensured")
+
+                if not app.config.get('TESTING'):
+                    try:
+                        from scripts.seed_demo_student import ensure_demo_student_bootstrap
+                        ensure_demo_student_bootstrap(app)
+                    except Exception as demo_bootstrap_err:
+                        logger.warning("⚠ Demo student showcase bootstrap warning: %s", demo_bootstrap_err)
+        except Exception as creator_error:
+            logger.warning("⚠ Reserved creator bootstrap failed: %s", creator_error)
 
     logger.info(f"SECRET_KEY set: {'YES' if os.environ.get('SECRET_KEY') else 'NO'}")
     logger.info(f"=== Initialization Complete ===")
@@ -567,6 +642,7 @@ def create_app(config_name=None):
     from app.task_generator import task_generator_bp
     from app.api import api_bp
     from app.schedule import schedule_bp
+    from app.schedule.prototype_routes import prototype_bp
     from app.templates_manager import templates_bp
     from app.parents import parents_bp
     from app.assignments import assignments_bp
@@ -589,9 +665,12 @@ def create_app(config_name=None):
     from app.workspace import workspace_bp
     from app.task_workspace import task_workspace_bp
     from app.guest import guest_bp
-    from app.demo import demo_bp
-
-    app.register_blueprint(demo_bp, url_prefix='/demo')
+    from app.oristera import oristera_bp
+    # Демо-версия сохранена как концепт (архив/исследования) и полностью отключена от маршрутов платформы.
+    # Доступ запрещен (404). Включение возможно только при явном ENABLE_DEMO_CONCEPT=true.
+    if app.config.get('ENABLE_DEMO_CONCEPT', False):
+        from app.demo import demo_bp
+        app.register_blueprint(demo_bp, url_prefix='/demo')
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(webhooks_bp)
@@ -652,6 +731,7 @@ def create_app(config_name=None):
     app.register_blueprint(task_generator_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(schedule_bp)
+    app.register_blueprint(prototype_bp)
     app.register_blueprint(templates_bp)
     app.register_blueprint(parents_bp)
     app.register_blueprint(assignments_bp)
@@ -673,9 +753,11 @@ def create_app(config_name=None):
     app.register_blueprint(reminders_bp)
     app.register_blueprint(telegram_bp)
     app.register_blueprint(tg_app_bp)
+    csrf.exempt(tg_app_bp)
     app.register_blueprint(workspace_bp)
     app.register_blueprint(task_workspace_bp)
     app.register_blueprint(guest_bp)
+    app.register_blueprint(oristera_bp)
 
     try:
         from app.utils.dev_logger import init_dev_logger
@@ -695,19 +777,47 @@ def create_app(config_name=None):
         except ImportError:
             pass
 
+        redis_url = None
+        is_testing = bool(app.config.get('TESTING'))
+        allow_queue = not is_testing or bool(app.config.get('FORCE_SOCKETIO_MESSAGE_QUEUE'))
+
+        if allow_queue:
+            raw_url = (app.config.get("SOCKETIO_MESSAGE_QUEUE") or app.config.get("REDIS_URL") or os.environ.get("REDIS_URL") or "").strip()
+            if not raw_url and (os.environ.get("ENVIRONMENT") == "production" or os.path.exists("/.dockerenv")):
+                raw_url = "redis://redis:6379/0"
+
+            if raw_url and (raw_url.startswith("redis://") or raw_url.startswith("rediss://")):
+                try:
+                    import redis
+                    test_r = redis.Redis.from_url(raw_url, socket_connect_timeout=1, socket_timeout=1)
+                    test_r.ping()
+                    redis_url = raw_url
+                except Exception as redis_err:
+                    logger.warning("Redis message_queue requested (%s) but not reachable: %s. Falling back to in-memory SocketIO.", raw_url, redis_err)
+                    redis_url = None
+
+        env_name = os.environ.get("ENVIRONMENT", "development")
+        socketio_kwargs = {
+            "async_mode": async_mode,
+            "cors_allowed_origins": "*",
+            "max_http_buffer_size": 25 * 1024 * 1024,
+            "logger": False,
+            "engineio_logger": False,
+        }
+        if redis_url:
+            socketio_kwargs["message_queue"] = redis_url
+            socketio_kwargs["channel"] = f"boostudy_socketio_{env_name}"
+            logger.info("SocketIO configured with Redis message queue on %s (channel: %s)", redis_url, socketio_kwargs["channel"])
+
         socketio = SocketIO(
             app,
-            async_mode=async_mode,
-            cors_allowed_origins='*',
-            max_http_buffer_size=25 * 1024 * 1024,
-            logger=False,
-            engineio_logger=False,
+            **socketio_kwargs
         )
         app.socketio = socketio
         from app.main.sandbox_socket import register_sandbox_socket
         register_sandbox_socket(socketio)
         from app.lessons.lesson_socket import register_lesson_socket
-        register_lesson_socket(socketio)
+        register_lesson_socket(socketio, app=app)
         from app.task_workspace.socket import register_task_workspace_socket
         register_task_workspace_socket(socketio)
         from app.main.presence_socket import register_presence_socket
@@ -739,7 +849,10 @@ def create_app(config_name=None):
         t.start()
         app.config['_ASSIGNMENT_NOTIFY_WORKER_STARTED'] = True
 
-    background_workers_enabled = str(os.environ.get('DISABLE_BACKGROUND_WORKERS', '')).strip().lower() not in {'1', 'true', 'yes', 'on'}
+    background_workers_enabled = (
+        not app.config['SKIP_DATABASE_BOOTSTRAP']
+        and str(os.environ.get('DISABLE_BACKGROUND_WORKERS', '')).strip().lower() not in {'1', 'true', 'yes', 'on'}
+    )
     if background_workers_enabled:
         _start_assignment_notification_worker()
 
@@ -755,7 +868,7 @@ def create_app(config_name=None):
                         from app.lessons.routes import auto_complete_overdue_lessons
                         n = auto_complete_overdue_lessons()
                         if n:
-                            app.logger.info(f"Auto-completed {n} overdue lesson(s)")
+                            app.logger.info(f"Recorded elapsed timer for {n} lesson(s); awaiting teacher confirmation")
                 except Exception as e:
                     try:
                         app.logger.warning(f"Lesson auto-complete worker error: {e}")
@@ -1220,6 +1333,8 @@ def create_app(config_name=None):
                 'csrf_error',
                 {'error_type': type(e).__name__, 'description': str(e)[:200]}
             )
+            if request.path.startswith('/lesson/') and (request.path.endswith('/kick') or request.path.endswith('/unban')):
+                return jsonify({'success': False, 'error': 'CSRF token missing or invalid', 'message': str(e)}), 400
             if request.path.startswith('/api/') or request.path.startswith('/sandbox/api/') or request.is_json:
                 return jsonify({'error': 'Сессия устарела или токен безопасности неверный.'}), 403
             return _render_error(
@@ -1432,4 +1547,3 @@ def create_app(config_name=None):
     
     
     return app
-

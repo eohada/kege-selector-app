@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f1fa">
+  <meta name="description" content="BooStudy соединяет живой урок, BooCanvas, практику и учебный маршрут в одном пространстве.">
+  <title>BooStudy — Всё обучение. В одном живом пространстве.</title>
+  <link rel="stylesheet" href="/static/css/boostudy-design-system.css">
+  <link rel="stylesheet" href="/static/landing-preview-sprint-2-6/experience.css">
+  <script defer src="/static/landing-preview-sprint-2-6/experience.js"></script>
+</head>
+<body class="s25-page s26-page">
+  <a class="s25-skip" href="#s26-main">Перейти к содержанию</a>
+
+  <main id="s26-main">
+    <div class="s25-story" data-s25-story>
+      <section class="s25-stage" data-s25-stage data-scene="hero" aria-label="Знакомство с BooStudy OS">
+        <div class="s25-glow" aria-hidden="true"></div>
+        <div class="s25-grid" aria-hidden="true"></div>
+
+        <header class="s25-header">
+          <a class="s25-brand" href="#s26-top" id="s26-top" aria-label="BooStudy — начало">
+            <span class="s25-brand__mark" aria-hidden="true">B</span>
+            <span class="s25-brand__name"><b>boo</b>study</span>
+          </a>
+          <nav class="s25-nav" aria-label="Разделы истории">
+            <a href="#s25-workspace" data-s25-goto="workspace">Рабочее пространство</a>
+            <a href="#bc-fano">BooCanvas</a>
+            <a class="s25-nav__login" href="/login">Войти</a>
+          </nav>
+        </header>
+
+        <div class="s25-copy-stack" aria-live="polite" aria-atomic="true">
+          <section class="s25-copy" data-s25-copy="hero" aria-labelledby="s26-hero-title">
+            <p class="s25-kicker"><span></span>Учёба, в которую можно войти</p>
+            <h1 id="s26-hero-title">Всё обучение.<br><em>В одном живом пространстве.</em></h1>
+            <p class="s25-lede">Открой урок, разбери решение и попробуй идею — в одной учебной среде.</p>
+            <div class="s25-actions">
+              <a class="s25-button s25-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a>
+              <a class="s25-button s25-button--quiet" href="#s25-workspace" data-s25-goto="workspace">Войти в комнату <span aria-hidden="true">↓</span></a>
+            </div>
+            <p class="s25-proof"><span aria-hidden="true">✦</span> Настоящий экран ученической комнаты BooStudy OS</p>
+          </section>
+
+          <section class="s25-copy" data-s25-copy="workspace" aria-labelledby="s26-workspace-title" aria-hidden="true">
+            <p class="s25-kicker"><span></span>Урок уже открыт</p>
+            <h2 id="s26-workspace-title">Окна одной сессии.</h2>
+            <p class="s25-lede">Задание и Boo Tracer рядом. Комната остаётся целой, пока ты переходишь от вопроса к разбору.</p>
+            <a class="s25-text-link" href="/login">Продолжить в своей комнате <span aria-hidden="true">↗</span></a>
+          </section>
+
+          <section class="s25-copy" data-s25-copy="canvas" aria-labelledby="s26-canvas-title" aria-hidden="true">
+            <p class="s25-kicker"><span></span>ЕГЭ по информатике · задание 4</p>
+            <h2 id="s26-canvas-title">Сначала правило. Потом доказательство.</h2>
+            <p class="s25-lede">На BooCanvas условие Фано становится видимым: кодовые слова, ветви дерева и место, где возникает ошибка.</p>
+            <a class="s25-text-link" href="#bc-fano">Разобрать пример на доске <span aria-hidden="true">↓</span></a>
+          </section>
+        </div>
+
+        <div class="s25-os" data-s25-os aria-label="Подлинный захват комнаты ученика BooStudy OS">
+          <div class="s25-os__topbar">
+            <span class="s25-os__traffic" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="s25-os__title"><span class="s25-os__logo" aria-hidden="true">B</span> BooStudy OS <span class="s25-os__slash">/</span> Урок в процессе</span>
+            <span class="s25-os__status"><i aria-hidden="true"></i> сохранено</span>
+          </div>
+          <div class="s25-os__screen-wrap">
+            <img class="s25-os__screen" src="/static/images/landing/os-student-workspace.webp"
+              alt="Настоящая комната ученика: окно задания, Boo Tracer, рабочая область и инструменты урока"
+              width="1920" height="1080" fetchpriority="high" decoding="async">
+            <span class="s25-os__live-note"><i aria-hidden="true"></i> Подлинный экран комнаты</span>
+          </div>
+          <div class="s25-os__shadow" aria-hidden="true"></div>
+        </div>
+
+        <figure class="s25-window s25-window--tracer" data-s25-window="tracer">
+          <figcaption><span class="s25-window__lights" aria-hidden="true"><i></i><i></i></span><span>Boo Tracer</span><small>та же комната</small></figcaption>
+          <img src="/static/images/landing/os-student-tracer.webp" alt="Настоящий фрагмент окна Boo Tracer" width="471" height="398" loading="lazy" decoding="async">
+        </figure>
+        <figure class="s25-window s25-window--task" data-s25-window="task">
+          <figcaption><span class="s25-window__lights" aria-hidden="true"><i></i><i></i></span><span>Задание</span><small>та же комната</small></figcaption>
+          <img src="/static/images/landing/os-student-task.webp" alt="Настоящий фрагмент окна задания ученика" width="454" height="434" loading="lazy" decoding="async">
+        </figure>
+        <figure class="s25-window s25-window--canvas" data-s25-window="canvas">
+          <figcaption><span class="s25-window__lights" aria-hidden="true"><i></i><i></i></span><span>BooCanvas · ЕГЭ №4</span><small>учебный пример</small></figcaption>
+          <div class="s26-mini-board" role="img" aria-label="Подготовленный учебный пример по условию Фано: четыре префиксных кодовых слова и дерево">
+            <p>УСЛОВИЕ ФАНО <span>ЕГЭ · 4</span></p>
+            <div class="s26-mini-codes"><b>A <i>0</i></b><b>B <i>10</i></b><b>C <i>110</i></b><b>D <i>111</i></b></div>
+            <svg viewBox="0 0 420 190" aria-hidden="true">
+              <g fill="none" stroke="#aaa2c9" stroke-width="3" stroke-linecap="round">
+                <path d="M210 23V54M210 54H95V82M210 54H285V82M285 82V108M285 108H230V137M285 108H350V137"/>
+              </g>
+              <g fill="#fff" stroke="#8169e8" stroke-width="3">
+                <circle cx="210" cy="23" r="8"/><circle cx="95" cy="82" r="8"/><circle cx="285" cy="82" r="8"/>
+                <circle cx="230" cy="137" r="8"/><circle cx="350" cy="137" r="8"/>
+              </g>
+              <g fill="#5b45c5" font-family="Inter, sans-serif" font-size="13" font-weight="700">
+                <text x="78" y="75">0 · A</text><text x="274" y="75">1</text><text x="207" y="132">0 · C</text><text x="350" y="132">1 · D</text>
+                <text x="145" y="113">0 · B</text><text x="170" y="44">1</text><text x="140" y="69">0</text><text x="240" y="69">1</text><text x="257" y="126">0</text><text x="316" y="126">1</text>
+              </g>
+            </svg>
+            <small>Ни одно слово не является началом другого.</small>
+          </div>
+          <p>Учебное состояние подготовлено для демонстрации · страница 1</p>
+        </figure>
+
+        <div class="s25-mascot" aria-hidden="true">
+          <img class="s25-mascot__peek" src="/static/images/landing/boo-peek-clean.png" alt="" width="1322" height="1190" fetchpriority="high" decoding="async">
+          <img class="s25-mascot__point" src="/static/images/landing/boo-pointing-clean.webp" alt="" width="1312" height="1199" loading="lazy" decoding="async">
+          <img class="s25-mascot__read" src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async">
+        </div>
+
+        <div class="s25-progress" aria-label="Ход знакомства">
+          <span data-s25-progress-label>01 <i>/ 03</i></span>
+          <span class="s25-progress__track"><i data-s25-progress-bar></i></span>
+          <span class="s25-progress__hint">Прокрути, чтобы войти</span>
+        </div>
+      </section>
+
+      <div class="s25-track" aria-hidden="true">
+        <section class="s25-step" id="s25-hero" data-s25-step="hero"><span class="s25-sr-only">Всё обучение. В одном живом пространстве.</span></section>
+        <section class="s25-step" id="s25-workspace" data-s25-step="workspace"><span class="s25-sr-only">Окна одной сессии.</span></section>
+        <section class="s25-step" id="s25-canvas" data-s25-step="canvas"><span class="s25-sr-only">Условие Фано на BooCanvas.</span></section>
+      </div>
+    </div>
+
+    <section class="s26-chapter s26-chapter--fano" id="bc-fano" aria-labelledby="s26-fano-title" data-s26-reveal>
+      <div class="s26-section-head">
+        <p class="s25-kicker"><span></span>01 · Объяснение на BooCanvas</p>
+        <h2 id="s26-fano-title">Понятие становится ясным, когда его можно построить.</h2>
+        <p>Условие Фано — не список для запоминания. Это проверка, которую видно на дереве: ни одно кодовое слово не должно быть началом другого.</p>
+      </div>
+      <div class="s26-lesson-layout">
+        <article class="s26-canvas-window" aria-label="Подготовленный учебный пример на BooCanvas">
+          <header class="s26-window-bar"><span class="s26-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><b>BooCanvas</b><span>ЕГЭ · задание 4</span><small>Страница 1</small></header>
+          <div class="s26-board-body">
+            <div class="s26-tool-rail" aria-hidden="true"><span>↖</span><span>✎</span><span>▰</span><span>◇</span><span>T</span><span>⌫</span></div>
+            <div class="s26-board-paper">
+              <div class="s26-note-row"><span class="s26-note-tag">УСЛОВИЕ ФАНО</span><span class="s26-note-muted">префиксные коды</span></div>
+              <p class="s26-definition">Для любых двух кодовых слов одно <em>не является началом</em> другого.</p>
+              <div class="s26-code-row" aria-label="Кодовые слова: A равно 0, B равно 10, C равно 110, D равно 111">
+                <span>A <b>0</b></span><span>B <b>10</b></span><span>C <b>110</b></span><span>D <b>111</b></span>
+              </div>
+              <svg class="s26-fano-tree" viewBox="0 0 620 300" role="img" aria-labelledby="fano-tree-title fano-tree-desc">
+                <title id="fano-tree-title">Дерево кодов, удовлетворяющих условию Фано</title>
+                <desc id="fano-tree-desc">От корня ветвь 0 заканчивается символом A. Ветвь 1 продолжается: 0 заканчивается B, а 1 делится на 0 для C и 1 для D.</desc>
+                <g class="s26-tree-lines" fill="none" stroke="#9d94bb" stroke-width="3" stroke-linecap="round">
+                  <path d="M310 24V60M310 60H120V100M310 60H440V100M440 100V145M440 145H310V188M440 145H530V188M530 188V230M530 230H470V270M530 230H590V270"/>
+                </g>
+                <g class="s26-tree-labels" fill="#77728b" font-family="Inter, sans-serif" font-size="14" font-weight="700">
+                  <text x="207" y="53">0</text><text x="367" y="53">1</text><text x="365" y="139">0</text><text x="484" y="139">1</text><text x="488" y="224">0</text><text x="562" y="224">1</text>
+                </g>
+                <g fill="#fff" stroke="#8170d4" stroke-width="3">
+                  <circle cx="310" cy="24" r="9"/><circle cx="120" cy="100" r="10"/><circle cx="440" cy="100" r="9"/><circle cx="310" cy="188" r="10"/><circle cx="530" cy="188" r="9"/><circle cx="470" cy="270" r="10"/><circle cx="590" cy="270" r="10"/>
+                </g>
+                <g fill="#4f3bb5" font-family="Inter, sans-serif" font-size="14" font-weight="800">
+                  <text x="89" y="127">A · 0</text><text x="275" y="217">B · 10</text><text x="435" y="297">C · 110</text><text x="555" y="297">D · 111</text>
+                </g>
+                <g fill="#1aa77a"><circle cx="120" cy="100" r="4"/><circle cx="310" cy="188" r="4"/><circle cx="470" cy="270" r="4"/><circle cx="590" cy="270" r="4"/></g>
+              </svg>
+              <div class="s26-board-conclusion"><i aria-hidden="true">✓</i> Конечные узлы — кодовые слова. Ни одно не лежит на пути к другому.</div>
+            </div>
+          </div>
+          <footer class="s26-window-foot"><span><i></i> Подготовленный учебный пример</span><span>100%</span></footer>
+        </article>
+        <aside class="s26-lesson-notes">
+          <p class="s26-note-overline">Как идёт разбор</p>
+          <ol class="s26-steps">
+            <li><b>01</b><span><strong>Записываем слова</strong><small>Каждый символ получает свою двоичную последовательность.</small></span></li>
+            <li><b>02</b><span><strong>Строим дерево</strong><small>0 и 1 задают ребро; слово заканчивается в конечном узле.</small></span></li>
+            <li><b>03</b><span><strong>Проверяем префикс</strong><small>Для контраста: 0 и 01 нарушают условие — 0 является началом 01.</small></span></li>
+          </ol>
+          <div class="s26-error-example"><span>ОШИБКА · НЕ ФАНО</span><b>0 <i>→</i> 01</b><p>Второе слово продолжается после уже завершённого первого.</p></div>
+          <p class="s26-proof-note">Учебное содержание подготовлено для показа; это не запись действий преподавателя в приложении.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="s26-chapter s26-chapter--raster" id="bc-raster" aria-labelledby="s26-raster-title" data-s26-reveal>
+      <div class="s26-section-head s26-section-head--compact">
+        <p class="s25-kicker"><span></span>02 · Другая задача — другой способ объяснения</p>
+        <h2 id="s26-raster-title">От пикселя — к объёму памяти.</h2>
+        <p>Задание №7 помогает связать изображение, количество точек и разрядность без прыжка через шаги.</p>
+      </div>
+      <div class="s26-raster-layout">
+        <article class="s26-canvas-window s26-raster-board" aria-label="Подготовленный учебный пример по объёму памяти изображения">
+          <header class="s26-window-bar"><span class="s26-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><b>BooCanvas</b><span>ЕГЭ · задание 7</span><small>Страница 1</small></header>
+          <div class="s26-raster-paper">
+            <div class="s26-raster-grid-wrap">
+              <div class="s26-raster-pixel-grid" role="img" aria-label="Сетка пикселей: крупно показан фрагмент растрового изображения">
+                <span></span><span></span><span class="is-purple"></span><span class="is-purple"></span><span></span><span></span>
+                <span></span><span class="is-purple"></span><span class="is-purple"></span><span class="is-purple"></span><span></span><span></span>
+                <span class="is-purple"></span><span class="is-purple"></span><span></span><span class="is-purple"></span><span class="is-purple"></span><span></span>
+                <span></span><span class="is-purple"></span><span class="is-purple"></span><span class="is-purple"></span><span class="is-purple"></span><span></span>
+                <span></span><span></span><span class="is-purple"></span><span class="is-purple"></span><span></span><span></span>
+              </div>
+              <p>Фрагмент изображения · каждый квадрат — пиксель</p>
+            </div>
+            <div class="s26-raster-equation">
+              <span class="s26-equation-label">Дано</span><b>800 × 600 px</b><small>24 бита на пиксель</small>
+              <hr>
+              <span class="s26-equation-label">Формула</span><strong>I = K × i</strong><small>K — число пикселей · i — глубина цвета</small>
+              <div class="s26-equation-calc">480 000 × 24 = <b>11 520 000 бит</b></div>
+              <div class="s26-equation-calc">11 520 000 ÷ 8 = <b>1 440 000 байт</b></div>
+              <div class="s26-raster-answer">≈ 1,37 МиБ <small>если нужны двоичные единицы</small></div>
+            </div>
+          </div>
+          <footer class="s26-window-foot"><span><i></i> Без сжатия · без служебных данных</span><span>Проверено</span></footer>
+        </article>
+        <aside class="s26-raster-aside">
+          <div class="s26-unit-warning"><span>ПРОВЕРЬ ЕДИНИЦУ</span><strong>бит ≠ байт</strong><p>Сначала умножаем число пикселей на биты на пиксель. В байты переводим только после этого: 8 бит = 1 байт.</p><div class="s26-unit-conversion"><b>bit</b><i>÷ 8</i><b>byte</b><i>÷ 1 048 576</i><b>MiB</b></div></div>
+          <p class="s26-proof-note">Точный ответ: 11 520 000 бит, или 1 440 000 байт. В двоичных мегабайтах — примерно 1,37 МиБ.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="s26-explore" id="bc-tools" aria-labelledby="s26-tools-title" data-s26-reveal>
+      <div class="s26-explore-head">
+        <p class="s25-kicker"><span></span>Инструменты BooCanvas</p>
+        <h2 id="s26-tools-title">Одна доска — разные способы думать.</h2>
+        <p>Выбери, на что посмотреть. Это подготовленные состояния интерфейса для знакомства с инструментами, а не имитация записи пера.</p>
+      </div>
+      <div class="s26-explore-shell">
+        <div class="s26-explore-tabs" role="tablist" aria-label="Возможности BooCanvas">
+          <button id="tab-create" type="button" role="tab" aria-selected="true" aria-controls="panel-create" tabindex="0" data-s26-tab="create">Перо и цвет</button>
+          <button id="tab-shapes" type="button" role="tab" aria-selected="false" aria-controls="panel-shapes" tabindex="-1" data-s26-tab="shapes">Фигуры и связи</button>
+          <button id="tab-edit" type="button" role="tab" aria-selected="false" aria-controls="panel-edit" tabindex="-1" data-s26-tab="edit">Выбор и правка</button>
+          <button id="tab-space" type="button" role="tab" aria-selected="false" aria-controls="panel-space" tabindex="-1" data-s26-tab="space">Страницы и масштаб</button>
+        </div>
+        <div class="s26-tool-state" aria-live="polite" data-s26-state-label>Состояние: перо · фиолетовый · 4 px</div>
+        <div class="s26-explore-panel" id="panel-create" role="tabpanel" aria-labelledby="tab-create" data-s26-panel="create">
+          <div class="s26-tool-mock s26-tool-mock--write"><div class="s26-mini-toolbar"><b class="is-current">✎</b><b>▰</b><b>◇</b><b>T</b><b>⌫</b></div><div class="s26-tool-paper"><span class="s26-hand-label">коротко записать мысль</span><strong>I = K × i</strong><p>Формула рядом с рисунком — ответ можно объяснить, а не только назвать.</p><div class="s26-pen-controls"><span class="is-current"></span><span></span><span></span><span class="s26-size-mark">4 px</span></div></div></div>
+          <div class="s26-tool-copy"><span>СОЗДАТЬ</span><h3>Запись остаётся рядом с объяснением.</h3><p>В интерфейсе есть перо и маркер, выбор цвета, размера и прозрачности. Рукописная пометка, формула и поясняющий текст могут быть частью одного разбора.</p></div>
+        </div>
+        <div class="s26-explore-panel" id="panel-shapes" role="tabpanel" aria-labelledby="tab-shapes" data-s26-panel="shapes" hidden>
+          <div class="s26-tool-mock s26-tool-mock--diagram"><div class="s26-mini-toolbar"><b>✎</b><b>▰</b><b class="is-current">◇</b><b>T</b><b>⌫</b></div><div class="s26-tool-paper"><div class="s26-mini-node">код</div><div class="s26-mini-branches"><i></i><i></i></div><div class="s26-mini-endpoints"><b>0 · A</b><b>1 · B</b></div><small>Фигуры · линии · стрелки</small></div></div>
+          <div class="s26-tool-copy"><span>СВЯЗАТЬ</span><h3>Схема показывает ход решения.</h3><p>Доска содержит фигуры, линии и стрелки. Так можно вынести ветвление, сравнение или последовательность в отдельную наглядную конструкцию.</p></div>
+        </div>
+        <div class="s26-explore-panel" id="panel-edit" role="tabpanel" aria-labelledby="tab-edit" data-s26-panel="edit" hidden>
+          <div class="s26-tool-mock s26-tool-mock--edit"><div class="s26-mini-toolbar"><b class="is-current">↖</b><b>✎</b><b>▰</b><b>◇</b><b>⌫</b></div><div class="s26-tool-paper"><div class="s26-selected-object"><strong>Кодовое слово: 10</strong><span class="s26-handle s26-handle--tl"></span><span class="s26-handle s26-handle--tr"></span><span class="s26-handle s26-handle--bl"></span><span class="s26-handle s26-handle--br"></span></div><aside><b>СВОЙСТВА</b><span>Положение</span><span>Размер</span><span>Цвет</span></aside></div></div>
+          <div class="s26-tool-copy"><span>ИЗМЕНИТЬ</span><h3>Материал можно поправить по месту.</h3><p>Выбор объектов открывает свойства: положение и размеры. Объекты можно перемещать, редактировать и удалять; для исправления предусмотрены отмена и повтор.</p></div>
+        </div>
+        <div class="s26-explore-panel" id="panel-space" role="tabpanel" aria-labelledby="tab-space" data-s26-panel="space" hidden>
+          <div class="s26-tool-mock s26-tool-mock--space"><div class="s26-mini-toolbar"><b>↖</b><b>✎</b><b>▰</b><b>◇</b><b>T</b></div><div class="s26-space-paper"><div class="s26-space-sheet is-active"><b>01</b><span>Определение</span></div><div class="s26-space-sheet"><b>02</b><span>Пример</span></div><div class="s26-space-zoom"><span>−</span><b>100%</b><span>+</span></div></div></div>
+          <div class="s26-tool-copy"><span>ОРГАНИЗОВАТЬ</span><h3>Можно двигаться по доске в своём темпе.</h3><p>В интерфейсе есть страницы, панорамирование и масштабирование. Пространство помогает отделить условие от вычислений и вернуться к нужному месту.</p></div>
+        </div>
+      </div>
+      <a class="s26-skip-explore" href="#s26-beyond">Пропустить обзор инструментов <span aria-hidden="true">↓</span></a>
+      <p class="s26-explore-disclaimer">Наличие инструментов подтверждено в интерфейсе BooCanvas. Эти иллюстрации объясняют назначение функций; интерактивная запись живого урока в этом preview недоступна.</p>
+    </section>
+
+    <section class="s26-beyond" id="s26-beyond" aria-labelledby="s26-beyond-title" data-s26-reveal>
+      <div class="s26-beyond-intro">
+        <p class="s25-kicker"><span></span>03 · За пределами холста</p>
+        <h2 id="s26-beyond-title">Доска работает внутри урока, а не отдельно от него.</h2>
+        <p>Условие, код, заметки и объяснение соседствуют в рабочей комнате. Можно переключить внимание между ними, не теряя контекст задачи.</p>
+      </div>
+      <div class="s26-room-scene">
+        <figure class="s26-room-real">
+          <img src="/static/images/landing/os-student-workspace.webp" alt="Подлинный экран комнаты ученика BooStudy OS: окно задания, редактор, Boo Tracer и рабочая область урока" width="1920" height="1080" loading="lazy" decoding="async">
+          <figcaption><span class="s26-room-live"><i></i> ПОДЛИННЫЙ ЭКРАН КОМНАТЫ УЧЕНИКА</span><span>Задание · код · Boo Tracer · рабочая область</span></figcaption>
+        </figure>
+      </div>
+      <div class="s26-beyond-foot"><span>Условие</span><i>+</i><span>код</span><i>+</i><span>визуальный разбор</span><i>→</i><strong>понятный ход решения</strong></div>
+    </section>
+
+    <section class="s26-space" id="s26-space" aria-labelledby="s26-space-title" data-s26-reveal>
+      <div class="s26-space-copy">
+        <p class="s25-kicker"><span></span>04 · Твой учебный маршрут</p>
+        <h2 id="s26-space-title">После урока понятно, куда двигаться дальше.</h2>
+        <p>Занятия, домашняя практика, теория и история прогресса собраны в учебном пространстве ученика. Преподаватель может опираться на выполненную работу и конкретные вопросы.</p>
+        <a class="s25-text-link" href="/register">Посмотреть, как начать <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="s26-route-window" aria-label="Схема учебного маршрута BooStudy">
+        <header><span class="s26-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><b>Мой маршрут</b><small>учебное пространство</small></header>
+        <div class="s26-route-line"><span class="is-done"><i>✓</i><b>Урок</b><small>разобрали тему</small></span><i class="s26-route-connector"></i><span class="is-current"><i>02</i><b>Практика</b><small>закрепить решение</small></span><i class="s26-route-connector"></i><span><i>03</i><b>Следующий шаг</b><small>по результату работы</small></span></div>
+        <div class="s26-route-tools"><span><b>Задания</b><small>попробовать самому</small></span><span><b>Теория</b><small>вернуться к правилу</small></span><span><b>Расписание</b><small>видеть ближайший урок</small></span><span><b>Прогресс</b><small>замечать динамику</small></span></div>
+      </div>
+    </section>
+
+    <section class="s25-end s26-end" aria-labelledby="s26-end-title">
+      <div class="s25-end__boo" aria-hidden="true"><img src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async"></div>
+      <p class="s25-kicker"><span></span>Одна среда. Всё для занятия.</p>
+      <h2 id="s26-end-title">Пусть следующий шаг будет понятным.</h2>
+      <p class="s26-end-copy">Создай аккаунт и продолжи знакомство с BooStudy в своём учебном пространстве.</p>
+      <div class="s26-end-actions"><a class="s25-button s25-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a><a class="s25-button s25-button--quiet" href="/login">У меня уже есть аккаунт</a></div>
+    </section>
+  </main>
+</body>
+</html>

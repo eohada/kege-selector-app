@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 
 API_BASE_URL = "https://api.giga.chat"
 OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-CONNECT_TIMEOUT_SECONDS = 8
-MAX_COMPLETION_TOKENS = 1600
+MAX_COMPLETION_TOKENS = 3200
 _TOKEN_LOCK = threading.Lock()
 _TOKEN_CACHE: dict[str, Any] = {"fingerprint": None, "value": None, "expires_at": 0.0}
 
@@ -50,6 +49,7 @@ class CompletionResult:
     payload_sha256: str | None = None
     request_payload: dict[str, Any] | None = None
     generation_parameters: dict[str, Any] | None = None
+    finish_reason: str | None = None
 
 
 def _setting(name: str, default: str = "") -> str:
@@ -82,6 +82,7 @@ def provider_settings() -> dict[str, str | bool]:
         "ca_bundle": ca_bundle,
         "ca_bundle_source": ca_source,
         "ca_bundle_file_exists": bool(ca_bundle and os.path.isfile(ca_bundle)),
+        "use_system_proxy": _truthy(_setting("GIGACHAT_USE_SYSTEM_PROXY", "false")),
     }
 
 
@@ -154,7 +155,10 @@ def _send(
     json_body: dict[str, Any] | None = None,
 ) -> requests.Response:
     started = time.monotonic()
-    read_timeout = ai_lab_limits()["provider_read_timeout_seconds"]
+    limits = ai_lab_limits()
+    connect_timeout = limits["provider_connect_timeout_seconds"]
+    read_timeout = limits["provider_read_timeout_seconds"]
+    use_system_proxy = _truthy(_setting("GIGACHAT_USE_SYSTEM_PROXY", "false"))
     try:
         return requests.request(
             method,
@@ -162,8 +166,9 @@ def _send(
             headers=headers,
             data=data,
             json=json_body,
-            timeout=(CONNECT_TIMEOUT_SECONDS, read_timeout),
+            timeout=(connect_timeout, read_timeout),
             verify=_ssl_verify(),
+            proxies=None if use_system_proxy else {"http": "", "https": ""},
         )
     except requests.exceptions.SSLError as exc:
         raise ProviderError(
@@ -173,14 +178,24 @@ def _send(
     except requests.exceptions.ConnectTimeout as exc:
         raise ProviderError("connection_timeout", "GigaChat не ответил вовремя.") from exc
     except requests.exceptions.ReadTimeout as exc:
+        causes = []
+        current: BaseException | None = exc
+        while current is not None and len(causes) < 8:
+            causes.append(str(current).casefold())
+            current = current.__cause__ or current.__context__
+        handshake_timeout = any("handshake" in detail and "timed out" in detail for detail in causes)
         logger.warning(
-            "AI Lab GigaChat read timeout: method=%s endpoint=%s elapsed_seconds=%.1f configured_seconds=%s detail=%s",
+            "AI Lab GigaChat timeout: method=%s endpoint=%s phase=%s elapsed_seconds=%.1f connect_seconds=%s read_seconds=%s detail=%s",
             method,
             url.split("/api/")[0].split("/v1/")[0],
+            "tls_handshake" if handshake_timeout else "response_body",
             time.monotonic() - started,
+            connect_timeout,
             read_timeout,
             str(exc)[:300],
         )
+        if handshake_timeout:
+            raise ProviderError("connection_timeout", "TLS-соединение с GigaChat не установилось за отведённое время.") from exc
         raise ProviderError("response_timeout", "GigaChat не завершил ответ за отведённое время.") from exc
     except requests.exceptions.ConnectionError as exc:
         raise ProviderError("connection_failed", "Не удалось соединиться с GigaChat API.") from exc
@@ -488,6 +503,7 @@ class GigaChatProvider:
         try:
             payload = response.json()
             content = payload["choices"][0]["message"]["content"]
+            finish_reason = payload["choices"][0].get("finish_reason")
             usage = payload.get("usage") or {}
         except (ValueError, TypeError, KeyError, IndexError) as exc:
             raise ProviderError("invalid_provider_response", "GigaChat вернул неполное предложение рубрики.") from exc
@@ -507,6 +523,7 @@ class GigaChatProvider:
             payload_sha256=hashlib.sha256(payload_json.encode("utf-8")).hexdigest(),
             request_payload=body,
             generation_parameters=parameters,
+            finish_reason=str(finish_reason) if finish_reason is not None else None,
         )
 
 

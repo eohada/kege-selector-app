@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BooStudy{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/fonts.css') }}?v=20261029">
+    <script src="{{ url_for('static', filename='vendor/tailwind.min.js') }}"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -29,12 +27,13 @@
         }
       }
     </script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/phosphor/phosphor.css') }}?v=2.1.2">
+    <script src="{{ url_for('static', filename='vendor/phosphor/index.js') }}?v=2.1.2"></script>
     <link rel="icon" href="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20261005-release">
     {% block head_css %}{% endblock %}
-    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}?v=2.0.4" defer></script>
+    <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}?v=3.14.8"></script>
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}

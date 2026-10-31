@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9fc">
+  <meta name="description" content="Путешествие по ученическому рабочему пространству BooStudy OS.">
+  <title>BooStudy — всё обучение в одном пространстве</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-design-system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing-rebirth-preview.css') }}">
+  <script defer src="{{ url_for('static', filename='js/landing-rebirth-preview.js') }}"></script>
+</head>
+<body class="rebirth-page">
+  <a class="rebirth-skip-link" href="#main-content">Перейти к содержанию</a>
+
+  <div class="rebirth-story" data-scroll-story>
+    <div class="rebirth-frame" data-sticky-frame>
+      <header class="rebirth-header">
+        <a class="rebirth-brand" href="#top" aria-label="BooStudy — начало страницы">
+          <span class="rebirth-brand__mark" aria-hidden="true">B</span>
+          <span class="rebirth-brand__name"><span>boo</span>study</span>
+        </a>
+        <nav class="rebirth-nav" aria-label="Основная навигация">
+          <a href="#product" data-scroll-to-product>Платформа</a>
+          <a href="/login">Войти</a>
+        </nav>
+      </header>
+
+      <main class="rebirth-main" id="main-content">
+        <div class="rebirth-camera-viewport" data-camera-viewport role="region" aria-label="Непрерывная сцена ученического рабочего пространства">
+          <div class="rebirth-workspace" data-workspace>
+            <div class="rebirth-world-plane" aria-hidden="true"></div>
+
+            <figure class="rebirth-window rebirth-window--overview" data-camera-target="overview">
+              <div class="rebirth-window__context">Ученическая комната · исходный viewport 1920 × 1080 CSS px</div>
+              <div class="rebirth-window__surface">
+                <img src="{{ url_for('static', filename='images/landing/os-student-workspace.webp') }}"
+                  alt="Настоящий ученический экран BooStudy OS: открыты задание, Boo Tracer, холст и терминал с приглашением"
+                  width="1920" height="1080" fetchpriority="high" decoding="async">
+              </div>
+              <figcaption>Рабочая комната остаётся в сцене, пока камера движется к инструментам.</figcaption>
+            </figure>
+
+            <figure class="rebirth-window rebirth-window--canvas" data-camera-target="canvas">
+              <div class="rebirth-window__context">Холст · страница 1 · вид ученика</div>
+              <div class="rebirth-window__surface">
+                <img src="{{ url_for('static', filename='images/landing/os-student-canvas.webp') }}"
+                  alt="Страница холста с роботом, условием проверки чётности и двумя ветвями результата"
+                  width="1088" height="800" loading="lazy" decoding="async">
+              </div>
+              <figcaption>Рисунок подготовил преподаватель; ученик видит его в своей комнате.</figcaption>
+            </figure>
+
+            <figure class="rebirth-window rebirth-window--python" data-camera-target="python">
+              <div class="rebirth-window__context">Материал теории · интерактивный Python-пример</div>
+              <div class="rebirth-window__surface">
+                <img src="{{ url_for('static', filename='images/landing/os-student-python.webp') }}"
+                  alt="Ученический материал теории с интерактивным Python-кодом и успешным результатом запуска"
+                  width="1330" height="770" loading="lazy" decoding="async">
+              </div>
+              <figcaption>Пример запускается в браузере; этот кадр снят в доступной ученику теории.</figcaption>
+            </figure>
+
+            <img class="rebirth-mascot" data-mascot
+              src="{{ url_for('static', filename='images/landing/boo-pointing-clean.webp') }}"
+              alt="Бу указывает на рабочее пространство" width="1312" height="1199" loading="lazy" decoding="async">
+          </div>
+        </div>
+
+        <section class="rebirth-hero-copy" data-hero-copy aria-labelledby="hero-title" id="top">
+          <p class="rebirth-eyebrow"><span aria-hidden="true"></span>Учись в своём темпе и с преподавателем</p>
+          <h1 id="hero-title" tabindex="-1"><span>Всё обучение.</span><em>В одном живом пространстве.</em></h1>
+          <p class="rebirth-hero-description">Разбирай тему, следи за ходом решения и запускай интерактивный пример — в одной учебной среде.</p>
+          <div class="rebirth-actions">
+            <a class="rebirth-button rebirth-button--primary" href="/register">Создать аккаунт</a>
+            <a class="rebirth-button rebirth-button--secondary" href="#product" data-scroll-to-product>
+              Войти в BooStudy OS
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5"/></svg>
+            </a>
+          </div>
+          <p class="rebirth-audience-note">В демо — настоящая ученическая сессия и подготовленный урок.</p>
+        </section>
+
+        <div class="rebirth-story-copy" aria-label="История знакомства с BooStudy OS">
+          <section class="rebirth-beat rebirth-beat--workspace" data-story-beat="workspace" id="product" aria-labelledby="beat-workspace-title">
+            <p class="rebirth-eyebrow rebirth-eyebrow--product"><span aria-hidden="true"></span>Войди в урок</p>
+            <h2 id="beat-workspace-title">Все окна остаются рядом.</h2>
+            <p>Задание, холст и Boo Tracer открыты в одной ученической комнате.</p>
+          </section>
+
+          <section class="rebirth-beat rebirth-beat--canvas" data-story-beat="canvas" aria-labelledby="beat-canvas-title">
+            <p class="rebirth-eyebrow rebirth-eyebrow--product"><span aria-hidden="true"></span>Холст · страница 1</p>
+            <h2 id="beat-canvas-title">Условие становится наглядным.</h2>
+            <p>Преподаватель подготовил рисунок, а ученик разбирает по нему две ветви решения.</p>
+          </section>
+
+          <section class="rebirth-beat rebirth-beat--python" data-story-beat="python" aria-labelledby="beat-python-title">
+            <p class="rebirth-eyebrow rebirth-eyebrow--product"><span aria-hidden="true"></span>Интерактивный пример в теории</p>
+            <h2 id="beat-python-title">Проверь идею запуском.</h2>
+            <p>Код выполняется в браузере, результат сразу появляется рядом с примером.</p>
+          </section>
+
+          <section class="rebirth-beat rebirth-beat--ending" data-story-beat="ending" aria-labelledby="beat-ending-title">
+            <p class="rebirth-eyebrow rebirth-eyebrow--product"><span aria-hidden="true"></span>BooStudy OS</p>
+            <h2 id="beat-ending-title">Одна среда. Все инструменты для занятия.</h2>
+            <p>Продолжай знакомство с платформой и выбери свой темп обучения.</p>
+            <a class="rebirth-button rebirth-button--primary" data-ending-cta href="/register" tabindex="-1">Создать аккаунт</a>
+          </section>
+        </div>
+
+        <a class="rebirth-scroll-cue" href="#product" data-scroll-to-product>
+          <span class="rebirth-scroll-cue__icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3v13m-5-5 5 5 5-5"/></svg></span>
+          <span><b>Листай дальше</b><small>Войди в рабочее пространство</small></span>
+        </a>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

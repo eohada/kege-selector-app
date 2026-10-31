@@ -1,10 +1,11 @@
 """Идемпотентный пул локальных профилей для ручной проверки ролей.
 
 Этот модуль намеренно запускается только в локальной разработке. Он не
-создаёт и не изменяет тестовые личности в production и не выполняется в pytest.
+создаёт и не изменяет тестовые личности в production.
 """
 
-from app.models import FamilyTie, Student, TeacherStudent, User, UserProfile, UserRole, db
+import os
+from app.models import FamilyTie, Lesson, Student, TeacherStudent, User, UserProfile, UserRole, db
 
 
 LOCAL_PROFILE_POOL = (
@@ -27,8 +28,11 @@ LOCAL_PROFILE_POOL = (
 
 LOCAL_TEACHER_STUDENT_PAIRS = (
     ('qa_pool_teacher_1', 'demo_student_1'),
+    ('demo_teacher_2', 'demo_student_1'),
     ('demo_teacher_2', 'demo_student_2'),
+    ('qa_pool_teacher_1', 'demo_student_2'),
     ('demo_tutor_1', 'demo_student_3'),
+    ('demo_teacher_2', 'demo_student_3'),
 )
 
 LOCAL_PARENT_STUDENT_PAIRS = (
@@ -39,7 +43,14 @@ LOCAL_PARENT_STUDENT_PAIRS = (
 
 
 def ensure_local_dev_profile_pool() -> None:
-    """Восстанавливает только отсутствующие локальные demo-профили и связи."""
+    """Восстанавливает только отсутствующие локальные demo-профили и связи.
+    Строго заблокировано в production.
+    """
+    env = (os.environ.get('ENVIRONMENT') or '').strip().lower()
+    flask_env = (os.environ.get('FLASK_ENV') or '').strip().lower()
+    if env == 'production' or flask_env == 'production':
+        return
+
     users_by_username = {
         user.username: user
         for user in User.query.filter(User.username.in_([row[0] for row in LOCAL_PROFILE_POOL])).all()
@@ -57,8 +68,8 @@ def ensure_local_dev_profile_pool() -> None:
             user.is_active = True
             if not user.email:
                 user.email = email
-            if username != 'creator':
-                user.set_password('demo123pass')
+            if not getattr(user, 'password_hash', None):
+                user.set_password('creator123' if username == 'creator' else 'demo123pass')
 
         if not UserRole.query.filter_by(user_id=user.id, role=role).first():
             db.session.add(UserRole(user_id=user.id, role=role))
@@ -68,8 +79,10 @@ def ensure_local_dev_profile_pool() -> None:
     db.session.flush()
 
     for teacher_username, student_username in LOCAL_TEACHER_STUDENT_PAIRS:
-        teacher = users_by_username[teacher_username]
-        student_user = users_by_username[student_username]
+        teacher = users_by_username.get(teacher_username)
+        student_user = users_by_username.get(student_username)
+        if not teacher or not student_user:
+            continue
         student = Student.query.filter_by(user_id=student_user.id).first()
         if student is None:
             student = Student(
@@ -92,9 +105,32 @@ def ensure_local_dev_profile_pool() -> None:
             db.session.add(TeacherStudent(teacher_id=teacher.id, student_id=student_user.id, status='active'))
 
     for parent_username, student_username in LOCAL_PARENT_STUDENT_PAIRS:
-        parent = users_by_username[parent_username]
-        student_user = users_by_username[student_username]
+        parent = users_by_username.get(parent_username)
+        student_user = users_by_username.get(student_username)
+        if not parent or not student_user:
+            continue
         if not FamilyTie.query.filter_by(parent_id=parent.id, student_id=student_user.id).first():
             db.session.add(FamilyTie(parent_id=parent.id, student_id=student_user.id, is_confirmed=True))
+
+    # Обеспечиваем активный demo-урок (status='in_progress') для demo_student_1 (штатный урок 89)
+    student_1_user = users_by_username.get('demo_student_1')
+    if student_1_user:
+        st1 = Student.query.filter_by(user_id=student_1_user.id).first()
+        if st1:
+            lesson_89 = db.session.get(Lesson, 89)
+            if lesson_89 and lesson_89.student_id == st1.id:
+                lesson_89.status = 'in_progress'
+                if not lesson_89.topic:
+                    lesson_89.topic = 'Индивидуальный урок: Demo QA'
+            elif not lesson_89:
+                lesson_89 = Lesson(
+                    lesson_id=89,
+                    student_id=st1.id,
+                    status='in_progress',
+                    topic='Индивидуальный урок: Demo QA',
+                    lesson_format='individual',
+                    duration=60,
+                )
+                db.session.add(lesson_89)
 
     db.session.commit()

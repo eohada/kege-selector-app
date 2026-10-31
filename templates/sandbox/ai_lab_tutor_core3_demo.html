@@ -1,0 +1,129 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Tutor Core 3.0 · техническая демонстрация — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-tutor-core.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-tutor-core3.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="tc-page tc3-page" id="tutorCore3"
+      data-csrf="{{ csrf_token() }}"
+      data-seed-url="{{ url_for('ai_lab.tutor_core3_seed_demo') }}">
+  <header class="tc-header tc3-header">
+    <div>
+      <p class="tc-eyebrow">ИСТОРИЧЕСКАЯ ФИКСТУРА · ТЕХНИЧЕСКАЯ ДЕМОНСТРАЦИЯ</p>
+      <h1>Tutor Core 3.0 · демо возможностей</h1>
+      <p class="tc-lede">Сохранённый пример обработки свидетельства и подсказки. Это не учебная программа и не персональная рекомендация.</p>
+    </div>
+    <span class="tc-badge">Локальная версия {{ state.version if state else '3.0' }}</span>
+  </header>
+
+  <p class="tc-notice tc3-notice" role="note">
+    Все события ниже — заранее сохранённая синтетическая фикстура, а не новая попытка ученика. Шесть карточек не образуют курс; Course 3 не читается и не изменяется. Для текущих учебных событий используйте Tutor Core 3.1.
+  </p>
+
+  {% if legacy_note %}
+    <p class="tc3-legacy-note">Обычный Tutor Core 1.6 в этой изолированной базе не настроен: {{ legacy_note }}. Ни один существующий курс автоматически не назначался.</p>
+  {% endif %}
+
+  {% if page_error %}
+    <section class="tc-card tc-error" role="alert">
+      <h2>Локальный пилот недоступен</h2>
+      <p>{{ page_error }}</p>
+      <a class="tc-button tc-secondary" href="{{ url_for('admin.admin_ai_lab') }}">Вернуться в AI Lab</a>
+    </section>
+  {% elif state and not state.seeded %}
+    <section class="tc-card tc3-intro" aria-labelledby="tc3-start-title">
+      <div class="tc-section-title">
+        <div><p class="tc-eyebrow">ГОТОВНОСТЬ ДЕМО</p><h2 id="tc3-start-title">Создать изолированный учебный пример</h2></div>
+        <span class="tc-status" data-kind="experimental">Не создано</span>
+      </div>
+      <p>Демо создаст отдельный неактивный синтетический профиль, шестизанятийный мастер-план и его копию, два фиктивных события и версии материалов Knowledge Base. Повторный запуск не создаёт дубликаты.</p>
+      <p class="tc3-small">Для этого действия используются только текущая синтетическая SQLite и ваша учётная запись как автор локального шаблона. GigaChat не вызывается; одобрение материалов и применение адаптации не выполняются.</p>
+      <button class="tc-button tc-primary" type="button" id="seedTutorCore3">Создать синтетическое демо</button>
+      <p class="tc-feedback" id="tc3Feedback" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="tc-card tc3-map-card" aria-labelledby="tc3-revisions-title">
+      <div class="tc-section-title"><div><p class="tc-eyebrow">СТАБИЛЬНЫЕ НАВЫКИ</p><h2 id="tc3-revisions-title">Что меняется между редакциями</h2></div></div>
+      {% for revision in state.revision_manifest %}
+        <section class="tc3-revision">
+          <div class="tc3-revision-head">
+            <h3>ЕГЭ-{{ revision.exam_year }}</h3>
+            <span class="tc-status" data-kind="{{ 'verified' if revision.document_status == 'approved' else 'experimental' }}">{{ 'Финальные документы' if revision.document_status == 'approved' else 'Проект ФИПИ' }}</span>
+          </div>
+          <p class="tc3-source"><a href="{{ revision.source_url }}" target="_blank" rel="noopener noreferrer">{{ revision.document_version }}</a> · SHA-256 {{ revision.source_sha256 }}</p>
+          <ul>{% for mapping in revision.mappings %}<li><strong>Задание {{ mapping.task_number }} · {{ mapping.task_type }}</strong><span>{{ mapping.skill_code }}</span><small>{{ mapping.change_reason }}</small></li>{% endfor %}</ul>
+        </section>
+      {% endfor %}
+    </section>
+  {% else %}
+    {% set demo = state.demo %}
+    <section class="tc3-status-strip" aria-label="Состояние демонстрации">
+      <div><span class="tc3-label">Версия демо</span><strong>{{ demo.version }} · {{ state.seed_version }}</strong></div>
+      <div><span class="tc3-label">Профиль</span><strong>Синтетический · вход отключён</strong></div>
+      <div><span class="tc3-label">Состояние</span><strong>Работает локально · экспертная проверка не выполнена</strong></div>
+      <div><span class="tc3-label">Вызовы GigaChat</span><strong>{{ state.model_calls }}</strong></div>
+    </section>
+
+    <div class="tc3-grid">
+      <section class="tc-card" aria-labelledby="tc3-chain-title">
+        <div class="tc-section-title"><div><p class="tc-eyebrow">ТЕХНИЧЕСКИЕ ПРИМЕРЫ · НЕ ПЛАН ОБУЧЕНИЯ</p><h2 id="tc3-chain-title">{{ demo.course.title }}</h2></div><span class="tc-badge">6 карточек-фикстур</span></div>
+        <p class="tc3-small">Эти элементы хранятся в историческом артефакте 3.0. Значение «60 минут» не подтверждено структурой реального курса и не является расписанием.</p>
+        <ol class="tc3-lessons">{% for lesson in demo.course.lessons %}<li><span class="tc3-lesson-order">{{ loop.index }}</span><div><strong>{{ lesson.title }}</strong><p>{{ lesson.skills|map(attribute='title')|join(' · ') }}</p><small>Демонстрационный навык {{ lesson.skills|map(attribute='code')|join(', ') }}</small></div></li>{% endfor %}</ol>
+      </section>
+
+      <section class="tc-card" aria-labelledby="tc3-adaptation-title">
+        <div class="tc-section-title"><div><p class="tc-eyebrow">ДЕМОНСТРАЦИОННАЯ ВЕТВЬ · НЕ РЕКОМЕНДАЦИЯ</p><h2 id="tc3-adaptation-title">Пример правила Tutor Core</h2></div><span class="tc-status" data-kind="experimental">Не применимо к ученику</span></div>
+        <p class="tc3-recommendation">{{ demo.adaptation_preview.text }}</p>
+        <p class="tc3-reason"><strong>Основание:</strong> {{ demo.adaptation_preview.reason }}</p>
+        <div class="tc3-timebar" aria-label="Иллюстративное распределение минут в старой фикстуре">
+          <span>{{ demo.adaptation_preview.time_allocation.diagnostic_minutes }} мин · пример проверки</span>
+          <span>{{ demo.adaptation_preview.time_allocation.planned_lesson_minutes }} мин · демонстрационный блок</span>
+        </div>
+        <ul class="tc3-conclusions">
+          <li>Самостоятельный перенос: не подтверждён</li>
+          <li>После подсказки: исправлено на том же графе</li>
+          <li>Повторяющееся затруднение: не установлено</li>
+          <li>Алгоритм поиска оптимального пути: не проверялся</li>
+        </ul>
+        <p class="tc3-small">Это сохранённый пример с арифметической суммой 60 минут, не предложение изменить индивидуальную программу.</p>
+      </section>
+    </div>
+
+    <div class="tc3-grid">
+      <section class="tc-card" aria-labelledby="tc3-evidence-title">
+        <div class="tc-section-title"><div><p class="tc-eyebrow">СЦЕНАРНЫЕ СОБЫТИЯ</p><h2 id="tc3-evidence-title">Что именно увидела система</h2></div><span class="tc-badge">{{ demo.events|length }} события</span></div>
+        <p class="tc3-small">Это зафиксированный синтетический сценарий и точная проверка списка рёбер одного графа; не Code Judge, не ученическая работа и не доказательство владения темой.</p>
+        <div class="tc3-events">{% for event in demo.events %}<article class="tc3-event">
+          <div class="tc3-event-head"><strong>{{ 'После подсказки' if event.assisted else 'Первый ответ' }}</strong><span class="tc-status" data-kind="{{ 'verified' if event.score == event.maximum else 'contradicted' }}">{{ event.score }}/{{ event.maximum }}</span></div>
+          <p><strong>Условие:</strong> {{ event.prompt }}</p>
+          <p><strong>Ответ в фикстуре:</strong> {{ event.response }}</p>
+          <p><strong>Сверка:</strong> {{ event.expected }}</p>
+          <small>{{ event.method }} · {{ 'с подсказкой' if event.assisted else 'без подсказки' }}</small>
+        </article>{% endfor %}</div>
+      </section>
+
+      <section class="tc-card" aria-labelledby="tc3-knowledge-title">
+        <div class="tc-section-title"><div><p class="tc-eyebrow">KNOWLEDGE BASE</p><h2 id="tc3-knowledge-title">Материалы, использованные демо</h2></div><a class="tc3-inline-link" href="{{ url_for('ai_lab.knowledge_base_page') }}">Открыть базу знаний</a></div>
+        {% if demo.knowledge %}<ul class="tc3-knowledge">{% for item in demo.knowledge %}<li><div><strong>{{ item.title }}</strong><span>{{ item.knowledge_ref }}</span></div><span class="tc-status" data-kind="{{ 'experimental' if item.project_limited else 'verified' }}">{{ 'Проект · не утверждено' if item.project_limited else item.editorial_status }}</span><small>{% for source in item.source_refs %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</small></li>{% endfor %}</ul>
+        {% else %}<p class="tc-muted">Версии базы знаний не найдены. Проверить подготовку локального набора.</p>{% endif %}
+      </section>
+    </div>
+
+    <section class="tc-card tc3-map-card" aria-labelledby="tc3-mapping-title">
+      <div class="tc-section-title"><div><p class="tc-eyebrow">ВЕРСИОНИРОВАННАЯ СВЯЗЬ</p><h2 id="tc3-mapping-title">ЕГЭ-2026 сохраняется отдельно от проекта 2027</h2></div></div>
+      {% for revision in state.revision_manifest %}
+        <section class="tc3-revision">
+          <div class="tc3-revision-head"><h3>{{ revision.exam_year }}</h3><span class="tc-status" data-kind="{{ 'verified' if revision.document_status == 'approved' else 'experimental' }}">{{ 'Финальная редакция' if revision.document_status == 'approved' else 'Проект' }}</span></div>
+          <p class="tc3-source"><a href="{{ revision.source_url }}" target="_blank" rel="noopener noreferrer">{{ revision.document_version }}</a> · SHA-256 {{ revision.source_sha256 }}</p>
+          <ul>{% for mapping in revision.mappings %}<li><strong>№{{ mapping.task_number }} · {{ mapping.task_type }}</strong><span>{{ mapping.skill_code }} · v1</span><small>{{ mapping.input_format }}<br>{{ mapping.answer_format }}</small></li>{% endfor %}</ul>
+        </section>
+      {% endfor %}
+    </section>
+
+    <section class="tc-card tc3-limitations" aria-labelledby="tc3-limits-title">
+      <div class="tc-section-title"><div><p class="tc-eyebrow">ГРАНИЦЫ ИСПЫТАНИЯ</p><h2 id="tc3-limits-title">Что пока не подтверждено</h2></div></div>
+      <ul>{% for item in state.limits %}<li>{{ item }}</li>{% endfor %}</ul>
+      <p>База знаний имеет статус источниковой сверки; экспертное педагогическое одобрение не проставлялось. GigaChat в этом демо не вызывался.</p>
+    </section>
+  {% endif %}
+</main>
+<script src="{{ url_for('static', filename='js/ai-lab-tutor-core3.js') }}" defer></script>
+{% endblock %}

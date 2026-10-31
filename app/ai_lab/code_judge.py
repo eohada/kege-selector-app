@@ -46,7 +46,7 @@ def _case(case_id: str, name: str, visibility: str, *, stdin: str = "", expected
 
 def _seeds() -> list[dict[str, Any]]:
     tuple_value = lambda *items: {"__type__": "tuple", "items": list(items)}
-    return [
+    seeds = [
         {
             "scenario_id": "positive-number", "title": "Положительность числа", "mode": "program",
             "description": "Выведите YES для положительного числа и NO для нуля или отрицательного числа.",
@@ -146,6 +146,31 @@ def _seeds() -> list[dict[str, Any]]:
             ],
         },
     ]
+    from app.ai_lab.family_templates import (
+        default_template_parameters,
+        list_family_templates,
+        materialize_template,
+    )
+
+    template_ids = {item["assignment_id"]: item for item in list_family_templates()}
+    for template in template_ids.values():
+        generated = materialize_template(
+            template["template_id"],
+            default_template_parameters(template["template_id"]),
+        )
+        seeds.append({
+            "scenario_id": "family-base-" + template["family_id"].removeprefix("python."),
+            "title": generated["title"],
+            "description": generated["condition"],
+            "mode": "function",
+            "function_name": template["function_name"],
+            "assignment_id": template["assignment_id"],
+            "assignment_version": template["assignment_version"],
+            "starter_code": generated["reference_code"],
+            "test_cases": generated["test_cases"],
+            "rubric_json": generated["rubric_json"],
+        })
+    return seeds
 
 
 def _json_size(value: Any) -> int:
@@ -306,6 +331,9 @@ def _validate_rubric(raw: Any, cases: list[dict], mode: str, *, assignment: dict
         title = str(criterion.get("title") or "").strip()[:200]
         description = str(criterion.get("description") or title).strip()[:1000]
         assignment_criterion_id = str(criterion.get("assignment_criterion_id") or "").strip() or None
+        skill_id = str(criterion.get("skill_id") or "").strip() or None
+        if skill_id and not re.fullmatch(r"(?:exam-skill:[1-9]\d*|python\.[a-z0-9._-]{1,100})", skill_id):
+            raise CodeJudgeError(f"Критерий №{index}: укажите стабильный ID навыка из списка.")
         try:
             maximum = float(criterion.get("max_score"))
         except (TypeError, ValueError, OverflowError) as exc:
@@ -330,7 +358,11 @@ def _validate_rubric(raw: Any, cases: list[dict], mode: str, *, assignment: dict
                 raise CodeJudgeError(f"Критерий №{index}: неизвестное проверяемое условие.")
             checked.append({("case_id" if case_id is not None else "group_id"): case_id if case_id is not None else group_id, "projection": projection})
         seen.add(criterion_id)
-        result.append({"id": criterion_id, "assignment_criterion_id": assignment_criterion_id, "title": title, "description": description, "max_score": maximum, "policy": policy, "scoring_rule": "all_required" if policy == "all_or_nothing" else "proportional", "checks": checked})
+        result.append({"id": criterion_id, "assignment_criterion_id": assignment_criterion_id,
+                       "skill_id": skill_id, "title": title, "description": description,
+                       "max_score": maximum, "policy": policy,
+                       "scoring_rule": "all_required" if policy == "all_or_nothing" else "proportional",
+                       "checks": checked})
     return result
 
 
@@ -580,6 +612,7 @@ def _score_rubric(rubric: list[dict], cases: list[dict], tests: list[dict]) -> d
         scores.append({
             "id": criterion["id"], "title": criterion["title"], "max_score": criterion["max_score"],
             "assignment_criterion_id": criterion.get("assignment_criterion_id"),
+            "skill_id": criterion.get("skill_id"),
             "description": criterion.get("description") or criterion["title"], "policy": criterion.get("policy", "all_or_nothing"),
             "scoring_rule": criterion.get("scoring_rule", "all_required"), "status": status,
             "score_awarded": awarded, "rationale": rationale,

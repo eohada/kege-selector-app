@@ -1,0 +1,68 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}Уроки и расписание | Oristera{% endblock %}
+
+{% block content %}
+<div class="ori-field-page ori-lessons-field">
+  <header class="ori-field-intro">
+    <div>
+      <p class="ori-field-eyebrow">УРОКИ / РАСПИСАНИЕ</p>
+      <h1 class="ori-field-title">Время для занятий</h1>
+      <p class="ori-field-lede">Текущие, предстоящие и завершённые занятия из вашего расписания.</p>
+    </div>
+    <div class="ori-field-facts" aria-label="Сводка занятий">
+      <div class="ori-field-fact"><span class="ori-field-fact-value">{{ upcoming_lessons|length + (1 if active_lesson else 0) }}</span><span class="ori-field-fact-label">активных и предстоящих</span></div>
+      <div class="ori-field-fact"><span class="ori-field-fact-value">{{ recent_lessons|length }}</span><span class="ori-field-fact-label">в истории</span></div>
+    </div>
+  </header>
+
+  {% if active_lesson %}
+  <section class="ori-lessons-current" aria-labelledby="ori-current-lesson-title">
+    <div>
+      <p class="ori-field-eyebrow">ТЕКУЩЕЕ ЗАНЯТИЕ</p>
+      <p class="ori-priority-state is-live"><span class="ori-status-dot" aria-hidden="true"></span>Идёт сейчас · {{ format_time(active_lesson.lesson_date) }}</p>
+      <h2 id="ori-current-lesson-title">{{ active_lesson.topic or 'Тема не указана' }}</h2>
+      <p>Подготовка и переход в комнату урока доступны из одной страницы.</p>
+    </div>
+    <a href="{{ url_for('oristera.lesson_prep', lesson_id=active_lesson.lesson_id) }}" class="ori-field-button ori-field-button-primary">Открыть подготовку <span aria-hidden="true">→</span></a>
+  </section>
+  {% endif %}
+
+  <section class="ori-field-panel ori-lessons-upcoming" aria-labelledby="ori-upcoming-lessons-title">
+    <div class="ori-panel-heading">
+      <div><p class="ori-field-eyebrow">ПЛАНИРУЕМЫЕ ЗАНЯТИЯ</p><h2 class="ori-panel-title" id="ori-upcoming-lessons-title">Предстоящие</h2></div>
+    </div>
+    {% if upcoming_lessons %}
+    <ol class="ori-schedule-list">
+      {% for lesson in upcoming_lessons %}
+      <li class="ori-schedule-row">
+        <div class="ori-schedule-date"><strong>{{ format_time(lesson.lesson_date) }}</strong><span>{{ format_date(lesson.lesson_date) }}</span></div>
+        <div class="ori-schedule-copy"><span class="ori-schedule-status">Запланировано</span><h3>{{ lesson.topic or 'Тема не указана' }}</h3><p>{% if mentor %}Наставник: {{ mentor.full_name or mentor.username }}{% else %}Подготовьте вопросы и материалы к занятию.{% endif %}</p></div>
+        <a href="{{ url_for('oristera.lesson_prep', lesson_id=lesson.lesson_id) }}" class="ori-field-button ori-field-button-secondary">Подготовиться <span aria-hidden="true">→</span></a>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <div class="ori-field-empty"><span class="ori-empty-line" aria-hidden="true"></span><p>Будущие занятия появятся здесь после внесения в расписание.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="ori-field-panel ori-lessons-history" aria-labelledby="ori-recent-lessons-title">
+    <div class="ori-panel-heading">
+      <div><p class="ori-field-eyebrow">ЗАПИСИ И МАТЕРИАЛЫ</p><h2 class="ori-panel-title" id="ori-recent-lessons-title">Недавно завершённые</h2></div>
+    </div>
+    {% if recent_lessons %}
+    <ul class="ori-history-list">
+      {% for lesson in recent_lessons %}
+      <li>
+        <div><span class="ori-history-date">{{ format_date(lesson.lesson_date) }}</span><strong>{{ lesson.topic or 'Тема не указана' }}</strong></div>
+        <a href="{{ url_for('oristera.lesson_prep', lesson_id=lesson.lesson_id) }}" class="ori-field-text-link">Материалы <span aria-hidden="true">→</span></a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="ori-field-empty"><span class="ori-empty-line" aria-hidden="true"></span><p>Завершённые занятия появятся в истории после проведения.</p></div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -34,7 +34,8 @@ collect_ignore = [
         'test_teacher_dashboard_v2.py',
         'test_homework_ai_review_v2.py',
         'test_tariffs_admin_v2.py',
-        'test_demo_experience_v2.py',
+        # 'test_demo_experience_v2.py' — демоверсия сохранена как концепт, отключена из активного прогона
+        'test_demo_disabled_contract.py',
         'test_telegram_hardening.py',
         'test_telegram_local_linking.py',
         'test_telegram_application.py',
@@ -43,6 +44,15 @@ collect_ignore = [
         'test_python_theory_curriculum.py',
         'test_ai_lab_studio.py',
         'test_billing_public_flow.py',
+        'test_telegram_v3_core.py',
+        'test_telegram_v3_screens.py',
+        'test_telegram_v3_router.py',
+        'test_telegram_notifications_v1.py',
+        'test_telegram_mini_app_v2.py',
+        'test_multi_teacher_data_foundation_sprint2_2.py',
+        'test_teacher_schedule_integration_sprint2_3.py',
+        'test_postgresql_concurrency_sprint2_3_1.py',
+        'test_recurring_schedule_and_availability_sprint2_4.py',
     }
 ]
 
@@ -73,6 +83,7 @@ def app(request):
     if request.node.fspath.basename == 'test_release_readiness_v2.py':
         legacy_context = test_app.app_context()
         legacy_context.push()
+    orig_socketio = getattr(test_app, "socketio", None)
     try:
         yield test_app
     finally:
@@ -81,9 +92,34 @@ def app(request):
         # поэтому очищаем его так же, как очищаем изолированную БД.
         from app.lessons import lesson_socket
         from app.task_workspace import socket as workspace_socket
+        from app.runtime_state import reset_runtime_state
+
+        if orig_socketio is not None:
+            test_app.socketio = orig_socketio
+            lesson_socket._socketio_instance = orig_socketio
 
         with test_app.app_context():
             lesson_socket._lesson_presence.clear()
+            lesson_socket._lesson_code_state.clear()
+            with lesson_socket._lesson_persist_lock:
+                for timer in list(lesson_socket._lesson_persist_timers.values()):
+                    try:
+                        timer.cancel()
+                    except Exception:
+                        pass
+                lesson_socket._lesson_persist_timers.clear()
+            with lesson_socket._lesson_code_persist_lock:
+                for timer in list(lesson_socket._lesson_code_persist_timers.values()):
+                    try:
+                        timer.cancel()
+                    except Exception:
+                        pass
+                lesson_socket._lesson_code_persist_timers.clear()
+            lesson_socket._lesson_board_strokes.clear()
+            lesson_socket._lesson_board_pages.clear()
+            lesson_socket._lesson_board_active_page.clear()
+            lesson_socket._lesson_board_tombstones.clear()
+            reset_runtime_state()
             with workspace_socket._workspace_autosave_lock:
                 for timer in workspace_socket._workspace_autosave_timers.values():
                     timer.cancel()
@@ -91,6 +127,10 @@ def app(request):
             workspace_socket._workspace_rooms.clear()
             workspace_socket._workspace_state.clear()
             workspace_socket._workspace_cursor_emit_at.clear()
+            from core.audit_logger import audit_logger
+
+            db.session.remove()
+            audit_logger.stop_worker()
             db.session.remove()
             db.drop_all()
         if legacy_context is not None:
@@ -131,13 +171,20 @@ def role_users(app):
         student_user = User(username='v2_student', email='v2_student@example.test', role='student', is_active=True)
         db.session.add_all([tutor, creator, student_user])
         db.session.flush()
-        student = Student(name='V2 Fixture Student', user_id=student_user.id, is_active=True)
+        tutor_id = tutor.id
+        creator_id = creator.id
+        student_user_id = student_user.id
+
+        student = Student(name='V2 Fixture Student', user_id=student_user_id, is_active=True)
         db.session.add(student)
-        db.session.add(Enrollment(student_id=student_user.id, tutor_id=tutor.id, subject='Информатика', status='active'))
+        db.session.flush()
+        student_id = student.student_id
+
+        db.session.add(Enrollment(student_id=student_user_id, tutor_id=tutor_id, subject='Информатика', status='active'))
         db.session.commit()
         return {
-            'tutor_id': tutor.id,
-            'creator_id': creator.id,
-            'student_user_id': student_user.id,
-            'student_id': student.student_id,
+            'tutor_id': tutor_id,
+            'creator_id': creator_id,
+            'student_user_id': student_user_id,
+            'student_id': student_id,
         }

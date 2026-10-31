@@ -1,0 +1,31 @@
+{
+  "protocol_id": "tutor-core-pedagogical-v8-development-20261022",
+  "protocol_version": 1,
+  "frozen_at": "2026-10-22",
+  "implementation_target": {
+    "lesson_prompt_version": "lesson-intelligence.v8",
+    "parser_contract": "lesson-transcript.v3",
+    "event_validation": "lesson-event-validation.v2",
+    "plan_method": "deterministic_evidence_priority.v1"
+  },
+  "source_fixture": {
+    "path": "tutor_core_pedagogical_v6_preregistered.json",
+    "sha256": "fc74d2aa0799812a77286153faf0a85eabeb5a6813199fed92f842f01db32047"
+  },
+  "development_case_ids": [
+    "case-01-self-correction",
+    "case-02-correct-after-hint",
+    "case-03-easy-success-hard-failure",
+    "case-04-understanding-claim-contradicted",
+    "case-05-self-caught-slip",
+    "case-06-alternative-correct-algorithm"
+  ],
+  "holdout_case_ids": ["case-07-similar-skill-labels", "case-08-contradictory-evidence"],
+  "expectations_frozen_before_v8_model_runs": true,
+  "expected_results_sent_to_model": false,
+  "holdout_evaluated": false,
+  "purpose": "bounded development refinement after v6 and v7 failures; not independent evaluation",
+  "max_v8_model_requests": 12,
+  "request_policy": "run the historical regression first, then the six development cases in order; stop before exceeding the global cap",
+  "data_scope": "synthetic_only"
+}

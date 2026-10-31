@@ -16,7 +16,6 @@ import textwrap
 from io import BytesIO
 from html import escape as html_escape, unescape as html_unescape
 from datetime import timezone as dt_timezone
-from math import ceil
 from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from app.uploads.service import save_uploaded_file
@@ -27,11 +26,21 @@ from sqlalchemy import text, or_  # text нужен для setval(pg_get_serial_
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.utils.db_migrations import ensure_schema_columns
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
+from app import csrf
 
 from app.lessons import lessons_bp
+from app.lessons.lifecycle import (
+    LessonLifecycleError,
+    deduct_lesson_balance,
+    record_lesson_event,
+    record_lesson_outcome_saved,
+    record_lesson_timer_elapsed,
+    sync_learning_item_status,
+    transition_lesson_status,
+)
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, Submission, LessonWhiteboard, LessonWhiteboardOperation, MiroUserToken, Course, TheoryBlock, StudentTheoryAccess, LessonOutcome, LearningItem, StudentSkill, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, AssignmentTask, Submission, Answer, LessonParticipantBan, LessonWhiteboard, LessonWhiteboardOperation, MiroUserToken, Course, TheoryBlock, StudentTheoryAccess, LessonOutcome, LearningItem, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -79,21 +88,45 @@ def _task_display_title(task, fallback: str) -> str:
 
 
 def _task_room_description(task) -> str:
-    """Убирает служебный заголовок ручного задания из тела, оставляя его для восстановления."""
+    """Убирает служебный заголовок ручного задания из тела и нормализует пути к ассетам/картинкам."""
     content_html = str(getattr(task, 'content_html', '') or '') if task is not None else ''
-    return re.sub(
+    clean_html = re.sub(
         r'^\s*<h4\b[^>]*class=["\'][^"\']*\btask-title\b[^"\']*["\'][^>]*>.*?</h4>\s*',
         '',
         content_html,
         count=1,
         flags=re.IGNORECASE | re.DOTALL,
     )
+    if not clean_html or not task:
+        return clean_html
+    try:
+        from app.utils.jinja_filters import normalize_task_content_assets, prepare_task_content_html
+        return normalize_task_content_assets(
+            prepare_task_content_html(clean_html),
+            getattr(task, 'attached_files', None),
+            getattr(task, 'source_url', None),
+        )
+    except Exception:
+        return clean_html
 
 
 def _lesson_room_task_payload(lesson_task: LessonTask) -> dict:
     """Сериализует задание для комнаты, включая состояние показа ученику."""
     task = lesson_task.task
     fallback_title = f'Задание №{task.task_number}' if task and task.task_number else 'Задание'
+    lesson = Lesson.query.get(lesson_task.lesson_id)
+    assignment_type = (lesson_task.assignment_type or 'homework').strip().lower()
+    attempts_used = len(lesson_task.attempts or [])
+    try:
+        max_attempts = max(1, int(lesson_task.get_effective_max_attempts()))
+    except (TypeError, ValueError):
+        max_attempts = 1
+    can_submit = bool(
+        lesson
+        and _is_task_submit_enabled(lesson, assignment_type)
+        and (lesson_task.status or '').lower() != 'graded'
+        and attempts_used < max_attempts
+    )
     return {
         'lesson_task_id': lesson_task.lesson_task_id,
         'task_id': lesson_task.task_id,
@@ -108,6 +141,10 @@ def _lesson_room_task_payload(lesson_task: LessonTask) -> dict:
         'submission_correct': lesson_task.submission_correct,
         'status': lesson_task.status or 'pending',
         'visible_to_student': bool(getattr(lesson_task, 'is_visible_to_student', True)),
+        'submission_enabled': bool(lesson and _is_task_submit_enabled(lesson, assignment_type)),
+        'attempts_used': attempts_used,
+        'max_attempts': max_attempts,
+        'can_submit': can_submit,
     }
 
 
@@ -142,53 +179,14 @@ def _record_lesson_task_attempt(lesson_task: LessonTask) -> None:
     db.session.add(attempt)
 
 
-def _lesson_balance_units(duration_minutes: int | None) -> int:
-    try:
-        duration = int(duration_minutes or 60)
-    except Exception:
-        duration = 60
-    return max(1, ceil(duration / 60))
-
-
 def _deduct_student_lesson_balance(lesson: Lesson) -> tuple[int, int, str] | None:
-    """
-    Автоматическое и идемпотентное списание баланса занятий после проведения урока.
-    Списывает из student.lessons_balance и (если есть активная подписка) lessons_remaining.
-    Возвращает кортеж (before_balance, after_balance, reason) для уведомления или None.
-    """
-    if not lesson or getattr(lesson, 'balance_deducted', False):
-        return None
+    """Backward-compatible wrapper; callers should complete via the lifecycle service."""
+    return deduct_lesson_balance(lesson, source="legacy_completion_path")
 
-    student = lesson.student
-    if not student:
-        lesson.balance_deducted = True
-        return None
 
-    spent = _lesson_balance_units(lesson.duration)
-    before_balance = student.lessons_balance if student.lessons_balance is not None else 0
-    after_balance = before_balance - spent
-    student.lessons_balance = after_balance
-
-    if student.user_id:
-        try:
-            from app.models import UserSubscription
-            active_sub = UserSubscription.query.filter_by(
-                user_id=student.user_id,
-                status='active'
-            ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
-            if active_sub and active_sub.lessons_remaining is not None:
-                active_sub.lessons_remaining = max(0, active_sub.lessons_remaining - spent)
-        except Exception as e:
-            logger.warning("Could not decrement subscription lessons_remaining: %s", e)
-
-    lesson.balance_deducted = True
-    topic_str = f" ({lesson.topic})" if lesson.topic else ""
-    reason = f'Списание за проведённый урок #{lesson.lesson_id}{topic_str}'
-    logger.info(
-        "Deducted %s lesson balance unit(s) for student %s (user %s): %s -> %s for lesson %s",
-        spent, student.student_id, student.user_id, before_balance, after_balance, lesson.lesson_id
-    )
-    return (before_balance, after_balance, reason)
+def _sync_learning_item_status_for_lesson(lesson: Lesson) -> int:
+    """Backward-compatible wrapper around canonical curriculum synchronization."""
+    return sync_learning_item_status(lesson)
 
 def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, payload: dict, actor_user_id: int | None = None) -> None:
     """
@@ -307,7 +305,17 @@ def lesson_edit(lesson_id):
         
         lesson.lesson_type = form.lesson_type.data
         lesson.duration = form.duration.data
-        lesson.status = form.status.data
+        try:
+            transition_lesson_status(
+                lesson, form.status.data,
+                source="lesson_edit_form",
+                reason="teacher_saved_lesson_status",
+                actor_user_id=getattr(current_user, "id", None),
+            )
+        except LessonLifecycleError as exc:
+            db.session.rollback()
+            flash(str(exc), "warning")
+            return redirect(request.url)
         lesson.topic = form.topic.data
         lesson.notes = form.notes.data
         lesson.homework = form.homework.data
@@ -435,9 +443,16 @@ def lesson_start(lesson_id):
             return jsonify({'success': False, 'error': 'Только преподаватель может начать урок'}), 403
         abort(403)
 
-    lesson.status = 'in_progress'
     now = moscow_now()
-    lesson.started_at = now.replace(tzinfo=None)
+    # SQLite drops timezone metadata from DateTime(timezone=True). Persist UTC-naive
+    # consistently so the overdue worker compares the same wall-clock basis.
+    transition_lesson_status(
+        lesson, "in_progress",
+        source="teacher_start_endpoint",
+        reason="teacher_started_lesson",
+        actor_user_id=getattr(current_user, "id", None),
+        started_at=now.astimezone(dt_timezone.utc).replace(tzinfo=None),
+    )
     mark_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
     if not mark_late and request.is_json:
         payload = request.get_json(silent=True) or {}
@@ -494,33 +509,52 @@ def lesson_start(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/complete', methods=['POST'])
 @login_required
 def lesson_complete(lesson_id):
-    """Завершение урока"""
-    from app.schedule.routes import _parse_local_datetime
-    
-    lesson = Lesson.query.get_or_404(lesson_id)
+    """Explicit teacher confirmation of a conducted lesson; completion bills once."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Подтвердить проведение урока может только преподаватель'}), 403
 
-    lesson.topic = request.form.get('topic', lesson.topic)
-    lesson.notes = request.form.get('notes', lesson.notes)
-    lesson.homework = request.form.get('homework', lesson.homework)
-    if 'student_late' in request.form:
-        lesson.student_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
-    
-    lesson_date_str = request.form.get('lesson_date', '').strip()
-    lesson_time_str = request.form.get('lesson_time', '').strip()
-    if lesson_date_str and lesson_time_str:
-        try:
-            user_tz = effective_timezone_name(current_user)
-            new_lesson_date = parse_local_lesson_datetime(lesson_date_str, lesson_time_str, user_tz)
-            lesson.lesson_date = new_lesson_date
-        except Exception as e:
-            logger.warning(f"Ошибка при обновлении времени урока {lesson_id}: {e}")
-    
-    lesson.status = 'completed'
-    balance_notice = _deduct_student_lesson_balance(lesson)
+    payload = request.get_json(silent=True) if request.is_json else request.form
+    payload = payload or {}
+    confirmed = payload.get('confirm_conducted') in (True, 1, '1', 'true', 'on', 'yes')
+    confirmation_reason = str(payload.get('confirmation_reason') or '').strip()
+    if not confirmed:
+        return jsonify({
+            'success': False,
+            'error': 'Подтвердите факт проведения занятия отдельно от закрытия комнаты и сохранения итогов.',
+        }), 400
+    if len(confirmation_reason) < 8:
+        return jsonify({
+            'success': False,
+            'error': 'Укажите короткое основание подтверждения проведения (не менее 8 символов).',
+        }), 400
+    if len(confirmation_reason) > 200:
+        return jsonify({'success': False, 'error': 'Основание подтверждения не должно превышать 200 символов.'}), 400
+    if lesson.status == 'planned':
+        return jsonify({'success': False, 'error': 'Сначала начните урок в Lesson Room.'}), 409
+    if lesson.status == 'cancelled':
+        return jsonify({'success': False, 'error': 'Отменённый урок нельзя подтвердить как проведённый.'}), 409
+    if lesson.status == 'in_progress' and not _lesson_studio_state(lesson).get('room_work_closed'):
+        return jsonify({
+            'success': False,
+            'error': 'Сначала завершите работу в Lesson Room. Это отдельно остановит таймер и не спишет занятия.',
+        }), 409
+
+    try:
+        transitioned, balance_notice = transition_lesson_status(
+            lesson, 'completed',
+            source='teacher_conducted_confirmation',
+            reason='teacher_confirmed_conducted_lesson',
+            actor_user_id=getattr(current_user, 'id', None),
+            conducted_confirmation_reason=confirmation_reason,
+        )
+    except LessonLifecycleError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 409
 
     try:
         db.session.commit()
-        if 'balance_notice' in locals() and balance_notice and lesson.student and lesson.student.user_id:
+        if transitioned and balance_notice and lesson.student and lesson.student.user_id:
             try:
                 from app.telegram.notifications import notify_lesson_balance_changed
                 before, after, reason = balance_notice
@@ -533,68 +567,49 @@ def lesson_complete(lesson_id):
                 )
             except Exception:
                     logger.warning('Could not notify lesson balance change after commit for lesson %s', lesson_id, exc_info=True)
-        try:
-            from app.telegram.notifications import notify_lesson_finished_for_teacher
-            notify_lesson_finished_for_teacher(
-                lesson_id=int(lesson.lesson_id),
-                teacher_user_id=int(current_user.id) if current_user and getattr(current_user, 'id', None) else None,
-            )
-        except Exception:
-            logger.warning('Could not notify teacher about homework note for lesson %s', lesson_id, exc_info=True)
+        if transitioned:
+            try:
+                from app.telegram.notifications import notify_lesson_finished_for_teacher
+                notify_lesson_finished_for_teacher(
+                    lesson_id=int(lesson.lesson_id),
+                    teacher_user_id=int(current_user.id) if current_user and getattr(current_user, 'id', None) else None,
+                )
+            except Exception:
+                logger.warning('Could not notify teacher about homework note for lesson %s', lesson_id, exc_info=True)
     except Exception as e:
         db.session.rollback()
         raise
-    flash(f'Урок завершен и данные сохранены!', 'success')
+    if request.is_json:
+        return jsonify({
+            'success': True,
+            'status': lesson.status,
+            'transitioned': transitioned,
+            'balance_charged': bool(transitioned and balance_notice),
+            'balance_before': balance_notice[0] if transitioned and balance_notice else None,
+            'balance_after': balance_notice[1] if transitioned and balance_notice else None,
+            'redirect_url': url_for('students.student_profile', student_id=lesson.student_id),
+        })
+    flash('Факт проведения подтверждён. Баланс списан только при первом завершении.', 'success')
     return redirect(url_for('students.student_profile', student_id=lesson.student_id))
 
 def auto_complete_overdue_lessons():
-    """Завершает уроки со статусом in_progress, когда прошла их длительность."""
+    """Фиксирует истечение таймера; подтверждение проведения остаётся ручным."""
     from core.db_models import moscow_now
-    from datetime import timedelta
-    now = moscow_now()
-    now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
-    q = Lesson.query.filter(
+    observed_at = moscow_now()
+    q = Lesson.query.with_for_update().filter(
         Lesson.status == 'in_progress',
         Lesson.started_at.isnot(None)
     )
     count = 0
     for lesson in q.all():
         try:
-            st = lesson.started_at
-            if getattr(st, 'tzinfo', None):
-                st_naive = st.astimezone(MOSCOW_TZ).replace(tzinfo=None)
-            else:
-                st_naive = st
-            if st_naive is None:
+            if not record_lesson_timer_elapsed(lesson, now=observed_at):
                 continue
-            threshold = st_naive + timedelta(minutes=int(lesson.duration or 60))
-            if now_naive < threshold:
-                continue
-            lesson.status = 'completed'
-            balance_notice = _deduct_student_lesson_balance(lesson)
             db.session.commit()
-            if balance_notice and lesson.student and lesson.student.user_id:
-                try:
-                    from app.telegram.notifications import notify_lesson_balance_changed
-                    before, after, reason = balance_notice
-                    notify_lesson_balance_changed(
-                        student_user_id=int(lesson.student.user_id),
-                        before=before,
-                        after=after,
-                        reason=reason,
-                        source='lesson',
-                    )
-                except Exception:
-                    logger.warning('Could not notify auto-complete lesson balance change for lesson %s', lesson.lesson_id, exc_info=True)
-            try:
-                from app.telegram.notifications import notify_lesson_finished_for_teacher
-                notify_lesson_finished_for_teacher(lesson_id=int(lesson.lesson_id))
-            except Exception:
-                logger.warning('Could not notify teacher about auto-complete homework note for lesson %s', lesson.lesson_id, exc_info=True)
             count += 1
         except Exception as e:
             db.session.rollback()
-            logger.warning(f"Auto-complete lesson {lesson.lesson_id} failed: {e}")
+            logger.warning("Could not record elapsed timer for lesson %s: %s", lesson.lesson_id, e)
     return count
 
 
@@ -604,11 +619,21 @@ def lesson_homework_view(lesson_id):
     if current_user.is_student():
         return redirect(url_for('assignments.submissions_list'))
     """Домашние задания выдаются через раздел «Задания». Редирект на создание работы по уроку."""
+    params = {
+        'source': 'lesson',
+        'lesson_id': lesson_id,
+        'assignment_type': 'homework',
+    }
+    from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+    if has_verified_safe_ai_lab_db():
+        from app.ai_lab.course_adapter import _allowed_copy_ids
+        lesson = Lesson.query.get_or_404(lesson_id)
+        course_id = int(lesson.learning_trajectory_id or 0)
+        if course_id in _allowed_copy_ids():
+            params['synthetic_course_id'] = course_id
     return redirect(url_for(
         'assignments.assignment_create',
-        source='lesson',
-        lesson_id=lesson_id,
-        assignment_type='homework',
+        **params,
     ))
 
 @lessons_bp.route('/api/lesson_room/check_task', methods=['POST'])
@@ -683,6 +708,8 @@ def get_lesson_board_summary_api(lesson_id: int):
     clean_strokes = []
     for s in strokes:
         if isinstance(s, dict):
+            if role != 'teacher' and s.get('layer') == 'teacher':
+                continue
             cp = dict(s)
             cp.pop('_cacheCanvas', None)
             cp.pop('_cacheOrigin', None)
@@ -691,7 +718,7 @@ def get_lesson_board_summary_api(lesson_id: int):
     return jsonify({
         'success': True,
         'lesson_id': lesson_id,
-        'title': lesson.title or f"Урок #{lesson_id}",
+        'title': getattr(lesson, 'title', None) or getattr(lesson, 'topic', None) or f"Урок #{lesson_id}",
         'pages': pages,
         'active_page_id': active_page_id,
         'strokes': clean_strokes,
@@ -714,6 +741,10 @@ def _lesson_studio_is_teacher() -> bool:
 
 
 def _lesson_studio_access(lesson: Lesson) -> None:
+    from app.lessons.lesson_socket import is_user_banned_from_lesson
+    if not _lesson_studio_is_teacher() and current_user.is_authenticated:
+        if is_user_banned_from_lesson(lesson.lesson_id, current_user.id):
+            abort(403)
     student = lesson.student
     allowed = can_user_access_student(current_user, student_user_id=getattr(student, 'user_id', None), student_platform_id=getattr(student, 'platform_id', None))
     if not allowed and current_user.is_student():
@@ -755,6 +786,9 @@ def _default_lesson_studio_state(lesson: Lesson) -> dict:
         'guidance': {'next_step': '', 'hints': [], 'updated_at': None},
         'board': {'strokes': [], 'revision': 0, 'updated_at': None},
         'outcome': {'completed': [], 'repeat': [], 'homework': '', 'published': False},
+        'room_work_closed': False,
+        'room_work_closed_at': None,
+        'room_work_closed_by_user_id': None,
         'video_provider': 'daily',
         'backup_call_url': '',
     }
@@ -808,11 +842,16 @@ def _lesson_studio_course_id(lesson: Lesson) -> int | None:
 
 
 def _save_lesson_studio_state(lesson: Lesson, state: dict) -> None:
-    summaries = dict(getattr(lesson, 'review_summaries', None) or {})
-    summaries['_studio'] = state
-    lesson.review_summaries = summaries
-    flag_modified(lesson, 'review_summaries')
-    db.session.commit()
+    from app.lessons.lesson_socket import _lock_and_get_lesson, _lesson_operation_locks
+    from threading import RLock
+    operation_lock = _lesson_operation_locks.setdefault(lesson.lesson_id, RLock())
+    with operation_lock:
+        target_lesson = _lock_and_get_lesson(lesson.lesson_id) or lesson
+        summaries = dict(getattr(target_lesson, 'review_summaries', None) or {})
+        summaries['_studio'] = state
+        target_lesson.review_summaries = summaries
+        flag_modified(target_lesson, 'review_summaries')
+        db.session.commit()
     from app.lessons.lesson_socket import (
         emit_lesson_private_note_updated,
         emit_lesson_studio_updated,
@@ -889,12 +928,14 @@ def lesson_studio_state_save(lesson_id: int):
     phase_durations = phase_durations if isinstance(phase_durations, dict) else {}
     normalized_phase_timers, normalized_phase_durations = {}, {}
     for phase in ('preparation', 'practice', 'reflection'):
+        raw_duration = phase_durations.get(phase)
         try:
-            duration_seconds = int(phase_durations.get(phase) or default_phase_durations.get(phase, 900))
+            duration_seconds = int(default_phase_durations.get(phase, 900) if raw_duration is None else raw_duration)
         except (TypeError, ValueError):
             duration_seconds = default_phase_durations.get(phase, 900)
+        raw_seconds = phase_timers.get(phase)
         try:
-            seconds = int(phase_timers.get(phase) or duration_seconds)
+            seconds = int(duration_seconds if raw_seconds is None else raw_seconds)
         except (TypeError, ValueError):
             seconds = duration_seconds
         duration_seconds = max(60, min(duration_seconds, 4 * 60 * 60))
@@ -904,8 +945,9 @@ def lesson_studio_state_save(lesson_id: int):
     state['phase_timers'] = normalized_phase_timers
     state['phase_durations'] = normalized_phase_durations
     timer = state.get('timer') if isinstance(state.get('timer'), dict) else {}
+    raw_timer_seconds = timer.get('seconds')
     try:
-        timer_seconds = int(timer.get('seconds') or 900)
+        timer_seconds = int(900 if raw_timer_seconds is None else raw_timer_seconds)
     except (TypeError, ValueError):
         timer_seconds = 900
     timer_seconds = max(0, min(timer_seconds, 4 * 60 * 60))
@@ -1149,39 +1191,67 @@ def lesson_studio_finish(lesson_id: int):
         return jsonify({'success': False, 'error': 'Завершить урок может только преподаватель'}), 403
     payload = request.get_json(silent=True) or {}
     state = _lesson_studio_state(lesson)
-    outcome = payload.get('outcome') if isinstance(payload.get('outcome'), dict) else state.get('outcome') or {}
+    action = str(payload.get('action') or '').strip().lower()
+    actor_id = getattr(current_user, 'id', None)
+    if action == 'close_room':
+        if not state.get('room_work_closed'):
+            state['room_work_closed'] = True
+            state['room_work_closed_at'] = moscow_now().isoformat()
+            state['room_work_closed_by_user_id'] = actor_id
+            state['phase'] = 'reflection'
+            timer = state.get('timer') if isinstance(state.get('timer'), dict) else {}
+            timer['running'] = False
+            state['timer'] = timer
+            record_lesson_event(
+                lesson,
+                action='lesson.room_work_closed',
+                source='lesson_room',
+                reason='Комната закрыта отдельно от подтверждения проведения урока.',
+                actor_user_id=actor_id,
+                metadata={'lesson_status_at_close': lesson.status},
+                event_key=f'room_work_closed:{lesson.lesson_id}',
+            )
+            _save_lesson_studio_state(lesson, state)
+        return jsonify({
+            'success': True, 'action': 'room_closed', 'room_work_closed': True,
+            'status': lesson.status, 'balance_deducted': bool(lesson.balance_deducted),
+            'state': _lesson_studio_state_for_viewer(state, is_teacher=True),
+        })
+    if action != 'save_outcome':
+        return jsonify({'success': False, 'error': 'Выберите действие: закрыть работу в комнате или отдельно сохранить педагогический итог.'}), 400
+
+    outcome = payload.get('outcome') if isinstance(payload.get('outcome'), dict) else {}
+    completed = [str(item).strip()[:500] for item in (outcome.get('completed') or []) if str(item).strip()][:30]
+    repeat = [str(item).strip()[:500] for item in (outcome.get('repeat') or []) if str(item).strip()][:30]
+    homework = str(outcome.get('homework') or '').strip()[:10_000]
+    private_note = str(outcome.get('private_note') or '').strip()[:10_000]
+    if not (completed or repeat or homework):
+        return jsonify({'success': False, 'error': 'Педагогический итог пуст. Заполните освоенные темы, вопросы для повтора или домашнее задание.'}), 400
     state['outcome'] = {
-        'completed': [str(item).strip() for item in (outcome.get('completed') or []) if str(item).strip()][:30],
-        'repeat': [str(item).strip() for item in (outcome.get('repeat') or []) if str(item).strip()][:30],
-        'homework': str(outcome.get('homework') or '').strip()[:10_000],
+        'completed': completed,
+        'repeat': repeat,
+        'homework': homework,
         'published': True,
     }
-    state['phase'] = 'reflection'
-    timer = state.get('timer') if isinstance(state.get('timer'), dict) else {}
-    timer['running'] = False
-    state['timer'] = timer
-    lesson.status = 'completed'
-    balance_notice = _deduct_student_lesson_balance(lesson)
-    lesson.homework = state['outcome']['homework'] or lesson.homework
+    if private_note:
+        state['teacher_private_note'] = private_note
+    lesson.homework = homework or lesson.homework
     outcome_text = '\n'.join(
         part for part in (
             'Итог индивидуального урока:',
-            ('Освоено: ' + '; '.join(state['outcome']['completed'])) if state['outcome']['completed'] else '',
-            ('Повторить: ' + '; '.join(state['outcome']['repeat'])) if state['outcome']['repeat'] else '',
-            ('Домашнее задание: ' + state['outcome']['homework']) if state['outcome']['homework'] else '',
+            ('Освоено: ' + '; '.join(completed)) if completed else '',
+            ('Повторить: ' + '; '.join(repeat)) if repeat else '',
+            ('Домашнее задание: ' + homework) if homework else '',
         ) if part
     )
     if outcome_text and outcome_text not in (lesson.notes or ''):
         lesson.notes = ((lesson.notes or '').rstrip() + '\n\n' + outcome_text).strip()
     structured_outcome = LessonOutcome.query.filter_by(lesson_id=lesson.lesson_id).first()
     if not structured_outcome:
-        structured_outcome = LessonOutcome(lesson_id=lesson.lesson_id, created_by_user_id=current_user.id)
+        structured_outcome = LessonOutcome(lesson_id=lesson.lesson_id, created_by_user_id=actor_id)
         db.session.add(structured_outcome)
-    structured_outcome.covered = state['outcome']['completed']
-    structured_outcome.mastery = 'good' if state['outcome']['completed'] and not state['outcome']['repeat'] else ('needs_repeat' if state['outcome']['repeat'] else None)
-    structured_outcome.next_action = 'repeat' if state['outcome']['repeat'] else ('continue' if state['outcome']['completed'] else None)
-    structured_outcome.homework_assigned = bool(state['outcome']['homework'])
-    structured_outcome.teacher_note = str(outcome.get('private_note') or state.get('teacher_private_note') or '').strip()[:10_000] or None
+    structured_outcome.homework_assigned = bool(homework)
+    structured_outcome.teacher_note = private_note or None
     # Сохраняем именно тот контент и набор материалов, который был доступен
     # на момент завершения: будущие изменения живых ссылок не меняют историю.
     structured_outcome.content_snapshot = {
@@ -1192,19 +1262,13 @@ def lesson_studio_finish(lesson_id: int):
         'review_summaries': lesson.review_summaries,
         'task_ids': [item.task_id for item in lesson.homework_tasks],
     }
-    # Обновляем Student Knowledge для навыков, привязанных к этому занятию.
-    for item in LearningItem.query.filter_by(lesson_id=lesson.lesson_id).all():
-        if not item.skill_id:
-            continue
-        mastery = StudentSkill.query.filter_by(student_id=lesson.student_id, skill_id=item.skill_id).first()
-        if not mastery:
-            mastery = StudentSkill(student_id=lesson.student_id, skill_id=item.skill_id)
-            db.session.add(mastery)
-        mastery.mastery_percent = 85 if state['outcome']['completed'] and not state['outcome']['repeat'] else (50 if state['outcome']['repeat'] else mastery.mastery_percent)
-        mastery.state = 'mastered' if mastery.mastery_percent >= 85 else ('reinforcing' if mastery.mastery_percent >= 50 else 'learning')
-        mastery.practice_done = True
-        mastery.last_checked_at = moscow_now()
-
+    db.session.flush()
+    record_lesson_outcome_saved(
+        lesson, structured_outcome.outcome_id,
+        actor_user_id=actor_id,
+        covered_count=len(completed),
+        repeat_count=len(repeat),
+    )
     # Если занятие привязано к курсу ученика — запускаем адаптивный движок
     if lesson.learning_trajectory_id:
         try:
@@ -1215,24 +1279,22 @@ def lesson_studio_finish(lesson_id: int):
                     course=course,
                     lesson=lesson,
                     outcome=structured_outcome,
-                    trigger_replan=True,
+                    trigger_replan=False,
                 )
         except Exception as adapt_err:
             logger.warning(f"Failed to auto-adapt course from studio finish: {adapt_err}")
 
     try:
         _save_lesson_studio_state(lesson, state)
-        from app.lessons.lesson_socket import emit_lesson_finished
-        emit_lesson_finished(lesson.lesson_id, {'lesson_id': lesson.lesson_id, 'outcome': state.get('outcome')})
     except Exception as exc:
         db.session.rollback()
-        logger.exception('Unable to finish lesson studio')
-        return jsonify({'success': False, 'error': 'Не удалось сохранить итог урока'}), 500
+        logger.exception('Unable to save lesson outcome')
+        return jsonify({'success': False, 'error': 'Не удалось сохранить педагогический итог'}), 500
     try:
         notify_student_and_parents(
             lesson.student,
-            kind='lesson_completed',
-            title='Урок завершён: доступен итог',
+            kind='lesson_outcome_published',
+            title='Педагогический итог занятия сохранён',
             body=outcome_text or None,
             link_url=url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id),
             meta={'lesson_id': lesson.lesson_id, 'studio_outcome': True},
@@ -1242,28 +1304,13 @@ def lesson_studio_finish(lesson_id: int):
         db.session.rollback()
         logger.warning('Unable to send lesson studio outcome notification', exc_info=True)
 
-    if balance_notice and lesson.student and lesson.student.user_id:
-        try:
-            from app.telegram.notifications import notify_lesson_balance_changed
-            before, after, reason = balance_notice
-            notify_lesson_balance_changed(
-                student_user_id=int(lesson.student.user_id),
-                before=before,
-                after=after,
-                reason=reason,
-                source='lesson',
-            )
-        except Exception:
-            logger.warning('Unable to notify student of lesson balance change after studio finish', exc_info=True)
-
-    # Награждение ученика за успешное прохождение урока (XP, стрик, достижения)
-    try:
-        from app.utils.gamification_service import reward_lesson_completion
-        reward_lesson_completion(lesson.student)
-    except Exception:
-        logger.warning('Unable to award gamification rewards for lesson completion', exc_info=True)
-
-    return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=True), 'status': lesson.status})
+    return jsonify({
+        'success': True,
+        'action': 'outcome_saved',
+        'state': _lesson_studio_state_for_viewer(state, is_teacher=True),
+        'status': lesson.status,
+        'balance_deducted': bool(lesson.balance_deducted),
+    })
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/studio/student-notes', methods=['GET', 'POST'])
@@ -1292,25 +1339,217 @@ def lesson_studio_student_notes_save(lesson_id: int):
 def lesson_os_code_save(lesson_id: int):
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
     _lesson_studio_access(lesson)
-    stored = (lesson.review_summaries or {}).get('_os_workspace') or {}
+    page_id = str(request.args.get('page_id') or (request.get_json(silent=True) or {}).get('page_id') or 'page_1')
+    summaries = (lesson.review_summaries or {})
+    page_workspaces = summaries.get('_os_page_workspaces') or {}
+    stored = page_workspaces.get(page_id)
+    if not stored:
+        if page_id == 'page_1':
+            stored = summaries.get('_os_workspace') or {}
+        else:
+            stored = {}
+
     if request.method == 'GET':
-        return jsonify({'success': True, 'code': stored.get('code') or '', 'file_name': stored.get('file_name') or 'main.py'})
+        files = dict(stored.get('files') or {})
+        if not files and stored.get('code') is not None:
+            files[stored.get('file_name') or 'main.py'] = stored.get('code') or ''
+        if not files:
+            files['main.py'] = ''
+        active_file = stored.get('active_file') or stored.get('file_name') or 'main.py'
+        open_tabs = list(stored.get('open_tabs') or [active_file])
+        revision = int(stored.get('revision') or stored.get('version') or 0)
+        from app.lessons.lesson_socket import _get_code_state_cache
+        in_mem_state = _get_code_state_cache(lesson_id, page_id) or {}
+        mem_rev = int(in_mem_state.get('revision') or in_mem_state.get('version') or 0)
+        revision = max(revision, mem_rev)
+        return jsonify({
+            'success': True,
+            'page_id': page_id,
+            'code': files.get(active_file, stored.get('code') or ''),
+            'file_name': active_file,
+            'files': files,
+            'open_tabs': open_tabs,
+            'active_file': active_file,
+            'revision': revision,
+            'updated_at': stored.get('updated_at')
+        })
     is_student = current_user.is_student() and bool(_get_current_lesson_student(lesson))
     if is_student:
         from app.lessons.lesson_socket import _room_control
-        is_student = bool(_room_control(lesson_id).get('student_code_editing'))
+        ctrl = _room_control(lesson_id)
+        is_student = bool(ctrl.get('student_code_editing') and not ctrl.get('freeze_student') and not ctrl.get('is_frozen'))
     if not (_lesson_studio_is_teacher() or is_student):
         abort(403)
     payload = request.get_json(silent=True) or {}
-    code = str(payload.get('code') or '')
-    if len(code) > 100_000:
-        return jsonify({'success': False, 'error': 'Код слишком длинный'}), 400
-    summaries = dict(lesson.review_summaries or {})
-    summaries['_os_workspace'] = {'code': code, 'file_name': str(payload.get('file_name') or 'main.py')[:120]}
-    lesson.review_summaries = summaries
-    flag_modified(lesson, 'review_summaries')
-    db.session.commit()
-    return jsonify({'success': True})
+    if not payload and request.data:
+        try:
+            payload = json.loads(request.data.decode('utf-8'))
+        except Exception:
+            payload = {}
+
+    page_id = str(payload.get('page_id') or page_id or 'page_1')
+    incoming_code = str(payload.get('code') or '')
+    incoming_file = str(payload.get('file_name') or 'main.py')[:120]
+    incoming_files = payload.get('files')
+    incoming_tabs = payload.get('open_tabs')
+    incoming_active = str(payload.get('active_file') or incoming_file)[:120]
+    base_revision = payload.get('base_revision')
+
+    files_dict: dict[str, str] = {}
+    if isinstance(incoming_files, dict) and incoming_files:
+        total_len = 0
+        for k, v in incoming_files.items():
+            clean_name = str(k)[:120].replace('/', '').replace('\\', '').replace('\0', '').strip()
+            clean_val = str(v)[:100000]
+            total_len += len(clean_val)
+            if clean_name:
+                files_dict[clean_name] = clean_val
+        if total_len > 500_000:
+            return jsonify({'success': False, 'error': 'Суммарный размер файлов превышает 500 КБ'}), 400
+    else:
+        if len(incoming_code) > 100_000:
+            return jsonify({'success': False, 'error': 'Код слишком длинный'}), 400
+        clean_file = incoming_file.replace('/', '').replace('\\', '').replace('\0', '').strip() or 'main.py'
+        files_dict[clean_file] = incoming_code
+
+    if not files_dict:
+        files_dict['main.py'] = ''
+
+    if isinstance(incoming_tabs, list) and incoming_tabs:
+        open_tabs = [str(t)[:120] for t in incoming_tabs if str(t)[:120] in files_dict]
+    else:
+        open_tabs = [incoming_active if incoming_active in files_dict else list(files_dict.keys())[0]]
+
+    if not open_tabs:
+        open_tabs = list(files_dict.keys())[:1]
+
+    if incoming_active not in files_dict:
+        incoming_active = open_tabs[0]
+
+    from app.lessons.lesson_socket import (
+        _lock_and_get_lesson,
+        _lesson_operation_locks,
+        _get_code_state_cache,
+        _set_code_state_cache,
+        emit_lesson_code_persisted,
+    )
+    from threading import RLock
+
+    operation_lock = _lesson_operation_locks.setdefault(lesson_id, RLock())
+    with operation_lock:
+        target_lesson = _lock_and_get_lesson(lesson_id) or lesson
+        summaries = dict(target_lesson.review_summaries or {})
+        page_workspaces = dict(summaries.get('_os_page_workspaces') or {})
+        stored = page_workspaces.get(page_id)
+        if not stored:
+            if page_id == 'page_1':
+                stored = summaries.get('_os_workspace') or {}
+            else:
+                stored = {}
+
+        current_rev = int(stored.get('revision') or stored.get('version') or 0)
+        in_mem_state = _get_code_state_cache(lesson_id, page_id) or {}
+        mem_rev = int(in_mem_state.get('revision') or in_mem_state.get('version') or 0)
+        current_rev = max(current_rev, mem_rev)
+
+        deleted_files = list(in_mem_state.get('deleted_files') or stored.get('deleted_files') or [])
+        for df in deleted_files:
+            files_dict.pop(df, None)
+            if df in open_tabs:
+                open_tabs.remove(df)
+        if not files_dict:
+            files_dict['main.py'] = ''
+        if not open_tabs:
+            open_tabs = ['main.py']
+        if incoming_active not in files_dict:
+            incoming_active = open_tabs[0]
+
+        force = bool(payload.get('force')) and _lesson_studio_is_teacher()
+        if not force:
+            if base_revision is not None:
+                try:
+                    base_rev_int = int(base_revision)
+                    if base_rev_int < current_rev:
+                        current_files = dict(in_mem_state.get('files') or stored.get('files') or {})
+                        if not current_files and (stored.get('code') is not None):
+                            current_files[stored.get('file_name') or 'main.py'] = stored.get('code') or ''
+                        if files_dict != current_files:
+                            return jsonify({
+                                'success': False,
+                                'conflict': True,
+                                'current_revision': current_rev,
+                                'rejected_base_revision': base_rev_int,
+                                'file_name': incoming_active,
+                                'error': 'Конфликт версий: на сервере уже есть более новая редакция файла.'
+                            }), 409
+                    else:
+                        current_rev = max(current_rev, base_rev_int)
+                except (ValueError, TypeError):
+                    pass
+            elif current_rev > 0:
+                current_files = dict(in_mem_state.get('files') or stored.get('files') or {})
+                if not current_files and (stored.get('code') is not None):
+                    current_files[stored.get('file_name') or 'main.py'] = stored.get('code') or ''
+                if files_dict != current_files:
+                    return jsonify({
+                        'success': False,
+                        'conflict': True,
+                        'current_revision': current_rev,
+                        'rejected_base_revision': 0,
+                        'file_name': incoming_active,
+                        'error': 'Конфликт версий: на сервере уже есть более новая редакция файла.'
+                    }), 409
+
+        from time import time
+        new_rev = current_rev + 1
+        updated_at_ms = int(time() * 1000)
+
+        workspace_data = {
+            'files': files_dict,
+            'deleted_files': deleted_files,
+            'open_tabs': open_tabs,
+            'active_file': incoming_active,
+            'code': files_dict.get(incoming_active, ''),
+            'file_name': incoming_active,
+            'revision': new_rev,
+            'version': new_rev,
+            'page_id': page_id,
+            'updated_at': updated_at_ms,
+            'last_modified_by': current_user.id
+        }
+        page_workspaces[page_id] = workspace_data
+        summaries['_os_page_workspaces'] = page_workspaces
+        if page_id == 'page_1':
+            summaries['_os_workspace'] = workspace_data
+        target_lesson.review_summaries = summaries
+        flag_modified(target_lesson, 'review_summaries')
+        db.session.commit()
+
+        _set_code_state_cache(lesson_id, workspace_data, page_id=page_id)
+        from app.runtime_state import set_json
+        from app.lessons.lesson_socket import _code_state_key, LESSON_CACHE_TTL
+        set_json(_code_state_key(lesson_id, page_id=page_id), workspace_data, ttl_seconds=LESSON_CACHE_TTL)
+        if page_id == 'page_1':
+            set_json(_code_state_key(lesson_id), workspace_data, ttl_seconds=LESSON_CACHE_TTL)
+
+        emit_lesson_code_persisted(lesson_id, {
+            "lesson_id": lesson_id,
+            "page_id": page_id,
+            "file_name": incoming_active,
+            "revision": new_rev,
+            "updated_at": updated_at_ms,
+            "status": "saved",
+            "durable": True,
+        })
+
+        return jsonify({
+            'success': True,
+            'page_id': page_id,
+            'revision': new_rev,
+            'status': 'saved',
+            'durable': True,
+            'files_count': len(files_dict)
+        })
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/status', methods=['GET'])
@@ -1368,6 +1607,11 @@ def lesson_interactive_room(lesson_id: int):
 
     is_studio_teacher = _lesson_studio_is_teacher()
 
+    from app.lessons.lesson_socket import is_user_banned_from_lesson
+    if not is_studio_teacher and current_user.is_authenticated and is_user_banned_from_lesson(lesson.lesson_id, current_user.id):
+        flash('Доступ к уроку временно ограничен преподавателем.', 'warning')
+        return redirect('/schedule')
+
     # Если заходит ученик (не преподаватель), и урок ещё только "запланирован" —
     # отправляем в комнату ожидания: ученик не может зайти на урок, пока преподаватель его не начнет.
     # The guided product tour must show the real Studio layout, not a dead-end
@@ -1395,6 +1639,7 @@ def lesson_interactive_room(lesson_id: int):
         {
             'lesson_task_id': t.lesson_task_id,
             'task_id': t.task_id,
+            'assignment_type': t.assignment_type,
             'title': _task_display_title(
                 t.task,
                 f'Задание №{t.task.task_number} (№{idx + 1})' if t.task and t.task.task_number else f'Задание #{idx + 1}',
@@ -1409,6 +1654,14 @@ def lesson_interactive_room(lesson_id: int):
             'submission_correct': t.submission_correct,
             'status': t.status or 'pending',
             'visible_to_student': bool(getattr(t, 'is_visible_to_student', True)),
+            'submission_enabled': _is_task_submit_enabled(lesson, 'classwork'),
+            'attempts_used': len(t.attempts or []),
+            'max_attempts': max(1, int(t.get_effective_max_attempts() or 1)),
+            'can_submit': bool(
+                current_user.is_student()
+                and _is_task_submit_enabled(lesson, 'classwork')
+                and _is_task_editable_for_student(lesson, classwork_tasks, t)
+            ),
             'order': idx + 1
         } for idx, t in enumerate(classwork_tasks or [])
     ], ensure_ascii=False) if classwork_tasks else '[]'
@@ -1473,14 +1726,82 @@ def lesson_interactive_room(lesson_id: int):
     if not isinstance(room_materials, list):
         room_materials = []
 
+    from app.ai_lab.course_adapter import synthetic_lesson_task_binding_options
+    synthetic_course_task_binding_options = synthetic_lesson_task_binding_options(
+        lesson.lesson_id, int(current_user.id)
+    )
+
     linked_homework_url = None
-    linked_assignments = Assignment.query.filter_by(lesson_id=lesson.lesson_id, assignment_type='homework', is_active=True).order_by(Assignment.assignment_id.desc()).all()
-    for linked_assignment in linked_assignments:
-        linked_submission = Submission.query.filter_by(assignment_id=linked_assignment.assignment_id, student_id=lesson.student_id).first()
-        linked_task = min(linked_assignment.tasks, key=lambda item: (item.order_index, item.assignment_task_id)) if linked_assignment.tasks else None
-        if linked_submission and linked_task:
-            linked_homework_url = url_for('task_workspace.workspace_page', context_type='submission_task', context_id=linked_submission.submission_id, assignment_task_id=linked_task.assignment_task_id)
-            break
+    lesson_homework_list = []
+    if is_studio_teacher:
+        seen_assignment_ids = set()
+        candidate_assignments = []
+        for a in Assignment.query.filter_by(lesson_id=lesson.lesson_id, is_active=True).order_by(Assignment.assignment_id.desc()).all():
+            if a.assignment_id not in seen_assignment_ids:
+                seen_assignment_ids.add(a.assignment_id)
+                candidate_assignments.append(a)
+        if lesson.student_id:
+            for a in Assignment.query.join(Submission, Submission.assignment_id == Assignment.assignment_id)\
+                    .filter(Submission.student_id == lesson.student_id, Assignment.is_active == True)\
+                    .order_by(Assignment.assignment_id.desc()).limit(10).all():
+                if a.assignment_id not in seen_assignment_ids:
+                    seen_assignment_ids.add(a.assignment_id)
+                    candidate_assignments.append(a)
+
+        for asgn in candidate_assignments:
+            sub = Submission.query.filter_by(assignment_id=asgn.assignment_id, student_id=lesson.student_id).first()
+            ans_map = {ans.assignment_task_id: ans for ans in sub.answers} if sub and sub.answers else {}
+            task_items = []
+            for at in sorted(asgn.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id)):
+                ans = ans_map.get(at.assignment_task_id)
+                task_title = _task_display_title(at.task, f'Задание №{at.order_index + 1}') if at.task else f'Задание №{at.order_index + 1}'
+                task_items.append({
+                    'assignment_task_id': at.assignment_task_id,
+                    'task_id': at.task_id,
+                    'task_number': getattr(at.task, 'task_number', None) if at.task else None,
+                    'title': task_title,
+                    'max_score': at.max_score or (ans.max_score if ans else 1),
+                    'score': ans.score if ans else None,
+                    'is_correct': ans.is_correct if ans else None,
+                    'needs_revision': bool(ans.needs_revision) if ans else False,
+                    'reviewed': bool(ans.reviewed_at) if ans else False,
+                    'has_student_code': bool(ans and ans.student_code),
+                    'student_code': ans.student_code if ans else '',
+                    'student_answer': ans.value if ans else '',
+                    'content_html': _task_room_description(at.task) if at.task else '',
+                    'workspace_url': url_for('task_workspace.workspace_page', context_type='submission_task', context_id=sub.submission_id, assignment_task_id=at.assignment_task_id) if sub else None,
+                })
+            first_ws_url = next((t['workspace_url'] for t in task_items if t['workspace_url']), None)
+            lesson_homework_list.append({
+                'assignment_id': asgn.assignment_id,
+                'title': asgn.title,
+                'assignment_type': asgn.assignment_type,
+                'is_lesson_linked': bool(asgn.lesson_id == lesson.lesson_id),
+                'deadline': asgn.deadline.isoformat() if asgn.deadline else None,
+                'submission_id': sub.submission_id if sub else None,
+                'status': (sub.status if sub else 'NOT_STARTED'),
+                'total_score': sub.total_score if sub else None,
+                'max_score': sub.max_score if sub else None,
+                'percentage': sub.percentage if sub else None,
+                'is_published': bool(sub and sub.results_published_at),
+                'first_workspace_url': first_ws_url,
+                'full_review_url': (
+                    url_for('assignments.submission_grade_view', submission_id=sub.submission_id)
+                    if (sub and sub.submission_id)
+                    else url_for('assignments.assignment_view', assignment_id=asgn.assignment_id)
+                ),
+                'tasks': task_items,
+            })
+            if not linked_homework_url and first_ws_url:
+                linked_homework_url = first_ws_url
+    else:
+        linked_assignments = Assignment.query.filter_by(lesson_id=lesson.lesson_id, assignment_type='homework', is_active=True).order_by(Assignment.assignment_id.desc()).all()
+        for linked_assignment in linked_assignments:
+            linked_submission = Submission.query.filter_by(assignment_id=linked_assignment.assignment_id, student_id=lesson.student_id).first()
+            linked_task = min(linked_assignment.tasks, key=lambda item: (item.order_index, item.assignment_task_id)) if linked_assignment.tasks else None
+            if linked_submission and linked_task:
+                linked_homework_url = url_for('task_workspace.workspace_page', context_type='submission_task', context_id=linked_submission.submission_id, assignment_task_id=linked_task.assignment_task_id)
+                break
 
     return render_template(
         'sandbox/trainer.html',
@@ -1488,6 +1809,7 @@ def lesson_interactive_room(lesson_id: int):
         lesson_id=lesson.lesson_id,
         student=student,
         classwork_tasks=classwork_tasks,
+        synthetic_course_task_binding_options=synthetic_course_task_binding_options,
         tasks_json=tasks_json,
         summary_text=summary_text,
         video_url=video_url,
@@ -1500,8 +1822,16 @@ def lesson_interactive_room(lesson_id: int):
         can_open_task_generator=can_open_task_generator,
         theory_items=theory_items,
         room_materials=room_materials,
-        room_os_code=((lesson.review_summaries or {}).get('_os_workspace') or {}).get('code') or '',
+        room_os_workspace=(
+            __import__('app.lessons.lesson_socket', fromlist=['_load_cached_code_state'])._load_cached_code_state(lesson.lesson_id)
+            or ((lesson.review_summaries or {}).get('_os_workspace') or {})
+        ),
+        room_os_code=(
+            (__import__('app.lessons.lesson_socket', fromlist=['_load_cached_code_state'])._load_cached_code_state(lesson.lesson_id)
+            or ((lesson.review_summaries or {}).get('_os_workspace') or {})).get('code') or ''
+        ),
         linked_homework_url=linked_homework_url,
+        lesson_homework=lesson_homework_list,
         is_demo_preview=demo_preview,
         room_mode=True,
         room_student_notes=lesson.student_notes or '',
@@ -1859,8 +2189,7 @@ def _materialize_import_assets(lesson_id: int, pages: list[dict]) -> None:
 @lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/export', methods=['GET'])
 @login_required
 def lesson_whiteboard_export(lesson_id: int):
-    _lesson, _role = _whiteboard_access(lesson_id)
-    board = get_or_create_board(lesson_id)
+    _lesson, role = _whiteboard_access(lesson_id)
     export_format = (request.args.get('format') or 'boostudy').lower()
     scope = (request.args.get('scope') or 'all').lower()
     if export_format not in {'boostudy', 'excalidraw', 'svg', 'pdf'}:
@@ -1868,7 +2197,26 @@ def lesson_whiteboard_export(lesson_id: int):
     if scope not in {'all', 'page', 'frame'}:
         return jsonify({'error': 'Неподдерживаемая область экспорта'}), 400
     try:
-        document = _whiteboard_export_document(board_payload(board)['document'], scope, request.args.get('page_id'), request.args.get('frame_id'))
+        from app.lessons.whiteboard_service import get_or_create_board, board_payload, convert_v2_board_to_document
+        from app.lessons.lesson_socket import _load_cached_board_strokes, _load_cached_board_pages, _load_cached_board_active_page
+
+        # Load authoritative live V2 board data
+        v2_strokes = list(_load_cached_board_strokes(lesson_id).values())
+        v2_pages = _load_cached_board_pages(lesson_id)
+        v2_active = _load_cached_board_active_page(lesson_id)
+
+        include_teacher = (role == "teacher")
+        if v2_strokes:
+            raw_document = convert_v2_board_to_document(v2_strokes, v2_pages, v2_active, include_teacher=include_teacher)
+        else:
+            board = get_or_create_board(lesson_id)
+            raw_document = board_payload(board)['document']
+            if not include_teacher and raw_document.get("pages"):
+                # Filter out any teacher layer objects for student exports
+                for p in raw_document["pages"]:
+                    p["objects"] = [o for o in p.get("objects", []) if (o.get("data") or {}).get("layer") != "teacher"]
+
+        document = _whiteboard_export_document(raw_document, scope, request.args.get('page_id'), request.args.get('frame_id'))
         page_name = (document.get('pages') or [{}])[0].get('title') or 'boostudy-board'
         stem = re.sub(r'[^\w\-а-яА-ЯёЁ]+', '-', str(page_name), flags=re.UNICODE).strip('-') or 'boostudy-board'
         if export_format == 'boostudy':
@@ -3142,6 +3490,9 @@ def lesson_task_student_submit(lesson_id, lesson_task_id):
     assignment_type = (lesson_task.assignment_type or 'homework').strip().lower()
     back_route = _assignment_view_route_name(assignment_type)
 
+    if assignment_type == 'classwork' and not lesson_task.is_visible_to_student:
+        abort(403)
+
     if not _is_task_submit_enabled(lesson, assignment_type):
         flash('Сдача по заданиям отключена преподавателем.', 'warning')
         return redirect(url_for(back_route, lesson_id=lesson_id) + f"#task-{lesson_task_id}")
@@ -3153,13 +3504,17 @@ def lesson_task_student_submit(lesson_id, lesson_task_id):
 
     field_name = f'submission_{lesson_task.lesson_task_id}'
     value = (request.form.get(field_name, '') or '').strip()
+    if not value:
+        flash('Введите ответ перед отправкой.', 'warning')
+        return redirect(url_for(back_route, lesson_id=lesson_id) + f"#task-{lesson_task_id}")
+
     lesson_task.student_submission = value if value else None
     expected = (lesson_task.student_answer if lesson_task.student_answer else (lesson_task.task.answer if lesson_task.task and lesson_task.task.answer else '')) or ''
 
-    if not expected or not value:
-        lesson_task.submission_correct = False
-    else:
+    if expected:
         lesson_task.submission_correct = normalize_answer_value(value) == normalize_answer_value(expected) and normalize_answer_value(expected) != ''
+    else:
+        lesson_task.submission_correct = None
     lesson_task.status = 'submitted'
 
     time_key = f'time_spent_{lesson_task.lesson_task_id}'
@@ -4352,6 +4707,20 @@ def lesson_room_quick_add_task(lesson_id: int):
 
     payload = request.get_json(silent=True) or {}
     task_id = payload.get('task_id')
+    assignment_type = str(payload.get('assignment_type') or 'classwork').strip().casefold()
+    if assignment_type not in {'classwork', 'homework'}:
+        return jsonify({'success': False, 'error': 'Тип задания должен быть классной или домашней работой'}), 400
+    selection_id = str(payload.get('course_criterion_selection') or '').strip()
+    binding_option = None
+    if selection_id:
+        from app.ai_lab.course_adapter import synthetic_lesson_task_binding_options
+        binding_option = next((item for item in synthetic_lesson_task_binding_options(
+            lesson.lesson_id, int(current_user.id)
+        ) if item['selection_id'] == selection_id), None)
+        if not binding_option:
+            return jsonify({'success': False, 'error': 'Связь с критерием недоступна для этого safe-mode урока'}), 400
+        if task_id:
+            return jsonify({'success': False, 'error': 'Существующее задание нельзя перепривязать; создайте новую версию задания'}), 400
     manual_title = ''
 
     if not task_id:
@@ -4364,6 +4733,8 @@ def lesson_room_quick_add_task(lesson_id: int):
         except (ValueError, TypeError):
             task_number = 1
         answer = str(payload.get('answer') or '').strip()
+        if binding_option and not answer:
+            return jsonify({'success': False, 'error': 'Для задания, связанного с критерием, укажите проверяемый ответ'}), 400
         starter_code = str(payload.get('starter_code') or '').strip()
         manual_title = str(payload.get('title') or '').strip()[:180]
         prepared_content = prepare_task_content_html(content)
@@ -4380,23 +4751,50 @@ def lesson_room_quick_add_task(lesson_id: int):
             created_by_id=current_user.id,
             bank_origin='manual',
             is_active=True,
+            max_score=1 if binding_option else None,
         )
+        if binding_option:
+            new_task.bank_category = 'synthetic_adaptive_draft'
+            new_task.source_key = (
+                f"boostudy.synthetic.adaptive-v1/{binding_option['course_id']}/"
+                f"{binding_option['lesson_id']}/pending"
+            )
+            new_task.answer_spec = {'type': 'short_answer', 'grading_mode': 'auto'}
         db.session.add(new_task)
         db.session.flush()
+        if binding_option:
+            from app.ai_lab.platform_homework import _task_fingerprint
+            new_task.source_key = f"boostudy.synthetic.adaptive-v1/{binding_option['course_id']}/{binding_option['lesson_id']}/{new_task.task_id}"
+            new_task.answer_spec = {
+                'type': 'short_answer',
+                'grading_mode': 'auto',
+                'synthetic_course_skill_binding': {
+                    'contract': 'boostudy.synthetic-course-skill.v1',
+                    'status': 'draft',
+                    'course_id': binding_option['course_id'],
+                    'course_version': binding_option['course_version'],
+                    'lesson_id': binding_option['lesson_id'],
+                    'skill_id': binding_option['skill_id'],
+                    'topic_code': binding_option['topic_code'],
+                    'criterion_id': binding_option['criterion_id'],
+                    'pedagogical_status': 'synthetic_draft_not_expert_approved',
+                    'task_fingerprint': _task_fingerprint(new_task),
+                },
+            }
         task_id = new_task.task_id
 
     # Привязываем к уроку как классную работу
     existing = LessonTask.query.filter_by(
         lesson_id=lesson.lesson_id,
         task_id=task_id,
-        assignment_type='classwork'
+        assignment_type=assignment_type
     ).first()
 
     if not existing:
         lt = LessonTask(
             lesson_id=lesson.lesson_id,
             task_id=task_id,
-            assignment_type='classwork',
+            assignment_type=assignment_type,
             is_visible_to_student=False,
             is_answer_visible_to_student=False,
             status='pending'
@@ -4411,11 +4809,13 @@ def lesson_room_quick_add_task(lesson_id: int):
     task_payload = _lesson_room_task_payload(lt)
     if manual_title:
         task_payload['title'] = manual_title
-    emit_lesson_tasks_updated(lesson.lesson_id, 'classwork', task_payload)
+    emit_lesson_tasks_updated(lesson.lesson_id, assignment_type, task_payload)
 
     return jsonify({
         'success': True,
-        'task': task_payload
+        'task': task_payload,
+        'assignment_type': assignment_type,
+        'course_binding_status': 'synthetic_draft' if binding_option else 'unlinked',
     })
 
 
@@ -4438,11 +4838,44 @@ def lesson_room_task_visibility(lesson_id: int, lesson_task_id: int):
         return jsonify({'success': False, 'error': 'Не указано состояние показа'}), 400
 
     lesson_task.is_visible_to_student = bool(payload.get('visible'))
-    db.session.commit()
+    from app.task_bank.exposure import TaskExposureConflict
+    try:
+        db.session.commit()
+    except TaskExposureConflict as exc:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(exc)}), 409
     task_payload = _lesson_room_task_payload(lesson_task)
     from app.lessons.lesson_socket import emit_lesson_tasks_updated
     emit_lesson_tasks_updated(lesson_id, 'classwork', task_payload)
     return jsonify({'success': True, 'task': task_payload})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/classwork/submission-settings', methods=['POST'])
+@login_required
+def lesson_classwork_submission_settings(lesson_id: int):
+    """Включает или выключает сдачу классной работы в комнате урока."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Настраивать сдачу может только преподаватель'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    enabled = payload.get('enabled')
+    if not isinstance(enabled, bool):
+        return jsonify({'success': False, 'error': 'Параметр enabled должен быть логическим значением'}), 400
+
+    lesson.allow_task_submit_classwork = enabled
+    db.session.commit()
+
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    for lesson_task in get_sorted_assignments(lesson, 'classwork'):
+        emit_lesson_tasks_updated(lesson_id, 'classwork', _lesson_room_task_payload(lesson_task))
+
+    return jsonify({
+        'success': True,
+        'enabled': enabled,
+        'max_attempts': _get_lesson_attempts_default(lesson, 'classwork'),
+    })
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/task/<int:lesson_task_id>/answer-visibility', methods=['POST'])
@@ -5242,3 +5675,319 @@ def lesson_livekit_admin_end(lesson_id: int):
     room_name = f"lesson-{lesson_id}"
     ok, msg = LiveKitService.admin_delete_room(room_name)
     return jsonify({'success': ok, 'message': msg}), (200 if ok else 502)
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/tasks/insert', methods=['POST'])
+@login_required
+def lesson_room_insert_tasks(lesson_id: int):
+    """
+    Интеграционная вставка заданий в урок (из банка заданий или домашней работы).
+    Создает изолированную рабочую копию LessonTask с сохранением provenance метаданных,
+    не перезаписывая оригинальную работу/ответ ученика в Homework.
+    """
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Только преподаватель может добавлять задания в урок'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    source_assignment_id = payload.get('source_assignment_id')
+    source_submission_id = payload.get('source_submission_id')
+    source_assignment_task_id = payload.get('source_assignment_task_id') or payload.get('assignment_task_id')
+    source_task_id = payload.get('source_task_id') or payload.get('task_id')
+    task_ids = payload.get('task_ids') or []
+    if source_task_id and source_task_id not in task_ids:
+        task_ids.append(source_task_id)
+
+    assignment_type = str(payload.get('assignment_type') or 'classwork').strip().lower()
+    if assignment_type not in {'classwork', 'homework'}:
+        assignment_type = 'classwork'
+
+    if source_assignment_task_id and not task_ids:
+        at = AssignmentTask.query.get(source_assignment_task_id)
+        if at and at.task_id:
+            task_ids.append(at.task_id)
+
+    if not task_ids:
+        return jsonify({'success': False, 'error': 'Не указаны задания для добавления'}), 400
+
+    from core.db_models import utc_now
+    from app.task_workspace.service import (
+        resolve_workspace_context,
+        load_workspace_multi_file_state,
+        save_workspace_code,
+    )
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+
+    inserted_tasks = []
+    lesson_summaries = dict(lesson.review_summaries or {})
+    provenance_map = dict(lesson_summaries.get('task_provenance') or {})
+
+    for tid in task_ids:
+        task = Tasks.query.get(tid)
+        if not task:
+            continue
+
+        source_answer = None
+        source_sub = None
+        if source_submission_id:
+            source_sub = Submission.query.get(source_submission_id)
+            if source_sub:
+                if source_assignment_task_id:
+                    source_answer = Answer.query.filter_by(
+                        submission_id=source_sub.submission_id,
+                        assignment_task_id=source_assignment_task_id
+                    ).first()
+                else:
+                    at_match = AssignmentTask.query.filter_by(
+                        assignment_id=source_sub.assignment_id,
+                        task_id=tid
+                    ).first()
+                    if at_match:
+                        source_answer = Answer.query.filter_by(
+                            submission_id=source_sub.submission_id,
+                            assignment_task_id=at_match.assignment_task_id
+                        ).first()
+
+        lt = LessonTask(
+            lesson_id=lesson.lesson_id,
+            task_id=tid,
+            assignment_type=assignment_type,
+            is_error_review=True,
+            is_visible_to_student=True,
+            is_answer_visible_to_student=False,
+            status='pending',
+            student_submission=(source_answer.student_code if source_answer and source_answer.student_code else (task.starter_code or '')),
+            student_answer=(source_answer.value if source_answer and source_answer.value else ''),
+            submission_correct=None,
+        )
+        db.session.add(lt)
+        db.session.flush()
+
+        prov_info = {
+            'origin': 'assignment_submission' if source_sub else 'task_bank',
+            'source_assignment_id': source_assignment_id or (source_sub.assignment_id if source_sub else None),
+            'source_submission_id': source_submission_id,
+            'source_task_id': tid,
+            'source_assignment_task_id': (source_answer.assignment_task_id if source_answer else source_assignment_task_id),
+            'inserted_by': current_user.id,
+            'inserted_at': utc_now().isoformat(),
+        }
+        provenance_map[str(lt.lesson_task_id)] = prov_info
+
+        if source_sub and source_answer:
+            try:
+                source_ctx = resolve_workspace_context(
+                    context_type='submission_task',
+                    context_id=source_sub.submission_id,
+                    assignment_task_id=source_answer.assignment_task_id,
+                    user=current_user,
+                )
+                mf_state = load_workspace_multi_file_state(source_ctx)
+                if mf_state and mf_state.get('files'):
+                    lesson_task_ctx = resolve_workspace_context(
+                        context_type='lesson_task',
+                        context_id=lesson.lesson_id,
+                        lesson_task_id=lt.lesson_task_id,
+                        user=current_user,
+                    )
+                    save_workspace_code(
+                        lesson_task_ctx,
+                        code=lt.student_submission or '',
+                        answer=lt.student_answer or '',
+                        files=mf_state.get('files'),
+                        open_tabs=mf_state.get('open_tabs'),
+                        active_file=mf_state.get('active_file'),
+                    )
+            except Exception as e:
+                logger.warning(f"Could not copy VirtualFS state for inserted task {lt.lesson_task_id}: {e}")
+
+        payload_item = _lesson_room_task_payload(lt)
+        inserted_tasks.append(payload_item)
+        emit_lesson_tasks_updated(lesson.lesson_id, assignment_type, payload_item)
+
+    lesson_summaries['task_provenance'] = provenance_map
+    lesson.review_summaries = lesson_summaries
+    flag_modified(lesson, 'review_summaries')
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'tasks': inserted_tasks,
+        'count': len(inserted_tasks),
+    })
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/kick', methods=['POST'])
+@login_required
+def lesson_room_kick(lesson_id: int):
+    """Исключить участника из урока и заблокировать до явного разблокирования."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Только преподаватель может исключать участников'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    target_user_id = payload.get('user_id')
+    if not target_user_id:
+        return jsonify({'success': False, 'error': 'Не указан user_id'}), 400
+    if int(target_user_id) == current_user.id:
+        return jsonify({'success': False, 'error': 'Преподаватель не может исключить сам себя'}), 400
+
+    from core.db_models import LessonParticipantBan, utc_now
+    existing = LessonParticipantBan.query.filter_by(
+        lesson_id=lesson.lesson_id,
+        user_id=int(target_user_id),
+        is_active=True
+    ).first()
+    if not existing:
+        ban = LessonParticipantBan(
+            lesson_id=lesson.lesson_id,
+            user_id=int(target_user_id),
+            banned_by_user_id=current_user.id,
+            is_active=True,
+            banned_at=utc_now(),
+        )
+        db.session.add(ban)
+        db.session.commit()
+
+    try:
+        from app.runtime_state import get_redis_client
+        client = get_redis_client()
+        if client:
+            client.sadd(f"lesson:{lesson.lesson_id}:banned_users", str(target_user_id))
+    except Exception:
+        pass
+
+    try:
+        from app.services.livekit_service import LiveKitService
+        LiveKitService.admin_remove_participant(
+            room_name=f"lesson-{lesson.lesson_id}",
+            identity=f"user-{target_user_id}",
+        )
+    except Exception:
+        pass
+
+    try:
+        from flask import current_app
+        socketio = getattr(current_app, 'socketio', None)
+        if socketio:
+            from app.lessons.lesson_socket import _room, _connections_key, _presence_key, _lesson_presence, _prune_stale_connections
+            from app.runtime_state import smembers, hdel, delete
+
+            kick_payload = {
+                "lesson_id": lesson.lesson_id,
+                "user_id": int(target_user_id),
+                "message": "Преподаватель ограничил доступ к уроку.",
+                "redirect_url": "/schedule",
+            }
+            conn_sids = set(smembers(_connections_key(lesson.lesson_id, int(target_user_id))) or [])
+            target_info = _lesson_presence.get(lesson.lesson_id, {}).pop(int(target_user_id), None)
+            if target_info and target_info.get("sid"):
+                conn_sids.add(target_info["sid"])
+
+            for sid in conn_sids:
+                try:
+                    socketio.emit("lesson_kicked", kick_payload, room=sid, namespace="/lesson")
+                except Exception:
+                    pass
+
+            socketio.emit("lesson_kicked", kick_payload, room=f"lesson-{lesson.lesson_id}", namespace="/lesson")
+            socketio.emit("lesson_kicked", kick_payload, room=_room(lesson.lesson_id), namespace="/lesson")
+            socketio.emit("lesson_kicked", kick_payload, room=f"lesson_{lesson.lesson_id}_user_{target_user_id}", namespace="/lesson")
+
+            server = getattr(socketio, 'server', None)
+            def _deferred_disconnect():
+                import time
+                time.sleep(0.6)
+                for sid in conn_sids:
+                    try:
+                        if server:
+                            server.disconnect(sid, namespace="/lesson")
+                        else:
+                            socketio.disconnect(sid=sid, namespace="/lesson")
+                    except Exception:
+                        pass
+            import threading
+            threading.Thread(target=_deferred_disconnect, daemon=True).start()
+
+            hdel(_presence_key(lesson.lesson_id), str(target_user_id))
+            delete(_connections_key(lesson.lesson_id, int(target_user_id)))
+            if lesson.lesson_id in _lesson_presence:
+                _lesson_presence[lesson.lesson_id].pop(int(target_user_id), None)
+
+            from app.lessons.lesson_socket import emit_lesson_presence
+            emit_lesson_presence(lesson.lesson_id)
+    except Exception as ex:
+        import logging
+        logging.getLogger(__name__).warning("Error broadcasting lesson_kicked: %s", ex)
+
+    return jsonify({'success': True, 'kicked_user_id': int(target_user_id)})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/unban', methods=['POST'])
+@login_required
+def lesson_room_unban(lesson_id: int):
+    """Снять ограничение на доступ участника к уроку."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Только преподаватель может разблокировать участника'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    target_user_id = payload.get('user_id')
+    if not target_user_id:
+        return jsonify({'success': False, 'error': 'Не указан user_id'}), 400
+
+    from core.db_models import LessonParticipantBan, utc_now
+    active_bans = LessonParticipantBan.query.filter_by(
+        lesson_id=lesson.lesson_id,
+        user_id=int(target_user_id),
+        is_active=True
+    ).all()
+    for b in active_bans:
+        b.is_active = False
+        b.unbanned_at = utc_now()
+
+    try:
+        from app.runtime_state import get_redis_client
+        client = get_redis_client()
+        if client:
+            client.srem(f"lesson:{lesson.lesson_id}:banned_users", str(target_user_id))
+    except Exception:
+        pass
+
+    db.session.commit()
+
+    try:
+        from flask import current_app
+        socketio = getattr(current_app, 'socketio', None)
+        if socketio:
+            from app.lessons.lesson_socket import _room, emit_lesson_presence
+            socketio.emit(
+                "lesson_unbanned",
+                {"lesson_id": lesson.lesson_id, "user_id": int(target_user_id)},
+                room=f"lesson-{lesson.lesson_id}",
+                namespace="/lesson"
+            )
+            socketio.emit(
+                "lesson_unbanned",
+                {"lesson_id": lesson.lesson_id, "user_id": int(target_user_id)},
+                room=_room(lesson.lesson_id),
+                namespace="/lesson"
+            )
+            emit_lesson_presence(lesson.lesson_id)
+    except Exception:
+        pass
+
+    return jsonify({'success': True, 'unbanned_user_id': int(target_user_id)})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/banned-participants', methods=['GET'])
+@login_required
+def lesson_banned_participants(lesson_id: int):
+    """Получить список заблокированных участников урока."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    from app.lessons.lesson_socket import _get_banned_participants
+    return jsonify({'success': True, 'banned': _get_banned_participants(lesson.lesson_id)})

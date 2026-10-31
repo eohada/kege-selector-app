@@ -1,0 +1,321 @@
+{% extends 'sandbox/layout_teacher.html' %}
+{% block title %}Персонализация программы · BooStudy{% endblock %}
+{% set active_page = 'courses' %}
+
+{% block sandbox_content %}
+<main class="mx-auto max-w-[1000px] px-4 py-6 sm:px-6 sm:py-8">
+  <header class="mb-6 rounded-[1.75rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-[0_4px_0_#DAE1E9] sm:p-7">
+    <p class="mb-2 text-xs font-black uppercase tracking-wider text-indigo-700">Ручное решение преподавателя · synthetic-копия</p>
+    <h1 class="mb-2 text-2xl font-black text-slate-900 sm:text-3xl">Персонализировать будущую программу</h1>
+    <p class="mb-0 max-w-3xl text-sm leading-relaxed text-slate-700">
+      Для {{ student.name if student else 'ученика' }} будет добавлено занятие №{{ form.course_order_index.data or 'следующее' }} в копию курса v{{ course.current_version }}.
+      Оно останется планом без даты и не запустит урок или назначение автоматически.
+    </p>
+  </header>
+
+  {% if course_version_error or manual_change_error %}
+  <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950" role="alert">
+    {{ course_version_error or manual_change_error }}
+  </div>
+  {% endif %}
+  {% if pedagogy_errors or form.errors %}
+  <div class="mb-4 rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-950" role="alert">
+    <p class="mb-2 font-black">План пока не сохранён</p>
+    <ul class="mb-0 list-disc space-y-1 pl-5">
+      {% for error in pedagogy_errors or [] %}<li>{{ error }}</li>{% endfor %}
+      {% for field_name, errors in form.errors.items() %}{% for error in errors %}<li>{{ error }}</li>{% endfor %}{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form id="adaptive-course-lesson-form" method="post" class="space-y-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-[0_4px_0_#DAE1E9] sm:p-6">
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="adaptive_v2" value="1">
+    <input type="hidden" name="expected_course_version" value="{{ expected_course_version or course.current_version }}">
+    <input type="hidden" name="course_order_index" value="{{ form.course_order_index.data or 0 }}">
+    <input type="hidden" name="status" value="planned">
+    <input type="hidden" name="lesson_date" value="">
+    <input type="hidden" name="lesson_format" value="Практикум">
+    <input type="hidden" name="lesson_type" value="regular">
+    <input type="hidden" name="module_id" value="{{ form.module_id.data or 0 }}">
+    {{ form.pedagogy_contract_json(id='pedagogy-contract-json', type='hidden') }}
+    {{ form.studio_scenario(id='studio-scenario-value', class_='hidden') }}
+
+    <section class="grid gap-4 sm:grid-cols-2" aria-label="Карточка будущего занятия">
+      <div class="sm:col-span-2">
+        <label class="mb-1 block text-sm font-black text-slate-800" for="lesson-topic">Название и фокус занятия</label>
+        {{ form.topic(id='lesson-topic', required=true, maxlength=300, class_='w-full rounded-xl border border-slate-300 px-3 py-3 text-base text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200') }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-black text-slate-800" for="lesson-duration">Длительность, минут</label>
+        {{ form.duration(id='lesson-duration', min=15, max=240, required=true, class_='w-full rounded-xl border border-slate-300 px-3 py-3 text-base text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200') }}
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <p class="mb-1 text-xs font-black uppercase tracking-wide text-slate-500">Навык</p>
+        {% if manual_selected_skill_id %}
+          {% for skill in manual_skill_options %}{% if skill.id == manual_selected_skill_id %}
+          <input type="hidden" name="skill_ids" value="{{ skill.id }}" data-skill-id="{{ skill.id }}" data-topic-code="{{ skill.topic_code }}">
+          <p class="mb-0 text-sm font-bold text-slate-800" data-preview-skill-label>{{ skill.label }}</p>
+          <p class="mb-0 mt-1 break-all text-xs text-slate-500">{{ skill.topic_code }}</p>
+          {% endif %}{% endfor %}
+        {% else %}
+          <p class="mb-0 text-sm text-amber-900">Не найден один точный навык для нового занятия. Сначала свяжите урок с активным навыком в обычном редакторе курса.</p>
+        {% endif %}
+      </div>
+      <div class="sm:col-span-2">
+        <label class="mb-1 block text-sm font-black text-slate-800" for="lesson-content">Педагогическая цель и содержание</label>
+        {{ form.content(id='lesson-content', rows=5, required=true, class_='w-full rounded-xl border border-slate-300 px-3 py-3 text-base leading-relaxed text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200', placeholder='Опишите, чему ученик будет учиться и какие шаги выполнит.') }}
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-slate-50 p-4" aria-labelledby="lesson-structure-title">
+      <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 id="lesson-structure-title" class="mb-1 text-base font-black text-slate-900">Структура занятия</h2>
+          <p class="mb-0 text-xs text-slate-600">Время этапов должно точно совпадать с длительностью урока.</p>
+        </div>
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700">Без изменения расписания</span>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        {% for stage in [
+          {'id':'recall','title':'Вспомнить способ','minutes':10,'purpose':'Коротко восстановить шаги алгоритма'},
+          {'id':'guided_practice','title':'Решить и сравнить','minutes':35,'purpose':'Проверить ход решения на выбранном графе'},
+          {'id':'reflection','title':'Объяснить решение','minutes':15,'purpose':'Сформулировать, почему стоимость минимальна'}
+        ] %}
+        <label class="block rounded-lg border border-slate-200 bg-white p-3">
+          <span class="mb-2 block text-sm font-bold text-slate-800">{{ stage.title }}</span>
+          <span class="mb-1 block text-xs text-slate-500">Минуты</span>
+          <input class="adaptive-stage-minutes w-full rounded-lg border border-slate-300 px-3 py-2 text-base" type="number" min="1" max="240" value="{{ stage.minutes }}" data-stage-id="{{ stage.id }}" data-stage-title="{{ stage.title }}" data-stage-purpose="{{ stage.purpose }}" required>
+        </label>
+        {% endfor %}
+      </div>
+      <p id="adaptive-time-total" class="mb-0 mt-3 text-sm font-bold text-slate-700" aria-live="polite"></p>
+    </section>
+
+    <section class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4" aria-labelledby="lesson-exercise-title">
+      <h2 id="lesson-exercise-title" class="mb-1 text-base font-black text-slate-900">Проверяемое упражнение</h2>
+      <p class="mb-3 text-xs leading-relaxed text-slate-600">Выберите материал из уже связанного банка. Повторное или перенесённое упражнение остаётся практикой и не считается независимым доказательством освоения.</p>
+      {% if bank_task_candidates %}
+      {% for task in bank_task_candidates %}<input type="hidden" name="bank_task_criterion_{{ task.task_id }}" value="{{ task.criterion_id }}">{% endfor %}
+      <div class="mb-3">
+        <label class="mb-1 block text-sm font-black text-slate-800" for="adaptive-bank-assignment-type">Как использовать упражнение</label>
+        <select id="adaptive-bank-assignment-type" name="bank_assignment_type" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+          <option value="classwork">На занятии</option>
+          <option value="homework">Домашняя работа</option>
+        </select>
+        <p class="mt-1 text-xs leading-relaxed text-slate-600">Выбор типа связывает материал с планом; домашнее задание нужно отдельно опубликовать в обычном конструкторе.</p>
+      </div>
+      <label class="mb-2 block text-sm font-black text-slate-800" for="adaptive-task-select">Материал из банка</label>
+      <select id="adaptive-task-select" name="bank_task_ids" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+        <option value="">Выберите упражнение</option>
+        {% for task in bank_task_candidates %}
+        <option value="{{ task.task_id }}" data-task-id="{{ task.task_id }}" data-criterion-id="{{ task.criterion_id }}" data-criterion-label="{{ task.criterion_label }}" data-prompt="{{ task.preview }}" data-grading-mode="{{ task.grading_mode }}" data-pedagogical-status="{{ task.pedagogical_status }}" data-previously-used="{{ 'true' if task.previously_used else 'false' }}" data-source-course="{{ task.source_course_id }}" data-source-version="{{ task.source_course_version }}" data-source-lesson="{{ task.source_lesson_id }}">{{ task.criterion_label }} · упражнение #{{ task.task_id }} · {{ task.grading_mode }}{% if task.previously_used %} · уже использовалось{% endif %}</option>
+        {% endfor %}
+      </select>
+      <article class="mt-3 rounded-xl border border-slate-200 bg-white p-3" aria-label="Сведения о выбранном упражнении">
+        <p id="adaptive-task-status" class="mb-1 text-sm font-black text-slate-900">Выберите упражнение, чтобы просмотреть условие и источник.</p>
+        <p id="adaptive-task-source" class="mb-2 text-xs leading-relaxed text-slate-600"></p>
+        <details id="adaptive-task-condition" class="rounded-lg border border-slate-200 px-3 py-1.5" hidden>
+          <summary class="flex min-h-[40px] cursor-pointer items-center text-xs font-bold text-slate-700">Показать условие упражнения</summary>
+          <p id="adaptive-task-prompt" class="mb-1 mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700"></p>
+          <p class="mb-1 text-xs leading-relaxed text-slate-500">Проверяющий способ ограничен этим заданием; конечный набор проверок не доказывает общую корректность решения.</p>
+        </details>
+      </article>
+      <label class="mt-3 flex items-start gap-2 rounded-lg border border-indigo-200 bg-white p-3 text-sm leading-relaxed text-slate-700">
+        <input type="checkbox" name="bank_tasks_confirmed" value="1" required class="mt-1">
+        <span>Я просмотрел условие и проверяющий способ. В новом плане упражнение будет скрытым до обычного назначения.</span>
+      </label>
+      {% else %}
+      <p class="mb-0 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950" role="status">{{ bank_task_notice or 'Для этого навыка не найдено подходящего проверенного упражнения.' }}</p>
+      {% endif %}
+      {% if bank_task_notice %}<p class="mb-0 mt-3 text-xs leading-relaxed text-slate-600">{{ bank_task_notice }}</p>{% endif %}
+    </section>
+
+    <section>
+      <label class="mb-1 block text-sm font-black text-slate-800" for="program-change-reason">Почему меняется индивидуальный план</label>
+      <textarea id="program-change-reason" name="program_change_reason" rows="3" minlength="10" maxlength="1000" required class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base leading-relaxed text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">{{ request.form.get('program_change_reason', '') }}</textarea>
+      <p class="mb-0 mt-1 text-xs text-slate-500">Это решение преподавателя. Tutor Core не утверждает и не публикует изменение.</p>
+    </section>
+
+    <section class="rounded-xl border-2 border-indigo-200 bg-indigo-50/60 p-4" aria-labelledby="adaptive-plan-preview-title">
+      <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 id="adaptive-plan-preview-title" class="mb-1 text-base font-black text-slate-900">Предпросмотр будущего занятия</h2>
+          <p class="mb-0 text-xs leading-relaxed text-slate-600">Сводка обновляется по введённым данным. Пока вы не сохраните её, версия курса не меняется.</p>
+        </div>
+        <span class="rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-bold text-indigo-800">Копия курса #{{ course.course_id }} · сейчас v{{ course.current_version }}</span>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <article class="rounded-lg border border-indigo-100 bg-white p-3">
+          <h3 class="mb-1 text-xs font-black uppercase tracking-wide text-slate-500">Фокус и цель</h3>
+          <p id="adaptive-preview-topic" class="mb-1 break-words text-sm font-black text-slate-900"></p>
+          <p id="adaptive-preview-skill" class="mb-1 text-xs font-bold text-indigo-800"></p>
+          <p id="adaptive-preview-content" class="mb-0 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700"></p>
+        </article>
+        <article class="rounded-lg border border-indigo-100 bg-white p-3">
+          <h3 class="mb-1 text-xs font-black uppercase tracking-wide text-slate-500">Этапы и время</h3>
+          <p id="adaptive-preview-duration" class="mb-2 text-sm font-black text-slate-900"></p>
+          <ol id="adaptive-preview-stages" class="mb-0 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-slate-700"></ol>
+        </article>
+        <article class="rounded-lg border border-indigo-100 bg-white p-3 sm:col-span-2">
+          <h3 class="mb-1 text-xs font-black uppercase tracking-wide text-slate-500">Упражнение и критерий</h3>
+          <p id="adaptive-preview-exercise" class="mb-1 text-sm font-black text-slate-900"></p>
+          <p id="adaptive-preview-source" class="mb-1 text-xs leading-relaxed text-slate-600"></p>
+          <p class="mb-0 text-xs leading-relaxed text-amber-900">Ограничение: результат конечного упражнения, особенно повторного или перенесённого, сам по себе не подтверждает освоение навыка.</p>
+        </article>
+        <article class="rounded-lg border border-indigo-100 bg-white p-3 sm:col-span-2">
+          <h3 class="mb-1 text-xs font-black uppercase tracking-wide text-slate-500">Основание преподавателя</h3>
+          <p id="adaptive-preview-reason" class="mb-0 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700"></p>
+        </article>
+      </div>
+      <p class="mb-0 mt-3 text-xs leading-relaxed text-slate-600">Сохранение добавит плановое занятие в эту индивидуальную копию и создаст её новую версию. Оно не назначит упражнение ученику и не изменит расписание.</p>
+    </section>
+
+    <div class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-between">
+      <a class="bs-button bs-button-secondary min-h-[44px] justify-center" href="{{ url_for('main.universal_profile_view', user_id=student.user_id, _anchor='adaptive-learning-summary') }}">Назад к сравнению</a>
+      <button class="bs-button bs-button-primary min-h-[44px] justify-center" type="submit" {% if not manual_selected_skill_id or not bank_task_candidates %}disabled aria-disabled="true"{% endif %}>Сохранить как следующую версию курса</button>
+    </div>
+  </form>
+</main>
+<script>
+(() => {
+  const form = document.getElementById('adaptive-course-lesson-form');
+  if (!form) return;
+  const duration = document.getElementById('lesson-duration');
+  const minutesInputs = [...form.querySelectorAll('.adaptive-stage-minutes')];
+  const totalNode = document.getElementById('adaptive-time-total');
+  const contract = document.getElementById('pedagogy-contract-json');
+  const topic = document.getElementById('lesson-topic');
+  const content = document.getElementById('lesson-content');
+  const reason = document.getElementById('program-change-reason');
+  const previewStages = document.getElementById('adaptive-preview-stages');
+  const taskSelect = document.getElementById('adaptive-task-select');
+  const taskCondition = document.getElementById('adaptive-task-condition');
+  const setText = (id, value, fallback) => {
+    document.getElementById(id).textContent = value.trim() || fallback;
+  };
+  const updatePreview = () => {
+    setText('adaptive-preview-topic', topic.value, 'Название занятия пока не заполнено.');
+    setText('adaptive-preview-content', content.value, 'Добавьте учебную цель и содержание.');
+    setText('adaptive-preview-reason', reason.value, 'Добавьте основание решения преподавателя.');
+    const skillLabel = document.querySelector('[data-preview-skill-label]')?.textContent?.trim();
+    setText('adaptive-preview-skill', skillLabel || '', 'Точный навык не связан.');
+    const durationValue = Number(duration.value) || 0;
+    const stageTotal = minutesInputs.reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+    document.getElementById('adaptive-preview-duration').textContent = `${stageTotal} из ${durationValue} минут распределено`;
+    previewStages.replaceChildren(...minutesInputs.map(input => {
+      const item = document.createElement('li');
+      item.textContent = `${Number(input.value) || 0} мин — ${input.dataset.stageTitle}: ${input.dataset.stagePurpose}`;
+      return item;
+    }));
+    const selected = taskSelect?.selectedOptions[0];
+    if (!selected?.value) {
+      document.getElementById('adaptive-preview-exercise').textContent = 'Упражнение не выбрано.';
+      document.getElementById('adaptive-preview-source').textContent = 'Выберите материал и проверьте его условие перед сохранением.';
+      if (taskCondition) {
+        document.getElementById('adaptive-task-status').textContent = 'Выберите упражнение, чтобы просмотреть условие и источник.';
+        document.getElementById('adaptive-task-source').textContent = '';
+        document.getElementById('adaptive-task-prompt').textContent = '';
+        taskCondition.hidden = true;
+      }
+      return;
+    }
+    const statusLabels = {
+      synthetic_draft_not_expert_approved: 'Synthetic-черновик · экспертно не утверждён',
+      expert_approved: 'Экспертно проверен',
+      approved: 'Экспертно проверен',
+      reviewed: 'Экспертно проверен',
+      teacher_confirmed: 'Привязка подтверждена преподавателем',
+    };
+    const reuseLabel = selected.dataset.previouslyUsed === 'true'
+      ? 'Уже предъявлялось этому ученику; не является независимой диагностикой.'
+      : 'Попытка этого ученика не найдена; конечная проверка всё равно не доказывает освоение.';
+    document.getElementById('adaptive-task-status').textContent = `${selected.dataset.criterionLabel} · ${statusLabels[selected.dataset.pedagogicalStatus] || `Статус проверки: ${selected.dataset.pedagogicalStatus}`}`;
+    document.getElementById('adaptive-task-source').textContent = `Источник: курс #${selected.dataset.sourceCourse}, v${selected.dataset.sourceVersion}, урок #${selected.dataset.sourceLesson} · способ: ${selected.dataset.gradingMode}. ${reuseLabel}`;
+    document.getElementById('adaptive-task-prompt').textContent = selected.dataset.prompt || 'Условие недоступно для предварительного просмотра.';
+    taskCondition.hidden = false;
+    document.getElementById('adaptive-preview-exercise').textContent = `${selected.dataset.criterionLabel} · критерий ${selected.dataset.criterionId} · упражнение #${selected.dataset.taskId} · ${selected.dataset.gradingMode}`;
+    document.getElementById('adaptive-preview-source').textContent = `Источник: курс #${selected.dataset.sourceCourse}, v${selected.dataset.sourceVersion}, урок #${selected.dataset.sourceLesson}. ${statusLabels[selected.dataset.pedagogicalStatus] || `Статус проверки: ${selected.dataset.pedagogicalStatus}`}. ${reuseLabel}`;
+  };
+  const updateTotal = () => {
+    const total = minutesInputs.reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+    totalNode.textContent = `Распределено ${total} из ${Number(duration.value) || 0} минут.`;
+    totalNode.className = total === Number(duration.value)
+      ? 'mb-0 mt-3 text-sm font-bold text-emerald-800'
+      : 'mb-0 mt-3 text-sm font-bold text-rose-800';
+  };
+  duration.addEventListener('input', updateTotal);
+  minutesInputs.forEach(input => input.addEventListener('input', updateTotal));
+  updateTotal();
+  [topic, content, reason, duration, ...minutesInputs].forEach(input => input.addEventListener('input', updatePreview));
+  taskSelect?.addEventListener('change', updatePreview);
+  updatePreview();
+  form.addEventListener('submit', event => {
+    const selected = taskSelect?.selectedOptions[0];
+    const skill = form.querySelector('[data-skill-id]');
+    const reason = document.getElementById('program-change-reason').value.trim();
+    const stageTotal = minutesInputs.reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+    if (!selected?.value || !skill || reason.length < 10 || stageTotal !== Number(duration.value)) {
+      event.preventDefault();
+      updateTotal();
+      form.reportValidity();
+      return;
+    }
+    const criterionId = selected.dataset.criterionId;
+    const criterionLabel = selected.dataset.criterionLabel;
+    const exerciseId = `task:${selected.dataset.taskId}`;
+    const stages = minutesInputs.map(input => ({
+      id: input.dataset.stageId,
+      title: input.dataset.stageTitle,
+      minutes: Number(input.value),
+      purpose: input.dataset.stagePurpose,
+      mandatory: true,
+      flexible_minutes: 0,
+      exercise_ids: input.dataset.stageId === 'guided_practice' ? [exerciseId] : [],
+    }));
+    const masteryCriteria = {{ manual_selected_criteria|tojson }};
+    const sourceCriterion = masteryCriteria.find(item => item.key === criterionId) || {};
+    contract.value = JSON.stringify({
+      contract: 'boostudy.lesson-pedagogy.v1',
+      status: 'synthetic_draft_not_expert_approved',
+      objective: {
+        id: `teacher-objective:${skill.dataset.skillId}:${Date.now()}`,
+        text: document.getElementById('lesson-content').value.trim(),
+        skill_id: `exam-skill:${skill.dataset.skillId}`,
+      },
+      criteria: [{
+        id: criterionId,
+        label: criterionLabel,
+        observable_outcome: sourceCriterion.evidence || 'Ответ проверяется по указанной автоматической спецификации.',
+        assessment_method: 'platform_exact_answer',
+        evidence_limitations: 'Упражнение перенесено из другого/предыдущего контекста; результат этой практики не считается независимым подтверждением освоения.',
+        exercise_ids: [exerciseId],
+      }],
+      prerequisites: [{
+        id: 'graph-reading-prerequisite',
+        label: 'Чтение направленных рёбер и суммирование весов маршрута',
+        status: 'not_reassessed_in_this_plan',
+        diagnostic_method: 'Попросить ученика кратко объяснить, как он складывает веса одного пути.',
+      }],
+      segments: stages,
+      exercises: [{
+        id: exerciseId,
+        source_type: 'platform_task',
+        task_id: Number(selected.dataset.taskId),
+        title: selected.dataset.prompt.slice(0, 100),
+        topic_code: skill.dataset.topicCode,
+        criterion_ids: [criterionId],
+        segment_id: 'guided_practice',
+        assessment_method: selected.dataset.gradingMode === 'exact' ? 'platform_exact_answer' : 'platform_automatic_checker',
+        verification_scope: 'Только условие этого конечного упражнения и указанный автоматический проверяющий способ.',
+        evidence_limitations: 'Материал переиспользован или перенесён между контекстами; повторное решение не является независимой диагностикой.',
+        role: 'shared_review',
+        selection_priority: 50,
+      }],
+      assessment_limitations: ['Одна finite-задача не доказывает полную корректность или устойчивое освоение навыка.'],
+    });
+    document.getElementById('studio-scenario-value').value = stages.map((item, index) => `${index + 1}. ${item.minutes} мин — ${item.title}`).join('\n');
+  });
+})();
+</script>
+{% endblock %}

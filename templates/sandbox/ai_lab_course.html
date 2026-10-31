@@ -1,0 +1,46 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}AI Course — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<style>
+.ac-page{width:min(100%,1400px);margin:auto;padding:clamp(16px,2.4vw,32px);color:var(--bs-text-primary);display:grid;gap:18px}.ac-nav{display:flex;gap:8px;overflow:auto;padding:5px;border:1px solid var(--bs-border);border-radius:var(--bs-radius-pill,999px);background:var(--bs-bg-surface-soft)}.ac-nav a{display:inline-flex;align-items:center;min-height:40px;padding:8px 14px;border-radius:999px;color:var(--bs-text-secondary);font-weight:700;text-decoration:none;white-space:nowrap}.ac-nav a[aria-current=page],.ac-nav a:hover{background:var(--bs-bg-surface);color:var(--bs-text-primary);box-shadow:var(--bs-shadow-e1)}.ac-hero,.ac-panel{border:1px solid var(--bs-border);border-radius:var(--bs-radius-xl,28px);background:var(--bs-bg-surface);box-shadow:var(--bs-shadow-e1);padding:clamp(18px,2.5vw,28px);min-width:0}.ac-hero{background:linear-gradient(112deg,var(--bs-surface-peach-soft),var(--bs-bg-surface) 60%,var(--bs-surface-lilac-soft))}.ac-eyebrow{color:var(--bs-text-muted);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.ac-hero h1{font-size:clamp(28px,3.5vw,42px);margin:8px 0}.ac-lead,.ac-muted{color:var(--bs-text-secondary);line-height:1.6}.ac-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:16px}.ac-field{display:grid;gap:7px;margin:12px 0;color:var(--bs-text-secondary);font-weight:700;font-size:13px}.ac-field select,.ac-field input{min-height:44px;width:100%;padding:9px 12px;border:1px solid var(--bs-border);border-radius:12px;background:var(--bs-bg-surface);color:var(--bs-text-primary)}.ac-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.ac-button{min-height:44px;padding:10px 16px;border:1px solid var(--bs-border);border-radius:14px;background:var(--bs-bg-surface);color:var(--bs-text-primary);font-weight:800;cursor:pointer;box-shadow:var(--bs-shadow-e1)}.ac-button-primary{background:var(--bs-primary);color:var(--bs-on-primary,#fff);border-color:var(--bs-primary)}.ac-button:disabled{opacity:.55;cursor:wait}.ac-source{display:grid;gap:10px}.ac-topic,.ac-material,.ac-finding,.ac-proposal,.ac-history{padding:14px;border:1px solid var(--bs-border);border-radius:16px;background:var(--bs-bg-surface-soft)}.ac-list{display:grid;gap:10px;margin:12px 0}.ac-topic strong,.ac-material strong{display:block}.ac-material p,.ac-proposal p{white-space:pre-wrap;overflow-wrap:anywhere}.ac-status{min-height:24px;color:var(--bs-text-secondary)}.ac-error{color:var(--bs-danger-ink,var(--bs-danger,#a12d35))}.ac-good{color:var(--bs-success-ink,var(--bs-success,#237448))}.ac-proposal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ac-ref{font-size:12px;color:var(--bs-text-muted)}.ac-actions .ac-button{min-height:40px}.ac-empty{padding:18px;border:1px dashed var(--bs-border);border-radius:15px;color:var(--bs-text-secondary)}@media(max-width:760px){.ac-page{padding:14px 12px 112px}.ac-grid,.ac-proposal-grid{grid-template-columns:1fr}.ac-panel,.ac-hero{border-radius:20px}.ac-nav{border-radius:18px}}
+@media(max-width:760px){body:has(#ai-course-app) #qa-widget-trigger-btn{display:none!important}}
+</style><style>
+.ac-history{display:grid;align-content:start;gap:8px;min-width:0}
+.ac-history strong,.ac-history p{min-width:0;overflow-wrap:anywhere}
+.ac-history .ac-error{margin:6px 0;overflow-wrap:anywhere}
+.ac-history .ac-button{display:inline-flex;align-items:center;justify-content:center;justify-self:start;max-width:100%;min-height:44px;text-align:center;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:760px){.ac-history .ac-button{width:100%;justify-self:stretch}}
+</style>{% endblock %}
+{% block admin_content %}
+<main class="ac-page" id="ai-course-app" data-csrf="{{ csrf_token() }}" data-analyze-url="{{ url_for('ai_lab.course_analyze') }}" data-review-base="{{ url_for('ai_lab.course_proposal_review', record_id=0, proposal_id='__proposal__') }}" data-rollback-base="{{ url_for('ai_lab.course_proposal_rollback', record_id=0, proposal_id='__proposal__') }}">
+  <nav class="ac-nav" aria-label="Разделы AI Lab">
+    <a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a><a href="{{ url_for('ai_lab.studio') }}">AI Homework</a>
+    <a href="{{ url_for('ai_lab.analytics_page') }}">Analytics</a><a href="{{ url_for('ai_lab.practice_page') }}">Practice</a>
+    <a href="{{ url_for('ai_lab.code_judge_page') }}">Code Judge</a><a href="{{ url_for('ai_lab.lesson_intelligence_page') }}">AI Lesson</a>
+    <a href="{{ url_for('ai_lab.course_page') }}" aria-current="page">AI Course</a>
+    <a href="{{ url_for('ai_lab.quality_review_page') }}">Экспертная проверка</a>
+  </nav>
+  <header class="ac-hero"><span class="ac-eyebrow">AI Lab · синтетические данные · {{ default_model }}</span><h1>Анализ учебного курса</h1>
+    <p class="ac-lead">Проверяйте явные связи тем детерминированно и получайте привязанные к материалам предложения. Перед применением вручную проверьте и отредактируйте текст. Меняется только выбранный синтетический материал; структурные связи курса остаются без изменений.</p>
+  </header>
+  <section class="ac-grid">
+    <article class="ac-panel">
+      <h2>Выберите синтетический курс</h2>
+      <label class="ac-field">Учебный пример<select id="ac-course-select">{% for course in course_samples %}<option value="{{ loop.index0 }}">{{ course.title }}</option>{% endfor %}</select></label>
+      <label class="ac-field">Версия курса<input id="ac-course-version" type="number" min="1" step="1" value="1"></label>
+      <div class="ac-source" id="ac-course-preview" aria-live="polite"></div>
+      <div class="ac-actions"><button class="ac-button ac-button-primary" id="ac-analyze" type="button">Анализировать курс</button><a class="ac-button" id="ac-practice-link" href="{{ url_for('ai_lab.practice_page') }}">Открыть Practice</a></div>
+      <p class="ac-status" id="ac-status" role="status" aria-live="polite">Результаты и версии сохраняются в локальной истории AI Lab.</p>
+    </article>
+    <aside class="ac-panel"><h2>Последние версии</h2>
+      {% for record in analyses %}<article class="ac-history"><strong>{{ record.scenario_snapshot.title or record.scenario_snapshot.course_id }} · v{{ record.scenario_snapshot.course_version }}</strong><p class="ac-muted">Версия анализа #{{ record.id }} · {{ record.status }} · {{ record.created_at.strftime('%Y-%m-%d %H:%M') if record.created_at else '' }}</p>
+        {% if analysis_source_stale.get(record.id) %}<p class="ac-error">Источник изменился после этого анализа. Ссылки устарели; сформируйте анализ актуальной версии.</p>{% endif %}
+        {% if record.status == 'succeeded' %}<a class="ac-button" href="{{ url_for('ai_lab.practice_page', course_analysis_id=record.id) }}">Использовать связи курса в Practice</a>{% elif record.error_message %}<p class="ac-error">{{ record.error_message }}</p>{% endif %}</article>
+      {% else %}<p class="ac-empty">Сохранённых анализов пока нет.</p>{% endfor %}
+      <p class="ac-muted">Ручное применение или откат создаёт новую версию курса. Предыдущие входы, предложения и решения остаются в истории.</p>
+    </aside>
+  </section>
+  <section class="ac-panel" id="ac-result" hidden aria-live="polite"></section>
+  <script id="ac-course-samples" type="application/json">{{ course_samples|tojson }}</script>
+  <script src="{{ url_for('static', filename='js/ai-lab-course.js') }}" defer></script>
+</main>
+{% endblock %}

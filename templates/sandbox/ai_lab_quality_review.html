@@ -1,0 +1,96 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Экспертная проверка — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-quality-review.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-quality-review-v2.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="qr-page" id="quality-review">
+  <nav class="qr-nav" aria-label="Разделы AI Lab">
+    <a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a>
+    <a href="{{ url_for('ai_lab.studio') }}">AI Homework</a>
+    <a href="{{ url_for('ai_lab.code_judge_page') }}">Code Judge</a>
+    <a href="{{ url_for('ai_lab.course_page') }}">AI Course</a>
+    <a href="{{ url_for('ai_lab.lesson_intelligence_page') }}">AI Lesson</a>
+    <a href="{{ url_for('ai_lab.analytics_page') }}">Analytics</a>
+    <a href="{{ url_for('ai_lab.practice_page') }}">Practice</a>
+    <a href="{{ url_for('ai_lab.quality_review_page') }}" aria-current="page">Экспертная проверка</a>
+  </nav>
+  <header class="qr-hero">
+    <p class="qr-eyebrow">AI Lab · независимая экспертиза</p>
+    <h1>Проверка сохранённых результатов</h1>
+    <p>Оценивайте ответ модели по замороженному синтетическому сценарию. Оценки сохраняются в отдельном журнале; исходный ответ не меняется. Пропускайте неприменимые аспекты.</p>
+  </header>
+  <section class="qr-stats" aria-label="Прогресс экспертизы">
+    <article><strong>{{ bundle.summary.total_runs }}</strong><span>ответов модели</span></article>
+    <article><strong>{{ bundle.summary.expert_reviewed_runs }}</strong><span>оценено человеком</span></article>
+    <article><strong>{{ bundle.summary.pending_runs }}</strong><span>ответов ожидают оценки</span></article>
+    <article><strong>{{ bundle.summary.aspects_unresolved }}</strong><span>аспектов без экспертного решения из {{ bundle.summary.aspects_total }}</span></article>
+    <article><strong>{{ bundle.summary.excluded_before_model_or_transport }}</strong><span>исключено до ответа модели</span></article>
+  </section>
+  <form class="qr-filters qr-panel" method="get" action="{{ url_for('ai_lab.quality_review_page') }}" aria-label="Фильтр результатов">
+    <label>Контрольная серия<select name="benchmark" id="qr-benchmark">{% for key, definition in available_benchmarks.items() %}<option value="{{ key }}" {% if key == bundle.id %}selected{% endif %}>{{ definition.label }}</option>{% endfor %}</select></label>
+    <label>Модуль<select name="module" id="qr-module"><option value="">Все модули</option>{% for key, label in [('ai_homework', 'AI Homework'), ('ai_course', 'AI Course'), ('ai_lesson_intelligence', 'AI Lesson')] %}<option value="{{ key }}" {% if key == module %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label>Состояние<select name="pending" id="qr-pending"><option value="1" {% if pending_only %}selected{% endif %}>Только без оценки</option><option value="0" {% if not pending_only %}selected{% endif %}>Все ответы модели</option></select></label>
+    <button type="submit">Показать</button>
+  </form>
+  {% if error %}<p class="qr-message qr-error" role="alert">{{ error }}</p>{% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<p class="qr-message {% if category == 'success' %}qr-success{% endif %}" role="status">{{ message }}</p>{% endfor %}{% endwith %}
+  {% if selected %}
+  <div class="qr-case-bar qr-panel">
+    <div><span class="qr-eyebrow">Случай {{ selected_index }} из {{ rows|length }} · {{ selected.review_priority.label }}</span><h2>{{ selected.case_id }}</h2><p>{{ selected.module }} · {{ selected.split }} · {{ selected.execution.status }}{% if selected.expert_review.status == 'reviewed' %} · оценено{% endif %}</p>{% if selected.review_priority.reasons %}<p class="qr-help">Приоритет: {{ selected.review_priority.reasons|join(' · ') }}</p>{% endif %}</div>
+    <div class="qr-case-nav">
+      {% if previous_row %}<a id="qr-prev" href="{{ url_for('ai_lab.quality_review_page', benchmark=bundle.id, module=module, pending=pending_only|int, case_id=previous_row.case_id) }}">← Предыдущий</a>{% endif %}
+      {% if next_row %}<a id="qr-next" href="{{ url_for('ai_lab.quality_review_page', benchmark=bundle.id, module=module, pending=pending_only|int, case_id=next_row.case_id) }}">Следующий →</a>{% endif %}
+    </div>
+  </div>
+  {% if selected.module == 'ai_homework' %}
+  <div class="qr-grid qr-homework-grid">
+    <section class="qr-panel" aria-labelledby="qr-source-heading"><h2 id="qr-source-heading">Задание и решение</h2>
+      <h3>Условие</h3><p class="qr-text">{{ case_view.task }}</p>
+      <h3>Код ученика</h3><pre class="qr-code">{{ case_view.solution }}</pre>
+      <h3>Критерии</h3><ul class="qr-criteria-list">{% for criterion in case_view.criteria %}<li>{{ criterion }}</li>{% endfor %}</ul>
+      {% if case.input.public_examples %}<details><summary>Публичные примеры задания</summary><pre>{{ pretty_json(case.input.public_examples) }}</pre></details>{% endif %}
+      <details><summary>Эталонные баллы</summary><p><strong>{{ case_view.expected_score if case_view.expected_score is not none else 'не задано' }} / {{ case_view.max_score or '—' }}</strong></p><pre>{{ pretty_json(case.expert_expectation) }}</pre></details>
+    </section>
+    <section class="qr-panel" aria-labelledby="qr-answer-heading"><h2 id="qr-answer-heading">Сравнение оценок</h2>
+      <div class="qr-score-strip"><div><span>Эталон</span><strong>{{ case_view.expected_score if case_view.expected_score is not none else '—' }} / {{ case_view.max_score or '—' }}</strong></div><div><span>Code Judge</span><strong>{{ case_view.judge_score if case_view.judge_score is not none else 'не запускался' }} / {{ case_view.max_score or '—' }}</strong></div><div><span>GigaChat</span><strong>{{ case_view.model_score if case_view.model_score is not none else 'не выставил' }} / {{ case_view.max_score or '—' }}</strong></div><div><span>Результат AI Lab</span><strong>{{ case_view.final_score if case_view.final_score is not none else 'ручная проверка' }} / {{ case_view.max_score or '—' }}</strong></div></div>
+      <p class="qr-machine-note">{{ case_view.automatic_note }}</p>
+      {% if case_view.criteria_comparison %}<h3>Баллы по критериям</h3><div class="qr-criterion-results">{% for criterion in case_view.criteria_comparison %}<article class="qr-criterion{% if criterion.model_differs %} is-conflict{% endif %}"><div><strong>{{ criterion.title }}</strong><span class="qr-criterion-status">{{ 'Расхождение модели и Code Judge' if criterion.model_differs else criterion.judge_status or 'нет проверки' }}</span></div><p>Эталон <b>{{ criterion.expected if criterion.expected is not none else '—' }}</b> · Code Judge <b>{{ criterion.judge if criterion.judge is not none else '—' }}</b> · GigaChat <b>{{ criterion.model if criterion.model is not none else '—' }}</b> / {{ criterion.maximum or '—' }}</p>{% if criterion.rationale %}<p class="qr-text">{{ criterion.rationale }}</p>{% endif %}{% if criterion.evidence %}<div class="qr-evidence-list">{% for evidence in criterion.evidence %}<span class="qr-evidence-chip">{{ evidence.case_id }} · {{ evidence.status }}</span>{% endfor %}</div>{% endif %}</article>{% endfor %}</div>{% endif %}
+      <h3>Педагогический комментарий модели · требует экспертного решения</h3>
+      {% if case_view.mistakes %}<div class="qr-feedback-list">{% for mistake in case_view.mistakes %}<article class="qr-feedback-item"><strong>{{ mistake.description }}</strong><p>{{ mistake.explanation }}</p><p><b>Совет модели:</b> {{ mistake.correction_recommendation }}</p>{% if mistake.criterion_id %}<p><b>Критерий:</b> {{ mistake.criterion_id }}</p>{% endif %}</article>{% endfor %}</div>{% endif %}
+      {% if case_view.student_feedback %}<p class="qr-text">{{ case_view.student_feedback }}</p>{% endif %}<p class="qr-text">{{ case_view.teacher_feedback }}</p>
+      <details><summary>Технические данные и исходный JSON</summary><pre>{{ pretty_json({'comparison': case_view, 'result': selected.execution.result, 'validation': selected.execution.structural_validation, 'semantic': selected.execution.semantic_review, 'evidence': selected.execution.technical_evidence, 'usage': selected.execution.usage, 'generation_parameters': selected.execution.generation_parameters, 'model_version': selected.execution.model_version, 'payload_sha256': selected.execution.payload_sha256, 'input_sha256': selected.input_sha256}) }}</pre><h3>Полный ответ GigaChat</h3><pre>{{ selected.execution.full_response or selected.execution.error_message or 'Нет ответа модели' }}</pre></details>
+    </section>
+  </div>
+  {% elif selected.module == 'ai_course' %}
+  <div class="qr-grid">
+    <section class="qr-panel"><h2>Исходный материал курса</h2>{% for material in case_view.materials %}<article class="qr-source-item"><span class="qr-eyebrow">{{ material.material_id }}{% if material.version %} · версия {{ material.version }}{% endif %}</span><h3>{{ material.title }}</h3><p class="qr-text">{{ material.content }}</p>{% for fragment in material.source_fragments or [] %}<span class="qr-evidence-chip">{{ fragment.source_ref }}</span>{% endfor %}</article>{% endfor %}<details><summary>Структура курса и эталон</summary><pre>{{ pretty_json({'input': case.input, 'expert_expectation': case.expert_expectation}) }}</pre></details></section>
+    <section class="qr-panel"><h2>Анализ и предложения модели</h2><p class="qr-text">{{ case_view.summary or 'Краткий вывод отсутствует.' }}</p><p class="qr-machine-note">{{ case_view.automatic_note }}</p>{% if case_view.structural_findings %}<h3>Детерминированные структурные замечания</h3>{% for finding in case_view.structural_findings %}<p class="qr-status-note">{{ finding.message }}</p>{% endfor %}{% endif %}{% for proposal in case_view.proposals %}<article class="qr-proposal"><span class="qr-eyebrow">{{ proposal.proposal_id }} · {{ proposal.status or 'черновик' }}</span><h3>Замечание</h3><p class="qr-text">{{ proposal.observation }}</p><h3>Предлагаемое изменение</h3><p class="qr-text">{{ proposal.proposed_text }}</p><h3>Источник и основание</h3><p>{{ proposal.material_id }} · {{ proposal.source_refs | join(', ') }}</p><p class="qr-text">{{ proposal.pedagogical_basis }}</p>{% if proposal.source_content %}<details><summary>Исходный фрагмент для сравнения</summary><pre>{{ proposal.source_content }}</pre></details>{% endif %}{% for location in proposal.source_locations %}<span class="qr-evidence-chip">{{ location.source_ref }} · фрагмент {{ location.ordinal }}</span>{% endfor %}</article>{% else %}<p>Предложений по материалу нет.</p>{% endfor %}<details><summary>Технические данные и исходный JSON</summary><pre>{{ pretty_json({'result': selected.execution.result, 'structural_validation': selected.execution.structural_validation, 'usage': selected.execution.usage, 'model_version': selected.execution.model_version, 'payload_sha256': selected.execution.payload_sha256, 'input_sha256': selected.input_sha256}) }}</pre><h3>Полный ответ модели</h3><pre>{{ selected.execution.full_response or selected.execution.error_message or 'Нет ответа модели' }}</pre></details></section>
+  </div>
+  {% else %}
+  <div class="qr-grid">
+    <section class="qr-panel"><h2>Исходные реплики</h2><div class="qr-transcript">{% for utterance in case_view.utterances %}<article><span class="qr-evidence-chip">{{ utterance.id }}</span><b>{{ utterance.speaker }}</b><p class="qr-text">{{ utterance.text }}</p></article>{% else %}<p>Текстовые реплики отсутствуют.</p>{% endfor %}</div><details><summary>Исходный transcript и экспертный эталон</summary><pre>{{ pretty_json({'input': case.input, 'expert_expectation': case.expert_expectation}) }}</pre></details></section>
+    <section class="qr-panel"><h2>Конспект и наблюдения</h2><p class="qr-machine-note">{{ case_view.automatic_note }}</p><h3>Конспект</h3><p class="qr-text">{{ case_view.summary or 'Конспект отсутствует.' }}</p><h3>Темы</h3>{% for topic in case_view.topics %}<article class="qr-observation"><strong>{{ topic.title or topic.topic_id }}</strong><span class="qr-evidence-chip">{{ topic.evidence_status or 'AI inference' }}</span><p>Источник: {{ topic.source_refs | join(', ') if topic.source_refs else topic.source_ref or 'не указан' }}</p></article>{% else %}<p>Темы не извлечены.</p>{% endfor %}<h3>Наблюдения о затруднениях</h3>{% for item in case_view.observations %}<article class="qr-observation"><strong>{{ item.description }}</strong><span class="qr-evidence-chip">{{ item.review_status or item.evidence_status or 'AI inference' }} · {{ item.resolution_status or 'статус не указан' }}</span><p>Навык: {{ item.skill_id }} · подтверждение: {{ item.source_refs | join(', ') if item.source_refs else item.source_ref or 'не указано' }}</p>{% if item.resolution_source_refs %}<p>Позднее исправление: {{ item.resolution_source_refs | join(', ') }}</p>{% endif %}</article>{% else %}<p>Явных затруднений модель не выделила.</p>{% endfor %}{% for item in case_view.unsubstantiated %}<p class="qr-status-note">Гипотеза не подтверждена: {{ item.description }} · {{ item.reason }}</p>{% endfor %}<details><summary>Технические данные и исходный JSON</summary><pre>{{ pretty_json({'result': selected.execution.result, 'structural_validation': selected.execution.structural_validation, 'usage': selected.execution.usage, 'model_version': selected.execution.model_version, 'payload_sha256': selected.execution.payload_sha256, 'input_sha256': selected.input_sha256}) }}</pre><h3>Полный ответ модели</h3><pre>{{ selected.execution.full_response or selected.execution.error_message or 'Нет ответа модели' }}</pre></details></section>
+  </div>
+  {% endif %}
+  <section class="qr-panel qr-review" aria-labelledby="qr-rating-heading"><h2 id="qr-rating-heading">Независимая оценка</h2>
+    {% if selected.expert_review.status == 'reviewed' %}
+      <p>Оценка сохранена: {{ selected.expert_review.reviewer }} · {{ selected.expert_review.reviewed_at }}</p><pre>{{ pretty_json({'ratings': selected.expert_review.ratings, 'comments': selected.expert_review.comments}) }}</pre>
+    {% else %}
+      <p class="qr-help">Отметьте хотя бы один аспект. «Неприменимо» исключается из расчёта. Клавиши: Alt+←/→ — переход, Ctrl+Enter — сохранить, 1/2/3 в строке — верно/неверно/неприменимо.</p>
+      <form id="qr-review-form" method="post" action="{{ url_for('ai_lab.quality_review_page') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="benchmark" value="{{ bundle.id }}"><input type="hidden" name="module" value="{{ module }}"><input type="hidden" name="pending" value="{{ pending_only|int }}">
+        <input type="hidden" name="run_id" value="{{ selected.run_id }}"><input type="hidden" name="case_id" value="{{ selected.case_id }}">
+        <div class="qr-ratings">{% for key, label in rating_fields %}<fieldset class="qr-rating"><legend>{{ label }}</legend><div class="qr-options"><label><input type="radio" name="rating__{{ key }}" value="yes">Верно</label><label><input type="radio" name="rating__{{ key }}" value="no">Неверно</label><label><input type="radio" name="rating__{{ key }}" value="na">Неприменимо</label></div></fieldset>{% endfor %}</div>
+        <label class="qr-comment">Комментарий и основание<textarea name="comments" rows="4" maxlength="4000" placeholder="Укажите конкретное поле ответа и основание вашей оценки"></textarea></label>
+        <button class="qr-save" type="submit">Сохранить экспертную оценку</button>
+      </form>
+    {% endif %}
+  </section>
+  {% else %}<section class="qr-panel"><h2>Случаев по выбранному фильтру нет</h2><p>Измените модуль или включите показ уже проверенных ответов.</p></section>{% endif %}
+  <section class="qr-panel" aria-labelledby="qr-summary-heading"><h2 id="qr-summary-heading">Сводка по человеческим меткам</h2><p>Каждый процент рассчитан только по явно отмеченным аспектам. Пустые показатели означают, что экспертиза ещё не проведена.</p>
+    {% for key, data in bundle.summary.module_metrics.items() %}{% if data.model_outputs %}<h3>{{ {'ai_homework':'AI Homework','ai_course':'AI Course','ai_lesson_intelligence':'AI Lesson'}.get(key, key) }} · оценено {{ data.reviewed }}/{{ data.model_outputs }}</h3><div class="qr-metrics">{% for metric_key, label in rating_catalog[key] %}{% set metric=data.metrics[metric_key] %}<div><strong>{{ label }}</strong><span>{% if metric.accuracy is not none %}{{ (metric.accuracy * 100)|round|int }}%{% else %}не измерено{% endif %} · n={{ metric.n }} · неприменимо {{ metric.not_applicable }} · пропущено {{ metric.skipped }} · ожидает {{ metric.pending }}</span></div>{% endfor %}</div>{% endif %}{% endfor %}
+    <p class="qr-help">Ручная эскалация: {{ bundle.summary.manual_escalations }}/{{ bundle.summary.manual_escalation_n }} ответов модели. Это технический статус, а не экспертная оценка.</p>
+  </section>
+</main>
+<script src="{{ url_for('static', filename='js/ai-lab-quality-review.js') }}" defer></script>
+{% endblock %}

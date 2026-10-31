@@ -1,0 +1,166 @@
+/* ==========================================================================
+   PROJECT ORISTERA — MOTION SYSTEM & CONTINUUM PHYSICS
+   Shared Element Transitions, Camera Panning, Spring Curves & Optical Depth
+   ========================================================================== */
+
+/* 1. Плавный вход пространства (Spatial Entrance with Optical Scale) */
+.ori-space-enter {
+  animation: oriSpaceGlide var(--ori-dur-flow) var(--ori-spring-in) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes oriSpaceGlide {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 2. Орбитальная пульсация центрального Locus Core */
+.ori-locus-glow {
+  position: relative;
+}
+
+.ori-locus-glow::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: var(--ori-grad-locus);
+  opacity: 0.35;
+  filter: blur(16px);
+  z-index: -1;
+  animation: oriLocusBreathing 4s infinite ease-in-out;
+  will-change: transform, opacity;
+}
+
+@keyframes oriLocusBreathing {
+  0%, 100% {
+    opacity: 0.22;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.03);
+  }
+}
+
+/* 3. Гармонические орбитальные кольца (Harmonic Orbital Rings) */
+.ori-orbital-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px dashed var(--ori-filament);
+  pointer-events: none;
+  animation: oriRingRotate 90s linear infinite;
+  will-change: transform;
+}
+
+.ori-orbital-ring.ring-1 {
+  width: 520px;
+  height: 520px;
+  border-style: solid;
+  border-color: var(--ori-filament-prism);
+  opacity: 0.7;
+}
+
+.ori-orbital-ring.ring-2 {
+  width: 780px;
+  height: 780px;
+  border-width: 1px;
+  opacity: 0.5;
+  animation-duration: 140s;
+  animation-direction: reverse;
+}
+
+.ori-orbital-ring.ring-3 {
+  width: 1040px;
+  height: 1040px;
+  border-width: 1px;
+  opacity: 0.35;
+  animation-duration: 200s;
+}
+
+@keyframes oriRingRotate {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 4. Небесные светящиеся нити (Celestial Filaments) */
+.ori-filament-line {
+  stroke-dasharray: 4 4;
+  animation: oriFilamentFlow 12s linear infinite;
+}
+
+@keyframes oriFilamentFlow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -40; }
+}
+
+/* 5. View Transitions API — Нативные правила морфинга */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--ori-dur-flow);
+  animation-timing-function: var(--ori-spring-morph);
+}
+
+::view-transition-old(ori-locus),
+::view-transition-new(ori-locus) {
+  animation-duration: var(--ori-dur-flow);
+  animation-timing-function: var(--ori-spring-in);
+}
+
+.ori-vt-locus {
+  view-transition-name: ori-locus;
+}
+
+.ori-vt-atlas {
+  view-transition-name: ori-atlas;
+}
+
+/* 6. Доступность: Полная поддержка prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .ori-space-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .ori-orbital-ring {
+    animation: none !important;
+  }
+
+  .ori-locus-glow::before {
+    animation: none !important;
+    opacity: 0.25 !important;
+  }
+
+  .ori-filament-line {
+    animation: none !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* 7. Пауза несущественного движения вне поля зрения и в скрытой вкладке. */
+[data-ori-motion="paused"] * {
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
+[data-ori-motion="paused"]::before,
+[data-ori-motion="paused"]::after,
+[data-ori-motion="paused"] *::before,
+[data-ori-motion="paused"] *::after {
+  animation-play-state: paused !important;
+}

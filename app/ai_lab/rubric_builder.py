@@ -16,8 +16,8 @@ from app.ai_lab.config import ai_lab_limits
 from app.ai_lab.provider import GigaChatProvider, gigachat_request_queue, provider_settings
 from core.db_models import AiLabExperiment, AiLabRubricVersion, AiLabRubricTestVerification, AiLabRubricReview
 
-PROMPT_VERSION = "rubric-builder-0.2"
-REPAIR_PROMPT_VERSION = "rubric-builder-repair-0.2"
+PROMPT_VERSION = "rubric-builder-0.3"
+REPAIR_PROMPT_VERSION = "rubric-builder-repair-0.3"
 ISSUE_CATEGORIES = {
     "duplicate", "point_allocation", "incomplete", "unverifiable",
     "invented_constraint", "ambiguous", "alternative_unfair", "reference_misread",
@@ -28,7 +28,8 @@ PROMPT = (
     "Опирайся только на условие и явно указанные требования преподавателя. "
     "Не добавляй скрытых требований, не штрафуй альтернативные корректные алгоритмы. "
     "Сумма баллов критериев должна точно равняться максимуму задания. "
-    "Для каждого критерия опиши полный и частичный балл, типовые ошибки, проверяемость и необходимые доказательства. "
+    "Для каждого критерия назначь стабильный ID, явно укажи правило all_or_nothing или proportional, "
+    "полный и частичный балл, типовые ошибки, проверяемость и необходимые доказательства. "
     "Если условие неоднозначно или эталон ошибочен, сообщи об этом в предупреждениях. "
     "Не придумывай частичный балл внутри критерия: если преподаватель прямо не разрешил частичное начисление, "
     "поле partial_credit оставь пустым и используй all_or_nothing. Явный запрет частичного балла обязателен. "
@@ -37,7 +38,7 @@ PROMPT = (
     "в требование к ученику: пометь непроверяемый аспект и объясни, что должен уточнить преподаватель. "
     "Если эталон кажется неверным, проверь вывод на нескольких простых положительных, отрицательных и нулевых входах "
     "прежде чем описывать границы ошибки; эталон не переопределяет условие. "
-    "Предложенные Python-тесты — только черновики для последующей проверки в изолированном Code Judge."
+    "У каждого предложенного теста укажи стабильные ID теста и критерия; тесты — только черновики для последующей проверки в изолированном Code Judge."
 )
 REPAIR_PROMPT = (
     "Ты исправляешь черновик рубрики локальной AI Lab. Измени только перечисленные проблемные критерии. "
@@ -45,7 +46,7 @@ REPAIR_PROMPT = (
     "перебалансировка, верни предупреждение и оставь прежние баллы: решение примет преподаватель. "
     "Опирайся только на условие и требования преподавателя; не вводи неоговорённых ограничений. "
     "Не штрафуй альтернативные корректные решения. Сохранённые тесты являются предложениями, а не доказательством. "
-    "Верни полную рубрику в заданной JSON-схеме; утверждение выполняет только администратор."
+    "Сохраняй ID критериев и их правила начисления. Верни полную рубрику в заданной JSON-схеме; утверждение выполняет только администратор."
 )
 
 
@@ -55,14 +56,17 @@ def _obj(properties: dict[str, Any]) -> dict[str, Any]:
 
 RUBRIC_SCHEMA = _obj({
     "criteria": {"type": "array", "items": _obj({
+        "id": {"type": "string"},
         "title": {"type": "string"}, "description": {"type": "string"},
         "max_score": {"type": "number"}, "full_credit": {"type": "string"},
         "partial_credit": {"type": "string"}, "typical_errors": {"type": "array", "items": {"type": "string"}},
         "automatable": {"type": "boolean"}, "evidence": {"type": "string"},
         "manual_reason": {"type": "string"},
+        "policy": {"type": "string", "enum": ["all_or_nothing", "proportional"]},
     })},
     "warnings": {"type": "array", "items": {"type": "string"}},
     "proposed_tests": {"type": "array", "items": _obj({
+        "id": {"type": "string"}, "criterion_id": {"type": "string"},
         "name": {"type": "string"}, "input_json": {"type": "string"},
         "expected_json": {"type": "string"}, "criterion_title": {"type": "string"},
         "purpose": {"type": "string"},
@@ -106,7 +110,69 @@ def validate_task(raw: Any) -> dict[str, Any]:
     if not math.isfinite(maximum) or not 0 < maximum <= 100:
         raise RubricError("Максимальный балл должен быть от 0 до 100.")
     task["max_score"] = maximum
+    assignment_id = raw.get("assignment_id")
+    assignment_version = raw.get("assignment_version")
+    if assignment_id not in (None, ""):
+        assignment_id = _text(assignment_id, "Стабильный ID задания", 120)
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,119}", assignment_id):
+            raise RubricError("Поле «Стабильный ID задания» допускает только латиницу, цифры, точку, подчёркивание, двоеточие и дефис.")
+        if isinstance(assignment_version, bool) or not re.fullmatch(r"[1-9][0-9]{0,8}", str(assignment_version or "")):
+            raise RubricError("Для стабильного ID укажите версию задания — целое число от 1 до 999999999.")
+        task["assignment_id"] = assignment_id
+        task["assignment_version"] = int(assignment_version)
+    elif assignment_version not in (None, ""):
+        raise RubricError("Версия задания требует стабильного ID задания.")
     return task
+
+
+def _stable_rubric_key(task: dict[str, Any]) -> str | None:
+    if not task.get("assignment_id"):
+        return None
+    identity = f"{task['assignment_id']}:{task['assignment_version']}"
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"boostudy.ai-lab.rubric:{identity}"))
+
+
+def _task_content(task: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in task.items() if key not in {"assignment_id", "assignment_version"}}
+
+
+def _next_rubric_version(rubric_key: str) -> int:
+    latest = AiLabRubricVersion.query.filter_by(rubric_key=rubric_key).order_by(AiLabRubricVersion.version_no.desc()).first()
+    return latest.version_no + 1 if latest else 1
+
+
+def _generation_attempt_count(versions: list[AiLabRubricVersion]) -> int:
+    attempts = set()
+    for version in versions:
+        generation = version.generation_json or {}
+        request_key = generation.get("request_key")
+        if request_key:
+            attempts.add(("request", str(request_key)))
+        elif version.status == "generation_error":
+            attempts.add(("error", version.id))
+        elif version.version_no == 1 and not generation.get("repair_request_key"):
+            attempts.add(("rubric", version.rubric_key))
+    return len(attempts)
+
+
+def _find_reusable_rubric(task: dict[str, Any]) -> dict[str, Any] | None:
+    rubric_key = _stable_rubric_key(task)
+    if not rubric_key:
+        return None
+    versions = AiLabRubricVersion.query.filter_by(rubric_key=rubric_key).order_by(AiLabRubricVersion.version_no.desc()).all()
+    for version in versions:
+        if _task_content(version.task_json or {}) != _task_content(task):
+            raise RubricError(
+                f"Для задания «{task['assignment_id']}» версии {task['assignment_version']} уже сохранена другая формулировка. "
+                "Увеличьте версию задания, чтобы создать отдельную рубрику.",
+                409,
+            )
+    reusable = next((version for version in versions if version.status != "generation_error"), None)
+    if not reusable:
+        return None
+    result = _serialize(reusable)
+    result["reused"] = True
+    return result
 
 
 def _partial_credit_allowed(requirements: str) -> bool:
@@ -138,6 +204,10 @@ def validate_criteria(raw: Any, task: dict[str, Any]) -> tuple[list[dict[str, An
             raise RubricError(f"Укажите баллы критерия №{index}.") from exc
         if not math.isfinite(maximum) or maximum <= 0 or maximum > task["max_score"]:
             errors.append(f"Критерий «{title}»: некорректный максимум баллов.")
+        criterion_id = item.get("id")
+        if criterion_id is not None and (not isinstance(criterion_id, str) or not criterion_id.strip() or len(criterion_id.strip()) > 80):
+            errors.append(f"Критерий «{title}»: укажите стабильный непустой ID до 80 символов.")
+        criterion_id = str(criterion_id).strip() if criterion_id is not None else f"criterion-{index}"
         key = re.sub(r"\W+", "", title.casefold())
         if key in seen:
             errors.append(f"Повторяется критерий «{title}».")
@@ -147,7 +217,11 @@ def validate_criteria(raw: Any, task: dict[str, Any]) -> tuple[list[dict[str, An
         if policy not in {"all_or_nothing", "proportional"}:
             errors.append(f"Критерий «{title}»: неизвестное правило начисления.")
         if policy == "proportional" and not _partial_credit_allowed(task["teacher_requirements"]):
-            warnings.append(f"Критерий «{title}»: пропорциональный балл не указан преподавателем.")
+            errors.append(f"Критерий «{title}»: частичное начисление не разрешено преподавателем.")
+        if partial_credit and policy == "all_or_nothing" and not re.search(
+            r"(?:не\s+(?:предусмотр|допуска|начис)|нет\s+частич)", partial_credit.casefold()
+        ):
+            errors.append(f"Критерий «{title}»: описание частичного балла противоречит правилу all_or_nothing.")
         if partial_credit and not _partial_credit_allowed(task["teacher_requirements"]):
             denial = re.search(r"(?:частич\w*\s+балл\w*\s+не\s+(?:предусмотр|допуска|начис)|нет\s+частич\w*\s+балл)", partial_credit.casefold())
             if not denial:
@@ -160,7 +234,7 @@ def validate_criteria(raw: Any, task: dict[str, Any]) -> tuple[list[dict[str, An
         if not isinstance(typical, list) or len(typical) > 10:
             raise RubricError(f"Критерий «{title}»: список типичных ошибок некорректен.")
         criteria.append({
-            "id": str(item.get("id") or f"criterion-{index}")[:80],
+            "id": criterion_id,
             "title": title, "description": description, "max_score": maximum,
             "full_credit": full_credit, "partial_credit": partial_credit,
             "typical_errors": [_text(value, "Типичная ошибка", 300) for value in typical],
@@ -196,17 +270,75 @@ def validate_criteria(raw: Any, task: dict[str, Any]) -> tuple[list[dict[str, An
         distinctive = set(re.findall(r"[\w]{6,}", (item["title"] + " " + item["description"]).casefold()))
         if distinctive and not (distinctive & condition_words):
             warnings.append(f"Проверьте, следует ли критерий «{item['title']}» из условия.")
-    return criteria, {"ok": not errors, "errors": errors, "warnings": warnings, "total": total}
+    automated_count = sum(bool(item["automatable"]) for item in criteria)
+    validation = {
+        "ok": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "total": total,
+        "structural_status": "valid" if not errors else "invalid",
+        "testability_status": "requires_sandbox_verification" if automated_count else "manual_evidence_required",
+        "automatable_criteria": automated_count,
+        "criterion_count": len(criteria),
+        "content_correctness": "not_assessed_requires_expert_review",
+    }
+    return criteria, validation
+
+
+def _validate_proposed_tests(raw: Any, criteria: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    if raw is None:
+        return [], []
+    if not isinstance(raw, list) or len(raw) > 30:
+        return [], ["Предложенные тесты имеют неверный формат или превышают лимит 30."]
+    known_criteria = {item["id"] for item in criteria}
+    tests = []
+    warnings = []
+    seen = set()
+    for index, item in enumerate(raw, 1):
+        if not isinstance(item, dict):
+            warnings.append(f"Тест №{index} пропущен: ожидался JSON-объект.")
+            continue
+        test_id = str(item.get("id") or "").strip()
+        criterion_id = str(item.get("criterion_id") or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}", test_id) or test_id in seen:
+            warnings.append(f"Тест №{index} пропущен: ID отсутствует, некорректен или повторяется.")
+            continue
+        if criterion_id not in known_criteria:
+            warnings.append(f"Тест «{test_id}» не привязан к существующему критерию и не будет исполнен.")
+            continue
+        try:
+            input_value = json.loads(_text(item.get("input_json"), f"Вход теста {test_id}", 4000))
+            expected_value = json.loads(_text(item.get("expected_json"), f"Ожидаемый результат теста {test_id}", 4000))
+            name = _text(item.get("name"), f"Название теста {test_id}", 160)
+            purpose = _text(item.get("purpose"), f"Назначение теста {test_id}", 500)
+        except (RubricError, ValueError) as exc:
+            warnings.append(f"Тест «{test_id}» пропущен: input_json/expected_json должны быть корректным JSON ({exc}).")
+            continue
+        seen.add(test_id)
+        tests.append({
+            "id": test_id,
+            "criterion_id": criterion_id,
+            "criterion_title": next(item["title"] for item in criteria if item["id"] == criterion_id),
+            "name": name,
+            "input_json": json.dumps(input_value, ensure_ascii=False, separators=(",", ":")),
+            "expected_json": json.dumps(expected_value, ensure_ascii=False, separators=(",", ":")),
+            "purpose": purpose,
+            "status": "unverified",
+        })
+    return tests, warnings
 
 
 def _serialize(item: AiLabRubricVersion) -> dict[str, Any]:
-    try:
-        _, current_validation = validate_criteria(item.criteria_json, item.task_json)
-        proposal_warnings = (item.raw_proposal_json or {}).get("warnings") or []
-        if isinstance(proposal_warnings, list):
-            current_validation["warnings"].extend(str(value)[:500] for value in proposal_warnings[:10])
-    except RubricError as exc:
-        current_validation = {"ok": False, "errors": [str(exc)], "warnings": []}
+    if item.status == "generation_error":
+        current_validation = dict(item.validation_json or {})
+    else:
+        try:
+            _, current_validation = validate_criteria(item.criteria_json, item.task_json)
+            proposal_warnings = (item.raw_proposal_json or {}).get("warnings") or []
+            if isinstance(proposal_warnings, list):
+                current_validation["warnings"].extend(str(value)[:500] for value in proposal_warnings[:10])
+        except RubricError as exc:
+            current_validation = {"ok": False, "errors": [str(exc)], "warnings": []}
     review = AiLabRubricReview.query.filter_by(rubric_version_id=item.id).order_by(AiLabRubricReview.id.desc()).first()
     return {
         "id": item.id, "rubric_key": item.rubric_key, "version_no": item.version_no,
@@ -267,6 +399,7 @@ def review_rubric(version_id: int, raw: Any, actor_user_id: int) -> dict[str, An
 
 
 def generate_rubric(raw_task: Any, model: str, actor_user_id: int, request_key: str | None = None) -> dict[str, Any]:
+    task = validate_task(raw_task)
     if request_key is not None:
         try:
             request_key = str(uuid.UUID(request_key))
@@ -274,19 +407,26 @@ def generate_rubric(raw_task: Any, model: str, actor_user_id: int, request_key: 
             raise RubricError("Ключ защиты от повторной генерации некорректен.") from exc
     with _GENERATION_LOCK:
         if request_key:
-            existing = next((item for item in AiLabRubricVersion.query.filter_by(created_by_user_id=actor_user_id, version_no=1).all()
+            existing = next((item for item in AiLabRubricVersion.query.filter_by(created_by_user_id=actor_user_id).order_by(AiLabRubricVersion.id.desc()).all()
                              if (item.generation_json or {}).get("request_key") == request_key), None)
             if existing:
-                return _serialize(existing)
+                result = _serialize(existing)
+                result["reused"] = True
+                return result
+        reusable = _find_reusable_rubric(task)
+        if reusable:
+            return reusable
         since = datetime.now(timezone.utc) - timedelta(hours=1)
         admin_count = AiLabExperiment.query.filter(AiLabExperiment.actor_user_id == actor_user_id, AiLabExperiment.created_at >= since).count()
-        admin_count += AiLabRubricVersion.query.filter(AiLabRubricVersion.created_by_user_id == actor_user_id, AiLabRubricVersion.version_no == 1, AiLabRubricVersion.created_at >= since).count()
+        admin_versions = AiLabRubricVersion.query.filter_by(created_by_user_id=actor_user_id).filter(AiLabRubricVersion.created_at >= since).all()
+        admin_count += _generation_attempt_count(admin_versions)
         lab_count = AiLabExperiment.query.filter(AiLabExperiment.created_at >= since).count()
-        lab_count += AiLabRubricVersion.query.filter(AiLabRubricVersion.version_no == 1, AiLabRubricVersion.created_at >= since).count()
+        lab_versions = AiLabRubricVersion.query.filter(AiLabRubricVersion.created_at >= since).all()
+        lab_count += _generation_attempt_count(lab_versions)
         limits = ai_lab_limits()
         if admin_count >= limits["runs_per_admin_per_hour"] or lab_count >= limits["runs_per_lab_per_hour"]:
             raise RubricError("Достигнут локальный часовой лимит AI Lab. Попробуйте позже.", 429)
-        return _generate_rubric(raw_task, model, actor_user_id, request_key)
+        return _generate_rubric(task, model, actor_user_id, request_key)
 
 
 def _generate_rubric(raw_task: Any, model: str, actor_user_id: int, request_key: str | None) -> dict[str, Any]:
@@ -299,10 +439,25 @@ def _generate_rubric(raw_task: Any, model: str, actor_user_id: int, request_key:
         available = provider.list_models()
         if model not in available:
             raise RubricError("Выбранная модель GigaChat сейчас недоступна.", 400)
-        completion = provider.complete_structured(model, PROMPT, {"task": task, "prompt_version": PROMPT_VERSION}, RUBRIC_SCHEMA)
+        completion = provider.complete_structured(model, PROMPT, {"task": _task_content(task), "prompt_version": PROMPT_VERSION}, RUBRIC_SCHEMA)
+    max_tokens = int((completion.generation_parameters or {}).get("max_tokens") or 0)
+    truncated = str(completion.finish_reason or "").casefold() in {"length", "max_tokens", "token_limit"}
+    truncated = truncated or bool(max_tokens and completion.output_tokens is not None and completion.output_tokens >= max_tokens)
+    if truncated:
+        return _save_generation_error(
+            task, completion, actor_user_id, request_key,
+            "Ответ генератора достиг ограничения токенов и был обрезан. Увеличьте AI_LAB_MAX_COMPLETION_TOKENS или сократите условие.",
+            "generation_truncated",
+        )
     try:
         proposal = json.loads(completion.content)
     except (TypeError, ValueError) as exc:
+        if max_tokens and completion.output_tokens is not None and completion.output_tokens >= max_tokens:
+            return _save_generation_error(
+                task, completion, actor_user_id, request_key,
+                "Ответ генератора достиг ограничения токенов и не образует полный JSON.",
+                "generation_truncated",
+            )
         raise RubricError("GigaChat вернул неразборчивую рубрику. Попробуйте повторить генерацию.", 502) from exc
     if not isinstance(proposal, dict):
         raise RubricError("GigaChat вернул некорректную структуру рубрики.", 502)
@@ -310,17 +465,21 @@ def _generate_rubric(raw_task: Any, model: str, actor_user_id: int, request_key:
         criteria, validation = validate_criteria(proposal.get("criteria"), task)
     except RubricError as exc:
         criteria, validation = [], {"ok": False, "errors": [str(exc)], "warnings": [], "total": 0}
-    tests = proposal.get("proposed_tests") or []
-    if not isinstance(tests, list) or len(tests) > 30:
-        raise RubricError("GigaChat предложил слишком много тестов.", 502)
-    tests = [{**test, "status": "unverified"} for test in tests if isinstance(test, dict)]
+    tests, test_warnings = _validate_proposed_tests(proposal.get("proposed_tests"), criteria)
+    validation["warnings"].extend(test_warnings)
+    if tests:
+        validation["testability_status"] = "proposed_tests_unverified"
+    elif validation.get("automatable_criteria"):
+        validation["testability_status"] = "no_linked_proposed_tests"
     warnings = proposal.get("warnings") or []
     if isinstance(warnings, list):
         validation["warnings"].extend(str(value)[:500] for value in warnings[:10])
-    key = str(uuid.uuid4())
+    key = _stable_rubric_key(task) or str(uuid.uuid4())
+    assignment_id = task.get("assignment_id") or f"ai-lab.rubric.{key}"
+    assignment_version = int(task.get("assignment_version") or 1)
     item = AiLabRubricVersion(
-        rubric_key=key, version_no=1, assignment_id=f"ai-lab.rubric.{key}",
-        assignment_version=1, task_json=task, criteria_json=criteria,
+        rubric_key=key, version_no=_next_rubric_version(key), assignment_id=assignment_id,
+        assignment_version=assignment_version, task_json=task, criteria_json=criteria,
         proposed_tests_json=tests, raw_proposal_json=proposal, edits_json=[],
         validation_json=validation, status="draft", model=completion.model,
         prompt_version=PROMPT_VERSION,
@@ -330,6 +489,54 @@ def _generate_rubric(raw_task: Any, model: str, actor_user_id: int, request_key:
                                    "precached_prompt_tokens": completion.precached_prompt_tokens,
                                    "completion_tokens": completion.output_tokens,
                                    "total_tokens": completion.total_tokens}},
+        created_by_user_id=actor_user_id,
+    )
+    db.session.add(item)
+    db.session.commit()
+    return _serialize(item)
+
+
+def _save_generation_error(task: dict[str, Any], completion, actor_user_id: int,
+                           request_key: str | None, message: str, code: str) -> dict[str, Any]:
+    key = _stable_rubric_key(task) or str(uuid.uuid4())
+    assignment_id = task.get("assignment_id") or f"ai-lab.rubric.{key}"
+    assignment_version = int(task.get("assignment_version") or 1)
+    usage = {
+        "prompt_tokens": completion.prompt_tokens,
+        "precached_prompt_tokens": completion.precached_prompt_tokens,
+        "completion_tokens": completion.output_tokens,
+        "total_tokens": completion.total_tokens,
+    }
+    item = AiLabRubricVersion(
+        rubric_key=key,
+        version_no=_next_rubric_version(key),
+        assignment_id=assignment_id,
+        assignment_version=assignment_version,
+        task_json=task,
+        criteria_json=[],
+        proposed_tests_json=[],
+        raw_proposal_json={"truncated_completion": (completion.content or "")[:24_000]},
+        edits_json=[],
+        validation_json={
+            "ok": False,
+            "errors": [message],
+            "warnings": [],
+            "structural_status": "invalid",
+            "testability_status": "not_available",
+            "content_correctness": "not_assessed_requires_expert_review",
+        },
+        status="generation_error",
+        model=completion.model,
+        prompt_version=PROMPT_VERSION,
+        generation_json={
+            "request_key": request_key,
+            "payload_id": completion.payload_id,
+            "payload_sha256": completion.payload_sha256,
+            "parameters": completion.generation_parameters or {},
+            "finish_reason": completion.finish_reason,
+            "usage": usage,
+            "technical_error": {"code": code, "message": message},
+        },
         created_by_user_id=actor_user_id,
     )
     db.session.add(item)
@@ -347,13 +554,21 @@ def revise_rubric(version_id: int, raw: Any, actor_user_id: int) -> dict[str, An
     if not isinstance(raw, dict):
         raise RubricError("Передайте изменения критериев.")
     task = validate_task(raw.get("task") or source.task_json)
+    source_task = source.task_json or {}
+    if source_task.get("assignment_id") and (
+        task.get("assignment_id") != source_task.get("assignment_id")
+        or task.get("assignment_version") != source_task.get("assignment_version")
+        or _task_content(task) != _task_content(source_task)
+    ):
+        raise RubricError("Сохранённая версия связана с исходным условием. Для изменённого задания укажите новый номер версии и создайте отдельную рубрику.", 409)
     criteria, validation = validate_criteria(raw.get("criteria"), task)
     proposal_warnings = (source.raw_proposal_json or {}).get("warnings") or []
     if isinstance(proposal_warnings, list):
         validation["warnings"].extend(str(value)[:500] for value in proposal_warnings[:10])
     item = AiLabRubricVersion(
         rubric_key=source.rubric_key, version_no=source.version_no + 1,
-        assignment_id=source.assignment_id, assignment_version=source.assignment_version + 1,
+        assignment_id=source.assignment_id,
+        assignment_version=source.assignment_version if source_task.get("assignment_id") else source.assignment_version + 1,
         task_json=task, criteria_json=criteria,
         proposed_tests_json=source.proposed_tests_json,
         raw_proposal_json=source.raw_proposal_json,
@@ -432,7 +647,8 @@ def repair_rubric(version_id: int, raw: Any, actor_user_id: int) -> dict[str, An
         validation["warnings"].extend(str(value)[:500] for value in warnings[:10])
     item = AiLabRubricVersion(
         rubric_key=source.rubric_key, version_no=source.version_no + 1,
-        assignment_id=source.assignment_id, assignment_version=source.assignment_version + 1,
+        assignment_id=source.assignment_id,
+        assignment_version=source.assignment_version if (source.task_json or {}).get("assignment_id") else source.assignment_version + 1,
         task_json=source.task_json, criteria_json=criteria,
         proposed_tests_json=source.proposed_tests_json, raw_proposal_json=proposal,
         edits_json=[*(source.edits_json or []), {"from_version": source.version_no, "actor_user_id": actor_user_id,

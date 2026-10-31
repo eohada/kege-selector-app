@@ -5,7 +5,7 @@ import base64
 import uuid
 import re
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, request, session
+from flask import Blueprint, abort, current_app, jsonify, render_template, request, session, url_for
 from flask_login import login_required
 
 from app.models import db
@@ -56,6 +56,20 @@ def workspace_page():
     actor = _workspace_actor()
     ctx = resolve_workspace_context(actor, context_type, context_id, assignment_task_id)
     payload = ctx.as_payload()
+    if context_type == "submission_task" and ctx.can_review and ctx.answer_id:
+        answer = db.session.get(Answer, ctx.answer_id)
+        payload["answer_files"] = [
+            {
+                "name": str(item.get("original_name") or item.get("filename") or "Файл ответа"),
+                "url": url_for(
+                    "assignments.serve_answer_file",
+                    submission_id=ctx.submission_id,
+                    filename=str(item["filename"]),
+                ),
+            }
+            for item in (answer.files if answer and isinstance(answer.files, list) else [])
+            if isinstance(item, dict) and str(item.get("filename") or "").strip()
+        ]
     if context_type == "submission_task" and actor.is_student() and not ctx.can_edit and ctx.submission_id:
         review = SubmissionAiReview.query.filter_by(submission_id=ctx.submission_id).order_by(
             SubmissionAiReview.revision_no.desc()
@@ -73,6 +87,7 @@ def workspace_page():
             homework_mode=True,
             review_mode=is_review_mode,
             homework_workspace=payload,
+            room_os_workspace=payload.get("workspace_files"),
             room_os_code=payload.get("code") or payload.get("starter_code") or "",
             room_student_notes="",
             classwork_tasks=[],
@@ -180,7 +195,32 @@ def workspace_save_api():
     # The editor sends playback frames only when there is a new trace chunk.
     # An ordinary code autosave must not erase the already persisted history.
     frames = data.get("playback_frames")
-    save_workspace_code(ctx, data.get("code") or "", data.get("answer") or "", frames=frames, notes=data.get("notes"))
+    files = data.get("files")
+    open_tabs = data.get("open_tabs")
+    active_file = data.get("active_file")
+    revision = data.get("revision")
+    from core.db_models import utc_now
+    try:
+        new_rev = save_workspace_code(
+            ctx,
+            data.get("code") or "",
+            data.get("answer") if "answer" in data else None,
+            frames=frames,
+            notes=data.get("notes"),
+            files=files,
+            open_tabs=open_tabs,
+            active_file=active_file,
+            revision=revision,
+        )
+    except ValueError as e:
+        curr_state = load_workspace_state_payload(ctx)
+        return jsonify({
+            "success": False,
+            "error": "stale_revision",
+            "message": str(e),
+            "current_revision": curr_state.get("revision", 1),
+            "workspace_state": curr_state,
+        }), 409
     versions = load_workspace_versions_payload(ctx)
     try:
         emit_workspace_snapshot(
@@ -191,7 +231,13 @@ def workspace_save_api():
         )
     except Exception:
         pass
-    return jsonify({"success": True, "saved": "server", "versions": versions})
+    return jsonify({
+        "success": True,
+        "saved": "server",
+        "versions": versions,
+        "revision": new_rev,
+        "ack_ts": utc_now().isoformat(),
+    })
 
 
 @task_workspace_bp.route("/api/code", methods=["POST"])
@@ -205,11 +251,41 @@ def workspace_code_api():
     if not ctx.can_edit:
         abort(403)
     code = str(data.get("code") or "")
+    files = data.get("files")
+    open_tabs = data.get("open_tabs")
+    active_file = data.get("active_file")
+    revision = data.get("revision")
     # Code tasks submit the OS editor itself; other answer types keep their
     # separate value when the editor autosaves.
     is_code_answer = ctx.as_payload().get("answer_spec", {}).get("type") == "code"
-    save_workspace_code(ctx, code, code if is_code_answer else ctx.plain_answer)
-    return jsonify({"success": True})
+    from core.db_models import utc_now
+    try:
+        new_rev = save_workspace_code(
+            ctx,
+            code,
+            code if is_code_answer else None,
+            files=files,
+            open_tabs=open_tabs,
+            active_file=active_file,
+            revision=revision,
+        )
+    except ValueError as e:
+        curr_state = load_workspace_state_payload(ctx)
+        match = re.search(r"current\s+(\d+)", str(e))
+        current_rev = int(match.group(1)) if match else int(curr_state.get("revision", 1))
+        return jsonify({
+            "success": False,
+            "error": "stale_revision",
+            "message": str(e),
+            "current_revision": current_rev,
+            "revision": current_rev,
+            "workspace_state": curr_state,
+        }), 409
+    return jsonify({
+        "success": True,
+        "revision": new_rev,
+        "ack_ts": utc_now().isoformat(),
+    })
 
 
 @task_workspace_bp.route("/api/versions")

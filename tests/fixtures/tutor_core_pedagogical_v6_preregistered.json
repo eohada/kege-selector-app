@@ -1,0 +1,116 @@
+{
+  "protocol_id": "tutor-core-pedagogical-v6-20261022",
+  "protocol_version": 1,
+  "frozen_at": "2026-10-22",
+  "implementation_target": {
+    "lesson_prompt_version": "lesson-intelligence.v6",
+    "parser_contract": "lesson-transcript.v2",
+    "plan_method": "deterministic_evidence_priority.v1"
+  },
+  "expectations_frozen_before_model_runs": true,
+  "expected_results_sent_to_model": false,
+  "data_scope": "synthetic_only",
+  "holdout_case_ids": ["case-07-similar-skill-labels", "case-08-contradictory-evidence"],
+  "scenarios": [
+    {
+      "case_id": "case-01-self-correction",
+      "split": "development",
+      "subject": "Python: границы диапазона",
+      "skill_id": "python.boundary_cases",
+      "transcript": "Преподаватель: Проверим диапазон range(4).\nУченик: Я не понимаю, входит ли число 4.\nПреподаватель: Запиши первые значения, а потом попробуй другой верхний предел.\nУченик: Для range(4) получаются 0, 1, 2, 3; четвёрки нет.\nУченик: На новом примере range(7) даст 0…7, если stop равен 8.",
+      "expected": {
+        "initial_difficulty": true,
+        "later_independent_application": "candidate_requires_manual_review",
+        "durable_mastery": "not_established",
+        "critical_rule": "self-correction on a new example may support a candidate, but not durable mastery"
+      }
+    },
+    {
+      "case_id": "case-02-correct-after-hint",
+      "split": "development",
+      "subject": "Python: накопление результата в цикле",
+      "skill_id": "python.iteration",
+      "transcript": "Ученик: Я не понимаю, почему сумма не меняется в цикле.\nПреподаватель: Проверь, где именно находится присваивание total = total + value.\nУченик: После подсказки перенёс присваивание внутрь цикла, теперь сумма растёт.",
+      "expected": {
+        "initial_difficulty": true,
+        "later_state": "corrected_after_hint",
+        "independent_mastery": false,
+        "critical_rule": "answer after a targeted hint is progress with assistance"
+      }
+    },
+    {
+      "case_id": "case-03-easy-success-hard-failure",
+      "split": "development",
+      "subject": "Python: простое и составное условие",
+      "skill_id": "python.boundary_cases",
+      "transcript": "Преподаватель: Для x = 5 проверь условие x > 0.\nУченик: Оно истинно, потому что пять больше нуля.\nПреподаватель: Теперь разберём условие x >= 0 and x % 2 == 0 для граничного значения.\nУченик: Я не понимаю, как проверить обе части вместе.\nУченик: Для x = 0 я не уверен, какое значение получится.",
+      "expected": {
+        "easy_task_success": "separate evidence only",
+        "hard_task_state": "unresolved_or_unknown",
+        "critical_rule": "success on the simpler task must not resolve a different difficulty"
+      }
+    },
+    {
+      "case_id": "case-04-understanding-claim-contradicted",
+      "split": "development",
+      "subject": "Python: вызов функции и параметры",
+      "skill_id": "python.functions",
+      "transcript": "Ученик: Я не понимаю, чем параметр функции отличается от переданного аргумента.\nПреподаватель: Параметр указан в определении, аргумент передаётся при вызове.\nУченик: Кажется, теперь понял.\nПреподаватель: Вызови f(3), если определение имеет вид def f(x).\nУченик: Тогда параметр — это 3, а аргумент — x.\nУченик: Я снова запутался и не понимаю, что передаётся при вызове.",
+      "expected": {
+        "initial_difficulty": true,
+        "understanding_claim": "verbal_claim_only",
+        "final_state": "unresolved_or_unknown",
+        "critical_rule": "later contradictory evidence must remain visible and outweigh the verbal claim"
+      }
+    },
+    {
+      "case_id": "case-05-self-caught-slip",
+      "split": "development",
+      "subject": "Python: остаток и чётность",
+      "skill_id": "python.boundary_cases",
+      "transcript": "Преподаватель: Как проверить, что 14 чётное?\nУченик: Проверю n % 2 == 1… нет, оговорился: для чётного нужно n % 2 == 0.\nУченик: Для 15 остаток равен 1, значит проверка на чётность вернёт ложь.",
+      "expected": {
+        "self_correction": true,
+        "persistent_difficulty": "not_established",
+        "independent_application": "candidate_requires_manual_review",
+        "critical_rule": "a self-caught slip is not automatically a persistent misconception"
+      }
+    },
+    {
+      "case_id": "case-06-alternative-correct-algorithm",
+      "split": "development",
+      "subject": "Python: альтернативный алгоритм подсчёта",
+      "skill_id": "python.iteration",
+      "transcript": "Преподаватель: Посчитай числа от 0 до 12 включительно, которые делятся на 3.\nУченик: Я пройду циклом по range(13), проверю n % 3 == 0 и увеличу счётчик. Получится 5.\nПреподаватель: Можно ли решить иначе?\nУченик: Да, перечислить 0, 3, 6, 9 и 12; ответ тот же — 5.",
+      "expected": {
+        "difficulty": "none_explicitly_reported",
+        "alternative_algorithm": "valid_and_equivalent",
+        "critical_rule": "do not label an alternative algorithm incorrect merely because it differs from a reference approach"
+      }
+    },
+    {
+      "case_id": "case-07-similar-skill-labels",
+      "split": "holdout",
+      "subject": "Python: счётчик цикла и аргумент функции",
+      "skill_ids": ["python.iteration", "python.functions"],
+      "transcript": "Ученик: Я не понимаю, где увеличивать счётчик в цикле.\nПреподаватель: Переменную count меняют внутри цикла.\nУченик: Теперь понял.\nУченик: Ещё я не понимаю, что означает аргумент в вызове функции.\nПреподаватель: Аргумент передаётся при вызове, параметр записан в определении.\nУченик: Для второй задачи я пока не могу объяснить, что именно передаётся.",
+      "expected": {
+        "iteration_state": "unresolved_or_unknown_or_helped_progress",
+        "function_argument_state": "unresolved_or_unknown",
+        "critical_rule": "similar words such as count/argument must not merge distinct stable skill IDs"
+      }
+    },
+    {
+      "case_id": "case-08-contradictory-evidence",
+      "split": "holdout",
+      "subject": "Python: включённая граница диапазона",
+      "skill_id": "python.boundary_cases",
+      "transcript": "Ученик: Я не понимаю, почему верхняя граница не включается.\nПреподаватель: В range stop не входит в результат.\nУченик: На новом примере range(6) я получил 0…5 без подсказки.\nУченик: Но для range(0, 6, 2) я считаю, что шесть тоже появится.\nПреподаватель: Проверь фактические значения ещё раз.\nУченик: Я снова не уверен, включается ли stop.",
+      "expected": {
+        "state": "unresolved_or_unknown",
+        "contradiction": "preserve independent success candidate and later repeated difficulty",
+        "critical_rule": "do not remove conflicting evidence to make the summary look consistent"
+      }
+    }
+  ]
+}

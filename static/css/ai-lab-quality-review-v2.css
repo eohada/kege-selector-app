@@ -1,0 +1,18 @@
+.qr-score-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.qr-score-strip>div{display:grid;gap:6px;padding:12px;border:1px solid var(--bs-border);border-radius:var(--bs-radius-md,12px);background:var(--bs-bg-surface-soft)}
+.qr-score-strip span,.qr-criterion-status{font-size:12px;color:var(--bs-text-secondary)}
+.qr-score-strip strong{font-size:18px;overflow-wrap:anywhere}
+.qr-machine-note{padding:10px 12px;border-left:3px solid var(--bs-primary);background:var(--bs-bg-surface-soft);color:var(--bs-text-secondary);line-height:1.5}
+.qr-criterion-results,.qr-feedback-list,.qr-transcript{display:grid;gap:10px}
+.qr-criterion,.qr-proposal,.qr-source-item,.qr-observation,.qr-feedback-item{padding:13px;border:1px solid var(--bs-border);border-radius:var(--bs-radius-md,12px);background:var(--bs-bg-surface)}
+.qr-criterion>div:first-child{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.qr-criterion.is-conflict{border-color:var(--bs-danger,#d85360);background:var(--bs-surface-peach-soft)}
+.qr-criterion p,.qr-observation p,.qr-feedback-item p{margin:7px 0;color:var(--bs-text-secondary);line-height:1.5}
+.qr-evidence-list{display:flex;flex-wrap:wrap;gap:6px}
+.qr-evidence-chip{display:inline-flex;align-items:center;min-height:28px;padding:4px 9px;border:1px solid var(--bs-border);border-radius:var(--bs-radius-pill,999px);background:var(--bs-bg-surface-soft);color:var(--bs-text-secondary);font-size:12px;overflow-wrap:anywhere}
+.qr-proposal{margin:12px 0}.qr-proposal h3,.qr-source-item h3{margin:12px 0 6px}.qr-proposal p,.qr-source-item p{line-height:1.55}
+.qr-transcript article{padding:12px;border:1px solid var(--bs-border);border-radius:var(--bs-radius-md,12px);background:var(--bs-bg-surface-soft)}
+.qr-transcript article b{margin-left:8px}.qr-status-note{padding:12px;border:1px solid var(--bs-border);border-radius:var(--bs-radius-md,12px);background:var(--bs-surface-peach-soft);line-height:1.5}
+.qr-code{max-height:520px!important;font-size:13px!important}.qr-criteria-list{padding-left:20px;line-height:1.6}.qr-page details>h3{margin-top:16px}
+@media(max-width:1024px){.qr-score-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.qr-score-strip{grid-template-columns:1fr}.qr-criterion>div:first-child{display:grid}.qr-criterion p{overflow-wrap:anywhere}}

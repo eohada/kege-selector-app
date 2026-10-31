@@ -9,6 +9,7 @@ import logging
 import io
 import json
 import mimetypes
+import threading
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
@@ -24,6 +25,7 @@ class StorageService:
         self.google_drive = None
         self.google_drive_folder_id = None
         self.local_upload_dir = None
+        self._drive_lock = threading.Lock()
         if app:
             self.init_app(app)
 
@@ -188,16 +190,17 @@ class StorageService:
         """Return bytes and MIME type for a private Drive file."""
         if not self.use_google_drive or not self.google_drive:
             raise RuntimeError('Google Drive storage is not configured.')
-        metadata = self.google_drive.files().get(
-            fileId=file_id,
-            fields='mimeType,name',
-            supportsAllDrives=True,
-        ).execute()
-        contents = self.google_drive.files().get_media(
-            fileId=file_id,
-            supportsAllDrives=True,
-        ).execute()
-        return io.BytesIO(contents), metadata.get('mimeType') or 'application/octet-stream', metadata.get('name') or 'file'
+        with self._drive_lock:
+            metadata = self.google_drive.files().get(
+                fileId=file_id,
+                fields='mimeType,name',
+                supportsAllDrives=True,
+            ).execute()
+            contents = self.google_drive.files().get_media(
+                fileId=file_id,
+                supportsAllDrives=True,
+            ).execute()
+            return io.BytesIO(contents), metadata.get('mimeType') or 'application/octet-stream', metadata.get('name') or 'file'
 
 
 storage = StorageService()

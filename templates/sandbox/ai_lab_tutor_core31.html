@@ -1,0 +1,280 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Tutor Core 3.1 — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-tutor-core.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-tutor-core3.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="tc-page tc3-page tc31-page" id="tutorCore31">
+  <header class="tc-header tc3-header">
+    <div>
+      <p class="tc-eyebrow">УЧЕБНЫЕ СОБЫТИЯ · ЛОКАЛЬНЫЙ СИНТЕТИЧЕСКИЙ КОНТУР</p>
+      <h1>BooStudy Tutor Core</h1>
+      <p class="tc-lede">Система сопоставляет сохранённые ответы с проверенными навыками, сохраняет прежние ошибки и показывает осторожное предложение для синтетического плана.</p>
+    </div>
+    <div class="tc31-header-actions">
+      <span class="tc-badge">{{ state.version if state else '3.1' }}</span>
+      <a class="tc-button tc-secondary" href="{{ url_for('ai_lab.tutor_core_page') }}">Обновить события</a>
+    </div>
+  </header>
+
+  <p class="tc-notice tc3-notice" role="note">
+    Используются только сохранённые события разрешённых синтетических профилей. Tutor Core 3.1 объединяет доказательства и рассчитывает состояние; детерминированный сервис 1.6 сохраняет правила preview и решения. Это два слоя одной цепочки, а исторические фикстуры не заменяют назначенную индивидуальную копию. Отсутствующая информация о помощи остаётся неизвестной. Оригинальные курсы и рабочие экраны не изменяются.
+  </p>
+
+  {% if page_error %}
+    <section class="tc-card tc-error" role="alert">
+      <h2>Не удалось загрузить учебные события</h2>
+      <p>{{ page_error }}</p>
+      <a class="tc-button tc-secondary" href="{{ url_for('admin.admin_ai_lab') }}">Вернуться в AI Lab</a>
+    </section>
+  {% elif state %}
+    <section class="tc3-status-strip" aria-label="Состояние Tutor Core 3.1">
+      <div><span class="tc3-label">Синтетические профили</span><strong>{{ state.totals.profiles }}</strong></div>
+      <div><span class="tc3-label">Сохранённые события</span><strong>{{ state.totals.events }}</strong></div>
+      <div><span class="tc3-label">Несвязанные события исключены</span><strong>{{ state.totals.excluded_unmatched_events }}</strong></div>
+      <div><span class="tc3-label">Новые вызовы GigaChat</span><strong>{{ state.model_calls }}</strong></div>
+    </section>
+
+    <details class="tc-card tc-evidence-integrations" open>
+      <summary><span class="tc-eyebrow">ПРОВЕРЕННЫЕ ИСТОЧНИКИ</span><strong>Какие данные подключены и где остаются пробелы</strong></summary>
+      <div class="tc-evidence-integration-list">
+        {% for item in state.integrations %}
+          <article>
+            <div><strong>{{ item.source }}</strong><span class="tc-status" data-kind="{{ item.status }}">{{ item.status|replace('_', ' ') }}</span></div>
+            <p>{{ item.detail }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </details>
+
+    {% if state.learners %}
+      {% for learner in state.learners %}
+        {% set comparison = learner.comparison %}
+        {% set decision = comparison.decision %}
+        <article class="tc-card tc31-profile" aria-labelledby="tc31-profile-{{ loop.index }}">
+          <div class="tc-section-title">
+            <div><p class="tc-eyebrow">СИНТЕТИЧЕСКИЙ УЧЕБНЫЙ ПРОФИЛЬ · только локальные данные</p><h2 id="tc31-profile-{{ loop.index }}">{{ learner.label }}</h2>{% if learner.student_url %}<a href="{{ learner.student_url }}">Открыть профиль ученика №{{ learner.student_id }}</a>{% endif %}</div>
+            <span class="tc-badge">{{ learner.event_count }} событий</span>
+          </div>
+
+          <section class="tc31-change" aria-label="Сравнение состояния до и после сохранённых событий">
+            <div>
+              <span class="tc3-label">State A · {{ learner.state_a.label }}</span>
+              {% if learner.state_a.skills %}
+                {% for skill in learner.state_a.skills %}<p><strong>{{ skill.state_label }}</strong><small>{{ skill.confirmed_event_count }} подтверждённых событий · {{ skill.display_title }}</small></p>{% endfor %}
+              {% else %}<p><strong>Подтверждённого состояния навыков ещё не было</strong><small>В истории не найдено более раннего связанного результата.</small></p>{% endif %}
+            </div>
+            <div>
+              <span class="tc3-label">State B · {{ learner.state_b.label }}</span>
+              {% if learner.state_b.skills %}
+                {% for skill in learner.state_b.skills %}<p><strong>{{ skill.state_label }}</strong><small>{{ skill.confirmed_event_count }} подтверждённых событий · {{ skill.distinct_independent_tasks }} разных заданий выполнено самостоятельно</small></p>{% endfor %}
+              {% else %}<p><strong>Недостаточно подтверждений</strong><small>Система не выводит уровень освоения.</small></p>{% endif %}
+            </div>
+          </section>
+
+          <ul class="tc3-conclusions tc31-deltas">
+            {% for change in comparison.changes %}
+              <li>{{ 'Изменилось' if change.changed else 'Без изменений' }}: {{ change.before }} → {{ change.after }}</li>
+            {% endfor %}
+            {% if not comparison.changes %}<li>Подтверждённое состояние навыков не изменилось: конкретных проверяемых результатов пока нет.</li>{% endif %}
+          </ul>
+
+          {% if comparison.latest_event %}
+            <section class="tc31-latest" aria-label="Последнее сохранённое событие">
+              <div class="tc31-latest-head"><div><p class="tc-eyebrow">НОВОЕ СОБЫТИЕ</p><h3>{{ comparison.latest_event.source_label }}</h3></div><span class="tc-status" data-kind="{{ 'verified' if comparison.latest_event.evidence_status in ['technical_confirmed', 'expert_confirmed'] else 'experimental' }}">{{ comparison.latest_event.evidence_status|replace('_', ' ') }}</span></div>
+              <p>{% if comparison.latest_event.outcome.score is not none %}Результат {{ comparison.latest_event.outcome.score }}/{{ comparison.latest_event.outcome.maximum }}.{% else %}Числовой результат не подтверждён.{% endif %} Характер помощи: {{ comparison.latest_event.assistance_label|lower }}. Источник: {{ comparison.latest_event.assistance_source_label|lower }}.</p>
+              <small>{{ comparison.latest_event.method }} · {{ comparison.latest_event.occurred_at }}</small>
+              {% if comparison.latest_event.limitations %}<ul>{% for limitation in comparison.latest_event.limitations %}<li>{{ limitation }}</li>{% endfor %}</ul>{% endif %}
+            </section>
+          {% else %}
+              <div class="tc31-empty-event"><strong>Подтверждённых событий нет</strong><p>Здесь появится сравнение после сохранённой сдачи с повторной штатной проверкой BooStudy, отчёта Code Judge или наблюдения AI Lesson, подтверждённого преподавателем.</p></div>
+          {% endif %}
+
+          <section class="tc31-decision" aria-label="Педагогическое предложение">
+            <div class="tc31-latest-head"><div><p class="tc-eyebrow">ПРЕДЛОЖЕНИЕ ДЛЯ ПРЕПОДАВАТЕЛЯ</p><h3>{{ decision.action|replace('_', ' ')|capitalize }}</h3></div><span class="tc-status" data-kind="experimental">Требует решения преподавателя</span></div>
+            <div class="tc31-decision-grid">
+              <div><strong>Что известно</strong><ul>{% for item in decision.known %}<li>{{ item }}</li>{% endfor %}</ul></div>
+              <div><strong>Что неизвестно</strong><ul>{% for item in decision.unknown %}<li>{{ item }}</li>{% else %}<li>В показанных источниках дополнительных пробелов не обнаружено.</li>{% endfor %}</ul></div>
+              <div><strong>Почему</strong><p>{{ decision.why }}</p></div>
+              <div><strong>Альтернативы</strong><ul>{% for item in decision.alternatives %}<li>{{ item }}</li>{% endfor %}</ul></div>
+            </div>
+            <p class="tc3-small">{{ decision.time_impact }} Курс автоматически не менялся.</p>
+          </section>
+
+          <section class="tc31-supporting" aria-label="Предметная база и события">
+            <div>
+              <h3>Связанные материалы Knowledge Base</h3>
+              {% if learner.knowledge %}
+                <ul class="tc3-knowledge">{% for item in learner.knowledge %}<li><div><strong>{{ item.title }}</strong><span>Версия {{ item.version }} · {{ item.editorial_status|replace('_', ' ') }}</span><small>{% if item.source_titles %}Источники: {{ item.source_titles|join(' · ') }}{% else %}Источник не связан{% endif %}</small></div><small>{{ item.mapping_kind }} {% if item.used_as_student_evidence %}Результат проверки связан с материалом, но сам материал не подтверждает знание ученика.{% else %}Материал и связь задания с навыком не подтверждают правильность ответа.{% endif %}</small></li>{% endfor %}</ul>
+              {% else %}<p class="tc-muted">У событий нет проверенной точной связи с версией материала Knowledge Base.</p>{% endif %}
+            </div>
+            <div>
+              <h3>История всех сохранённых событий</h3>
+              {% if learner.history_truncated %}<p class="tc3-small">Показаны последние 8 событий; расчёт состояния использовал всю доступную историю.</p>{% endif %}
+              <ul class="tc31-event-list">{% for event in learner.events %}<li><strong>{{ event.source_label }} · {{ event.evidence_label }}</strong><span>{{ event.occurred_at }} · помощь: {{ event.assistance_label|lower }} · {{ event.assistance_source_label|lower }}</span><small>{% if event.outcome.score is not none %}{{ event.outcome.score }}/{{ event.outcome.maximum }}{% else %}балл не подтверждён{% endif %} · {{ event.method }}</small>{% if event.evaluation_revision %}<small>Происхождение оценки: {{ event.evaluation_revision.method or event.evaluation_revision.status }}{% if event.evaluation_revision.actor_user_id %} · автор user {{ event.evaluation_revision.actor_user_id }}{% endif %}{% if event.evaluation_revision.revision_no %} · ревизия {{ event.evaluation_revision.revision_no }}{% endif %}</small>{% endif %}{% if event.submission_url %}<a href="{{ event.submission_url }}">Открыть сдачу №{{ event.platform_refs.submission_id }} · работа №{{ event.assignment_id }} · задача №{{ event.task_id }}</a>{% endif %}{% if event.fixture_key and event.fixture_course_id and learner.curriculum.course_id and event.fixture_course_id != learner.curriculum.course_id %}<small>Историческая синтетическая фикстура «{{ event.fixture_key }}» привязана к курсу №{{ event.fixture_course_id }} (v{{ event.fixture_course_version }}); она не входит в основания текущего preview курса №{{ learner.curriculum.course_id }}.</small>{% elif event.fixture_key %}<small>Синтетическая проверка: {{ event.fixture_key }} · привязка к теме не прошла экспертную проверку.</small>{% endif %}<details><summary>Критерий и основание</summary>{% for criterion in event.criteria %}<p>{{ criterion.status|replace('_', ' ') }}{% if criterion.earned is not none %} · {{ criterion.earned }}/{{ criterion.maximum }}{% endif %} — {{ criterion.reason }}</p>{% endfor %}<p>{{ event.event_id }} · {{ event.source_record_id }}</p>{% for mapping in event.curriculum_skill_mappings %}<p>Навык источника {{ mapping.evidence_skill_id }} → {{ mapping.course_skill_id or 'не сопоставлен' }} · {{ mapping.reason or mapping.method }}</p>{% endfor %}{% if event.platform_refs %}<p>Попытка {{ event.platform_refs.attempt_id or 'не указана' }} · задание {{ event.platform_refs.task_id or 'не указано' }}, урок {{ event.platform_refs.lesson_id or 'не указан' }}{% if event.platform_refs.code_judge_test_set_id %} · Code Judge, набор {{ event.platform_refs.code_judge_test_set_id }} (v{{ event.platform_refs.code_judge_test_set_version }}){% else %} · Code Judge не запускался для этого события{% endif %}.</p>{% endif %}{% if event.assistance_source_refs %}<p>Ссылки происхождения метки: {{ event.assistance_source_refs|join(' · ') }}</p>{% endif %}<ul>{% for limitation in event.limitations %}<li>{{ limitation }}</li>{% endfor %}</ul></details></li>{% endfor %}</ul>
+              {% set reviewable_attempts = learner.events|selectattr('attempt_review_supported')|list %}
+              {% if reviewable_attempts %}
+                <details class="tc-card">
+                  <summary>Пригодность оценённых synthetic-попыток для педагогических выводов</summary>
+                  <p class="tc3-small">Техническая оценка и исходная сдача остаются неизменными. Решение здесь отдельно включает или исключает событие из учебных выводов, фиксируя причину, автора и время; оно не переписывает баллы.</p>
+                  {% for event in reviewable_attempts %}
+                    <article class="tc31-proposal-record">
+                      <p><strong>{{ event.event_id }}</strong> · технический результат {{ event.score }}/{{ event.maximum }}</p>
+                      {% if event.attempt_admissibility.status != 'not_reviewed' %}
+                        <p role="status">{{ event.attempt_admissibility.label }} Причина: {{ event.attempt_admissibility.reason }} · actor {{ event.attempt_admissibility.actor_user_id }} · {{ event.attempt_admissibility.reviewed_at }}</p>
+                      {% else %}
+                        <p>Пригодность попытки ещё не рассмотрена отдельно.</p>
+                      {% endif %}
+                      {% if event.attempt_admissibility.status == 'excluded' %}
+                        <form method="post" action="{{ url_for('ai_lab.tutor_core_review_evidence_admissibility') }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="profile_id" value="{{ learner.subject_id }}">
+                          <input type="hidden" name="event_id" value="{{ event.event_id }}">
+                          <input type="hidden" name="decision" value="restore">
+                          <input type="hidden" name="reason_code" value="teacher_reconsideration">
+                          <label>Почему событие возвращается в анализ
+                            <textarea name="reason_detail" required minlength="10" maxlength="500"></textarea>
+                          </label>
+                          <button type="submit" class="tc-button tc-secondary">Вернуть в педагогический анализ</button>
+                        </form>
+                      {% else %}
+                        <form method="post" action="{{ url_for('ai_lab.tutor_core_review_evidence_admissibility') }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="profile_id" value="{{ learner.subject_id }}">
+                          <input type="hidden" name="event_id" value="{{ event.event_id }}">
+                          <input type="hidden" name="decision" value="exclude">
+                          <label>Причина
+                            <select name="reason_code" required>
+                              <option value="">Выберите причину</option>
+                              <option value="synthetic_acceptance_only">Синтетическая приёмка: временное исключение для проверки механизма</option>
+                              <option value="synthetic_ui_execution_error">Ошибка последовательности действий в synthetic UI</option>
+                              <option value="answer_entry_mismatch">Ответ в форме не соответствует задуманному ответу</option>
+                              <option value="attempt_context_unverifiable">Контекст выполнения нельзя достоверно восстановить</option>
+                            </select>
+                          </label>
+                          <label>Пояснение решения
+                            <textarea name="reason_detail" required minlength="10" maxlength="500"></textarea>
+                          </label>
+                          <button type="submit" class="tc-button tc-secondary">Исключить только из учебных выводов</button>
+                        </form>
+                      {% endif %}
+                    </article>
+                  {% endfor %}
+                </details>
+              {% endif %}
+              {% set versioned_evidence = learner.curriculum.event_evidence|selectattr('version_compatibility')|list %}
+              {% if versioned_evidence %}<details class="tc-card"><summary>Совместимость доказательств между версиями</summary><ul>{% for event in versioned_evidence %}{% set compatibility = event.version_compatibility %}<li><strong>{{ compatibility.status|replace('_', ' ') }}</strong> · {{ event.event_id }}<p>{{ compatibility.reason }}</p>{% if compatibility.matches %}<small>Совпало: {{ compatibility.matches|join(' · ') }}</small>{% endif %}{% if compatibility.mismatches %}<small>Пробелы или изменения: {{ compatibility.mismatches|join(' · ') }}</small>{% endif %}</li>{% endfor %}</ul><p class="tc3-small">Порядок и оформление этапов не входят в отпечаток. Изменение цели урока, навыка, критериев, задания или проверяющего требует повторной проверки. Старые события без сохранённого семантического снимка остаются только историей навыка.</p></details>{% endif %}
+              {% set excluded_curriculum_events = learner.curriculum.event_evidence|selectattr('curriculum_eligibility', 'equalto', 'excluded')|list %}
+              {% if excluded_curriculum_events %}
+                <h4>События, исключённые из оснований текущего урока ({{ excluded_curriculum_events|length }})</h4>
+                <ul class="tc3-conclusions">{% for event in excluded_curriculum_events %}<li>{{ event.source_module|replace('_', ' ') }} · {{ event.event_id }} — {{ event.curriculum_mapping_reason }}</li>{% endfor %}</ul>
+              {% endif %}
+              <h4>Влияние отдельных событий</h4>
+              <ul class="tc3-conclusions">{% for effect in learner.event_effects %}<li>{{ effect.event_id }} · {{ effect.effect_label }}{% if not effect.changed %} До и после: {{ effect.decision_before|replace('_', ' ') }}.{% endif %}</li>{% endfor %}</ul>
+            </div>
+          </section>
+
+          <section class="tc31-curriculum" aria-label="Связанная синтетическая учебная траектория">
+            {% if learner.curriculum.status == 'linked' %}
+              <div class="tc31-latest-head"><div><p class="tc-eyebrow">СИНТЕТИЧЕСКАЯ ТРАЕКТОРИЯ · предложение не применено</p><h3>{{ learner.curriculum.course_title }}</h3></div><span class="tc-status" data-kind="experimental">Версия {{ learner.curriculum.course_version }} · {{ learner.curriculum.lesson_duration }} минут</span></div>
+              <p>Курс №{{ learner.curriculum.course_id }} · модуль {{ learner.curriculum.module_title }} · урок №{{ learner.curriculum.lesson_id }} «{{ learner.curriculum.lesson_topic }}»</p>
+              <p class="tc3-small">Связь: {{ learner.curriculum.selection_basis or 'историческая синтетическая фикстура' }}. Учебная цель урока: {{ learner.curriculum.learning_goal or 'не записана' }}.</p>
+              {% if learner.curriculum.learning_goal_source == 'linked_exam_skill_mastery_criteria' %}<p class="tc3-small">Основание цели: структурированные критерии точно связанного ExamSkill. Это цель для данного preview, а не подтверждение полноты курса.</p>{% endif %}
+              <p class="tc3-small">Структура занятия: {% if learner.curriculum.curriculum_structure_status == 'valid' %}машинные связи проверены{% else %}неполная{% endif %} · в плане {{ learner.curriculum.structured_exercise_count }} упражнений, связано с Lesson: {{ learner.curriculum.attached_exercise_count }}.</p>
+              <p class="tc3-small">Предварительные навыки: {% if learner.curriculum.prerequisites %}{% for item in learner.curriculum.prerequisites %}{{ item.title }} ({{ item.status }}{% if item.registration_status %}; {{ item.registration_status }}{% endif %}){% if not loop.last %} · {% endif %}{% endfor %}{% else %}в данных урока явно не указаны{% endif %}.</p>
+              {% if learner.curriculum.course_learning_goal_placeholder %}<p class="tc3-small" role="status">Общий результат копии курса содержит заглушку «master»; программа не считается педагогически завершённой.</p>{% endif %}
+              {% if learner.curriculum.curriculum_warnings %}<ul class="tc3-small" aria-label="Ограничения исходного плана">{% for item in learner.curriculum.curriculum_warnings %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+              {% if learner.curriculum.objective_criteria %}<details><summary>Критерии учебной цели</summary><ul>{% for item in learner.curriculum.objective_criteria %}<li><strong>{{ item.label }}</strong> — {{ item.evidence }} <span class="tc3-small">Проверка: {{ item.assessment_method }}. Ограничение: {{ item.evidence_limitations }}</span></li>{% endfor %}</ul></details>{% endif %}
+              {% if learner.curriculum.criteria_coverage %}<details><summary>Покрытие критериев доказательствами и упражнениями</summary><ul>{% for item in learner.curriculum.criteria_coverage %}<li><strong>{{ item.label }}</strong> · {% if item.status == 'has_confirmed_item_evidence' %}есть подтверждённое наблюдение по конкретному критерию{% else %}пока не наблюдался{% endif %}<p class="tc3-small">Связанные упражнения: {{ item.exercise_ids|join(', ') if item.exercise_ids else 'не указаны' }}{% if item.event_ids %} · события: {{ item.event_ids|join(', ') }}{% endif %}</p></li>{% endfor %}</ul></details>{% endif %}
+              {% if learner.curriculum.refusal_causes %}<div class="tc31-decision" role="status"><strong>Почему предложение ограничено</strong><ul>{% for item in learner.curriculum.refusal_causes %}<li>{{ item.label }}</li>{% endfor %}</ul>{% if learner.curriculum.recommended_next_step %}<p><strong>Следующий шаг:</strong> {{ learner.curriculum.recommended_next_step }}</p>{% endif %}</div>{% endif %}
+              {% if learner.curriculum.curriculum_blockers %}<div class="tc31-decision" role="status"><strong>План оставлен без изменений</strong><ul>{% for item in learner.curriculum.curriculum_blockers %}<li>{{ item }}</li>{% endfor %}</ul></div>{% endif %}
+              {% if learner.curriculum.lesson_content %}<details><summary>Исходное содержание урока</summary><p>{{ learner.curriculum.lesson_content }}</p></details>{% else %}<p class="tc3-small">Исходное содержание урока не сохранено.</p>{% endif %}
+              {% if learner.curriculum.lesson_homework %}<details><summary>Домашнее задание из сохранённого плана</summary><p>{{ learner.curriculum.lesson_homework }}</p></details>{% endif %}
+              {% if learner.curriculum.selected_exercise %}<details><summary>Проверяемое упражнение и проверка</summary><p><strong>{{ learner.curriculum.selected_exercise.title }}</strong></p><p>{{ learner.curriculum.selected_exercise.prompt }}</p><p class="tc3-small">Связь: {{ learner.curriculum.selected_exercise.source_skill_id }} → {{ learner.curriculum.selected_exercise.course_skill_id }} · критерии: {{ learner.curriculum.selected_exercise.criterion_ids|join(', ') }} · {{ learner.curriculum.selected_exercise.verification.method }}.</p><p class="tc3-small">Проверяется только этот конечный ответ. {{ learner.curriculum.selected_exercise.verification.scope }} {{ learner.curriculum.selected_exercise.verification.limitations }}</p><p>Ожидаемый ответ для преподавателя: {{ learner.curriculum.selected_exercise.teacher_expected_answer }}</p></details>{% endif %}
+              {% if learner.curriculum.exercise_audit %}<details><summary>Использование вариантов упражнений</summary><ul>{% for item in learner.curriculum.exercise_audit %}<li>{{ item.title }} · {{ item.exercise_id }} · {% if item.available_for_independent_diagnostic %}не использовалось этим учеником{% else %}не назначается как независимый вариант: {{ item.previous_usage.status }}{% endif %}</li>{% endfor %}</ul></details>{% endif %}
+              {% if learner.curriculum.exercise_alternatives %}<details><summary>Другие проверенные варианты</summary><ul>{% for item in learner.curriculum.exercise_alternatives %}<li>{{ item.title }} — {{ item.prompt }}</li>{% endfor %}</ul></details>{% endif %}
+              <p><a href="{{ learner.curriculum.student_url }}">Открыть страницу ученика</a> · <a href="{{ learner.curriculum.lesson_url }}">Открыть сохранённый урок</a></p>
+              <div class="tc31-change"><div><span class="tc3-label">Исходный план · {{ learner.curriculum.plan_before_total }} минут</span><ul>{% for segment in learner.curriculum.plan_before %}<li>{{ segment.minutes }} мин · {{ segment.title }}</li>{% endfor %}</ul></div><div><span class="tc3-label">Предложение · {{ learner.curriculum.plan_after_total or learner.curriculum.plan_before_total }} минут</span>{% if learner.curriculum.plan_after %}<ul>{% for segment in learner.curriculum.plan_after %}<li>{{ segment.minutes }} мин · {{ segment.title }}</li>{% endfor %}</ul><p>{{ learner.curriculum.proposal_reason }}</p><p><strong>Следующая проверка:</strong> {{ learner.curriculum.next_check }}</p>{% else %}<p>{{ learner.curriculum.proposal_reason }}</p>{% endif %}</div></div>
+              {% if learner.curriculum.separate_activity %}<div class="tc31-decision" role="note"><strong>Отдельное действие · {{ learner.curriculum.separate_activity.minutes }} минут</strong><p>{{ learner.curriculum.separate_activity.purpose }}</p><p>План урока сохраняется без сокращений. Общая длительность при проведении действия: {{ learner.curriculum.time_plan.total_with_separate_activity }} минут. Для запуска преподаватель должен отдельно выбрать время.</p></div>{% endif %}
+              <p class="tc3-small">{{ learner.curriculum.time_impact }} {{ learner.curriculum.mapping_limit }}</p>
+              {% if learner.curriculum.evidence_refs %}{% set evidence_matches = namespace(labels=[]) %}{% for event in learner.events %}{% if event.event_id in learner.curriculum.evidence_refs or event.source_record_id in learner.curriculum.evidence_refs %}{% set result_label = (event.outcome.score|string) ~ '/' ~ (event.outcome.maximum|string) if event.outcome.score is not none else 'результат не подтверждён' %}{% set evidence_matches.labels = evidence_matches.labels + [event.source_label ~ ' · ' ~ result_label] %}{% endif %}{% endfor %}<p class="tc3-small">Основания: {{ evidence_matches.labels|join(' · ') if evidence_matches.labels else 'сохранённые учебные события; подробности доступны в истории' }}</p><details><summary>Технические ссылки evidence</summary><p class="tc3-small">{{ learner.curriculum.evidence_refs|join(' · ') }}</p></details>{% endif %}
+              {% set tutor_proposals = proposal_history.get(learner.subject_id, []) %}
+              {% if learner.curriculum.preview_available %}
+                <form method="post" action="{{ url_for('ai_lab.tutor_core_create_proposal') }}" class="tc31-decision-actions">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="profile_id" value="{{ learner.subject_id }}">
+                  <input type="hidden" name="include_model" value="false">
+                  <button type="submit" class="tc-button tc-secondary">Сохранить актуальный локальный preview</button>
+                  <span class="tc3-small">Без вызова GigaChat. После изменения доказательств создаётся новый preview, прежние остаются в истории.</span>
+                </form>
+              {% endif %}
+              {% if tutor_proposals %}
+                <div class="tc31-proposal-history" aria-label="Решения преподавателя по адаптации">
+                  <h4>Черновики и решения преподавателя</h4>
+                  {% for proposal in tutor_proposals[-3:]|reverse %}
+                    <article class="tc31-proposal-record">
+                      <p><strong>{{ proposal.proposal.proposal.text }}</strong></p>
+                      <p class="tc3-small">Создано {{ (proposal.created_at or 'время неизвестно')[:19]|replace('T', ' ') }} UTC · {% if proposal.decision %}решение {{ 'принято' if proposal.decision == 'accepted' else 'отклонено' }}{% elif proposal.diagnostic_assignment_id %}диагностика назначена{% elif proposal.status == 'succeeded' %}ожидает решения преподавателя{% else %}{{ proposal.status|replace('_', ' ') }}{% endif %}</p>
+                      {% if proposal.safe_narrative.teacher_explanation %}<p>{{ proposal.safe_narrative.teacher_explanation }}</p>{% endif %}
+                      <p class="tc3-small">Оснований: {{ proposal.proposal.event_count }} · {{ proposal.proposal.skill_summary.status_label or proposal.proposal.skill_summary.status }} · модель: {% if proposal.model %}{{ proposal.model }}{% else %}не вызывалась{% endif %}</p>
+                      {% if proposal.diagnostic_assignment_id %}
+                        <p class="tc3-small" role="status">Отдельная диагностика назначена как домашняя работа №{{ proposal.diagnostic_assignment_id }}; учебный план и курс не менялись.</p>
+                        {% if proposal.diagnostic_submission_id %}<a href="{{ url_for('assignments.submission_view', submission_id=proposal.diagnostic_submission_id) }}">Открыть сдачу ученика</a>{% endif %}
+                      {% elif proposal.decision %}
+                        <p class="tc3-small">Решение: {% if proposal.decision == 'accepted' %}принято{% else %}отклонено{% endif %}{% if proposal.applied_change %}; изменена только индивидуальная синтетическая копия{% elif proposal.decision == 'accepted' %}; курс не требовал изменения{% endif %}</p>
+                        {% if proposal.applied_change and not proposal.rollback_at %}
+                          <form method="post" action="{{ url_for('ai_lab.tutor_core_rollback_decision', decision_id=proposal.decision_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="tc-button tc-secondary">Отменить изменение копии</button>
+                          </form>
+                        {% endif %}
+                      {% else %}
+                        <div class="tc31-decision-actions">
+                          {% if proposal.proposal.proposal.action == 'diagnostic_without_mastery_claim' and proposal.proposal.proposal.time_plan.status == 'separate_activity' and proposal.proposal.proposal.selected_exercise.source_type == 'platform_task' %}
+                            <form method="post" action="{{ url_for('ai_lab.tutor_core_assign_diagnostic', proposal_id=proposal.id) }}">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              <button type="submit" class="tc-button tc-primary">Назначить отдельную диагностику</button>
+                              <span class="tc3-small">Упражнение появится в обычных домашних работах; план не изменится.</span>
+                            </form>
+                          {% else %}
+                            <form method="post" action="{{ url_for('ai_lab.tutor_core_review_proposal', proposal_id=proposal.id) }}">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              <input type="hidden" name="decision" value="accepted">
+                              <button type="submit" class="tc-button tc-primary">Принять предложение</button>
+                            </form>
+                          {% endif %}
+                          <form method="post" action="{{ url_for('ai_lab.tutor_core_review_proposal', proposal_id=proposal.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="decision" value="rejected">
+                            <button type="submit" class="tc-button tc-secondary">Отклонить</button>
+                          </form>
+                        </div>
+                      {% endif %}
+                    </article>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% elif learner.curriculum.status == 'invalid_plan' %}
+              <p>Связанный синтетический урок найден, но его сохранённый план не проходит проверку длительности. Tutor Core не строит предложение.</p>
+            {% else %}
+              <p>{{ learner.curriculum.proposal_reason or 'К этим событиям не удалось подтвердить точную связь с индивидуальной синтетической траекторией. План не менялся.' }}</p>
+            {% endif %}
+          </section>
+        </article>
+      {% endfor %}
+    {% else %}
+      <section class="tc-card tc31-empty" aria-labelledby="tc31-empty-title">
+        <p class="tc-eyebrow">ДАННЫХ ПОКА НЕТ</p>
+        <h2 id="tc31-empty-title">Синтетические учебные события не найдены</h2>
+        <p>Это пустое состояние отражает базу как она есть. Tutor Core не подставляет контрольные фикстуры и не создаёт выводы об ученике.</p>
+        <p>{{ state.synthetic_scope }}</p>
+        <a class="tc-button tc-secondary" href="{{ url_for('ai_lab.tutor_core3_page') }}">Открыть техническую демонстрацию 3.0</a>
+      </section>
+    {% endif %}
+
+    <section class="tc-card tc3-limitations" aria-labelledby="tc31-limits-title">
+      <div class="tc-section-title"><div><p class="tc-eyebrow">ГРАНИЦЫ ВЫВОДОВ</p><h2 id="tc31-limits-title">Что этот экран не утверждает</h2></div></div>
+      <ul>{% for item in state.limits %}<li>{{ item }}</li>{% endfor %}</ul>
+      <p>Текущая версия: {{ state.version }} · контракт событий {{ state.evidence_contract }} · вызовов модели в этом сценарии не выполнялось.</p>
+    </section>
+  {% endif %}
+</main>
+{% endblock %}

@@ -7,8 +7,8 @@
 {% block body_class %}{% if is_student_view or is_parent_view %}layout-student{% else %}layout-teacher teacher-mode{% endif %} min-h-screen{% endblock %}
 
 {% block extra_head %}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/font-awesome/css/all.min.css') }}?v=6.4.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/easymde/easymde.min.css') }}?v=2.18.0">
     <style>
     .hide-scroll::-webkit-scrollbar { display: none; }
     .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -1782,9 +1782,9 @@
 {% endblock %}
 
 {% block scripts_extra %}
-    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/easymde/easymde.min.js') }}?v=2.18.0"></script>
+    <script src="{{ url_for('static', filename='vendor/marked/marked.min.js') }}?v=18.1.2"></script>
+    <script src="{{ url_for('static', filename='vendor/dompurify/purify.min.js') }}?v=3.4.17"></script>
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
 

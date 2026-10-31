@@ -110,6 +110,7 @@ def run_admin_workspace_v2_qa_tests():
 
         res_switch = client_creator.get('/admin/mode/switch?mode=teacher', follow_redirects=False)
         assert res_switch.status_code == 302, f"Expected 302 redirect for mode switch, got {res_switch.status_code}"
+        assert res_switch.headers['Location'].endswith(f'/workspace/people/{creator_user.id}'), "Teacher mode switch must target the current user's profile!"
         with client_creator.session_transaction() as sess:
             assert sess.get('work_mode') == 'teacher', "session['work_mode'] failed to update to 'teacher'"
         print("SUCCESS: CREATOR mode switch to 'teacher' verified!")

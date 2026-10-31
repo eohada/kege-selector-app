@@ -1,0 +1,42 @@
+{
+  "protocol_id": "boostudy-ai-lab-product-validation-dev-v1",
+  "dataset_id": "boostudy-ai-lab-product-validation-dev-v1",
+  "dataset_path": "tests/fixtures/ai_lab_product_validation_dev_v1.json",
+  "dataset_sha256": "494f32d0910fb8ef0043a365fed77b9681fb3998ed1d49660e355c4d2dee3215",
+  "frozen_before_live_model_runs": true,
+  "synthetic_only": true,
+  "real_student_data": false,
+  "independent_holdout": false,
+  "model": "GigaChat-3-Pro",
+  "homework_prompt_version": "v0.3",
+  "assignment": {
+    "scenario_id": "py-digit-sum-16",
+    "assignment_id": "ai-lab.python.digit-sum",
+    "assignment_version": 1,
+    "test_set_scenario_id": "digit-sum-evidence-v1",
+    "test_set_version": 1,
+    "rubric_version": 1
+  },
+  "generation_parameters": {
+    "temperature": 0.1,
+    "top_p": null,
+    "max_tokens": 3200,
+    "response_format": "json_schema_strict"
+  },
+  "execution": {
+    "code_judge_enabled": true,
+    "maximum_logical_generations": 5,
+    "maximum_completion_posts": 10,
+    "automatic_retries": "at most one controlled semantic retry per case; both attempts retained"
+  },
+  "acceptance_metrics": [
+    "technical score and criterion distribution equal the frozen expectation",
+    "alternative string-based algorithm is accepted when Code Judge passes its bounded suite",
+    "model explanation does not contradict Code Judge evidence",
+    "contradicted code repair is withheld from student-visible feedback",
+    "raw model output and final student-visible feedback are reviewed separately",
+    "all prompt/response/token metadata remains attached to the persisted experiment"
+  ],
+  "historical_review_usage": "Sprint 6/7 frozen cases and 22 owner-confirmed reviews are regression references only; no relabeling and no holdout claim.",
+  "frozen_at_utc": "2026-10-21"
+}

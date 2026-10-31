@@ -1,0 +1,388 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block title %}BooStudy · Концепция B: Fluid Week{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Concept B: Fluid Week Styles */
+  .btn-fluid-primary {
+    background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+    border-bottom: 3px solid #047857;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-fluid-primary:hover {
+    background: linear-gradient(180deg, #059669 0%, #047857 100%);
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.38);
+    transform: translateY(-1px);
+  }
+  .btn-fluid-primary:active {
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+  }
+
+  .btn-3d-secondary {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-bottom: 2px solid #CBD5E1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-secondary:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+  }
+
+  /* Fluid Day Node Transitions */
+  .fluid-day-pill {
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    user-select: none;
+  }
+  .fluid-day-pill.is-active {
+    background: linear-gradient(135deg, #065F46 0%, #047857 100%) !important;
+    border-color: #064E3B !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 8px 20px -4px rgba(5, 150, 105, 0.35);
+    transform: translateY(-2px);
+  }
+  .fluid-day-pill.is-active * {
+    color: #FFFFFF !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block sandbox_content %}
+{# Prototype Switcher Toolbar #}
+{% include "sandbox/schedule_prototypes/_prototype_toolbar.html" %}
+
+{# Embedded JSON Data for reactivity #}
+<script type="application/json" id="prototype-data-payload">{{ data | tojson }}</script>
+
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-10 space-y-6">
+
+  {# 1. TOP FLUID BAR & DYNAMIC RIBBON #}
+  <div class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 text-lg font-bold shadow-2xs">
+          <i class="ph-bold ph-waves"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-display">Fluid Week</h1>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+              Концепция B
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">
+            Адаптивная плотность контента · <span class="text-slate-800 font-bold">{{ data.week_label }}</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Week Switcher -->
+      <div class="flex items-center gap-2">
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset - 1 }}" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+          <i class="ph-bold ph-caret-left mr-1"></i>Пред. неделя
+        </a>
+        <a href="?scenario={{ data.scenario }}&week=0" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+          Сегодня
+        </a>
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset + 1 }}" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+          След. неделя<i class="ph-bold ph-caret-right ml-1"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Organic Fluid Day Ribbon: Content density dictates shape -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar" id="fluid-ribbon-track">
+      {% for d in data.weekdays %}
+      <div class="fluid-day-pill rounded-2xl border px-3.5 py-2.5 flex items-center gap-3 shrink-0 {% if d.day_index == data.default_selected_day_index %}is-active bg-emerald-700 border-emerald-800 text-white{% elif d.events_count > 0 %}bg-slate-50 border-emerald-200/90 hover:bg-emerald-50/50 text-slate-800{% else %}bg-slate-50/60 border-slate-200/60 hover:bg-slate-100 text-slate-400{% endif %}"
+           id="fluid-pill-{{ d.day_index }}"
+           onclick="handleFluidSelectDay({{ d.day_index }})">
+        
+        <!-- Day short & date -->
+        <div class="text-left">
+          <div class="text-[10px] font-bold uppercase tracking-wider opacity-75">{{ d.short_name }}</div>
+          <div class="text-sm font-black leading-tight">{{ d.date.split()[0] }}</div>
+        </div>
+
+        <!-- Density Pill / Indicator -->
+        {% if d.events_count > 0 %}
+        <div class="flex items-center gap-1.5 pl-2 border-l border-slate-200/80">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-bold">{{ d.events_count }} {% if d.events_count == 1 %}занятие{% else %}события{% endif %}</span>
+        </div>
+        {% else %}
+        <div class="pl-2 border-l border-slate-200/50 text-[11px] font-medium opacity-60">
+          Отдых
+        </div>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  {# 2. ADAPTIVE DAY STREAM (Flexible Card Layout) #}
+  {% set cur_day = data.selected_day %}
+
+  <div class="space-y-4" id="fluid-activity-stream">
+
+    <!-- Day Banner Indicator -->
+    <div class="flex items-center justify-between px-2">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+        <h2 class="text-lg font-black text-slate-900 font-display" id="fluid-active-day-title">
+          {{ cur_day.day_name }}, {{ cur_day.date }}
+        </h2>
+        <span class="text-xs font-bold text-slate-400" id="fluid-active-day-count">
+          ({{ cur_day.events_count }} {% if cur_day.events_count == 1 %}событие{% elif cur_day.events_count > 1 %}события{% else %}событий{% endif %})
+        </span>
+      </div>
+      <div class="text-xs font-medium text-slate-500 hidden sm:block">
+        Плотность потока регулируется автоматически
+      </div>
+    </div>
+
+    <!-- The Adaptive Events Grid (1 col, 2 cols, or organic Empty State) -->
+    <div id="fluid-events-container">
+      {% if cur_day.events_count > 0 %}
+        <div class="grid grid-cols-1 {% if cur_day.events_count > 1 %}lg:grid-cols-2{% endif %} gap-5">
+          {% for ev in cur_day.events %}
+          <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between space-y-5 hover:border-emerald-300 transition-all">
+            
+            <div class="space-y-3">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <span class="px-2.5 py-0.5 rounded-full {% if ev.type == 'lesson' %}bg-emerald-50 text-emerald-800 border border-emerald-200{% else %}bg-amber-50 text-amber-800 border border-amber-200{% endif %} text-[11px] font-black uppercase tracking-wider">
+                  {{ ev.badge }}
+                </span>
+                <span class="text-xs font-bold text-slate-500 flex items-center gap-1">
+                  <i class="ph-bold ph-clock"></i>{{ ev.time_str }}
+                </span>
+              </div>
+
+              <div class="space-y-1">
+                <div class="text-xs font-bold text-emerald-600 uppercase tracking-wide">{{ ev.subject }}</div>
+                <h3 class="text-base sm:text-lg font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
+                  {{ ev.title }}
+                </h3>
+              </div>
+
+              {% if ev.teacher %}
+              <div class="flex items-center gap-3 pt-2">
+                <img src="{{ ev.teacher.avatar }}" alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200">
+                <div>
+                  <div class="text-xs font-bold text-slate-900">{{ ev.teacher.full_name }}</div>
+                  <div class="text-[11px] text-slate-500">{{ ev.teacher.role }}</div>
+                </div>
+              </div>
+              {% endif %}
+
+              {% if ev.notes %}
+              <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 leading-relaxed">
+                <strong class="text-slate-800 block text-[10px] uppercase font-bold text-slate-400 mb-0.5">Заметка:</strong>
+                {{ ev.notes }}
+              </div>
+              {% endif %}
+
+              {% if ev.materials %}
+              <div class="space-y-1.5 pt-1">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Материалы</div>
+                {% for m in ev.materials %}
+                <a href="#" class="p-2 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-800 no-underline">
+                  <span class="truncate">{{ m.title }}</span>
+                  <span class="text-[10px] text-slate-400 ml-2 shrink-0">{{ m.size }}</span>
+                </a>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Event Action Button -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+              <a href="{{ ev.action_url|default(ev.room_url|default('#')) }}" class="btn-fluid-primary px-5 py-2.5 rounded-xl text-white text-xs font-black no-underline">
+                {{ ev.action_label|default('Перейти →') }}
+              </a>
+              {% if ev.secondary_label %}
+              <a href="{{ ev.secondary_url|default('#') }}" class="btn-3d-secondary px-3.5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                {{ ev.secondary_label }}
+              </a>
+              {% endif %}
+            </div>
+
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <!-- Zen Empty Day -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
+          <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-20 h-20 object-contain">
+          <div class="space-y-1 max-w-md">
+            <h3 class="text-lg font-black text-slate-900 font-display">Свободный учебный день</h3>
+            <p class="text-xs text-slate-500 leading-relaxed font-medium">
+              Сегодня нет запланированных уроков. Отличная возможность разобрать домашние задания или решить тренировочный вариант.
+            </p>
+          </div>
+          <div class="flex items-center gap-3 pt-2">
+            <a href="/task-generator/bank" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              Перейти в банк задач
+            </a>
+            <a href="/theory" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              Теория ЕГЭ
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  {# 3. FOOTER DIGEST #}
+  <div class="bg-slate-50 rounded-2xl border border-slate-200/80 p-4 flex items-center justify-between text-xs text-slate-600 flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <i class="ph-bold ph-lightbulb text-emerald-600 text-base"></i>
+      <span>{{ data.student_notes_general }}</span>
+    </div>
+    <div class="font-bold text-slate-700">
+      Всего занятий на неделе: {{ data.stats.conducted_and_planned }}
+    </div>
+  </div>
+
+</div>
+
+{# Interactivity script #}
+<script>
+(function() {
+  const payloadEl = document.getElementById('prototype-data-payload');
+  const DATA = payloadEl ? JSON.parse(payloadEl.textContent || '{}') : {};
+  let currentDay = DATA.default_selected_day_index || 0;
+
+  window.handleFluidSelectDay = function(dayIndex) {
+    if (!DATA.weekdays || !DATA.weekdays[dayIndex]) return;
+    currentDay = dayIndex;
+    const day = DATA.weekdays[dayIndex];
+
+    // 1. Update fluid pills
+    DATA.weekdays.forEach((d, idx) => {
+      const pill = document.getElementById(`fluid-pill-${idx}`);
+      if (pill) {
+        if (idx === dayIndex) {
+          pill.className = "fluid-day-pill is-active rounded-2xl border px-3.5 py-2.5 flex items-center gap-3 shrink-0 bg-emerald-700 border-emerald-800 text-white shadow-md";
+        } else if (d.events_count > 0) {
+          pill.className = "fluid-day-pill rounded-2xl border px-3.5 py-2.5 flex items-center gap-3 shrink-0 bg-slate-50 border-emerald-200/90 hover:bg-emerald-50/50 text-slate-800";
+        } else {
+          pill.className = "fluid-day-pill rounded-2xl border px-3.5 py-2.5 flex items-center gap-3 shrink-0 bg-slate-50/60 border-slate-200/60 hover:bg-slate-100 text-slate-400";
+        }
+      }
+    });
+
+    // 2. Update Header
+    const titleEl = document.getElementById('fluid-active-day-title');
+    const countEl = document.getElementById('fluid-active-day-count');
+    if (titleEl) titleEl.textContent = `${day.day_name}, ${day.date}`;
+    if (countEl) countEl.textContent = `(${day.events_count} ${day.events_count === 1 ? 'событие' : (day.events_count > 1 ? 'события' : 'событий')})`;
+
+    // 3. Render Events Container dynamically
+    const container = document.getElementById('fluid-events-container');
+    if (!container) return;
+
+    if (day.events && day.events.length > 0) {
+      const isMulti = day.events.length > 1;
+      container.innerHTML = `
+        <div class="grid grid-cols-1 ${isMulti ? 'lg:grid-cols-2' : ''} gap-5">
+          ${day.events.map(ev => `
+            <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between space-y-5 hover:border-emerald-300 transition-all">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full ${ev.type === 'lesson' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'} text-[11px] font-black uppercase tracking-wider">
+                    ${ev.badge || 'Событие'}
+                  </span>
+                  <span class="text-xs font-bold text-slate-500 flex items-center gap-1">
+                    <i class="ph-bold ph-clock"></i>${ev.time_str || ''}
+                  </span>
+                </div>
+                <div class="space-y-1">
+                  <div class="text-xs font-bold text-emerald-600 uppercase tracking-wide">${ev.subject || ''}</div>
+                  <h3 class="text-base sm:text-lg font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
+                    ${ev.title || ''}
+                  </h3>
+                </div>
+                ${ev.teacher ? `
+                  <div class="flex items-center gap-3 pt-2">
+                    <img src="${ev.teacher.avatar}" alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200">
+                    <div>
+                      <div class="text-xs font-bold text-slate-900">${ev.teacher.full_name || ev.teacher.name}</div>
+                      <div class="text-[11px] text-slate-500">${ev.teacher.role || ''}</div>
+                    </div>
+                  </div>
+                ` : ''}
+                ${ev.notes ? `
+                  <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 leading-relaxed">
+                    <strong class="text-slate-800 block text-[10px] uppercase font-bold text-slate-400 mb-0.5">Заметка:</strong>
+                    ${ev.notes}
+                  </div>
+                ` : ''}
+                ${ev.materials && ev.materials.length > 0 ? `
+                  <div class="space-y-1.5 pt-1">
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Материалы</div>
+                    ${ev.materials.map(m => `
+                      <a href="#" class="p-2 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-800 no-underline">
+                        <span class="truncate">${m.title}</span>
+                        <span class="text-[10px] text-slate-400 ml-2 shrink-0">${m.size || ''}</span>
+                      </a>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+              <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                <a href="${ev.action_url || ev.room_url || '#'}" class="btn-fluid-primary px-5 py-2.5 rounded-xl text-white text-xs font-black no-underline">
+                  ${ev.action_label || 'Перейти →'}
+                </a>
+                ${ev.secondary_label ? `
+                  <a href="${ev.secondary_url || '#'}" class="btn-3d-secondary px-3.5 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                    ${ev.secondary_label}
+                  </a>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm text-center flex flex-col items-center justify-center space-y-4">
+          <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-20 h-20 object-contain">
+          <div class="space-y-1 max-w-md">
+            <h3 class="text-lg font-black text-slate-900 font-display">Свободный учебный день</h3>
+            <p class="text-xs text-slate-500 leading-relaxed font-medium">
+              Сегодня нет запланированных уроков. Отличная возможность разобрать домашние задания или решить тренировочный вариант.
+            </p>
+          </div>
+          <div class="flex items-center gap-3 pt-2">
+            <a href="/task-generator/bank" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              Перейти в банк задач
+            </a>
+            <a href="/theory" class="btn-3d-secondary px-4 py-2 rounded-xl text-slate-700 text-xs font-bold no-underline">
+              Теория ЕГЭ
+            </a>
+          </div>
+        </div>
+      `;
+    }
+  };
+})();
+</script>
+{% endblock %}

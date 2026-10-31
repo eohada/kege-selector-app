@@ -1,0 +1,374 @@
+/* ==========================================================================
+   PROJECT ORISTERA — SHELL & SPATIAL ENVIRONMENT
+   Light Cosmic Astrolabe HUD, Ethereal Atmosphere & Continuum Framing
+   ========================================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.oristera-body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--ori-canvas);
+  color: var(--ori-text-body);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  transition: background-color var(--ori-dur-flow) var(--ori-spring-morph);
+}
+
+/* 1. Живая атмосфера космического света (Living Celestial Atmosphere) */
+body.oristera-body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(129, 140, 248, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(56, 189, 248, 0.14) 0%, transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(192, 132, 252, 0.10) 0%, transparent 55%),
+    radial-gradient(circle at 75% 70%, rgba(52, 211, 153, 0.08) 0%, transparent 40%);
+  filter: blur(40px);
+  opacity: 0.85;
+  transition: opacity var(--ori-dur-cosmic) var(--ori-spring-morph);
+}
+
+/* Тонкая геодезическая сетка обсерватории (Subtle Geodetic Mesh) */
+body.oristera-body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: 
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 80%);
+  opacity: 0.7;
+}
+
+.ori-stage-wrapper {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.ori-container {
+  width: 100%;
+  max-width: 1420px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* ==========================================================================
+   SPATIAL COMPASS HUD (Навигационный остров и приборная панель обсерватории)
+   ========================================================================== */
+.ori-topbar {
+  position: sticky;
+  top: 14px;
+  z-index: 200;
+  margin-bottom: 24px;
+  transition: transform var(--ori-dur-snappy) var(--ori-spring-in);
+}
+
+.ori-island {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--ori-glass-luminous);
+  backdrop-filter: var(--ori-backdrop-blur);
+  -webkit-backdrop-filter: var(--ori-backdrop-blur);
+  border: 1px solid var(--ori-filament-bright);
+  border-radius: var(--ori-rad-sanctum);
+  padding: 8px 18px;
+  box-shadow: var(--ori-shadow-elevated), var(--ori-glow-pearl);
+  transition: box-shadow var(--ori-dur-snappy) var(--ori-spring-in), border-color var(--ori-dur-snappy);
+}
+
+.ori-island:hover {
+  box-shadow: var(--ori-shadow-floating), var(--ori-glow-pearl);
+  border-color: var(--ori-filament-prism);
+}
+
+/* Бренд ORISTERA и координаты сектора */
+.ori-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--ori-text-headline);
+  position: relative;
+}
+
+.ori-brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--ori-grad-celestial);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: var(--ori-glow-orbit);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--ori-dur-snappy) var(--ori-spring-float);
+}
+
+.ori-brand:hover .ori-brand-logo {
+  transform: rotate(15deg) scale(1.05);
+}
+
+.ori-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.ori-brand-name {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #0F172A 20%, #4338CA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+
+.ori-brand-coords {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ori-lavender-core);
+  text-transform: uppercase;
+}
+
+/* Пространственный компас (Spatial Compass HUD) */
+.ori-spatial-compass {
+  display: flex;
+  align-items: center;
+}
+
+.ori-compass-ring {
+  display: flex;
+  align-items: center;
+  background: rgba(241, 245, 249, 0.7);
+  padding: 4px 6px;
+  border-radius: var(--ori-rad-orb);
+  border: 1px solid var(--ori-filament);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ori-compass-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--ori-rad-orb);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ori-text-muted);
+  transition: all var(--ori-dur-snappy) var(--ori-spring-in);
+  position: relative;
+}
+
+.ori-compass-node:hover {
+  color: var(--ori-text-headline);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.ori-compass-node.active {
+  color: var(--ori-indigo-core);
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.16), 0 0 0 1px var(--ori-indigo-rim);
+}
+
+.ori-compass-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  transition: transform var(--ori-dur-snappy) var(--ori-spring-float);
+}
+
+.ori-compass-node.active .ori-compass-dot {
+  background: var(--ori-indigo-core);
+  box-shadow: 0 0 6px var(--ori-indigo-core);
+  transform: scale(1.3);
+}
+
+.ori-compass-link {
+  width: 8px;
+  height: 1px;
+  background: var(--ori-filament);
+}
+
+/* Действия острова: переключатель концепций, Classic, маяк */
+.ori-island-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Переключатель концептов (3 направления для экспертной оценки) */
+.ori-concept-switcher {
+  display: flex;
+  align-items: center;
+  background: rgba(241, 245, 249, 0.65);
+  border: 1px solid var(--ori-filament);
+  border-radius: var(--ori-rad-orb);
+  padding: 2px;
+}
+
+.ori-concept-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: none;
+  background: transparent;
+  border-radius: var(--ori-rad-orb);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ori-text-muted);
+  cursor: pointer;
+  transition: all var(--ori-dur-instant) ease;
+}
+
+.ori-concept-btn:hover {
+  color: var(--ori-text-headline);
+}
+
+.ori-concept-btn.active {
+  background: #FFFFFF;
+  color: var(--ori-text-headline);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+/* Переключатель в Classic */
+.ori-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid var(--ori-indigo-rim);
+  border-radius: var(--ori-rad-orb);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ori-indigo-core);
+  letter-spacing: 0.02em;
+  transition: all var(--ori-dur-snappy) var(--ori-spring-in);
+}
+
+.ori-mode-toggle:hover {
+  background: rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Маяк пользователя (Continuum Beacon) */
+.ori-user-beacon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background: var(--ori-canvas-pure);
+  border: 1px solid var(--ori-filament);
+  border-radius: var(--ori-rad-orb);
+  box-shadow: var(--ori-shadow-ambient);
+}
+
+.ori-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ori-grad-celestial);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+
+.ori-user-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.ori-user-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ori-text-headline);
+  line-height: 1.1;
+}
+
+.ori-user-status {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ori-text-muted);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ori-status-pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+  display: inline-block;
+}
+
+/* ==========================================================================
+   Адаптивность для мобильных и планшетов
+   ========================================================================== */
+@media (max-width: 960px) {
+  .ori-concept-name {
+    display: none;
+  }
+  .ori-compass-label {
+    display: none;
+  }
+  .ori-compass-node {
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ori-island {
+    padding: 6px 12px;
+  }
+  .ori-brand-coords {
+    display: none;
+  }
+  .ori-user-meta {
+    display: none;
+  }
+  .ori-compass-link {
+    display: none;
+  }
+}
+
+/* Utility: Hidden State */
+.hidden {
+  display: none !important;
+}

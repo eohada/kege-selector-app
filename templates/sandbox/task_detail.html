@@ -4,10 +4,10 @@
 <!-- CSRF Meta Token for AJAX requests -->
 <meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
 
-<!-- KaTeX CDN Integration -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
+<!-- KaTeX Local Integration -->
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}?v=0.16.8">
+<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}?v=0.16.8"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}?v=0.16.8" onload="initKaTeX()"></script>
 
 <!-- Единый каноничный холст открытой работы (Master Canvas max-w-[1600px]) -->
 {% set is_assignment_submitted = submission and submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW', 'CHECKED', 'COMPLETED'] %}

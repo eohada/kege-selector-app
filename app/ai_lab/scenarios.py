@@ -385,9 +385,9 @@ SCENARIOS: tuple[dict, ...] = (
         "assignment_id": "ai-lab.python.digit-sum",
         "assignment_version": 1,
         "assignment_criteria": [
-            {"id": "multi-digit", "title": "Сумма цифр многозначного числа", "description": "Суммируются все цифры многозначного входа.", "max_score": 1},
-            {"id": "zero-single", "title": "Ноль и однозначные числа", "description": "Ноль и числа с одной цифрой обрабатываются корректно.", "max_score": 1},
-            {"id": "embedded-zero", "title": "Внутренние и завершающие нули", "description": "Нули внутри и в конце числа не теряются.", "max_score": 1},
+            {"id": "multi-digit", "title": "Сумма цифр многозначного числа", "description": "Суммируются все цифры многозначного входа.", "max_score": 1, "skill_id": "python.functions"},
+            {"id": "zero-single", "title": "Ноль и однозначные числа", "description": "Ноль и числа с одной цифрой обрабатываются корректно.", "max_score": 1, "skill_id": "python.boundary_cases"},
+            {"id": "embedded-zero", "title": "Внутренние и завершающие нули", "description": "Нули внутри и в конце числа не теряются.", "max_score": 1, "skill_id": "python.iteration"},
         ],
         "title": "Сумма цифр digit_sum(n)",
         "type": "python",
@@ -437,6 +437,58 @@ SCENARIOS: tuple[dict, ...] = (
             "coverage_terms": ["сумм", "альтернатив"],
         },
     },
+    {
+        "id": "family-base-divisibility",
+        "assignment_id": "ai-lab.python.divisibility-count",
+        "assignment_version": 1,
+        "family_template_id": "python.divisibility-count.v1",
+        "title": "Подсчёт кратных чисел на отрезке",
+        "type": "python",
+        "subject": "Информатика",
+        "topic": "Целочисленная арифметика и циклы",
+        "difficulty": "Синтетическое",
+        "condition": "Реализуйте функцию count_divisible(a, b), которая возвращает количество целых чисел x включительно на отрезке a ≤ x ≤ b, делящихся на 3 без остатка. Границы вызова удовлетворяют 0 ≤ a ≤ b ≤ 100. Возвращаемое значение должно быть целым числом.",
+        "student_solution": "DIVISOR = 3\n\ndef count_divisible(a, b):\n    return b // DIVISOR - (a - 1) // DIVISOR",
+        "reference_answer": "DIVISOR = 3\n\ndef count_divisible(a, b):\n    return b // DIVISOR - (a - 1) // DIVISOR",
+        "criteria": [
+            "1 балл — функция возвращает целое количество чисел.",
+            "1 балл — учитывает включительные границы отрезка.",
+            "1 балл — считает только значения, кратные делителю из условия.",
+        ],
+        "assignment_criteria": [
+            {"id": "integer-result", "title": "Целый результат", "description": "Функция возвращает целое количество чисел.", "max_score": 1},
+            {"id": "inclusive-range", "title": "Включительные границы", "description": "Обе границы отрезка учитываются.", "max_score": 1},
+            {"id": "divisor-rule", "title": "Условие делимости", "description": "Считаются только значения, делящиеся на параметр без остатка.", "max_score": 1},
+        ],
+        "max_score": 3,
+        "expected": {"score": 3, "mistake_types": [], "human_review": True},
+    },
+    {
+        "id": "family-base-remove-character",
+        "assignment_id": "ai-lab.python.remove-character",
+        "assignment_version": 1,
+        "family_template_id": "python.remove-character.v1",
+        "title": "Удаление выбранного символа из строки",
+        "type": "python",
+        "subject": "Информатика",
+        "topic": "Строки и последовательности",
+        "difficulty": "Синтетическое",
+        "condition": "Реализуйте функцию remove_character(text), которая удаляет из строки все вхождения символа 'a'. Порядок остальных символов сохраняется; сравнение точное и чувствительно к регистру. Длина входной строки не превышает 80 символов.",
+        "student_solution": "TARGET = 'a'\n\ndef remove_character(text):\n    return text.replace(TARGET, '')",
+        "reference_answer": "TARGET = 'a'\n\ndef remove_character(text):\n    return ''.join(char for char in text if char != TARGET)",
+        "criteria": [
+            "1 балл — результатом функции является строка.",
+            "1 балл — удаляются все вхождения целевого символа.",
+            "1 балл — остальные символы сохраняются в исходном порядке.",
+        ],
+        "assignment_criteria": [
+            {"id": "string-result", "title": "Строковый результат", "description": "Функция возвращает строку.", "max_score": 1},
+            {"id": "remove-all", "title": "Удаление всех вхождений", "description": "Удаляются все вхождения заданного символа.", "max_score": 1},
+            {"id": "preserve-others", "title": "Сохранение остальных символов", "description": "Остальные символы сохраняются в прежнем порядке.", "max_score": 1},
+        ],
+        "max_score": 3,
+        "expected": {"score": 3, "mistake_types": [], "human_review": True},
+    },
 )
 
 _SCENARIO_BY_ID = {scenario["id"]: scenario for scenario in SCENARIOS}
@@ -466,6 +518,10 @@ def _assignment_definition(scenario: dict) -> dict | None:
         "assignment_version": int(scenario.get("assignment_version") or 1),
         "scenario_id": scenario["id"],
         "title": scenario["title"],
+        "type": "python",
+        "subject": scenario.get("subject") or "",
+        "topic": scenario.get("topic") or "",
+        "difficulty": scenario.get("difficulty") or "Не указана",
         "max_score": float(scenario.get("max_score") or sum(float(item["max_score"]) for item in criteria)),
         "criteria": criteria,
     }
@@ -473,6 +529,10 @@ def _assignment_definition(scenario: dict) -> dict | None:
 
 def get_scenario(scenario_id: str) -> dict | None:
     scenario = _SCENARIO_BY_ID.get(str(scenario_id or ""))
+    if scenario is None and has_app_context() and str(scenario_id or "").startswith("family-"):
+        from app.ai_lab.assignment_variants import get_available_variant_scenario
+
+        scenario = get_available_variant_scenario(str(scenario_id))
     if scenario is None and has_app_context() and str(scenario_id or "").startswith("rubric-"):
         from app.ai_lab.rubric_builder import get_rubric
 
@@ -496,6 +556,16 @@ def list_scenarios() -> list[dict]:
         scenario = get_scenario(source["id"])
         result.append({key: deepcopy(value) for key, value in scenario.items() if key not in {"expected", "test_cases", "accepted_answers"}})
     if has_app_context():
+        from sqlalchemy import inspect
+        from app import db
+        from core.db_models import AiLabAssignmentVariant
+        if inspect(db.engine).has_table(AiLabAssignmentVariant.__tablename__):
+            for variant in AiLabAssignmentVariant.query.filter_by(status="available").order_by(
+                    AiLabAssignmentVariant.created_at.desc()).limit(200).all():
+                scenario = get_scenario(variant.scenario_id)
+                if scenario:
+                    result.append({key: deepcopy(value) for key, value in scenario.items()
+                                   if key not in {"expected", "test_cases", "accepted_answers"}})
         from app.ai_lab.rubric_builder import list_rubrics
 
         result.extend(_approved_rubric_scenarios(list_rubrics(approved_only=True, limit=None)))
@@ -518,6 +588,24 @@ def list_python_assignments() -> list[dict]:
             if assignment:
                 assignments.append(assignment)
     return assignments
+
+
+def get_python_assignment_source(assignment_id: str, assignment_version: int) -> dict | None:
+    """Return canonical, versioned source data for a registered synthetic assignment."""
+    for scenario in SCENARIOS:
+        assignment = _assignment_definition(scenario)
+        if (assignment and assignment["assignment_id"] == assignment_id
+                and assignment["assignment_version"] == assignment_version):
+            source_fields = (
+                "id", "title", "type", "subject", "topic", "difficulty", "condition",
+                "starter_code", "reference_answer", "criteria", "max_score",
+                "assignment_criteria", "family_template_id",
+            )
+            return {
+                "assignment": assignment,
+                "scenario": {key: deepcopy(scenario[key]) for key in source_fields if key in scenario},
+            }
+    return None
 
 
 def _approved_rubric_scenarios(rubrics: list[dict]) -> list[dict]:

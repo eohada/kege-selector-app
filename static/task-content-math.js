@@ -15,10 +15,29 @@
       ],
       throwOnError: false,
       trust: true,
+      strict: function (errorCode) {
+        return errorCode === 'unicodeTextInMathMode' ? 'ignore' : 'warn';
+      },
+      preProcess: function (mathText) {
+        return (mathText || '').replace(/\u00a0/g, ' ');
+      },
       // Без 'code': на kompege формулы часто в <code>\( … \)</code> — иначе auto-render их полностью пропускает.
       ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
       ignoredClasses: ['katex'],
     };
+  }
+
+  function normalizeNbsp(node) {
+    if (!node) return;
+    if (node.nodeType === 3 /* Node.TEXT_NODE */) {
+      if (node.nodeValue && node.nodeValue.indexOf('\u00a0') !== -1) {
+        node.nodeValue = node.nodeValue.replace(/\u00a0/g, ' ');
+      }
+    } else if (node.nodeType === 1 /* Node.ELEMENT_NODE */ && !['SCRIPT', 'STYLE'].includes(node.nodeName)) {
+      for (var i = 0; i < node.childNodes.length; i++) {
+        normalizeNbsp(node.childNodes[i]);
+      }
+    }
   }
 
   function tryRender(root) {
@@ -26,6 +45,7 @@
       return false;
     }
     try {
+      normalizeNbsp(root);
       global.renderMathInElement(root, getOpts());
       return true;
     } catch (e) {

@@ -8,7 +8,7 @@ from werkzeug.routing import BuildError
 def _build(endpoint: str, **values) -> str | None:
     try:
         return url_for(endpoint, _external=True, **values)
-    except BuildError:
+    except (BuildError, RuntimeError, Exception):
         return None
 
 

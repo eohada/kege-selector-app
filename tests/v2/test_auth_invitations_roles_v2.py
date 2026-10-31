@@ -40,7 +40,9 @@ def test_teacher_self_registration(app):
         'password': 'Password123!',
         'password_confirm': 'Password123!',
         'role': 'tutor',
-        'full_name': 'Тестовый Преподаватель'
+        'full_name': 'Тестовый Преподаватель',
+        'agree_offer': '1',
+        'agree_consent': '1',
     }, follow_redirects=True)
 
     assert resp.status_code == 200
@@ -79,6 +81,8 @@ def test_registration_applies_a_real_referral_code_once(app):
         'role': 'tutor',
         'full_name': 'Referred user',
         'ref': referral_code,
+        'agree_offer': '1',
+        'agree_consent': '1',
     }, follow_redirects=True)
     assert response.status_code == 200
 
@@ -190,7 +194,9 @@ def test_student_invite_flow(app):
         'email': f"{student_uname}@test.com",
         'password': 'PassStudent123!',
         'password_confirm': 'PassStudent123!',
-        'full_name': 'Иван Студентов'
+        'full_name': 'Иван Студентов',
+        'agree_offer': '1',
+        'agree_consent': '1',
     }, follow_redirects=True)
 
     assert resp_post.status_code == 200
@@ -288,7 +294,9 @@ def test_parent_invite_flow(app):
         'email': f"{parent_uname}@test.com",
         'password': 'PassParent123!',
         'password_confirm': 'PassParent123!',
-        'full_name': 'Мария Петрова'
+        'full_name': 'Мария Петрова',
+        'agree_offer': '1',
+        'agree_consent': '1',
     }, follow_redirects=True)
 
     assert resp_post.status_code == 200

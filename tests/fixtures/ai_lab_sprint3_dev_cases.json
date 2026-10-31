@@ -1,0 +1,105 @@
+{
+  "schema_version": "boostudy.manual-validation.case.v2",
+  "dataset_id": "boostudy-ai-lab-manual-validation",
+  "dataset_version": "2.0.0-dev-draft.1",
+  "split": "development",
+  "status": "draft_requires_owner_approval",
+  "data_classification": "synthetic_teacher_only",
+  "model_calls_performed": 0,
+  "source_version": "dev_cases_v1_original.json",
+  "cases": [
+    {
+      "case_id": "py-sum-multiples-001",
+      "assignment": {"id": "synthetic.sum-multiples-of-three", "version": 2, "title": "Сумма кратных трём"},
+      "prompt": "Реализуйте функцию sum_multiples(n). На вход подаётся целое неотрицательное n. Верните сумму всех положительных целых чисел, кратных 3 и не превосходящих n. Например, для n=7 результат 9, для n=2 результат 0. Предложение по диапазону для dev-проверки: 0 <= n <= 100000; владелец задания должен подтвердить его до использования. Ограничение нужно для предсказуемого времени проверки циклических решений, а не для ограничения корректного алгоритма.",
+      "test_set": {"id": "synthetic.sum-multiples-of-three.tests", "version": 2},
+      "rubric": {"id": "synthetic.sum-multiples-of-three.rubric", "version": 2, "max_score": 3},
+      "contract": {"mode": "function", "function_name": "sum_multiples", "arguments": ["n: integer", "proposed domain: 0 <= n <= 100000; pending owner approval"], "returns": "integer; sum x for 1 <= x <= n and x % 3 == 0", "out_of_contract_inputs": "not tested"},
+      "criterion_independence_note": "Группы разделены по наблюдаемому поведению: кратные значения на верхней границе, значения при некратной верхней границе и малые входы. Выходное значение не позволяет по одному провалу на кратной границе доказать, что причина именно в исключении n, а не в неверном делителе; поэтому формулировка критерия описывает результат на этой группе, а не внутреннюю причину ошибки.",
+      "criteria": [
+        {"id": "boundary-multiple-results", "name": "Точные суммы на кратной верхней границе", "description": "Возвращает правильную сумму, когда n само кратно 3.", "max_score": 1, "test_ids": ["sm-3", "sm-6"], "award_rule": "1 балл, если оба теста пройдены; иначе 0. Это утверждение только об этих входах."},
+        {"id": "selects-multiples-of-three", "name": "Выбор кратных трём при некратной границе", "description": "Включает все кратные 3 и исключает остальные на тестах с n, не кратным 3.", "max_score": 1, "test_ids": ["sm-7", "sm-8", "sm-10", "sm-100", "sm-100000"], "award_rule": "1 балл, если пройдены все связанные тесты; иначе 0. Альтернативная формула допустима."},
+        {"id": "small-inputs", "name": "Нулевые и малые входы", "description": "Корректно обрабатывает диапазон до первого кратного 3.", "max_score": 1, "test_ids": ["sm-0", "sm-1", "sm-2"], "award_rule": "1 балл, если все три теста возвращают 0; иначе 0."}
+      ],
+      "tests": [
+        {"id": "sm-0", "visibility": "public", "args": [0], "expected": 0, "criterion_ids": ["small-inputs"]},
+        {"id": "sm-1", "visibility": "public", "args": [1], "expected": 0, "criterion_ids": ["small-inputs"]},
+        {"id": "sm-2", "visibility": "public", "args": [2], "expected": 0, "criterion_ids": ["small-inputs"]},
+        {"id": "sm-3", "visibility": "public", "args": [3], "expected": 3, "criterion_ids": ["boundary-multiple-results"]},
+        {"id": "sm-6", "visibility": "public", "args": [6], "expected": 9, "criterion_ids": ["boundary-multiple-results"]},
+        {"id": "sm-7", "visibility": "public", "args": [7], "expected": 9, "criterion_ids": ["selects-multiples-of-three"]},
+        {"id": "sm-8", "visibility": "public", "args": [8], "expected": 9, "criterion_ids": ["selects-multiples-of-three"]},
+        {"id": "sm-10", "visibility": "public", "args": [10], "expected": 18, "criterion_ids": ["selects-multiples-of-three"]},
+        {"id": "sm-100", "visibility": "hidden", "args": [100], "expected": 1683, "criterion_ids": ["selects-multiples-of-three"]},
+        {"id": "sm-100000", "visibility": "hidden", "args": [100000], "expected": 1666683333, "criterion_ids": ["selects-multiples-of-three"], "oracle": "k=100000//3=33333; 3*k*(k+1)//2=1666683333"}
+      ],
+      "solutions": [
+        {"id": "sm-ref-loop-v2", "label": "reference", "source": "def sum_multiples(n):\n    return sum(x for x in range(1, n + 1) if x % 3 == 0)", "expected_score": 3, "criterion_results": {"boundary-multiple-results": 1, "selects-multiples-of-three": 1, "small-inputs": 1}},
+        {"id": "sm-alt-formula-v2", "label": "alternative_correct", "source": "def sum_multiples(n):\n    k = n // 3\n    return 3 * k * (k + 1) // 2", "expected_score": 3, "criterion_results": {"boundary-multiple-results": 1, "selects-multiples-of-three": 1, "small-inputs": 1}, "expected_observation": "Формула математически эквивалентна сумме 3+6+...+3k; цикл не требуется."},
+        {"id": "sm-partial-exclusive-v2", "label": "partial", "source": "def sum_multiples(n):\n    return sum(x for x in range(1, n) if x % 3 == 0)", "expected_score": 2, "criterion_results": {"boundary-multiple-results": 0, "selects-multiples-of-three": 1, "small-inputs": 1}, "expected_observation": "Не включает n при n=3 или n=6; на проверенных некратных n суммы верны."},
+        {"id": "sm-wrong-five-v2", "label": "incorrect", "source": "def sum_multiples(n):\n    return sum(x for x in range(1, n + 1) if x % 5 == 0)", "expected_score": 1, "criterion_results": {"boundary-multiple-results": 0, "selects-multiples-of-three": 0, "small-inputs": 1}, "expected_observation": "Неверно отбираются числа: на положительных тестах функция суммирует кратные 5. Провал группы границ сам по себе не доказывает отдельную ошибку исключения n."}
+      ]
+    },
+    {
+      "case_id": "py-vowel-count-002",
+      "assignment": {"id": "synthetic.ascii-vowel-count", "version": 2, "title": "Количество английских гласных ASCII"},
+      "prompt": "Реализуйте count_vowels(text). Посчитайте каждое вхождение только ASCII-букв a, e, i, o, u в любом ASCII-регистре. Буква y, цифры, знаки, кириллица и прочие Unicode-символы гласными не считаются. Предлагаемый предел длины строки для dev-проверки — 100000 символов; владелец задания должен подтвердить его.",
+      "test_set": {"id": "synthetic.ascii-vowel-count.tests", "version": 2},
+      "rubric": {"id": "synthetic.ascii-vowel-count.rubric", "version": 2, "max_score": 3},
+      "contract": {"mode": "function", "function_name": "count_vowels", "arguments": ["text: string", "proposed maximum length: 100000; pending owner approval"], "returns": "integer count of each ASCII a/e/i/o/u in either ASCII case; y and all non-ASCII characters are excluded", "out_of_contract_inputs": "not tested"},
+      "criteria": [
+        {"id": "vc-ascii-case", "name": "Оба ASCII-регистра", "description": "Учитывает прописные и строчные ASCII-гласные.", "max_score": 1, "test_ids": ["vc-upper", "vc-mixed"], "award_rule": "1 балл, если оба теста верны; иначе 0."},
+        {"id": "vc-each-occurrence", "name": "Каждое повторное вхождение", "description": "Считает каждую встреченную ASCII-гласную, а не только разные буквы.", "max_score": 1, "test_ids": ["vc-repeat", "vc-education-lower"], "award_rule": "1 балл, если оба теста верны; иначе 0."},
+        {"id": "vc-excludes-nonvowels", "name": "Пустой ввод и исключение негласных символов", "description": "Не считает y, символы и Unicode-буквы вне ASCII-набора.", "max_score": 1, "test_ids": ["vc-empty", "vc-consonants", "vc-y", "vc-dotted-i", "vc-cyrillic-e", "vc-ascii-plus-unicode"], "award_rule": "1 балл, если все связанные тесты верны; иначе 0."}
+      ],
+      "tests": [
+        {"id": "vc-empty", "visibility": "public", "args": [""], "expected": 0, "criterion_ids": ["vc-excludes-nonvowels"]},
+        {"id": "vc-consonants", "visibility": "public", "args": ["rhythm 123!?"], "expected": 0, "criterion_ids": ["vc-excludes-nonvowels"]},
+        {"id": "vc-upper", "visibility": "public", "args": ["AEIOU"], "expected": 5, "criterion_ids": ["vc-ascii-case"]},
+        {"id": "vc-mixed", "visibility": "public", "args": ["aEIoU"], "expected": 5, "criterion_ids": ["vc-ascii-case"]},
+        {"id": "vc-repeat", "visibility": "public", "args": ["aaaeee"], "expected": 6, "criterion_ids": ["vc-each-occurrence"]},
+        {"id": "vc-education-lower", "visibility": "hidden", "args": ["education!"], "expected": 5, "criterion_ids": ["vc-each-occurrence"]},
+        {"id": "vc-y", "visibility": "public", "args": ["yellow Yy"], "expected": 2, "criterion_ids": ["vc-excludes-nonvowels"]},
+        {"id": "vc-dotted-i", "visibility": "public", "args": ["\u0130"], "expected": 0, "criterion_ids": ["vc-excludes-nonvowels"]},
+        {"id": "vc-cyrillic-e", "visibility": "public", "args": ["\u0435"], "expected": 0, "criterion_ids": ["vc-excludes-nonvowels"]},
+        {"id": "vc-ascii-plus-unicode", "visibility": "hidden", "args": ["a\u0130\u0435e"], "expected": 2, "criterion_ids": ["vc-excludes-nonvowels"]}
+      ],
+      "solutions": [
+        {"id": "vc-ref-ascii-v2", "label": "reference", "source": "def count_vowels(text):\n    return sum(1 for char in text if char in 'aeiouAEIOU')", "expected_score": 3, "criterion_results": {"vc-ascii-case": 1, "vc-each-occurrence": 1, "vc-excludes-nonvowels": 1}},
+        {"id": "vc-alt-count-ascii-v2", "label": "alternative_correct", "source": "def count_vowels(text):\n    return sum(text.count(vowel) for vowel in 'aeiouAEIOU')", "expected_score": 3, "criterion_results": {"vc-ascii-case": 1, "vc-each-occurrence": 1, "vc-excludes-nonvowels": 1}, "expected_observation": "Независимо подсчитывает частоту каждой разрешённой буквы; Unicode-нормализация не применяется."},
+        {"id": "vc-partial-lowercase-v2", "label": "partial", "source": "def count_vowels(text):\n    return sum(1 for char in text if char in 'aeiou')", "expected_score": 2, "criterion_results": {"vc-ascii-case": 0, "vc-each-occurrence": 1, "vc-excludes-nonvowels": 1}, "expected_observation": "Считает повторные строчные ASCII-гласные и исключает негласные символы, но пропускает прописные."},
+        {"id": "vc-wrong-y-v2", "label": "incorrect", "source": "def count_vowels(text):\n    return sum(1 for char in text.casefold() if char in 'aeiouy')", "expected_score": 2, "criterion_results": {"vc-ascii-case": 1, "vc-each-occurrence": 1, "vc-excludes-nonvowels": 0}, "expected_observation": "Ошибочно считает y; casefold также превращает U+0130 в последовательность с ASCII i, что выявляют Unicode-тесты."}
+      ]
+    },
+    {
+      "case_id": "py-clamp-list-003",
+      "assignment": {"id": "synthetic.clamp-list", "version": 2, "title": "Ограничение элементов списка"},
+      "prompt": "Реализуйте clamp_list(values, lo, hi). Для каждого целого значения верните lo, если значение меньше lo; hi, если больше hi; иначе оставьте значение без изменения. Сохраните длину и порядок элементов. Предусловие: lo <= hi. Черновой контракт v1 дополнительно требует новый объект списка. Это требование сохранено до решения владельца, но текущий Runner не позволяет наблюдать идентичность результата относительно аргумента.",
+      "test_set": {"id": "synthetic.clamp-list.tests", "version": 2},
+      "rubric": {"id": "synthetic.clamp-list.rubric", "version": 2, "max_score": 3},
+      "contract": {"mode": "function", "function_name": "clamp_list", "arguments": ["values: list[int]", "lo: int", "hi: int", "lo <= hi"], "returns": "new list; each value clamped to inclusive [lo, hi], with order and length preserved", "out_of_contract_inputs": "not tested", "unverified_requirements": ["A new list object is returned. The current runner serializes only the return value and does not expose argument identity or post-call argument state; this property is not scored until a safe observable test is designed or the owner changes the contract."]},
+      "criteria": [
+        {"id": "cl-lower-bound", "name": "Нижняя граница", "description": "Значения ниже lo заменяются на lo, включая случай lo == hi.", "max_score": 1, "test_ids": ["cl-below-one", "cl-below-many", "cl-below-collapsed"], "award_rule": "1 балл, если все тесты группы пройдены; иначе 0."},
+        {"id": "cl-upper-bound", "name": "Верхняя граница", "description": "Значения выше hi заменяются на hi, включая случай lo == hi.", "max_score": 1, "test_ids": ["cl-above-one", "cl-above-many", "cl-above-collapsed"], "award_rule": "1 балл, если все тесты группы пройдены; иначе 0."},
+        {"id": "cl-preserve-in-range", "name": "Сохранение допустимых значений, порядка и пустого списка", "description": "Сохраняет значения внутри границ, их позиции и длину; пустой список остаётся пустым.", "max_score": 1, "test_ids": ["cl-inside", "cl-order", "cl-empty"], "award_rule": "1 балл, если все тесты группы пройдены; иначе 0. Точное сравнение также требует списка с ожидаемыми элементами."}
+      ],
+      "tests": [
+        {"id": "cl-below-one", "visibility": "public", "args": [[-5], 0, 10], "expected": [0], "criterion_ids": ["cl-lower-bound"]},
+        {"id": "cl-below-many", "visibility": "public", "args": [[-3, -5], -2, 8], "expected": [-2, -2], "criterion_ids": ["cl-lower-bound"]},
+        {"id": "cl-below-collapsed", "visibility": "public", "args": [[-1, 0], 5, 5], "expected": [5, 5], "criterion_ids": ["cl-lower-bound"]},
+        {"id": "cl-above-one", "visibility": "public", "args": [[11], 0, 10], "expected": [10], "criterion_ids": ["cl-upper-bound"]},
+        {"id": "cl-above-many", "visibility": "public", "args": [[11, 15], 0, 10], "expected": [10, 10], "criterion_ids": ["cl-upper-bound"]},
+        {"id": "cl-above-collapsed", "visibility": "public", "args": [[6, 10], 5, 5], "expected": [5, 5], "criterion_ids": ["cl-upper-bound"]},
+        {"id": "cl-inside", "visibility": "public", "args": [[0, 4, 10], 0, 10], "expected": [0, 4, 10], "criterion_ids": ["cl-preserve-in-range"]},
+        {"id": "cl-order", "visibility": "hidden", "args": [[8, 2, 5], 0, 10], "expected": [8, 2, 5], "criterion_ids": ["cl-preserve-in-range"]},
+        {"id": "cl-empty", "visibility": "public", "args": [[], 0, 10], "expected": [], "criterion_ids": ["cl-preserve-in-range"]}
+      ],
+      "solutions": [
+        {"id": "cl-ref-minmax-v2", "label": "reference", "source": "def clamp_list(values, lo, hi):\n    return [min(max(value, lo), hi) for value in values]", "expected_score": 3, "criterion_results": {"cl-lower-bound": 1, "cl-upper-bound": 1, "cl-preserve-in-range": 1}},
+        {"id": "cl-alt-branches-v2", "label": "alternative_correct", "source": "def clamp_list(values, lo, hi):\n    result = []\n    for value in values:\n        if value < lo:\n            result.append(lo)\n        elif value > hi:\n            result.append(hi)\n        else:\n            result.append(value)\n    return result", "expected_score": 3, "criterion_results": {"cl-lower-bound": 1, "cl-upper-bound": 1, "cl-preserve-in-range": 1}},
+        {"id": "cl-partial-lower-only-v2", "label": "partial", "source": "def clamp_list(values, lo, hi):\n    return [max(value, lo) for value in values]", "expected_score": 2, "criterion_results": {"cl-lower-bound": 1, "cl-upper-bound": 0, "cl-preserve-in-range": 1}, "expected_observation": "Нижняя граница, допустимые значения, порядок и пустой список проходят; верхняя граница не применяется."},
+        {"id": "cl-wrong-reversed-v2", "label": "incorrect", "source": "def clamp_list(values, lo, hi):\n    return [min(max(value, hi), lo) for value in values]", "expected_score": 1, "criterion_results": {"cl-lower-bound": 1, "cl-upper-bound": 0, "cl-preserve-in-range": 0}, "expected_observation": "Нижние значения случайно получают lo, но допустимые и верхние значения обычно схлопываются к lo; пустой список остаётся пустым."}
+      ]
+    }
+  ]
+}

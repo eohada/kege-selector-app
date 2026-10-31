@@ -210,7 +210,7 @@ def _before_flush(session, _flush_context, _instances) -> None:
 
 def _assignment_recipients(session, assignment_id: int) -> tuple[Assignment | None, set[int]]:
     assignment = session.get(Assignment, assignment_id)
-    if not assignment:
+    if not assignment or not assignment.is_active:
         return None, set()
     recipients = {
         int(student_id)
@@ -228,6 +228,23 @@ def _after_flush_postexec(session, _flush_context) -> None:
     pending = session.info.pop(_PENDING_KEY, {})
     if not pending:
         return
+
+    lesson_task_ids = {
+        int(task.lesson_task_id)
+        for task in pending.get('lesson_tasks', set())
+        if getattr(task, 'lesson_task_id', None) is not None
+    }
+    lesson_tasks = (
+        session.query(LessonTask).filter(LessonTask.lesson_task_id.in_(lesson_task_ids)).all()
+        if lesson_task_ids else []
+    )
+    pending_lesson_exposures: set[tuple[int, int]] = set()
+    for lesson_task in lesson_tasks:
+        if not lesson_task.is_visible_to_student:
+            continue
+        lesson = session.get(Lesson, lesson_task.lesson_id)
+        if lesson and lesson.student_id:
+            pending_lesson_exposures.add((int(lesson.student_id), int(lesson_task.task_id)))
 
     assignment_ids = {
         int(task.assignment_id)
@@ -269,6 +286,10 @@ def _after_flush_postexec(session, _flush_context) -> None:
             }
         for student_id in student_ids:
             for assignment_task in assignment_tasks:
+                if (int(student_id), int(assignment_task.task_id)) in pending_lesson_exposures:
+                    # A single publication can expose the same item through
+                    # both its LessonTask and AssignmentTask records.
+                    continue
                 if int(assignment_task.task_id) in mirrored_lesson_task_ids:
                     continue
                 record_task_exposure(
@@ -280,23 +301,20 @@ def _after_flush_postexec(session, _flush_context) -> None:
                     error_review=bool(assignment_task.is_error_review),
                 )
 
-    lesson_task_ids = {
-        int(task.lesson_task_id)
-        for task in pending.get('lesson_tasks', set())
-        if getattr(task, 'lesson_task_id', None) is not None
-    }
-    if not lesson_task_ids:
-        return
-    lesson_tasks = session.query(LessonTask).filter(LessonTask.lesson_task_id.in_(lesson_task_ids)).all()
+    recorded_lesson_exposures: set[tuple[int, int]] = set()
     for lesson_task in lesson_tasks:
         if not lesson_task.is_visible_to_student:
             continue
         lesson = session.get(Lesson, lesson_task.lesson_id)
         if not lesson or not lesson.student_id:
             continue
+        exposure_key = (int(lesson.student_id), int(lesson_task.task_id))
+        if exposure_key in recorded_lesson_exposures:
+            continue
+        recorded_lesson_exposures.add(exposure_key)
         record_task_exposure(
             session,
-            int(lesson.student_id),
+            exposure_key[0],
             int(lesson_task.task_id),
             context_type='lesson',
             context_id=lesson_task.lesson_task_id,

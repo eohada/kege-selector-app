@@ -130,6 +130,10 @@
   height: min(58vh, 600px) !important;
   min-width: 300px !important;
   min-height: 250px !important;
+  max-height: calc(100vh - 210px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
   z-index: 35;
 }
 .homework-os .homework-answer-window iframe { flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #fff; }
@@ -160,78 +164,81 @@
   width: max-content !important;
   max-width: calc(100vw - 32px) !important;
   transform: none !important;
-  height: 68px !important;
-  gap: 8px !important;
-  padding: 3px 12px !important;
-  border-radius: 20px !important;
-  border: 1px solid rgba(225, 228, 248, .95) !important;
-  background: rgba(255, 255, 255, .97) !important;
-  box-shadow: 0 10px 30px rgba(58, 42, 110, .12), 0 2px 6px rgba(15, 23, 42, .04) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  height: auto !important;
+  gap: 12px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   display: flex !important;
   align-items: center !important;
   overflow: visible !important;
+  pointer-events: none !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
 }
 .homework-os #board-dock > .board-dock-item {
   order: 0 !important;
-  flex: 0 0 78px !important;
-  width: 78px !important;
-  height: 62px !important;
-  display: flex !important;
+  flex: 0 0 48px !important;
+  width: 48px !important;
+  height: 48px !important;
+  display: inline-flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 3px !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: #334155 !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: #475569 !important;
   cursor: pointer !important;
-  font-size: 11px !important;
-  font-weight: 750 !important;
   list-style: none !important;
   position: relative !important;
-  transition: transform 0.15s ease, color 0.15s ease !important;
+  pointer-events: auto !important;
+  transition: transform 0.15s ease, color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
 }
 .homework-os #board-dock > .board-dock-item:hover {
   transform: translateY(-2px) !important;
   color: #4f46e5 !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.15) !important;
 }
 .homework-os #board-dock > .board-dock-item::after {
-  content: attr(data-room-label) !important;
-  font-size: 11px !important;
-  font-weight: 750 !important;
-  line-height: 1 !important;
-  color: inherit !important;
+  display: none !important;
 }
 .homework-os #board-dock > .board-dock-item > i {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 11px !important;
-  background: #f1f5f9 !important;
-  color: #334155 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  width: auto !important;
+  height: auto !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
   font-size: 20px !important;
   line-height: 1 !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
   text-rendering: geometricPrecision !important;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease !important;
 }
 .homework-os #board-dock > .board-dock-item:hover > i {
-  background: #ede9fe !important;
   color: #4f46e5 !important;
 }
+.homework-os #board-dock > .board-dock-item.is-active {
+  border-color: #c7d2fe !important;
+  background: #ede9fe !important;
+  color: #4f46e5 !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25) !important;
+}
 .homework-os #board-dock > .board-dock-item.is-active > i {
-  background: #4f46e5 !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35) !important;
+  color: #4f46e5 !important;
 }
 .homework-os #board-dock > .board-dock-item > span {
   display: none !important;
@@ -866,4 +873,59 @@
   color: #fff;
   background: #d97706;
 }
+
+/* ======================================================================
+   INNER WINDOWS POLISH & MOTION PIPELINE (120-160 FPS Composited Windows)
+   ====================================================================== */
+.homework-os .glass-os-window,
+.room-lesson-os .glass-os-window {
+  contain: paint layout;
+  will-change: transform, width, height;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.homework-os .glass-os-window > [id$="-header"],
+.room-lesson-os .glass-os-window > [id$="-header"] {
+  height: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  user-select: none;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+  box-sizing: border-box;
+}
+
+.homework-os .glass-os-window > [id$="-body"],
+.room-lesson-os .glass-os-window > [id$="-body"] {
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+/* Homework Window OS Theme */
+#homework-window {
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 20px 45px -12px rgba(16, 185, 129, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.9) inset !important;
+}
+
+#homework-window-header {
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.95), rgba(240, 253, 250, 0.95)) !important;
+  border-bottom: 1px solid rgba(167, 243, 208, 0.7) !important;
+}
+
+/* Authoritative Window Minimum Sizes for Homework OS */
+.homework-os #code-window { min-width: 440px !important; min-height: 280px !important; }
+.homework-os #task-window { min-width: 380px !important; min-height: 240px !important; }
+.homework-os #homework-window { min-width: 380px !important; min-height: 240px !important; }
+.homework-os #homework-answer-window { min-width: 460px !important; min-height: 320px !important; }
+.homework-os #homework-files-window { min-width: 320px !important; min-height: 200px !important; }
+.homework-os #review-grade-window { min-width: 440px !important; min-height: 340px !important; }
+.homework-os #terminal-window { min-width: 360px !important; min-height: 200px !important; }
+
 

@@ -3,6 +3,7 @@
 {% set active_page = 'courses' %}
 
 {% macro lesson_card(lesson, draft=False) -%}
+  {% set is_deferred = lesson.sequence_state.state == 'deferred' %}
   <article class="rounded-[1.5rem] border-2 {% if draft %}border-amber-200 bg-amber-50/30{% else %}border-slate-200 bg-white{% endif %} p-4 flex flex-col justify-between transition hover:border-slate-300">
     <div>
       <div class="flex items-start justify-between gap-3 mb-2">
@@ -38,8 +39,8 @@
         </div>
 
         {% if not is_master %}
-          <span class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-black {% if lesson.status == 'completed' %}bg-emerald-100 text-emerald-800 border border-emerald-200{% elif lesson.status == 'in_progress' %}bg-amber-100 text-amber-800 border border-amber-200 animate-pulse{% elif lesson.status == 'planned' %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
-            {{ 'Проведён' if lesson.status == 'completed' else ('Идёт' if lesson.status == 'in_progress' else ('В плане' if lesson.status == 'planned' else lesson.status)) }}
+          <span class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-black {% if lesson.status == 'completed' %}bg-emerald-100 text-emerald-800 border border-emerald-200{% elif lesson.status == 'in_progress' %}bg-amber-100 text-amber-800 border border-amber-200 animate-pulse{% elif is_deferred %}bg-slate-100 text-slate-700 border border-slate-300{% elif lesson.status == 'planned' %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
+            {{ 'Проведён' if lesson.status == 'completed' else ('Идёт' if lesson.status == 'in_progress' else ('Отложен' if is_deferred else ('В плане' if lesson.status == 'planned' else lesson.status))) }}
           </span>
         {% endif %}
       </div>
@@ -83,7 +84,7 @@
             </span>
           {% endif %}
           {% if lesson.homework %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold" title="Домашнее задание заготовлено">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold" title="В плане есть инструкция к домашней работе; условия заданий откроются только после назначения">
               <i class="ph-bold ph-house-line"></i> ДЗ
             </span>
           {% endif %}
@@ -119,6 +120,41 @@
                 <p class="whitespace-pre-line text-slate-600 text-[11px] leading-relaxed max-h-36 overflow-y-auto">{{ lesson.homework }}</p>
               </div>
             {% endif %}
+            {% if student_homework_previews.get(lesson.lesson_id) %}
+              <p class="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[10px] font-semibold leading-4 text-amber-900">Здесь показаны только условия активных назначенных работ. Сохранение плана урока само по себе не открывает задания.</p>
+            {% endif %}
+            {% for homework_task in student_homework_previews.get(lesson.lesson_id, []) %}
+              <div class="space-y-1 pt-2 border-t border-slate-200">
+                <span class="text-[10px] font-black uppercase tracking-wider text-amber-700">Условие домашнего упражнения · №{{ homework_task.task_number }}</span>
+                <div class="text-slate-600 text-[11px] leading-relaxed">{{ homework_task.content_html|sanitize_html }}</div>
+                <p class="text-[10px] font-bold text-slate-500">Эталон ответа не показывается.</p>
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
+
+      {% set teacher_plan_changes = (lesson.review_summaries or {}).get('_teacher_manual_plan_changes', []) %}
+      {% if can_manage and teacher_plan_changes %}
+        <details class="mt-3 rounded-xl border border-violet-200 bg-violet-50/70 p-3">
+          <summary class="cursor-pointer text-xs font-black text-violet-900">История ручных решений преподавателя</summary>
+          <div class="mt-2 space-y-2">
+            {% for event in teacher_plan_changes|reverse %}
+              <div class="rounded-lg bg-white p-2 text-[11px] text-slate-700">
+                <p class="font-black">Преподаватель изменил план · v{{ event.effective_course_version }}</p>
+                <p class="mt-1">{{ event.reason }}</p>
+                <p class="mt-1 text-slate-500">Изменено: {{ event.changed_fields|join(', ') }} · пользователь #{{ event.actor_user_id }} · {{ event.created_at }}</p>
+                {% if event.before_plan and event.after_plan %}
+                  <details class="mt-2 rounded-lg border border-violet-100 bg-violet-50/50 p-2">
+                    <summary class="cursor-pointer font-black text-violet-800">Сравнить план до и после</summary>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                      <div><p class="font-black text-slate-600">До</p><pre class="mt-1 whitespace-pre-wrap break-words rounded bg-white p-2 font-sans text-[10px]">{{ event.before_plan|tojson(indent=2) }}</pre></div>
+                      <div><p class="font-black text-slate-600">После</p><pre class="mt-1 whitespace-pre-wrap break-words rounded bg-white p-2 font-sans text-[10px]">{{ event.after_plan|tojson(indent=2) }}</pre></div>
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            {% endfor %}
           </div>
         </details>
       {% endif %}
@@ -131,9 +167,12 @@
            class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-1.5 rounded-lg border border-indigo-200 text-xs inline-flex items-center gap-1 no-underline transition">
           <i class="ph-bold ph-pencil-simple"></i> Редактировать план
         </a>
+      {% elif is_deferred %}
+        <span class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600"><i class="ph-bold ph-pause-circle"></i> Отложен преподавателем</span>
       {% elif lesson.status in ['planned', 'draft', 'scheduled'] and can_manage %}
         <form method="post" action="{{ url_for('courses.course_lesson_start', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="inline m-0">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="expected_course_version" value="{{ course.current_version or 1 }}">
           <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-3 py-1.5 rounded-lg border border-indigo-700 border-b-[3px] shadow-xs active:border-b active:translate-y-[1px] transition text-xs inline-flex items-center gap-1">
             <i class="ph-bold ph-play"></i> Начать занятие
           </button>
@@ -153,6 +192,23 @@
           <i class="ph-bold ph-pencil-simple"></i>
           {{ 'Назначить модуль' if draft else 'План' }}
         </a>
+      {% endif %}
+
+      {% if can_manage and not is_master and lesson.status in ['planned', 'draft', 'scheduled'] %}
+        <details class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <summary class="cursor-pointer text-xs font-black text-slate-700">{{ 'Вернуть в очередь' if is_deferred else 'Отложить урок' }}</summary>
+          <p class="mt-2 text-[11px] leading-4 text-slate-600">Нужны причина и явная проверка предпосылок. Порядок не переставляется автоматически; система сохраняет автора, дату и версию решения.</p>
+          <form method="post" action="{{ url_for('courses.course_lesson_sequence_decision', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="mt-2 space-y-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="expected_course_version" value="{{ course.current_version or 1 }}">
+            <input type="hidden" name="action" value="{{ 'restore' if is_deferred else 'defer' }}">
+            <label class="block text-[11px] font-bold text-slate-700">Основание решения
+              <textarea name="reason" required minlength="10" rows="2" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs" placeholder="Почему этот урок нужно перенести или вернуть?">{{ lesson.sequence_state.reason if is_deferred else '' }}</textarea>
+            </label>
+            <label class="flex items-start gap-2 text-[11px] text-slate-700"><input type="checkbox" name="prerequisite_reviewed" value="1" required class="mt-0.5 rounded border-slate-300 text-indigo-600">Я проверил обязательные предпосылки и ограничения программы.</label>
+            <button type="submit" class="rounded-lg border border-indigo-700 bg-indigo-600 px-3 py-2 text-xs font-black text-white">{{ 'Вернуть в очередь' if is_deferred else 'Отложить этот урок' }}</button>
+          </form>
+        </details>
       {% endif %}
 
       {% if can_manage %}
@@ -188,6 +244,29 @@
 
 {% block sandbox_content %}
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 {% if viewer_is_student %}lg:pl-28 lg:pr-6{% endif %} pb-20 lg:pb-12 pt-4 sm:pt-6">
+  {% if can_manage and not is_master %}
+    <section class="mx-auto mb-4 max-w-[1400px] rounded-2xl border-2 border-indigo-200 bg-white p-4 shadow-[0_4px_0_#dbe4ff]" aria-labelledby="course-sequence-title">
+      <h2 id="course-sequence-title" class="text-sm font-black text-slate-900">Последовательность индивидуальной программы</h2>
+      {% if sequence_summary.active|length > 1 %}
+        <p class="mt-2 rounded-lg bg-rose-50 p-2 text-xs font-bold text-rose-800">Обнаружено несколько активных уроков. Перед запуском следующего преподавателю нужно разрешить это состояние.</p>
+      {% elif sequence_summary.active %}
+        <p class="mt-2 text-xs text-slate-700"><strong>Сейчас идёт:</strong> №{{ sequence_summary.active[0].order }} «{{ sequence_summary.active[0].topic }}».</p>
+      {% else %}
+        <p class="mt-2 text-xs text-slate-600">Активного занятия нет.</p>
+      {% endif %}
+      <p class="mt-1 text-xs text-slate-700"><strong>Ожидают решения:</strong>
+        {% if sequence_summary.waiting %}{% for item in sequence_summary.waiting %}№{{ item.order }} «{{ item.topic }}»{% if not loop.last %}; {% endif %}{% endfor %}{% else %}нет{% endif %}
+      </p>
+      {% if sequence_summary.deferred %}<div class="mt-1 text-xs text-slate-600"><strong>Отложены преподавателем:</strong>{% for item in sequence_summary.deferred %}<p class="mt-1">№{{ item.order }} «{{ item.topic }}»{% if item.reason %} — {{ item.reason }}{% endif %}</p>{% endfor %}</div>{% endif %}
+      {% if sequence_summary.next %}
+        <p class="mt-2 text-xs text-slate-700"><strong>Ближайший доступный:</strong> №{{ sequence_summary.next.order }} «{{ sequence_summary.next.topic }}»</p>
+        {% if can_manage %}<a class="mt-2 inline-flex rounded-lg border border-amber-600 bg-amber-500 px-3 py-2 text-xs font-black text-white no-underline" href="{{ url_for('courses.course_lesson_edit', course_id=course.course_id, lesson_id=sequence_summary.next.lesson_id) }}">Подготовить этот урок</a>{% endif %}
+      {% elif sequence_summary.next_issue %}
+        <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs font-bold text-amber-900">Следующий урок пока недоступен: {% if sequence_summary.next_issue == 'unresolved_preceding_lessons' %}остаются более ранние занятия без решения{% elif sequence_summary.next_issue == 'multiple_active_lessons' %}найдено несколько активных занятий{% else %}в плане нет следующего незавершённого урока{% endif %}.</p>
+      {% endif %}
+      <p class="mt-2 text-[11px] leading-4 text-slate-500">Отложенный урок остаётся в плане и не считается проведённым. Решение не меняет историю обучения и баланс; новый урок не запускается автоматически.</p>
+    </section>
+  {% endif %}
   <div class="max-w-[1600px] mx-auto w-full space-y-6">
 
     <!-- Top Hero Card -->
@@ -256,6 +335,7 @@
             {% else %}
               <form method="post" action="{{ url_for('courses.course_prepare_next_lesson', course_id=course.course_id) }}" class="inline m-0">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="expected_course_version" value="{{ course.current_version or 1 }}">
                 <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-amber-600 border-b-[4px] bg-amber-500 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(245,158,11,0.2)] transition-all hover:bg-amber-400 active:translate-y-[2px] active:border-b-2">
                   <i class="ph-bold ph-lightning"></i> Подготовить следующий
                 </button>
@@ -321,10 +401,15 @@
           </span>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-lg font-black text-slate-900">Курс автоматически адаптирован</h2>
-              <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-black text-indigo-700">После последнего урока</span>
+              <h2 class="text-lg font-black text-slate-900">Аналитика урока обновлена</h2>
+              {% if latest_adaptive_lesson and (latest_adaptive_lesson.status or '').lower() == 'completed' %}
+              <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-black text-indigo-700">После завершённого урока</span>
+              {% else %}
+              <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">Итог сохранён · занятие ещё не завершено</span>
+              {% endif %}
             </div>
             <p class="mt-0.5 text-xs font-bold text-slate-500">
+              Навыки и ошибки учтены. План курса автоматически не менялся; адаптацию можно применить только после решения преподавателя в Tutor Core.<br>
               Оценка понимания: <span class="text-slate-800">{{ latest_adaptive_outcome.comprehension_score or '—' }}/5</span> ·
               Самостоятельность: <span class="text-slate-800">{% if latest_adaptive_outcome.independence_level == 'high' %}высокая{% elif latest_adaptive_outcome.independence_level == 'medium' %}средняя{% elif latest_adaptive_outcome.independence_level == 'low' %}низкая{% else %}не указана{% endif %}</span> ·
               Темп: <span class="text-slate-800">{% if latest_adaptive_outcome.pacing == 'optimal' %}комфортный{% elif latest_adaptive_outcome.pacing == 'too_fast' %}спешили{% elif latest_adaptive_outcome.pacing == 'needs_slowdown' %}требует замедления{% else %}не указан{% endif %}</span>

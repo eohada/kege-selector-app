@@ -422,7 +422,6 @@ def api_student_create():
     """API для создания студента"""
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
-
         if not data.get('name'):
             return jsonify({'success': False, 'error': 'Имя ученика обязательно'}), 400
 
@@ -791,30 +790,18 @@ def api_global_search():
 @csrf.exempt
 @login_required
 def generate_telegram_auth_code():
-    """Генерация 6-значного кода привязки к Telegram (например, BS-8F2A) со сроком 15 минут"""
-    try:
-        code_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        auth_code = f"BS-{code_chars}"
-        
-        profile = getattr(current_user, 'profile', None)
-        if not profile:
-            profile = UserProfile(user_id=current_user.id)
-            db.session.add(profile)
-            
-        profile.telegram_link_code = auth_code
-        profile.telegram_link_code_expires = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=15)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'code': auth_code,
-            'expires_in_minutes': 15,
-            'instructions': f'Отправьте этот код боту в Telegram: {auth_code}'
-        })
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f'Error generating telegram auth code: {e}', exc_info=True)
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Генерация 6-значного кода привязки к Telegram (алиас к api_telegram_link_code с обратной совместимостью)."""
+    res = api_telegram_link_code()
+    if isinstance(res, tuple):
+        resp, status = res
+    else:
+        resp, status = res, 200
+    if status == 200:
+        data = resp.get_json() or {}
+        data['expires_in_minutes'] = 15
+        data['instructions'] = f"Отправьте этот код боту в Telegram: {data.get('code')}"
+        return jsonify(data), 200
+    return resp, status
 
 
 @api_bp.route('/api/lessons/balance/adjust', methods=['POST'])
@@ -826,6 +813,13 @@ def api_lesson_create():
         
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
+
+        requested_status = str(data.get('status') or 'planned').strip().lower()
+        if requested_status != 'planned':
+            return jsonify({
+                'success': False,
+                'error': 'Новый урок создаётся только в статусе «Запланирован». Для старта или завершения используйте штатные действия урока.',
+            }), 400
 
         if not data.get('student_id'):
             return jsonify({'success': False, 'error': 'ID студента обязателен'}), 400
@@ -855,7 +849,7 @@ def api_lesson_create():
             lesson_type=lesson_type,
             lesson_date=lesson_date,
             duration=int(data.get('duration', 60)),
-            status=data.get('status', 'planned'),
+            status='planned',
             topic=data.get('topic'),
             notes=data.get('notes'),
             homework=homework_value,
@@ -940,10 +934,24 @@ def api_templates():
 
 
 def _telegram_bot_username() -> str:
-    return (os.environ.get('TELEGRAM_BOT_USERNAME') or '').strip().lstrip('@')
+    env_name = (os.environ.get('ENVIRONMENT') or os.environ.get('FLASK_ENV') or '').lower()
+    if env_name in ('local', 'dev', 'development'):
+        uname = (
+            os.environ.get('TELEGRAM_DEV_BOT_USERNAME')
+            or os.environ.get('TELEGRAM_BOT_USERNAME')
+            or ''
+        ).strip().lstrip('@')
+        if uname:
+            return uname
+    return (
+        os.environ.get('TELEGRAM_BOT_USERNAME')
+        or os.environ.get('TELEGRAM_DEV_BOT_USERNAME')
+        or ''
+    ).strip().lstrip('@')
 
 
 @api_bp.route('/api/telegram/link-code', methods=['POST'])
+@csrf.exempt
 @login_required
 def api_telegram_link_code():
     """Генерация одноразового кода и deep-link токена для привязки Telegram аккаунта"""
@@ -1057,18 +1065,20 @@ def api_telegram_link_bot():
 
 
 @api_bp.route('/api/telegram/unlink', methods=['POST'])
+@csrf.exempt
 @login_required
 def api_telegram_unlink():
     """Отвязка Telegram аккаунта"""
     try:
         profile = current_user.profile
         if not profile:
-            return jsonify({'success': False, 'error': 'Профиль не найден'}), 404
+            profile = UserProfile(user_id=current_user.id)
+            db.session.add(profile)
         
-        if not profile.telegram_chat_id:
+        from app.telegram.linking import telegram_identity_is_linked, unlink_telegram_identity
+        if not telegram_identity_is_linked(current_user, profile):
             return jsonify({'success': False, 'error': 'Telegram не привязан'}), 400
         
-        from app.telegram.linking import unlink_telegram_identity
         unlink_telegram_identity(db.session, user=current_user, profile=profile)
         
         db.session.commit()
@@ -1084,16 +1094,19 @@ def api_telegram_unlink():
 
 
 @api_bp.route('/api/telegram/toggle-notifications', methods=['POST'])
+@csrf.exempt
 @login_required
 def api_telegram_toggle_notifications():
     """Включение/выключение Telegram уведомлений"""
     try:
         profile = current_user.profile
         if not profile:
-            return jsonify({'success': False, 'error': 'Профиль не найден'}), 404
+            profile = UserProfile(user_id=current_user.id)
+            db.session.add(profile)
         
         data = request.get_json() or {}
-        enabled = data.get('enabled', not profile.telegram_notifications_enabled)
+        default_val = profile.telegram_notifications_enabled if profile.telegram_notifications_enabled is not None else True
+        enabled = data.get('enabled', not default_val)
         
         profile.telegram_notifications_enabled = bool(enabled)
         db.session.commit()
@@ -1114,19 +1127,20 @@ def api_telegram_status():
     """Получение статуса привязки Telegram"""
     try:
         profile = current_user.profile
+        from app.telegram.linking import telegram_identity_is_linked
         
-        if not profile:
-            return jsonify({
-                'success': True,
-                'linked': False,
-                'notifications_enabled': True
-            })
+        linked = telegram_identity_is_linked(current_user, profile)
+        chat_id = (profile.telegram_chat_id if profile else None) or getattr(current_user, 'telegram_chat_id', None) or getattr(current_user, 'telegram_id', None)
         
+        notifications_enabled = True
+        if profile and profile.telegram_notifications_enabled is not None:
+            notifications_enabled = profile.telegram_notifications_enabled
+
         return jsonify({
             'success': True,
-            'linked': profile.telegram_chat_id is not None,
-            'chat_id': profile.telegram_chat_id,
-            'notifications_enabled': profile.telegram_notifications_enabled if profile.telegram_notifications_enabled is not None else True
+            'linked': linked,
+            'chat_id': chat_id,
+            'notifications_enabled': notifications_enabled
         })
     except Exception as e:
         logger.error(f'Ошибка при получении статуса Telegram: {e}', exc_info=True)
@@ -1644,3 +1658,32 @@ def api_bug_report_set_status(report_id):
         db.session.rollback()
         logger.error(f'Ошибка смены статуса баг-репорта: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/v2/code/trace', methods=['POST'])
+@csrf.exempt
+def api_code_trace():
+    """
+    Эндпоинт Бу Трассировщика (Visual Algorithm Tracer).
+    Выполняет пошаговый анализ Python-кода и возвращает кадры состояния памяти.
+    """
+    data = request.get_json(silent=True) or {}
+    code = data.get('code', '')
+    file_name = data.get('file_name', 'main.py')
+    max_steps = int(data.get('max_steps', 1000))
+
+    if not code or not code.strip():
+        return jsonify({
+            'success': False,
+            'error': 'Код для трассировки пуст',
+            'total_steps': 0,
+            'frames': [],
+            'file_name': file_name,
+        }), 400
+
+    from app.services.code_tracer import CodeTracer
+    inputs = data.get('inputs') or data.get('stdin')
+    pause_on_input = bool(data.get('pause_on_input', True))
+    tracer = CodeTracer(max_steps=min(max_steps, 1500), timeout_seconds=2.5)
+    result = tracer.trace(code, file_name=file_name, inputs=inputs, pause_on_input=pause_on_input)
+    return jsonify(result)

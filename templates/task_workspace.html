@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace-split.css') }}?v=20261014-engine-v5">
 {% if not embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os.css') }}?v=20261013-os-v1">{% endif %}
 {% if embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-answer-embed.css') }}?v=20261014-2">{% endif %}
+{% if not embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-radial-wheel.css') }}?v=20261022-orbit-v2-6">{% endif %}
 {% endblock %}
 
 {% block sandbox_content %}
@@ -364,7 +365,7 @@
                                     {% endif %}
                                 </h4>
                                 <p class="tw-verdict-banner-subtitle">
-                                    {{ 'Проверено преподавателем' if workspace.is_manual else 'Автоматическая проверка' }}
+                                    Результат проверки
                                 </p>
                             </div>
                         </div>
@@ -388,7 +389,7 @@
                     </div>
                     {% endif %}
 
-                    {% if workspace.submission_meta and workspace.submission_meta.teacher_feedback and workspace.task_position == 1 %}
+                    {% if workspace.submission_meta and workspace.submission_meta.teacher_feedback %}
                     <div class="tw-general-feedback-box">
                         <div class="tw-general-feedback-head">
                             <i class="ph-bold ph-chats-circle"></i>
@@ -555,12 +556,12 @@
                     {% endif %}
                     {% if workspace.is_reviewed %}
                     <div class="tw-review-answer-box">
-                        <div class="tw-review-answer-row tw-review-student-answer {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                        <div class="tw-review-answer-row tw-review-student-answer{% if workspace.answer_score is not none %} {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}{% endif %}">
                             <span class="tw-review-answer-label">Ваш ответ:</span>
                             <strong class="tw-review-answer-value">{{ workspace.plain_answer if workspace.plain_answer else '— (ответ не введён)' }}</strong>
-                            <span class="tw-choice-result-badge {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
-                                <i class="ph-bold {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x{% endif %}"></i>
-                                {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}Верно{% elif workspace.answer_score > 0 %}Частично{% else %}Неверно{% endif %}
+                            <span class="tw-choice-result-badge{% if workspace.answer_score is not none %} {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}{% endif %}">
+                                <i class="ph-bold {% if workspace.answer_score is none %}ph-info{% elif workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x{% endif %}"></i>
+                                {% if workspace.answer_score is none %}Проверено{% elif workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}Верно{% elif workspace.answer_score > 0 %}Частично{% else %}Неверно{% endif %}
                             </span>
                         </div>
                         {% if workspace.correct_answer %}
@@ -701,7 +702,7 @@
                                 {% endif %}
                             </h4>
                             <p class="tw-verdict-banner-subtitle">
-                                {{ 'Проверено преподавателем' if workspace.is_manual else 'Автоматическая проверка' }}
+                                Результат проверки
                             </p>
                         </div>
                     </div>
@@ -725,7 +726,7 @@
                 </div>
                 {% endif %}
 
-                {% if workspace.submission_meta and workspace.submission_meta.teacher_feedback and workspace.task_position == 1 %}
+                {% if workspace.submission_meta and workspace.submission_meta.teacher_feedback %}
                 <div class="tw-general-feedback-box">
                     <div class="tw-general-feedback-head">
                         <i class="ph-bold ph-chats-circle"></i>
@@ -943,17 +944,24 @@
                 <input id="tw-answer" data-demo-target="task-input" class="tw-answer-input tw-standard-answer-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Ваш ответ…' }}">
                 {% if workspace.answer_spec.type == 'short_answer' %}<div class="tw-answer-guidance"><i class="ph-bold ph-info"></i><span><strong>Проверьте свой ответ</strong><small>{% if 'число' in (workspace.answer_spec.prompt or '')|lower %}Убедитесь, что в ответе только число, без дополнительных символов.{% else %}Сверьте формат ответа с условием и уберите лишние символы.{% endif %}</small></span></div>{% endif %}
                 {% else %}
-                <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
+                <div class="tw-readonly-answer-wrap relative">
+                    <input id="tw-answer" data-demo-target="task-input" class="tw-answer-input tw-standard-answer-input is-readonly bg-slate-50 cursor-not-allowed opacity-90 text-slate-700 font-semibold" value="{{ workspace.plain_answer }}" readonly title="Ответ зафиксирован и недоступен для редактирования">
+                    {% if workspace.answer_score is not none and workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}
+                    <span class="tw-answer-score-badge inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md mt-1.5"><i class="ph-bold ph-check"></i> Зачтено ({{ workspace.answer_score }} б.)</span>
+                    {% elif workspace.plain_answer %}
+                    <span class="tw-answer-score-badge inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md mt-1.5"><i class="ph-bold ph-lock-key"></i> Ответ сохранён</span>
+                    {% endif %}
+                </div>
                 {% endif %}
                 
                 {% if workspace.is_reviewed %}
                 <div class="tw-review-answer-box">
-                    <div class="tw-review-answer-row tw-review-student-answer {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                    <div class="tw-review-answer-row tw-review-student-answer{% if workspace.answer_score is not none %} {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}{% endif %}">
                         <span class="tw-review-answer-label">Ваш ответ:</span>
                         <strong class="tw-review-answer-value">{{ workspace.plain_answer if workspace.plain_answer else '— (ответ не введён)' }}</strong>
-                        <span class="tw-choice-result-badge {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
-                            <i class="ph-bold {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x{% endif %}"></i>
-                            {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}Верно{% elif workspace.answer_score > 0 %}Частично{% else %}Неверно{% endif %}
+                        <span class="tw-choice-result-badge{% if workspace.answer_score is not none %} {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}{% endif %}">
+                            <i class="ph-bold {% if workspace.answer_score is none %}ph-info{% elif workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x{% endif %}"></i>
+                            {% if workspace.answer_score is none %}Проверено{% elif workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}Верно{% elif workspace.answer_score > 0 %}Частично{% else %}Неверно{% endif %}
                         </span>
                     </div>
                     {% if workspace.correct_answer %}
@@ -1070,6 +1078,7 @@
         </section>
     </section>
 
+    {% if not embedded_answer|default(false) %}
     <footer class="tw-bottom-bar" aria-label="Действия с работой">
         {% set task_progress = ((workspace.completed_task_count or 0) * 100 / (workspace.task_count or 1))|round|int %}
         <div class="tw-bottom-progress">
@@ -1084,14 +1093,19 @@
             {% if not workspace.can_edit %}
             {% if workspace.return_url and not embedded_answer|default(false) %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary"><i class="ph-bold ph-arrow-left"></i> Вернуться к списку заданий</a>{% endif %}
             {% else %}
+            {% if not embedded_answer|default(false) %}
             <button type="button" class="tw-btn-tactile-save" onclick="window.BooTaskWorkspace?.save?.()"><i class="ph-bold ph-bookmark-simple"></i> <span>Сохранить черновик</span></button>
+            {% endif %}
             {% if workspace.context_type == 'submission_task' and workspace.task_meta and workspace.task_meta.can_submit_separately %}
             <button id="tw-submit-current-task" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Отправить ответ</button>
             {% endif %}
-            {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" data-demo-target="task-submit" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% elif workspace.return_url and not embedded_answer|default(false) %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
+            {% if not embedded_answer|default(false) %}
+            {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" data-demo-target="task-submit" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
+            {% endif %}
             {% endif %}
         </div>
     </footer>
+    {% endif %}
 
 </main>
 <script>
@@ -1128,7 +1142,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-{% if current_user.is_authenticated and current_user.is_demo_user %}
+{% set synthetic_safe_demo_user = current_user.is_authenticated and current_user.is_demo_user and is_ai_lab_synthetic_platform_user(current_user.id) %}
+{% if current_user.is_authenticated and current_user.is_demo_user and not synthetic_safe_demo_user %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   if (window.TASK_WORKSPACE) window.TASK_WORKSPACE.is_demo = true;
@@ -1217,4 +1232,5 @@ document.addEventListener('DOMContentLoaded', function() {
 {% if not embedded_answer|default(false) %}<script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261014-engine-v6"></script>{% endif %}
 <script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20261013-engine-v4"></script>
 {% if not embedded_answer|default(false) %}<script src="{{ url_for('static', filename='task-workspace/homework-os.js') }}?v=20261013-os-v1"></script>{% endif %}
+{% if not embedded_answer|default(false) %}<script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-orbit-v2-6"></script>{% endif %}
 {% endblock %}

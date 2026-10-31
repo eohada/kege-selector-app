@@ -17,11 +17,26 @@ from urllib.parse import parse_qs
 
 from flask import Blueprint, render_template, request, jsonify, url_for
 from sqlalchemy import text
-from app.telegram.config import MAIN_BOT_TOKEN
+from app.telegram.config import (
+    MAIN_BOT_TOKEN,
+    get_main_bot_token,
+    is_mini_app_enabled,
+    is_mini_app_pilot_only,
+    get_mini_app_allowlist_chat_ids,
+    is_mini_app_permitted_for_chat_id,
+)
 
 logger = logging.getLogger(__name__)
 
 tg_app_bp = Blueprint('tg_app', __name__, url_prefix='/tg-app')
+
+
+@tg_app_bp.before_request
+def _guard_mini_app_request():
+    if not is_mini_app_enabled():
+        if request.path.startswith('/tg-app/api/'):
+            return jsonify({'ok': False, 'error': 'mini_app_disabled'}), 403
+        return render_template('telegram/mini_app_disabled.html'), 403
 
 
 def validate_init_data(init_data: str, bot_token: str) -> dict | None:
@@ -78,7 +93,15 @@ def validate_init_data(init_data: str, bot_token: str) -> dict | None:
 
 
 def _get_bot_token() -> str:
-    return MAIN_BOT_TOKEN
+    token = get_main_bot_token()
+    return token.strip()
+    '''
+        os.environ.get('TELEGRAM_DEV_BOT_TOKEN')
+        or os.environ.get('MAIN_BOT_TOKEN')
+        or os.environ.get('BOT_TOKEN')
+        or MAIN_BOT_TOKEN
+        or ''
+    '''
 
 
 def _external_base_url() -> str:
@@ -126,7 +149,55 @@ def resolve_user_from_init_data(body: dict | None) -> tuple[dict | None, tuple[A
     if not tg_id:
         return None, None, 'no_user_id'
 
+    allowlist_raw = (
+        os.environ.get('TELEGRAM_MINI_APP_ALLOWLIST_CHAT_IDS')
+        or os.environ.get('TELEGRAM_DEV_ALLOWLIST_CHAT_IDS')
+        or ''
+    ).strip()
+    allowlist_enforced = (
+        os.environ.get('TELEGRAM_MINI_APP_ALLOWLIST_ONLY')
+        or os.environ.get('TELEGRAM_DEV_ALLOWLIST_ONLY')
+        or ''
+    ).strip().lower() in {'1', 'true', 'yes'}
+
+    # Dynamic tunnel configuration fallback (only in live server mode, not during unit tests)
+    is_testing = False
+    try:
+        from flask import current_app
+        is_testing = bool(current_app and current_app.config.get('TESTING'))
+    except Exception:
+        pass
+
+    if not is_testing:
+        tunnel_json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "instance", "mini_app_tunnel_env.json")
+        if os.path.exists(tunnel_json_path):
+            try:
+                with open(tunnel_json_path, "r", encoding="utf-8-sig") as f:
+                    tunnel_cfg = json.load(f)
+                    if not allowlist_raw:
+                        allowlist_raw = str(tunnel_cfg.get("allowlist_chat_ids") or "")
+                    allowlist_enforced = True
+            except Exception:
+                pass
+
+    if not is_mini_app_enabled():
+        return validated, None, 'mini_app_disabled'
+
+    if is_mini_app_pilot_only():
+        permitted = is_mini_app_permitted_for_chat_id(int(tg_id))
+        if not permitted and allowlist_enforced and allowlist_raw:
+            allowed_ids = {int(x.strip()) for x in allowlist_raw.split(',') if x.strip().isdigit()}
+            creator_chat_id = int(os.environ.get('BOOTSTRAP_CREATOR_CHAT_ID') or 0)
+            if creator_chat_id > 0:
+                allowed_ids.add(creator_chat_id)
+            if int(tg_id) in allowed_ids:
+                permitted = True
+        if not permitted:
+            logger.warning("Mini App initData from non-allowlisted Telegram ID: %s", tg_id)
+            return validated, None, 'telegram_id_not_allowlisted'
+
     from app.models import db
+    from core.db_models import moscow_now
 
     session = db.session
     try:
@@ -149,7 +220,8 @@ def resolve_user_from_init_data(body: dict | None) -> tuple[dict | None, tuple[A
 def _is_creator_role(user_id: int) -> bool:
     from app.models import User
 
-    u = User.query.get(int(user_id))
+    from app.models import db
+    u = db.session.get(User, int(user_id))
     if not u:
         return False
     return bool(u.is_creator() or u.is_chief_admin())
@@ -281,6 +353,7 @@ def mini_app_api_dashboard():
     assert user_row is not None
 
     from app.models import db
+    from core.db_models import moscow_now
 
     try:
         payload = _build_dashboard_payload(db.session, int(user_row[0]), user_row)
@@ -758,7 +831,8 @@ def mini_app_api_profile():
         return jsonify({'ok': False, 'error': err}), code
     assert user_row is not None
 
-    from app.models import db, User, UserProfile, UserSubscription
+    from app.models import db
+    from core.db_models import moscow_now, User, UserProfile, UserSubscription
 
     uid = int(user_row[0])
     u = User.query.get(uid)
@@ -853,6 +927,7 @@ def mini_app_api_assignments():
     assert user_row is not None
 
     from app.models import db
+    from core.db_models import moscow_now
 
     uid = int(user_row[0])
     student_row = _student_row_for_user(db.session, uid)
@@ -904,7 +979,8 @@ def mini_app_api_profile_notifications():
         return jsonify({'ok': False, 'error': err}), code
     assert user_row is not None
 
-    from app.models import db, UserProfile
+    from app.models import db
+    from core.db_models import moscow_now, UserProfile
 
     uid = int(user_row[0])
     profile = UserProfile.query.filter_by(user_id=uid).first()
@@ -957,6 +1033,7 @@ def mini_app_api_creator_bug_reports():
         return jsonify({'ok': False, 'error': 'forbidden'}), 403
 
     from app.models import db
+    from core.db_models import moscow_now
 
     status_filter = body.get('status') or 'new'  # new|answered|closed|all
     if status_filter == 'all':
@@ -1015,6 +1092,7 @@ def mini_app_api_creator_bug_reports_reply():
         return jsonify({'ok': False, 'error': 'missing_fields'}), 400
 
     from app.models import db
+    from core.db_models import moscow_now
     from core.db_models import BotErrorReport, moscow_now
 
     report = BotErrorReport.query.get(int(report_id))
@@ -1058,6 +1136,7 @@ def mini_app_api_creator_stats():
         return jsonify({'ok': False, 'error': 'forbidden'}), 403
 
     from app.models import db
+    from core.db_models import moscow_now
 
     s = db.session
     total_users = s.execute(text('SELECT COUNT(*) FROM "Users"')).scalar() or 0
@@ -1066,7 +1145,7 @@ def mini_app_api_creator_stats():
         'SELECT COUNT(*) FROM "UserProfiles" WHERE telegram_chat_id IS NOT NULL'
     )).scalar() or 0
     lessons_today = s.execute(text(
-        "SELECT COUNT(*) FROM \"Lessons\" WHERE lesson_date::date = CURRENT_DATE"
+        "SELECT COUNT(*) FROM \"Lessons\" WHERE lesson_date >= :tstart AND lesson_date < :tend", {'tstart': (moscow_now().replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None) if moscow_now().tzinfo else moscow_now().replace(hour=0, minute=0, second=0, microsecond=0)), 'tend': (moscow_now().replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None) if moscow_now().tzinfo else moscow_now().replace(hour=0, minute=0, second=0, microsecond=0)) + timedelta(days=1)}
     )).scalar() or 0
     pending_sub = s.execute(text(
         "SELECT COUNT(*) FROM \"Submissions\" WHERE status IN ('SUBMITTED','NEEDS_MANUAL_REVIEW')"
@@ -1109,6 +1188,7 @@ def mini_app_api_creator_broadcasts():
         return jsonify({'ok': False, 'error': 'forbidden'}), 403
 
     from app.models import db
+    from core.db_models import moscow_now
 
     rows = db.session.execute(text("""
         SELECT tb.broadcast_id, tb.message_text, tb.status,
@@ -1149,6 +1229,7 @@ def mini_app_api_creator_students():
         return jsonify({'ok': False, 'error': 'forbidden'}), 403
 
     from app.models import db
+    from core.db_models import moscow_now
 
     rows = db.session.execute(text("""
         SELECT s.student_id, s.name, up.telegram_chat_id,
@@ -1172,3 +1253,288 @@ def mini_app_api_creator_students():
             'last_activity_at': last_activity.isoformat() if last_activity else None,
         })
     return jsonify({'ok': True, 'students': items})
+
+
+# ---------------------------------------------------------------------------
+# Mini App V2 Enhanced Endpoints
+# ---------------------------------------------------------------------------
+
+@tg_app_bp.route('/api/bootstrap', methods=['POST'])
+def mini_app_api_bootstrap():
+    """Unified fast bootstrap endpoint returning user profile, active context,
+    action items, and role-specific dashboard overview in one roundtrip."""
+    body = request.get_json(force=True) if request.is_json else {}
+    validated, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    try:
+        from app.models import db, User, UserProfile
+        from app.telegram.application import build_today_view, context_view, build_action_center
+
+        user = db.session.get(User, uid)
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+
+        req_ctx = body.get('active_context')
+        c_view = context_view(user, req_ctx)
+        t_view = build_today_view(user, c_view.active_context)
+        actions = build_action_center(user, c_view.active_context)
+
+        prof = UserProfile.query.filter_by(user_id=uid).first()
+        notif_settings = {
+            'telegram_notifications_enabled': getattr(prof, 'telegram_notifications_enabled', True),
+            'tg_notify_homework_checked': getattr(prof, 'tg_notify_homework_checked', True),
+            'tg_notify_homework_returned': getattr(prof, 'tg_notify_homework_returned', True),
+            'tg_notify_lesson_scheduled': getattr(prof, 'tg_notify_lesson_scheduled', True),
+            'tg_notify_lesson_reminder': getattr(prof, 'tg_notify_lesson_reminder', True),
+            'tg_notify_news': getattr(prof, 'tg_notify_news', True),
+            'tg_notify_daily_digest': getattr(prof, 'tg_notify_daily_digest', True),
+            'tg_notify_subscription_expiring': getattr(prof, 'tg_notify_subscription_expiring', True),
+        }
+
+        sub_info = None
+        try:
+            from app.utils.subscription_access import get_active_subscription
+            sub = get_active_subscription(user)
+            if sub:
+                sub_info = {
+                    'status': getattr(sub, 'status', 'active'),
+                    'ends_at': getattr(sub, 'end_date', None).isoformat() if getattr(sub, 'end_date', None) else None,
+                }
+        except Exception:
+            pass
+
+        return jsonify({
+            'ok': True,
+            'user': {
+                'id': uid,
+                'username': user.username,
+                'role': user.role,
+                'name': f"{getattr(prof, 'first_name', '') or ''} {getattr(prof, 'last_name', '') or ''}".strip() or user.username,
+                'email': getattr(user, 'email', None),
+                'subscription': sub_info,
+            },
+            'context': _application_read_model_payload(c_view),
+            'today': _application_read_model_payload(t_view),
+            'actions': [_application_read_model_payload(a) for a in actions],
+            'creator_mode': _is_creator_role(uid),
+            'notifications': notif_settings,
+        })
+    except Exception as e:
+        logger.error('mini_app_api_bootstrap error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/student/assignment/detail', methods=['POST'])
+def mini_app_api_student_assignment_detail():
+    """Detailed assignment and submission view for modals and drawers."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    assignment_id = body.get('assignment_id')
+    if not assignment_id:
+        return jsonify({'ok': False, 'error': 'missing_assignment_id'}), 400
+
+    from app.models import db, User, Assignment, Submission, Student
+    uid = int(user_row[0])
+    user = db.session.get(User, uid)
+    if not user:
+        return jsonify({'ok': False, 'error': 'user_not_found'}), 404
+
+    assignment = db.session.get(Assignment, int(assignment_id))
+    if not assignment:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+
+    sub = None
+    if user.is_student():
+        st = Student.query.filter_by(user_id=uid, is_active=True).first()
+        if st:
+            sub = Submission.query.filter_by(assignment_id=assignment.assignment_id, student_id=st.student_id).first()
+    elif user.is_tutor() or user.is_creator():
+        sub_id = body.get('submission_id')
+        if sub_id:
+            sub = db.session.get(Submission, int(sub_id))
+    elif user.is_parent():
+        student_id = body.get('student_id')
+        if student_id:
+            from app.models import FamilyTie
+            tie = FamilyTie.query.filter_by(parent_id=uid, student_id=int(student_id), is_confirmed=True).first()
+            if tie:
+                sub = Submission.query.filter_by(assignment_id=assignment.assignment_id, student_id=int(student_id)).first()
+
+    base = _external_base_url()
+    return jsonify({
+        'ok': True,
+        'assignment': {
+            'id': int(assignment.assignment_id),
+            'title': assignment.title,
+            'description': assignment.description or '',
+            'type': assignment.assignment_type or 'homework',
+            'deadline': assignment.deadline.isoformat() if assignment.deadline else None,
+            'max_score': getattr(assignment, 'max_score', 100) or 100,
+            'tasks_count': len(assignment.task_ids) if getattr(assignment, 'task_ids', None) else None,
+            'web_url': f"{base}/tasks" if base else "/tasks",
+        },
+        'submission': {
+            'id': int(sub.submission_id) if sub else None,
+            'status': sub.status if sub else 'ASSIGNED',
+            'percentage': sub.percentage if sub else None,
+            'teacher_comment': (getattr(sub, 'teacher_comment', None) or getattr(sub, 'teacher_feedback', None)) if sub else None,
+            'submitted_at': sub.submitted_at.isoformat() if (sub and sub.submitted_at) else None,
+            'graded_at': sub.graded_at.isoformat() if (sub and sub.graded_at) else None,
+        } if sub else None
+    })
+
+
+@tg_app_bp.route('/api/teacher/schedule', methods=['POST'])
+def mini_app_api_teacher_schedule():
+    """Upcoming lessons schedule for verified teacher / tutor contexts."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    from datetime import datetime, timezone
+    from app.models import User, Lesson, Student, db
+    from app.utils.datetime_utc import coerce_to_utc
+    user = db.session.get(User, uid)
+    if not user or not (user.is_tutor() or user.is_creator()):
+        return jsonify({'ok': False, 'error': 'teacher_context_required'}), 403
+
+    now = datetime.now(timezone.utc)
+    limit = max(1, min(int(body.get('limit', 20)), 50))
+    rows = (db.session.query(Lesson, Student)
+            .join(Student, Lesson.student_id == Student.student_id)
+            .filter(Student.mentor_id == user.id, Lesson.lesson_date.isnot(None), Lesson.lesson_date >= now)
+            .order_by(Lesson.lesson_date.asc())
+            .limit(limit).all())
+
+    items = []
+    for lesson, student in rows:
+        items.append({
+            'lesson_id': int(lesson.lesson_id),
+            'topic': lesson.topic or 'Занятие',
+            'student_name': student.name or 'Ученик',
+            'student_id': int(student.student_id),
+            'starts_at': coerce_to_utc(lesson.lesson_date).isoformat() if lesson.lesson_date else None,
+            'duration': int(lesson.duration or 60),
+            'status': lesson.status or 'planned',
+            'lesson_url': _lesson_room_url(int(lesson.lesson_id)),
+        })
+    return jsonify({'ok': True, 'schedule': items})
+
+
+@tg_app_bp.route('/api/parent/child/detail', methods=['POST'])
+def mini_app_api_parent_child_detail():
+    """Detailed summary of a confirmed child for parent context."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    student_id = body.get('student_id')
+    if not student_id:
+        return jsonify({'ok': False, 'error': 'missing_student_id'}), 400
+
+    from datetime import datetime, timezone
+    from app.models import User, FamilyTie, Student, Lesson, Submission, Assignment, db
+    from app.utils.datetime_utc import coerce_to_utc
+    user = db.session.get(User, uid)
+    if not user or not user.is_parent():
+        return jsonify({'ok': False, 'error': 'parent_context_required'}), 403
+
+    tie = FamilyTie.query.filter_by(parent_id=uid, student_id=int(student_id), is_confirmed=True).first()
+    if not tie:
+        return jsonify({'ok': False, 'error': 'foreign_child_forbidden'}), 403
+
+    student = db.session.get(Student, int(student_id))
+    if not student:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+
+    now = datetime.now(timezone.utc)
+    lessons = (db.session.query(Lesson)
+               .filter(Lesson.student_id == student.student_id, Lesson.lesson_date.isnot(None), Lesson.lesson_date >= now)
+               .order_by(Lesson.lesson_date.asc())
+               .limit(5).all())
+
+    subs = (db.session.query(Submission, Assignment)
+            .join(Assignment, Submission.assignment_id == Assignment.assignment_id)
+            .filter(Submission.student_id == student.student_id, Assignment.is_active.is_(True))
+            .order_by(Submission.updated_at.desc().nullslast())
+            .limit(10).all())
+
+    active_count = sum(1 for s, _ in subs if str(s.status).upper() in {'ASSIGNED', 'IN_PROGRESS', 'RETURNED'})
+    graded_scores = [float(s.percentage) for s, _ in subs if s.percentage is not None]
+
+    return jsonify({
+        'ok': True,
+        'student': {
+            'student_id': int(student.student_id),
+            'name': student.name,
+            'target_score': student.target_score,
+            'active_assignments_count': active_count,
+            'average_score': round(sum(graded_scores)/len(graded_scores), 1) if graded_scores else None,
+        },
+        'lessons': [{
+            'lesson_id': int(l.lesson_id),
+            'topic': l.topic or 'Урок',
+            'starts_at': coerce_to_utc(l.lesson_date).isoformat() if l.lesson_date else None,
+            'duration': int(l.duration or 60),
+            'status': l.status or 'planned',
+        } for l in lessons],
+        'assignments': [{
+            'id': int(a.assignment_id),
+            'title': a.title,
+            'status': s.status,
+            'deadline': coerce_to_utc(a.deadline).isoformat() if a.deadline else None,
+            'percentage': s.percentage,
+        } for s, a in subs],
+    })
+
+
+@tg_app_bp.route('/api/operations/health', methods=['POST'])
+def mini_app_api_operations_health():
+    """Operational health status for admin and creator contexts."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    from app.models import User, db
+    user = db.session.get(User, uid)
+    if not user or not (_is_creator_role(uid) or user.is_admin()):
+        return jsonify({'ok': False, 'error': 'admin_context_required'}), 403
+
+    from app.telegram.application import build_operational_summary
+    from core.db_models import TelegramDelivery
+
+    summary = build_operational_summary(user)
+    stats = _application_read_model_payload(summary) if summary else {}
+
+    deliveries_by_status = dict(db.session.query(
+        TelegramDelivery.status, db.func.count(TelegramDelivery.delivery_id)
+    ).group_by(TelegramDelivery.status).all())
+
+    return jsonify({
+        'ok': True,
+        'summary': stats,
+        'deliveries': deliveries_by_status,
+        'bot_version': 'v3',
+    })

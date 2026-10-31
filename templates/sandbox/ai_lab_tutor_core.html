@@ -1,0 +1,111 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Tutor Core — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-tutor-core.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="tc-page" id="tutorCore"
+      data-csrf="{{ csrf_token() }}"
+      data-model="{{ default_model }}"
+      data-proposals-url="{{ url_for('ai_lab.tutor_core_create_proposal') }}"
+      data-review-url="{{ url_for('ai_lab.tutor_core_review_proposal', proposal_id=0) }}"
+      data-rollback-url="{{ url_for('ai_lab.tutor_core_rollback_decision', decision_id=0) }}"
+      data-history-url="{{ url_for('ai_lab.tutor_core_history') }}">
+  <nav class="tc-nav" aria-label="Разделы AI Lab">
+    <a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a>
+    <a href="{{ url_for('ai_lab.analytics_page') }}">Аналитика</a>
+    <a href="{{ url_for('ai_lab.practice_page') }}">Практика</a>
+    <a href="{{ url_for('ai_lab.course_page') }}">AI Course</a>
+    <a href="{{ url_for('ai_lab.knowledge_base_page') }}">База знаний</a>
+    <a class="is-active" href="{{ url_for('ai_lab.tutor_core_page') }}" aria-current="page">Tutor Core</a>
+  </nav>
+
+  <header class="tc-header">
+    <div>
+      <p class="tc-eyebrow">ПЕРВЫЙ СЦЕНАРИЙ · ПИЛОТНЫЙ КУРС 4</p>
+      <h1>BooStudy Tutor Core</h1>
+      <p class="tc-lede">Доказательства → осторожный вывод → предложение следующего занятия → решение преподавателя.</p>
+    </div>
+    <span class="tc-badge">Модель: {{ default_model }}</span>
+  </header>
+
+  <p class="tc-notice" role="note">
+    Здесь показаны три контрольных сценария и только явно разрешённые локальные синтетические аккаунты, связанные по User/Student ID.
+    Недостаточно подтверждённые оценки не меняют выводы. Шаблоны курсов 3 и 4 не редактируются; расписание не подменяется настройкой симуляции.
+  </p>
+  {% if state %}
+    <details class="tc-card tc-evidence-integrations">
+      <summary><span class="tc-eyebrow">КОНТРАКТ ИСТОЧНИКОВ</span><strong>Подключённые данные и пробелы</strong><small>{{ state.evidence_contract }}</small></summary>
+      <div class="tc-evidence-integration-list">
+        {% for source in state.evidence_integrations %}
+          <article><div><strong>{{ source.source }}</strong><span class="tc-status" data-kind="{{ source.status }}">{{ source.status }}</span></div><p>{{ source.detail }}</p></article>
+        {% endfor %}
+      </div>
+    </details>
+  {% endif %}
+
+  {% if page_error %}
+    <section class="tc-card tc-error" role="alert"><h2>Пилот пока недоступен</h2><p>{{ page_error }}</p></section>
+  {% elif state %}
+    <script id="tutorState" type="application/json">{{ state|tojson }}</script>
+    <section class="tc-layout" aria-label="Сценарий Tutor Core">
+      <aside class="tc-card tc-profiles">
+          <div class="tc-section-title"><div><p class="tc-eyebrow">СЦЕНАРИИ</p><h2>Профили Tutor Core</h2></div></div>
+        <div class="tc-profile-list" id="profileList" role="group" aria-label="Выберите контрольный профиль или разрешённый синтетический аккаунт">
+          {% for case in state.cases %}
+            <button class="tc-profile{% if loop.first %} is-selected{% endif %}" type="button"
+                    data-profile-id="{{ case.id }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">
+              <span class="tc-profile-title">{{ case.label }}</span>
+              <span class="tc-profile-meta">{{ case.event_count }} событий · {{ case.skill_summary.status_label }}</span>
+            </button>
+          {% endfor %}
+        </div>
+        <h3 class="tc-subhead">Исходный план курса 4</h3>
+        <ol class="tc-plan-list">
+          {% for lesson in state.course.lessons %}
+            <li><span>{{ lesson.title }}</span><small>{{ lesson.duration_minutes }} мин · {{ lesson.skill_titles|join(', ') }}</small></li>
+          {% endfor %}
+        </ol>
+      </aside>
+
+      <div class="tc-main-column">
+        <section class="tc-card" aria-labelledby="selectedProfileTitle">
+          <div class="tc-section-title">
+            <div><p class="tc-eyebrow">УЧЕБНАЯ ПАМЯТЬ</p><h2 id="selectedProfileTitle"></h2></div>
+            <span class="tc-badge" id="evidenceStatus"></span>
+          </div>
+          <p class="tc-muted" id="skillSummary"></p>
+          <h3 class="tc-subhead">История навыков и связь с занятием</h3>
+          <div class="tc-evidence-list" id="stableSkillHistory" aria-live="polite"></div>
+          <div class="tc-evidence-list" id="evidenceList" aria-live="polite"></div>
+          <h3 class="tc-subhead">Материалы базы знаний, допущенные к локальному поиску</h3>
+          <div class="tc-evidence-list" id="knowledgeContext" aria-live="polite"></div>
+        </section>
+
+        <section class="tc-card" aria-labelledby="proposalTitle">
+          <div class="tc-section-title"><div><p class="tc-eyebrow">СЛЕДУЮЩЕЕ ЗАНЯТИЕ</p><h2 id="proposalTitle">План до и предложение</h2></div></div>
+          <div class="tc-plan-compare" id="planCompare"></div>
+          <div class="tc-timebar" id="timeAllocation"></div>
+          <p class="tc-uncertainty" id="uncertainty"></p>
+          <ul class="tc-limitations" id="limitations"></ul>
+          <div class="tc-actions">
+            <button class="tc-button tc-primary" type="button" id="generateProposal">Сформировать педагогический комментарий и сохранить предложение</button>
+            <button class="tc-button tc-secondary" type="button" id="saveLocalPreview">Сохранить предпросмотр без GigaChat</button>
+            <span class="tc-muted tc-micro">Один запрос для выбранного профиля и версии доказательств. Запрос недоступен, если нет подтверждённых оснований для навыка.</span>
+          </div>
+          <p class="tc-feedback" id="actionFeedback" role="status" aria-live="polite"></p>
+          <div class="tc-narrative" id="narrative" hidden></div>
+          <div class="tc-actions" id="reviewActions" hidden>
+            <button class="tc-button tc-accept" type="button" data-review="accepted">Зафиксировать решение о предложении</button>
+            <button class="tc-button tc-secondary" type="button" data-review="rejected">Отклонить</button>
+          </div>
+        </section>
+
+        <section class="tc-card">
+          <div class="tc-section-title"><div><p class="tc-eyebrow">СОХРАНЁННЫЕ РЕШЕНИЯ</p><h2>История Tutor Core</h2></div></div>
+          <div id="tutorHistory" class="tc-history"><p class="tc-muted">Загружаем локальную историю…</p></div>
+        </section>
+      </div>
+    </section>
+  {% endif %}
+</main>
+<script src="{{ url_for('static', filename='js/ai-lab-tutor-core.js') }}" defer></script>
+{% endblock %}

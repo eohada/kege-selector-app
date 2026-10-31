@@ -1,0 +1,35 @@
+{
+  "protocol_id": "boostudy-ai-lab-sprint7-protocol-v1",
+  "protocol_path": "docs/modules/AI_LAB_SPRINT_7_PROTOCOL.md",
+  "protocol_sha256": "e436e43038bb753e6c332094545567757e5a9f1714f1519d6207673a3474836c",
+  "dataset_id": "boostudy-ai-lab-sprint7-synthetic-v1",
+  "dataset_path": "tests/fixtures/ai_lab_sprint7_cases_v1.json",
+  "dataset_sha256": "df5d364223c014176fc45d49a1bcd4dec640f60993df012bc219f97c30422b97",
+  "dataset_version": 1,
+  "frozen_at": "2026-10-20",
+  "synthetic_only": true,
+  "real_student_data": false,
+  "model_alias": "GigaChat-3-Pro",
+  "generation_parameters": {"temperature": 0.1, "max_tokens": 3200, "top_p": null, "response_format": "json_schema_strict"},
+  "homework_prompt_version_no": 2,
+  "homework_prompt_sha256": "3bd7cede2bab5789bfa687a5f3948816ef29f8cbbbbaed5a7155aad4ec1a9f72",
+  "course_prompt_version": "ai-course-analysis.v5",
+  "course_prompt_sha256": "ac19cc90fd6a8cfb590e3d8f595dcfaf7d9de802441a3ceda293bdca4026dd91",
+  "lesson_prompt_version": "lesson-intelligence.v4",
+  "lesson_prompt_sha256": "9fea3b1634989ece5e7fb7c3659f21c07752d948ff7d4684ec05bf35b6a756de",
+  "preserved_existing_fixture_hashes": {
+    "tests/fixtures/ai_lab_sprint6_cases_v1.json": "4cd50031fd9d0390ed8d188e3441d586d6654e7f4034012268d1795e30e2d06a"
+  },
+  "live_case_ids": [
+    "s7-classify-alternative-ai", "s7-classify-alternative-hybrid",
+    "s7-classify-partial-ai", "s7-classify-partial-hybrid",
+    "s7-classify-wrong-ai", "s7-classify-wrong-hybrid",
+    "s7-classify-boundary-ai", "s7-classify-boundary-hybrid",
+    "s7-course-no-finding", "s7-course-prerequisite-order",
+    "s7-lesson-explicit-difficulty", "s7-lesson-later-resolution"
+  ],
+  "maximum_logical_generations": 12,
+  "automatic_semantic_retries": 0,
+  "holdout_used_for_prompt_changes": false,
+  "expert_review_status": "pending"
+}

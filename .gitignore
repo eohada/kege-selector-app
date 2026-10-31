@@ -246,3 +246,10 @@ gen-lang-client-*.json
 .codex/
 
 bin/
+
+# Audit & screenshot artifacts
+docs/audits/
+docs/oristera-next/
+docs/schedule_rebirth_prototypes/
+docs/schedule_sprint*_screenshots/
+docs/*.png

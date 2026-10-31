@@ -1,0 +1,69 @@
+{
+  "dataset_id": "boostudy-ai-lab-product-completion-dev-v1",
+  "dataset_version": 1,
+  "split": "development",
+  "synthetic_only": true,
+  "real_student_data": false,
+  "frozen_before_live_model_runs": true,
+  "model": "GigaChat-3-Pro",
+  "generation_parameters": {
+    "temperature": 0.1,
+    "top_p": null,
+    "max_tokens": 3200,
+    "response_format": "json_schema_strict"
+  },
+  "homework_series": {
+    "input_fixture": "tests/fixtures/ai_lab_product_validation_dev_v1.json",
+    "input_fixture_sha256": "494f32d0910fb8ef0043a365fed77b9681fb3998ed1d49660e355c4d2dee3215",
+    "prompt_version": "v0.3",
+    "logical_generations": 5,
+    "maximum_completion_posts": 10
+  },
+  "course_series": {
+    "prompt_version": "ai-course-analysis.v5",
+    "prompt_sha256": "ac19cc90fd6a8cfb590e3d8f595dcfaf7d9de802441a3ceda293bdca4026dd91",
+    "cases": [
+      {
+        "case_id": "product-course-foundations-correct",
+        "course_id": "synthetic-python-foundations",
+        "course_version": 1,
+        "input_sha256": "f278d02bd07228b74f5037e1325e3c24c1dcf855abe8b56e78a6fd61542e6b97",
+        "expected_structural_findings": []
+      },
+      {
+        "case_id": "product-course-structural-gaps",
+        "course_id": "synthetic-python-course-with-gaps",
+        "course_version": 1,
+        "input_sha256": "a1302f46aaaa1732386b6f908ae3e3617c0304bb0b712594786032498ec1af1a",
+        "expected_structural_finding_codes": [
+          "prerequisite_after_topic",
+          "assignment_skill_mismatch"
+        ],
+        "must_not_apply_changes_without_teacher_review": true
+      }
+    ]
+  },
+  "lesson_series": {
+    "prompt_version": "lesson-intelligence.v4",
+    "prompt_sha256": "9fea3b1634989ece5e7fb7c3659f21c07752d948ff7d4684ec05bf35b6a756de",
+    "lesson_id": "synthetic-product-parity-lesson",
+    "lesson_version": 1,
+    "subject_id": "synthetic-product-learner-01",
+    "synthetic_confirmed": true,
+    "transcript": "[00:00:05] Преподаватель: Для проверки чётности сравни остаток n % 2 с нулём.\n[00:00:19] Ученик: Я не понимаю, почему в Python -5 % 2 равно 1, а не -1.\n[00:00:35] Преподаватель: При положительном делителе Python возвращает неотрицательный остаток: -5 = (-3) * 2 + 1. Для чётности условие n % 2 == 0 работает и для отрицательных чисел.\n[00:00:52] Ученик: Теперь понял: -4 % 2 равно 0, и это чётное число.\n[00:01:08] Ученик: Значит, для -5 остаток 1, а для -4 остаток 0?",
+    "expected": {
+      "explicit_difficulty_source": true,
+      "later_resolution_source": true,
+      "question_alone_is_not_a_new_difficulty": true,
+      "analytics_visibility_before_teacher_review": false,
+      "resolved_lesson_observation_must_not_claim_mastery": true
+    }
+  },
+  "acceptance": {
+    "total_cases": 8,
+    "maximum_completion_posts": 13,
+    "independent_holdout": false,
+    "raw_model_output_and_student_visible_feedback_reviewed_separately": true,
+    "course_and_lesson_output_remains_preliminary_until_teacher_review": true
+  }
+}

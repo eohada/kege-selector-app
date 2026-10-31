@@ -43,7 +43,12 @@ def test_code_judge_page_is_admin_only_and_seeds_synthetic_scenarios(app, client
     assert "Hidden".encode() in page.data
     assert "128 МБ".encode() in page.data
     data = client.get("/admin/ai-lab/api/code-judge").get_json()
-    assert len(data["test_sets"]) == 11
+    scenario_ids = {item["scenario_id"] for item in data["test_sets"]}
+    assert {
+        "classify-logic-errors",
+        "family-base-divisibility-count",
+        "family-base-remove-character",
+    } <= scenario_ids
     classify = next(item for item in data["test_sets"] if item["scenario_id"] == "classify-logic-errors")
     assert len(classify["test_cases"]) == 5
     assert classify["test_cases"][-1]["expected"] == {"__type__": "tuple", "items": [False, True]}

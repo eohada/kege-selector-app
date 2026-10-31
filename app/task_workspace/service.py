@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -15,6 +16,7 @@ from app.utils.jinja_filters import (
     prepare_task_content_html,
 )
 from app.runtime_state import get_json, set_json, delete as redis_delete
+from app.task_bank.answer_safety import student_safe_content_html
 from core.db_models import (
     Answer,
     CodePlaybackTrace,
@@ -38,6 +40,22 @@ WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS = 2.0
 WORKSPACE_CACHE_TTL_SECONDS = 24 * 60 * 60
 ANSWER_TYPES = {"code", "short_answer", "single_choice", "multiple_choice", "matching", "long_answer"}
 WORKSPACE_MODES = {"answer", "code", "canvas"}
+
+
+def _normalize_assignment_task_heading(content_html: str, assignment_type: str | None) -> str:
+    label = {
+        "homework": "Домашняя",
+        "classwork": "Классная",
+    }.get(str(assignment_type or "").strip().lower())
+    if not label:
+        return content_html
+
+    return re.sub(
+        r"(?i)(>\s*)(?:классная|домашняя)(\s+работа)?(\s*[·•:—-])",
+        lambda match: f"{match.group(1)}{label}{match.group(2) or ''}{match.group(3)}",
+        content_html,
+        count=1,
+    )
 
 
 def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
@@ -190,8 +208,22 @@ def _workspace_snapshot_payload(
     *,
     source: str = "autosave",
     version: int | None = None,
+    revision: int | None = None,
+    files: dict[str, Any] | None = None,
+    open_tabs: list[str] | None = None,
+    active_file: str | None = None,
     ui_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    clean_files = dict(files) if isinstance(files, dict) and files else {}
+    if "main.py" not in clean_files:
+        clean_files["main.py"] = code if (not active_file or active_file == "main.py") else ""
+    clean_tabs = [str(t) for t in open_tabs if str(t) in clean_files] if isinstance(open_tabs, list) and open_tabs else []
+    if not clean_tabs:
+        clean_tabs = ["main.py"] if "main.py" in clean_files else list(clean_files.keys())[:1]
+    clean_active = str(active_file) if (active_file and active_file in clean_files) else clean_tabs[0]
+    if clean_active in clean_files and code is not None:
+        clean_files[clean_active] = code
+    rev = int(revision or version or 1)
     return {
         "context_type": ctx.context_type,
         "context_id": ctx.context_id,
@@ -206,7 +238,11 @@ def _workspace_snapshot_payload(
         "answer": answer or "",
         "frames": frames or [],
         "source": source,
-        "version": int(version or 0),
+        "version": rev,
+        "revision": rev,
+        "files": clean_files,
+        "open_tabs": clean_tabs,
+        "active_file": clean_active,
         "ui_state": ui_state or {},
     }
 
@@ -219,10 +255,19 @@ def cache_workspace_snapshot(
     *,
     source: str = "autosave",
     version: int | None = None,
+    revision: int | None = None,
+    files: dict[str, Any] | None = None,
+    open_tabs: list[str] | None = None,
+    active_file: str | None = None,
     ui_state: dict[str, Any] | None = None,
 ) -> None:
     try:
-        payload = _workspace_snapshot_payload(ctx, code, answer, frames, source=source, version=version, ui_state=ui_state)
+        payload = _workspace_snapshot_payload(
+            ctx, code, answer, frames,
+            source=source, version=version, revision=revision,
+            files=files, open_tabs=open_tabs, active_file=active_file,
+            ui_state=ui_state
+        )
         set_json(_workspace_cache_key(ctx), payload, ttl_seconds=WORKSPACE_CACHE_TTL_SECONDS)
     except Exception:
         return
@@ -346,6 +391,12 @@ class WorkspaceContext:
     parsed_answer: Any = None
     parsed_correct_answer: Any = None
     linked_lesson_id: int | None = None
+    is_task_correct: bool = False
+    is_published: bool = False
+    answer_visibility_allowed: bool | None = None
+    needs_revision: bool = False
+    submission_can_submit: bool = True
+    has_saved_code: bool = False
 
     def as_payload(self) -> dict[str, Any]:
         answer_spec = _normalize_answer_spec(self.task) if self.task else {"default_workspace_mode": "code", "fields": []}
@@ -355,14 +406,46 @@ class WorkspaceContext:
         if is_python_bank and not self.can_review:
             safe_task_meta.pop("topics", None)
             safe_task_meta.pop("difficulty_label", None)
-        # Эталонный ответ и решение доступны преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки!
-        show_review_details = bool(self.can_review or self.is_reviewed)
-        safe_correct_answer = (self.correct_answer or _extract_task_correct_answer(self.task) or "") if (show_review_details and self.task) else ""
-        safe_solution_html = (self.solution_html or "") if show_review_details else ""
-        safe_solution_code = (self.solution_code or "") if show_review_details else ""
+        # Teacher review has its own permission. An explicit lesson answer rule
+        # takes precedence over a student's grading state.
+        if self.can_review:
+            can_see_solution = True
+        elif self.answer_visibility_allowed is not None:
+            can_see_solution = bool(self.answer_visibility_allowed and not self.needs_revision)
+        elif self.context_type == "submission_task":
+            can_see_solution = bool(
+                not self.needs_revision and (
+                    self.is_task_correct or (self.is_published and self.is_reviewed)
+                )
+            )
+        else:
+            can_see_solution = bool(not self.needs_revision and (self.is_task_correct or (self.is_published and self.is_reviewed)))
+
+        safe_correct_answer = (self.correct_answer or _extract_task_correct_answer(self.task) or "") if (can_see_solution and self.task) else ""
+        safe_solution_html = (self.solution_html or "") if can_see_solution else ""
+        safe_solution_code = (self.solution_code or "") if can_see_solution else ""
+        content_html, answer_disclosed_in_example = student_safe_content_html(
+            self.task.content_html if self.task else "",
+            self.correct_answer or (_extract_task_correct_answer(self.task) if self.task else ""),
+            allow_review_details=can_see_solution,
+        )
+        safe_content_html = normalize_task_content_assets(
+            prepare_task_content_html(content_html),
+            self.task.attached_files,
+            self.task.source_url,
+        ) if self.task and not answer_disclosed_in_example else content_html
+        if self.context_type == "submission_task" and self.submission_meta:
+            safe_content_html = _normalize_assignment_task_heading(
+                safe_content_html,
+                self.submission_meta.get("assignment_type"),
+            )
         safe_parsed_correct_answer = None
-        if show_review_details:
+        if can_see_solution:
             safe_parsed_correct_answer = self.parsed_correct_answer or _safe_parse_json(safe_correct_answer)
+        safe_task_meta["correct_answer"] = safe_correct_answer if can_see_solution else ""
+
+        ws_files = load_workspace_multi_file_state(self)
+        ws_state = load_workspace_state_payload(self)
         return {
             "context_type": self.context_type,
             "context_id": self.context_id,
@@ -390,15 +473,17 @@ class WorkspaceContext:
             "task_number": None if is_python_bank else self.task.task_number if self.task else None,
             "task_title": str(getattr(self.task, "title", "") or "").strip() if self.task else "",
             "difficulty": getattr(self.task, "difficulty_label", "") if self.task and (self.can_review or not is_python_bank) else "",
-            "content_html": normalize_task_content_assets(
-                prepare_task_content_html(self.task.content_html or ""),
-                self.task.attached_files,
-                self.task.source_url,
-            ) if self.task else "",
+            "content_html": safe_content_html,
+            "task_content_blocked": answer_disclosed_in_example,
             "mmr_policy": self.mmr_policy,
             "mmr_policy_label": MMR_POLICY_LABELS.get(self.mmr_policy, MMR_POLICY_LABELS["manual_confirm"]),
             "can_edit": self.can_edit,
+            "submission_can_submit": self.submission_can_submit,
             "can_review": self.can_review,
+            "can_see_solution": can_see_solution,
+            "is_task_correct": self.is_task_correct,
+            "is_published": self.is_published,
+            "needs_revision": self.needs_revision,
             "is_reviewed": self.is_reviewed,
             "is_manual": self.is_manual,
             "answer_score": self.answer_score,
@@ -427,6 +512,18 @@ class WorkspaceContext:
             },
             "playback": load_workspace_trace_payload(self),
             "versions": load_workspace_versions_payload(self),
+            "workspace_files": ws_files,
+            "workspace_state": ws_state,
+            "files": ws_files.get("files", {}),
+            "archived_files": {
+                fname: fcontent
+                for fname, fcontent in (ws_files.get("files") or {}).items()
+                if fname != "main.py"
+            },
+            "has_saved_code": self.has_saved_code,
+            "open_tabs": ws_files.get("open_tabs", ["main.py"]),
+            "active_file": ws_files.get("active_file", "main.py"),
+            "revision": ws_files.get("revision", 1),
         }
 
 
@@ -439,6 +536,36 @@ def _has_teacher_scope(user) -> bool:
         or getattr(user, "is_chief_admin", lambda: False)()
         or getattr(user, "is_tutor", lambda: False)()
     )
+
+
+def _explicit_lesson_answer_visibility(
+    *,
+    student_id: int | None,
+    lesson_id: int | None,
+    task_id: int | None,
+    assignment_type: str | None,
+    is_error_review: bool = False,
+) -> bool | None:
+    """Return the explicit answer rule for an exact student/lesson/task link."""
+    if not student_id or not lesson_id or not task_id:
+        return None
+
+    from core.db_models import Lesson
+
+    links = (
+        LessonTask.query.join(Lesson, Lesson.lesson_id == LessonTask.lesson_id)
+        .filter(
+            Lesson.student_id == int(student_id),
+            Lesson.lesson_id == int(lesson_id),
+            LessonTask.task_id == int(task_id),
+            LessonTask.assignment_type == str(assignment_type or "homework"),
+            LessonTask.is_error_review == bool(is_error_review),
+        )
+        .all()
+    )
+    if not links:
+        return None
+    return all(bool(link.is_answer_visible_to_student) for link in links)
 
 
 def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
@@ -456,6 +583,8 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
         abort(403)
     is_student_owner = getattr(user, "is_student", lambda: False)() and user.id == student.user_id
     can_review = _has_teacher_scope(user)
+    if is_student_owner and not bool(lesson_task.is_visible_to_student):
+        abort(404)
     is_parent = getattr(user, "is_parent", lambda: False)()
     is_editable_status = (lesson_task.status or "pending") in {"pending", "returned", "assigned", "in_progress"}
     can_edit = ((is_student_owner and is_editable_status) or can_review) and not is_parent
@@ -471,6 +600,7 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     lesson_answer_score = getattr(lesson_task, "score", None)
     task_max = lesson_task.task.max_score if lesson_task and lesson_task.task and hasattr(lesson_task.task, "max_score") else 1
     lesson_max_score = int(getattr(lesson_task, "max_score", None) or task_max or 1)
+    lesson_is_correct = bool(lesson_answer_score is not None and lesson_answer_score >= lesson_max_score and lesson_max_score > 0)
 
     return WorkspaceContext(
         context_type="lesson_task",
@@ -490,6 +620,10 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
         mmr_policy=mmr_policy,
         can_edit=can_edit,
         can_review=can_review,
+        is_task_correct=lesson_is_correct,
+        is_published=bool(lesson_task.is_visible_to_student),
+        answer_visibility_allowed=bool(lesson_task.is_answer_visible_to_student),
+        needs_revision=False,
         is_reviewed=lesson_is_reviewed,
         answer_score=lesson_answer_score,
         answer_max_score=lesson_max_score,
@@ -560,6 +694,13 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     )
     if not assignment_task:
         abort(404)
+    answer_visibility_allowed = _explicit_lesson_answer_visibility(
+        student_id=student.student_id,
+        lesson_id=getattr(submission.assignment, "lesson_id", None),
+        task_id=getattr(assignment_task, "task_id", None),
+        assignment_type=getattr(submission.assignment, "assignment_type", None),
+        is_error_review=getattr(assignment_task, "is_error_review", False),
+    )
     answer = next(
         (item for item in (submission.answers or []) if item.assignment_task_id == assignment_task.assignment_task_id),
         None,
@@ -577,21 +718,21 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         bool(getattr(user, "is_demo_user", False))
         and getattr(getattr(submission, "assignment", None), "title", "") == "Исправление: след по алгоритму"
     )
-    can_edit = (
-        is_owner and (normalized_status in {"ASSIGNED", "IN_PROGRESS", "RETURNED"} or is_demo_retry)
-        and not is_parent
-    )
-    if can_edit and normalized_status == "RETURNED":
+    revision_task_ids: set[int] = set()
+    if normalized_status == "RETURNED":
         revision_task_ids = {
             int(item.assignment_task_id)
             for item in (submission.answers or [])
             if getattr(item, "needs_revision", False) and getattr(item, "assignment_task_id", None) is not None
         }
-        # Historical returned submissions did not have per-task flags and
-        # intentionally remain fully editable. New returns reopen only the
-        # tasks explicitly selected by the teacher.
-        if revision_task_ids:
-            can_edit = int(assignment_task.assignment_task_id) in revision_task_ids
+
+    can_edit = (
+        is_owner and (normalized_status in {"ASSIGNED", "IN_PROGRESS", "RETURNED"} or is_demo_retry)
+        and not is_parent
+    )
+    submission_can_submit = bool(can_edit)
+    if can_edit and normalized_status == "RETURNED" and revision_task_ids:
+        can_edit = int(assignment_task.assignment_task_id) in revision_task_ids
 
     timer_seconds_left = None
     if normalized_status != "RETURNED" and submission.started_at and submission.assignment.time_limit_minutes:
@@ -653,7 +794,16 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
             normalized_status == "GRADED" and t_ans is not None and t_score is not None
         ) or (submitted_separately and not is_manual and t_score is not None)
 
-        if is_reviewed:
+        t_needs_revision = False
+        if normalized_status == "RETURNED":
+            if revision_task_ids:
+                t_needs_revision = int(t_item.assignment_task_id) in revision_task_ids
+            else:
+                t_needs_revision = True
+
+        if t_needs_revision:
+            item_nav_status = "returned"
+        elif is_reviewed:
             if t_score is not None and t_score >= t_max_score and t_max_score > 0:
                 item_nav_status = "correct"
             elif t_score is not None and t_score == 0:
@@ -691,7 +841,9 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
             "is_completed": has_answer,
             "is_reviewed": is_reviewed,
             "is_manual": is_manual,
+            "needs_revision": t_needs_revision,
             "score": t_score,
+            "teacher_comment": getattr(t_ans, "teacher_comment", None) if t_ans else None,
             "max_score": t_max_score,
             "nav_status": item_nav_status,
             "url": url_for(
@@ -702,6 +854,45 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
             ),
         })
 
+    attempts_list = []
+    for att in sorted(submission.attempts or [], key=lambda a: a.attempt_no or 0):
+        att_entry = {
+            "attempt_id": att.attempt_id,
+            "attempt_no": att.attempt_no,
+            "submitted_at": att.submitted_at.isoformat() if att.submitted_at else None,
+            "graded_at": att.graded_at.isoformat() if att.graded_at else None,
+            "status": att.status,
+            "total_score": att.total_score,
+            "max_score": att.max_score,
+            "percentage": att.percentage,
+            "teacher_feedback": att.teacher_feedback or "",
+        }
+        if att.attempt_data and isinstance(att.attempt_data, dict):
+            # Pass full snapshot to review mode / teacher
+            if can_review:
+                att_entry["attempt_data"] = att.attempt_data
+            else:
+                # Student view: safe snapshot (answers, code, student files)
+                att_entry["attempt_data"] = {
+                    "tasks": {
+                        k: {
+                            "answer": v.get("answer", ""),
+                            "student_code": v.get("student_code", ""),
+                            "files": v.get("files", {}),
+                            "open_tabs": v.get("open_tabs", ["main.py"]),
+                            "score": v.get("score"),
+                            "max_score": v.get("max_score"),
+                            "is_correct": v.get("is_correct"),
+                        }
+                        for k, v in (att.attempt_data.get("tasks") or {}).items()
+                    },
+                    "total_score": att.total_score,
+                    "max_score": att.max_score,
+                    "percentage": att.percentage,
+                    "status": att.status,
+                }
+        attempts_list.append(att_entry)
+
     submission_meta = {
         "assignment_id": submission.assignment.assignment_id,
         "assignment_type": submission.assignment.assignment_type or 'homework',
@@ -709,13 +900,16 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "deadline": submission.assignment.deadline,
         "attempts_used": len(submission.attempts or []),
         "effective_max_attempts": submission.assignment.get_effective_max_attempts() if hasattr(submission.assignment, 'get_effective_max_attempts') else 1,
+        "attempts": attempts_list,
         "student_name": student.name if student else (student.user.username if student and student.user else "Ученик"),
         "student_avatar": student.user.avatar_url if student and student.user and student.user.avatar_url else None,
-        "status_label": "В процессе" if can_edit else ("Проверено" if normalized_status == "GRADED" else "На проверке"),
+        "status_label": "В процессе" if can_edit else ("На доработке" if normalized_status == "RETURNED" else ("Проверено" if normalized_status == "GRADED" else "На проверке")),
         "is_late": bool(submission.is_late),
         "is_overtime": bool(submission.is_overtime),
         "is_reviewed": current_is_reviewed,
         "is_graded": (normalized_status == "GRADED"),
+        "is_returned": (normalized_status == "RETURNED"),
+        "returned_task_count": len(revision_task_ids) if revision_task_ids else (1 if normalized_status == "RETURNED" else 0),
         "is_pending_review": (normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW"} or (current_is_manual and not current_is_reviewed)),
         "teacher_feedback": (submission.teacher_feedback if submission and submission.teacher_feedback else "") or "",
     }
@@ -763,11 +957,81 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "is_manual": current_is_manual,
         "score": current_answer_score,
         "teacher_comment": teacher_comment,
-        "correct_answer": correct_ans if (current_is_reviewed or can_review) else "",
+        "correct_answer": correct_ans if can_review else "",
         "attempts_used": task_attempts_used,
         "max_attempts": task_max_attempts,
         "can_submit_separately": can_submit_separately,
     }
+
+    is_task_correct = bool(
+        (current_answer_score is not None and current_answer_score >= current_max_score and current_max_score > 0)
+        or (answer and getattr(answer, "is_correct", False) is True)
+    )
+    if normalized_status == "RETURNED":
+        if revision_task_ids:
+            needs_revision = bool(getattr(answer, "needs_revision", False))
+        else:
+            needs_revision = True
+    else:
+        needs_revision = False
+    is_published = bool(getattr(submission, "results_published_at", None))
+
+    has_saved_code = False
+    resolved_student_code = None
+    if answer and answer.student_code is not None:
+        resolved_student_code = str(answer.student_code)
+        has_saved_code = True
+    elif submission.submission_id:
+        try:
+            from core.db_models import SubmissionAttempt
+            last_att = (
+                SubmissionAttempt.query.filter_by(submission_id=submission.submission_id)
+                .order_by(SubmissionAttempt.attempt_no.desc())
+                .first()
+            )
+            if last_att and last_att.attempt_data:
+                ad = last_att.attempt_data
+                if isinstance(ad, str):
+                    import json
+                    ad = json.loads(ad)
+                if isinstance(ad, dict):
+                    t_data = (ad.get("tasks") or {}).get(str(assignment_task.assignment_task_id))
+                    if isinstance(t_data, dict):
+                        if t_data.get("student_code") is not None:
+                            resolved_student_code = str(t_data.get("student_code"))
+                            has_saved_code = True
+                        elif t_data.get("files") and "main.py" in t_data.get("files"):
+                            resolved_student_code = str(t_data.get("files")["main.py"])
+                            has_saved_code = True
+        except Exception:
+            pass
+
+    if has_saved_code and resolved_student_code is not None:
+        final_code = resolved_student_code
+    else:
+        starter = (assignment_task.task.starter_code if assignment_task.task else "") or ""
+        final_code = starter
+
+    resolved_plain_answer = (answer.value if answer and answer.value is not None else "")
+    if not resolved_plain_answer and submission.submission_id:
+        try:
+            from core.db_models import SubmissionAttempt
+            last_att = (
+                SubmissionAttempt.query.filter_by(submission_id=submission.submission_id)
+                .order_by(SubmissionAttempt.attempt_no.desc())
+                .first()
+            )
+            if last_att and last_att.attempt_data:
+                ad = last_att.attempt_data
+                if isinstance(ad, str):
+                    import json
+                    ad = json.loads(ad)
+                if isinstance(ad, dict):
+                    t_data = (ad.get("tasks") or {}).get(str(assignment_task.assignment_task_id))
+                    if isinstance(t_data, dict) and t_data.get("answer"):
+                        resolved_plain_answer = str(t_data.get("answer"))
+        except Exception:
+            pass
 
     return WorkspaceContext(
         context_type="submission_task",
@@ -784,11 +1048,17 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         submission_id=submission.submission_id,
         assignment_task_id=assignment_task.assignment_task_id,
         answer_id=answer.answer_id if answer else None,
-        code=(answer.student_code if answer else "") or assignment_task.task.starter_code or "",
-        plain_answer=(answer.value if answer else "") or "",
+        code=final_code,
+        plain_answer=resolved_plain_answer or "",
+        has_saved_code=has_saved_code,
         mmr_policy="always",
         can_edit=can_edit,
+        submission_can_submit=submission_can_submit,
         can_review=can_review,
+        is_task_correct=is_task_correct,
+        is_published=is_published,
+        answer_visibility_allowed=answer_visibility_allowed,
+        needs_revision=needs_revision,
         is_reviewed=current_is_reviewed,
         is_manual=current_is_manual,
         answer_score=current_answer_score,
@@ -873,22 +1143,81 @@ def resolve_workspace_context(user, context_type: str, context_id: int | None = 
     return ctx
 
 
-def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None, notes: str | None = None) -> None:
+def save_workspace_code(
+    ctx: WorkspaceContext,
+    code: str,
+    answer: str | None = None,
+    frames: list[dict[str, Any]] | None = None,
+    notes: str | None = None,
+    files: dict[str, Any] | None = None,
+    open_tabs: list[str] | None = None,
+    active_file: str | None = None,
+    revision: int | None = None,
+) -> int:
     code = (code or "")[:100_000]
-    answer = (answer or "")[:20_000]
+    if answer is not None:
+        answer = str(answer)[:20_000]
+    curr_mf = load_workspace_multi_file_state(ctx)
+    curr_rev = int(curr_mf.get("revision", 1))
+    if revision is not None and revision > 0 and revision < curr_rev:
+        raise ValueError(f"Stale revision {revision} < current {curr_rev}")
+    new_rev = max(curr_rev, int(revision or 0)) + 1
+
+    if ctx.context_type == "submission_task":
+        clean_files = dict(curr_mf.get("files") or {})
+        if files is not None and isinstance(files, dict):
+            clean_files.update(files)
+        clean_files["main.py"] = code
+        clean_tabs = ["main.py"]
+        clean_active = "main.py"
+    else:
+        if files is not None:
+            clean_files = dict(files) if isinstance(files, dict) else {}
+        else:
+            clean_files = dict(curr_mf.get("files") or {})
+
+        if "main.py" not in clean_files:
+            clean_files["main.py"] = code if (not active_file or active_file == "main.py") else ""
+
+        if open_tabs is not None:
+            clean_tabs = [str(t) for t in open_tabs if str(t) in clean_files] if isinstance(open_tabs, list) else []
+        else:
+            clean_tabs = [str(t) for t in (curr_mf.get("open_tabs") or []) if str(t) in clean_files]
+        if not clean_tabs:
+            clean_tabs = ["main.py"] if "main.py" in clean_files else list(clean_files.keys())[:1]
+
+        if active_file is not None:
+            clean_active = str(active_file) if str(active_file) in clean_files else clean_tabs[0]
+        else:
+            clean_active = str(curr_mf.get("active_file") or clean_tabs[0])
+
+        if clean_active in clean_files and code is not None:
+            clean_files[clean_active] = code
+
     try:
         if ctx.context_type == "lesson" and ctx.context_id:
-            cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
-            return
+            cache_workspace_snapshot(
+                ctx, code, answer or "", frames=frames, source="manual" if frames else "autosave",
+                revision=new_rev, files=clean_files, open_tabs=clean_tabs, active_file=clean_active
+            )
+            return new_rev
         if ctx.context_type == "lesson_task" and ctx.lesson_task_id:
             lesson_task = LessonTask.query.get_or_404(ctx.lesson_task_id)
-            lesson_task.student_submission = code
-            lesson_task.student_answer = answer
-            save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
-            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave", notes=notes)
-            cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
+            lesson_task.student_submission = clean_files.get("main.py", lesson_task.student_submission or code)
+            if answer is not None:
+                lesson_task.student_answer = answer
+            effective_answer = lesson_task.student_answer if answer is None else answer
+            save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(effective_answer or "")})
+            save_workspace_version(
+                ctx, code=code, answer=effective_answer or "", source="manual" if frames else "autosave", notes=notes,
+                files=clean_files, open_tabs=clean_tabs, active_file=clean_active, revision=new_rev
+            )
+            cache_workspace_snapshot(
+                ctx, code, effective_answer or "", frames=frames, source="manual" if frames else "autosave",
+                revision=new_rev, files=clean_files, open_tabs=clean_tabs, active_file=clean_active
+            )
             db.session.commit()
-            return
+            return new_rev
         if ctx.context_type == "submission_task" and ctx.submission_id and ctx.assignment_task_id:
             submission = Submission.query.get_or_404(ctx.submission_id)
             if (submission.status or "").strip().upper() == "ASSIGNED":
@@ -907,19 +1236,32 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
                     max_score=assignment_task.max_score,
                 )
                 db.session.add(answer_row)
-            answer_row.student_code = code
-            answer_row.value = answer
+            db.session.flush()
+            if not ctx.answer_id:
+                ctx.answer_id = answer_row.answer_id
+            answer_row.student_code = clean_files.get("main.py", answer_row.student_code or code)
+            if answer is not None:
+                answer_row.value = answer
+            effective_answer = answer_row.value if answer is None else answer
             from core.db_models import utc_now
 
             answer_row.student_code_saved_at = utc_now()
             save_workspace_trace(
                 ctx,
                 frames=frames,
-                meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)},
+                meta={"source": "server-save", "code_length": len(code), "answer_length": len(effective_answer or "")},
             )
-            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave", notes=notes)
-            cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
+            save_workspace_version(
+                ctx, code=code, answer=effective_answer or "", source="manual" if frames else "autosave", notes=notes,
+                files=clean_files, open_tabs=clean_tabs, active_file=clean_active, revision=new_rev
+            )
+            cache_workspace_snapshot(
+                ctx, code, effective_answer or "", frames=frames, source="manual" if frames else "autosave",
+                revision=new_rev, files=clean_files, open_tabs=clean_tabs, active_file=clean_active
+            )
             db.session.commit()
+            return new_rev
+        return new_rev
     except Exception:
         db.session.rollback()
         raise
@@ -1048,6 +1390,132 @@ def restore_workspace_version(ctx: WorkspaceContext, version_id: int) -> dict[st
     return {"code": code, "answer": answer, "versions": load_workspace_versions_payload(ctx)}
 
 
+def load_workspace_multi_file_state(ctx: WorkspaceContext) -> dict[str, Any]:
+    cached_state = load_cached_workspace_snapshot(ctx) or {}
+    files = cached_state.get("files")
+    open_tabs = cached_state.get("open_tabs")
+    active_file = cached_state.get("active_file")
+    revision = cached_state.get("revision") or cached_state.get("version")
+
+    if not files:
+        latest = None
+        try:
+            latest = _version_lookup(ctx).first()
+        except Exception:
+            pass
+        if latest and isinstance(latest.snapshot, dict):
+            files = latest.snapshot.get("files")
+            open_tabs = latest.snapshot.get("open_tabs")
+            active_file = latest.snapshot.get("active_file")
+            revision = latest.snapshot.get("revision")
+        elif latest and isinstance(latest.snapshot, str):
+            try:
+                import json
+                snap = json.loads(latest.snapshot)
+                if isinstance(snap, dict):
+                    files = snap.get("files")
+                    open_tabs = snap.get("open_tabs")
+                    active_file = snap.get("active_file")
+                    revision = snap.get("revision")
+            except Exception:
+                pass
+
+    if not files and ctx.context_type == "submission_task" and ctx.submission_id:
+        try:
+            from core.db_models import SubmissionAttempt
+            attempts = (
+                SubmissionAttempt.query.filter_by(submission_id=ctx.submission_id)
+                .order_by(SubmissionAttempt.attempt_no.desc())
+                .all()
+            )
+            for att in attempts:
+                att_data = att.attempt_data
+                if isinstance(att_data, str):
+                    try:
+                        import json
+                        att_data = json.loads(att_data)
+                    except Exception:
+                        att_data = None
+                if isinstance(att_data, dict):
+                    tasks = att_data.get("tasks") or {}
+                    task_info = tasks.get(str(ctx.assignment_task_id)) or tasks.get(int(ctx.assignment_task_id or 0))
+                    if isinstance(task_info, dict):
+                        att_files = task_info.get("files")
+                        if isinstance(att_files, dict) and att_files:
+                            files = att_files
+                            open_tabs = task_info.get("open_tabs")
+                            active_file = task_info.get("active_file")
+                            break
+                        elif task_info.get("student_code"):
+                            files = {"main.py": task_info["student_code"]}
+                            open_tabs = ["main.py"]
+                            active_file = "main.py"
+                            break
+        except Exception:
+            pass
+
+    if not files and ctx.code:
+        files = {"main.py": ctx.code}
+        open_tabs = ["main.py"]
+        active_file = "main.py"
+
+    # For submission_task, preserve access to historical secondary files (archived files)
+    if ctx.context_type == "submission_task" and not any(fname != "main.py" for fname in (files or {})):
+        try:
+            for ver in _version_lookup(ctx).all():
+                ver_snap = ver.snapshot
+                if isinstance(ver_snap, str):
+                    try:
+                        import json
+                        ver_snap = json.loads(ver_snap)
+                    except Exception:
+                        ver_snap = None
+                if isinstance(ver_snap, dict) and ver_snap.get("files"):
+                    extra = {k: v for k, v in ver_snap["files"].items() if k != "main.py"}
+                    if extra:
+                        files = dict(files or {"main.py": ctx.code or ""})
+                        files.update(extra)
+                        break
+            if ctx.submission_id and not any(fname != "main.py" for fname in (files or {})):
+                from core.db_models import SubmissionAttempt
+                for att in SubmissionAttempt.query.filter_by(submission_id=ctx.submission_id).order_by(SubmissionAttempt.attempt_no.desc()).all():
+                    att_data = att.attempt_data
+                    if isinstance(att_data, str):
+                        try:
+                            import json
+                            att_data = json.loads(att_data)
+                        except Exception:
+                            att_data = None
+                    if isinstance(att_data, dict):
+                        tasks = att_data.get("tasks") or {}
+                        t_info = tasks.get(str(ctx.assignment_task_id)) or tasks.get(int(ctx.assignment_task_id or 0))
+                        if isinstance(t_info, dict) and isinstance(t_info.get("files"), dict):
+                            extra = {k: v for k, v in t_info["files"].items() if k != "main.py"}
+                            if extra:
+                                files = dict(files or {"main.py": ctx.code or ""})
+                                files.update(extra)
+                                break
+        except Exception:
+            pass
+
+    default_code = ctx.code or (ctx.task.starter_code if ctx.task else "") or ""
+    if not isinstance(files, dict) or not files:
+        files = {"main.py": default_code}
+    if not isinstance(open_tabs, list) or not open_tabs:
+        open_tabs = ["main.py"]
+    if not active_file or active_file not in files:
+        active_file = open_tabs[0] if open_tabs else "main.py"
+    if revision is None:
+        revision = 1
+
+    return {
+        "files": files,
+        "open_tabs": open_tabs,
+        "active_file": active_file,
+        "revision": int(revision),
+    }
+
+
 def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
     """Return the latest authoritative workspace snapshot for live collaboration."""
     try:
@@ -1064,14 +1532,16 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
 
     trace_payload = load_workspace_trace_payload(ctx)
     cached_state = load_cached_workspace_snapshot(ctx) or {}
+    mf_state = load_workspace_multi_file_state(ctx)
 
-    code = live_state.get("code") or cached_state.get("code") or ctx.code or ""
+    active_code = mf_state["files"].get(mf_state["active_file"]) or ""
+    code = live_state.get("code") or cached_state.get("code") or active_code or ctx.code or ""
     answer = live_state.get("answer") or cached_state.get("answer") or ctx.plain_answer or ""
     ui_state = live_state.get("ui_state") or cached_state.get("ui_state") or {}
     updated_at = live_state.get("updated_at") or cached_state.get("updated_at")
     version_id = live_state.get("version_id") or cached_state.get("version_id")
     source = live_state.get("source") or cached_state.get("source")
-    version = max(int(live_state.get("version") or 0), int(cached_state.get("version") or 0))
+    version = max(int(live_state.get("version") or 0), int(cached_state.get("version") or 0), mf_state["revision"])
 
     if latest_version and not live_state:
         code = latest_version.code or code
@@ -1094,6 +1564,10 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
         "version_id": version_id,
         "source": source,
         "version": version,
+        "revision": version,
+        "files": mf_state["files"],
+        "open_tabs": mf_state["open_tabs"],
+        "active_file": mf_state["active_file"],
         "ui_state": ui_state,
         "versions": load_workspace_versions_payload(ctx),
         "playback": trace_payload,
@@ -1113,8 +1587,42 @@ def load_workspace_notes(ctx: WorkspaceContext) -> str:
     return ""
 
 
-def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", source: str = "autosave", notes: str | None = None) -> CodeWorkspaceVersion:
+def save_workspace_version(
+    ctx: WorkspaceContext,
+    code: str,
+    answer: str = "",
+    source: str = "autosave",
+    notes: str | None = None,
+    files: dict[str, Any] | None = None,
+    open_tabs: list[str] | None = None,
+    active_file: str | None = None,
+    revision: int | None = None,
+) -> CodeWorkspaceVersion:
     try:
+        curr_mf = load_workspace_multi_file_state(ctx)
+        if files is not None:
+            clean_files = dict(files) if isinstance(files, dict) else {}
+        else:
+            clean_files = dict(curr_mf.get("files") or {})
+
+        if "main.py" not in clean_files:
+            clean_files["main.py"] = code if (not active_file or active_file == "main.py") else ""
+
+        if open_tabs is not None:
+            clean_tabs = [str(t) for t in open_tabs if str(t) in clean_files] if isinstance(open_tabs, list) else []
+        else:
+            clean_tabs = [str(t) for t in (curr_mf.get("open_tabs") or []) if str(t) in clean_files]
+        if not clean_tabs:
+            clean_tabs = ["main.py"] if "main.py" in clean_files else list(clean_files.keys())[:1]
+
+        if active_file is not None:
+            clean_active = str(active_file) if str(active_file) in clean_files else clean_tabs[0]
+        else:
+            clean_active = str(curr_mf.get("active_file") or clean_tabs[0])
+
+        if clean_active in clean_files and code is not None:
+            clean_files[clean_active] = code
+        rev = int(revision or 1)
         version = CodeWorkspaceVersion(
             context_type=ctx.context_type,
             context_id=ctx.assignment_task_id if ctx.context_type == "submission_task" else ctx.context_id,
@@ -1130,6 +1638,10 @@ def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", s
                 "answer_length": len(answer or ""),
                 "mmr_policy": ctx.mmr_policy,
                 "notes": str(notes)[:20_000] if notes is not None else load_workspace_notes(ctx),
+                "files": clean_files,
+                "open_tabs": clean_tabs,
+                "active_file": clean_active,
+                "revision": rev,
             },
         )
         db.session.add(version)

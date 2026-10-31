@@ -8,6 +8,7 @@
     .bs-ai-lab {
       --ai-lab-gap: var(--bs-space-5, 20px);
       width: min(100%, 1400px);
+      min-width: 0;
       margin-inline: auto;
       padding: clamp(18px, 2.4vw, 36px) clamp(16px, 2.4vw, 36px) 52px;
       color: var(--bs-text-primary);
@@ -376,31 +377,54 @@
 {% block admin_content %}
 <main class="bs-ai-lab" id="boostudy-ai-lab">
   {% if ai_lab_section == 'overview' %}
-    <header class="ai-lab-hero">
-      <div class="ai-lab-copy">
-        <div class="ai-lab-brandline"><i class="ph-bold ph-flask" aria-hidden="true"></i><span>Лаборатория интеллекта BooStudy</span></div>
-        <h1 class="ai-lab-title">BooStudy AI Lab</h1>
-        <p class="ai-lab-subtitle">Лаборатория интеллекта BooStudy</p>
-        <p class="ai-lab-description">Создавайте, исследуйте и совершенствуйте интеллектуальные инструменты обучения. Здесь начинается развитие BooStudy AI.</p>
-        <div class="ai-lab-hero-meta">
-          <span class="ai-lab-status"><i class="ph ph-hourglass-medium" aria-hidden="true"></i>Лаборатория готовится</span>
-          <span class="ai-lab-version">Версия v0.1</span>
-          <a class="ai-lab-tab is-active" href="{{ url_for('ai_lab.code_judge_page') }}">Открыть BooStudy Code Judge</a>
-          <a class="ai-lab-tab" href="{{ url_for('ai_lab.rubric_builder_page') }}">Генератор критериев</a>
-          <a class="ai-lab-tab" href="{{ url_for('ai_lab.quality_dashboard_page') }}">Качество AI Lab</a>
+    {% set experiment_status = 'Экспериментальный режим' if ai_lab_enabled else 'Недоступно' %}
+    {% set experiment_tone = 'experimental' if ai_lab_enabled else 'unavailable' %}
+    {% set ai_lab_overview_groups = [
+      {
+        'key': 'tools', 'title': 'Рабочие инструменты',
+        'description': 'Изучайте материалы, разбирайте синтетические уроки и проверяйте ответы. AI-выводы требуют человеческой проверки.',
+        'modules': [
+          {'key':'knowledge','icon':'ph-books','name':'Knowledge Base','description':'Ищите учебные материалы, проверяйте версии и источники, редактируйте содержание.','data':'Материалы, коды ФИПИ, первоисточники и версии.','action':'Найти материал и проверить его основание.','action_label':'Открыть базу знаний','status_label':'Не проверено' if ai_lab_enabled else 'Недоступно','status_tone':'unverified' if ai_lab_enabled else 'unavailable','attention':'Счётчики очереди загружаются из Knowledge Base API.' if ai_lab_enabled else 'Локальная AI Lab выключена.','href':url_for('ai_lab.knowledge_base_page')},
+          {'key':'lesson','icon':'ph-chalkboard-teacher','name':'AI Lesson Intelligence','description':'Разберите стенограмму урока и изучите выводы со ссылками на реплики. Наблюдения подтверждает преподаватель.','data':'Синтетические стенограммы и предметные материалы.','action':'Загрузить стенограмму и проверить доказательства.','action_label':'Открыть AI Lesson','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.lesson_intelligence_page')},
+          {'key':'tutor','icon':'ph-brain','name':'Tutor Core','description':'Сопоставляет сохранённые синтетические результаты с навыками, сохраняет историю и показывает состояние до и после последнего события.','data':'Домашние работы с полным Code Judge отчётом и наблюдения AI Lesson после подтверждения преподавателем.','action':'Посмотреть доказательства, неизвестные данные и осторожное предложение.','action_label':'Открыть Tutor Core','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.tutor_core_page')},
+          {'key':'homework','icon':'ph-notebook','name':'AI Homework Studio','description':'Запустите предварительную проверку, сравните результат с эталоном и сохраните ручную оценку.','data':'Синтетическое задание и ответ; Code Judge — только при связанной проверенной рубрике и тестах.','action':'Проверить синтетический сценарий и историю запуска.','action_label':'Открыть AI Homework','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.studio')}
+        ]
+      },
+      {
+        'key': 'experiments', 'title': 'Эксперименты',
+        'description': 'Исследовательские инструменты. Наличие кода или экрана само по себе не означает готовность к production.',
+        'modules': [
+          {'key':'analytics','icon':'ph-chart-line-up','name':'AI Analytics','description':'Просмотрите агрегаты обучения с указанием происхождения и ограничений данных.','data':'Синтетические события и подтверждённые наблюдения.','action':'Проверить выборку, основания и методику показателей.','action_label':'Открыть Analytics','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.analytics_page')},
+          {'key':'practice','icon':'ph-lightning','name':'AI Practice','description':'Изучите рекомендации по существующим заданиям, основанные на повторных подтверждённых ошибках.','data':'Подтверждённые ошибки и явные связи заданий с навыками.','action':'Проверить основание рекомендации.','action_label':'Открыть Practice','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.practice_page')},
+          {'key':'course','icon':'ph-map-trifold','name':'AI Course','description':'Проверьте явные связи курса и версионируемые предложения; изменения не применяются автоматически.','data':'Связи уроков, навыков и синтетические материалы.','action':'Изучить основания и историю решений.','action_label':'Открыть AI Course','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.course_page')},
+          {'key':'code-judge','icon':'ph-code','name':'Code Judge','description':'Проверьте Python-решение на сохранённом наборе тестов в изолированном Runner.','data':'Синтетический код и тесты.','action':'Проверить доступность Runner перед запуском.','action_label':'Открыть Code Judge','status_label':'Не проверено' if ai_lab_enabled else 'Недоступно','status_tone':'unverified' if ai_lab_enabled else 'unavailable','href':url_for('ai_lab.code_judge_page')},
+          {'key':'rubric','icon':'ph-list-checks','name':'Rubric Builder','description':'Создайте черновик критериев и проверьте полноту; AI не утверждает рубрику.','data':'Синтетическое условие задачи и предложенные критерии.','action':'Проверить замечания и принять решение вручную.','action_label':'Открыть Rubric Builder','status_label':'Требует экспертной проверки' if ai_lab_enabled else 'Недоступно','status_tone':'review' if ai_lab_enabled else 'unavailable','href':url_for('ai_lab.rubric_builder_page')},
+          {'key':'quality','icon':'ph-chart-donut','name':'Quality Dashboard','description':'Сравните эксперименты по размеру выборки и способу оценки.','data':'Сохранённые синтетические эксперименты и экспертные метки.','action':'Различать автоматические и экспертные показатели.','action_label':'Открыть качество AI Lab','status_label':experiment_status,'status_tone':experiment_tone,'href':url_for('ai_lab.quality_dashboard_page')}
+        ]
+      }
+    ] %}
+    <header class="ai-lab-home-header">
+      <div>
+        <p class="ai-lab-eyebrow">Локальная синтетическая среда</p>
+        <h1 id="ai-lab-home-title">BooStudy AI Lab</h1>
+        <p>Выберите инструмент по задаче: изучить материал, разобрать урок или проверить синтетический ответ. Статус каждой карточки показывает текущие ограничения.</p>
+      </div>
+      <aside class="ai-lab-home-health" aria-label="Состояние лаборатории">
+        <span class="ai-lab-home-state{% if not ai_lab_enabled %} is-unavailable{% endif %}" role="status">
+          <i class="ph {% if ai_lab_enabled %}ph-flask{% else %}ph-lock-key{% endif %}" aria-hidden="true"></i>
+          {% if ai_lab_enabled %}Локальные сценарии включены{% else %}Недоступно: локальная AI Lab выключена{% endif %}
+        </span>
+        <div class="ai-lab-provider-state">
+          <span>GigaChat</span>
+          <strong>{% if ai_lab_provider.configured %}Настроен · подключение не проверено{% else %}Не настроен{% endif %}</strong>
         </div>
-      </div>
-      <div class="ai-lab-orbit" aria-hidden="true">
-        <span class="ai-lab-orbit-node node-one"><i class="ph ph-books"></i></span>
-        <span class="ai-lab-orbit-node node-two"><i class="ph ph-graduation-cap"></i></span>
-        <span class="ai-lab-orbit-node node-three"><i class="ph ph-lightning"></i></span>
-        <span class="ai-lab-orbit-core"><i class="ph-bold ph-brain"></i></span>
-      </div>
+        <a href="{{ url_for('admin.admin_ai_lab', section='models') }}">Проверить подключение модели <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
+      </aside>
     </header>
   {% else %}
     <div class="ai-lab-section-heading">
       <div>
-        <p class="ai-lab-eyebrow">BooStudy AI Lab · v0.1</p>
+        <p class="ai-lab-eyebrow">Локальная AI Lab</p>
         {% if ai_lab_section == 'experiments' %}
           <h1>Центр экспериментов</h1>
           <p>Пространство для проверки гипотез, тестирования моделей и исследования поведения BooStudy AI.</p>
@@ -422,75 +446,80 @@
     </div>
   {% endif %}
 
-  <nav class="ai-lab-tabs" aria-label="Разделы AI Lab">
-    {% set lab_tabs = [
-      ('overview', 'Обзор', 'ph-squares-four'),
-      ('experiments', 'Эксперименты', 'ph-flask'),
-      ('instructions', 'Инструкции', 'ph-notepad'),
-      ('models', 'Модели', 'ph-circles-three-plus'),
-      ('history', 'История', 'ph-clock-counter-clockwise')
-    ] %}
-    {% for key, label, icon in lab_tabs %}
-      <a class="ai-lab-tab{% if ai_lab_section == key %} is-active{% endif %}"
-         href="{{ url_for('admin.admin_ai_lab', section=key) }}"
-         {% if ai_lab_section == key %}aria-current="page"{% endif %}>
-        <i class="ph {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
-      </a>
-    {% endfor %}
-  </nav>
+  {% if ai_lab_section != 'overview' %}
+    <nav class="ai-lab-tabs" aria-label="Разделы AI Homework Studio">
+      {% set lab_tabs = [
+        ('overview', 'Обзор', 'ph-squares-four'),
+        ('experiments', 'Эксперименты', 'ph-flask'),
+        ('instructions', 'Инструкции', 'ph-notepad'),
+        ('models', 'Модели', 'ph-circles-three-plus'),
+        ('history', 'История', 'ph-clock-counter-clockwise')
+      ] %}
+      {% for key, label, icon in lab_tabs %}
+        <a class="ai-lab-tab{% if ai_lab_section == key %} is-active{% endif %}"
+           href="{{ url_for('admin.admin_ai_lab', section=key) }}"
+           {% if ai_lab_section == key %}aria-current="page"{% endif %}>
+          <i class="ph {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+  {% endif %}
 
   {% if ai_lab_section == 'overview' %}
-    <section class="ai-lab-section" aria-labelledby="ai-lab-directions-title">
-      <div class="ai-lab-section-heading">
-        <div><p class="ai-lab-eyebrow">Направления BooStudy AI</p><h2 id="ai-lab-directions-title">Пять направлений BooStudy AI</h2></div>
-        <span class="ai-lab-count">От маршрута до практики</span>
-      </div>
-      <div class="ai-lab-modules">
-        {% for module in ai_lab_modules %}
-          {% if module.href %}
-          <a class="ai-lab-module tone-{{ module.tone }}{% if loop.first %} is-featured{% endif %}" href="{{ module.href }}">
-          {% else %}
-          <article class="ai-lab-module tone-{{ module.tone }}{% if loop.first %} is-featured{% endif %}">
-          {% endif %}
-            <span class="ai-lab-module-icon"><i class="ph-bold {{ module.icon }}" aria-hidden="true"></i></span>
-            <h3>{{ module.name }}</h3>
-            <p>{{ module.description }}</p>
-            {% if loop.first %}
-              <div class="ai-lab-course-flow" aria-label="Будущая логика адаптивного курса">
-                <span class="ai-lab-course-flow-label">Будущий учебный цикл</span>
-                <div class="ai-lab-course-flow-steps">
-                  <div class="ai-lab-course-step"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Найти пробелы</span></div>
-                  <div class="ai-lab-course-step"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span>Подобрать повторения</span></div>
-                  <div class="ai-lab-course-step"><i class="ph ph-map-trifold" aria-hidden="true"></i><span>Уточнить маршрут</span></div>
-                </div>
-              </div>
-            {% endif %}
-            <span class="ai-lab-status tone-{{ module.tone }}"><i class="ph ph-circle" aria-hidden="true"></i>{{ module.status }}</span>
-          {% if module.href %}</a>{% else %}</article>{% endif %}
-        {% endfor %}
-      </div>
-    </section>
-
-    <section class="ai-lab-section" aria-labelledby="ai-lab-workspace-title">
-      <div class="ai-lab-section-heading">
-        <div><p class="ai-lab-eyebrow">Исследования и наблюдения</p><h2 id="ai-lab-workspace-title">Рабочая область</h2></div>
-      </div>
-      <div class="ai-lab-panel ai-lab-work-grid">
-        <div class="ai-lab-empty">
-          <span class="ai-lab-empty-icon"><i class="ph ph-flask" aria-hidden="true"></i></span>
-          <div>
-            <h3>AI Homework Studio готова к синтетическим сценариям</h3>
-            <p>Проверяйте предварительные оценки на учебных примерах, сравнивайте результат с эталоном и фиксируйте ручную оценку качества.</p>
-            <a class="ai-lab-tab is-active" href="{{ url_for('ai_lab.studio') }}">Открыть рабочую область</a>
+    <div class="ai-lab-overview">
+      {% for group in ai_lab_overview_groups %}
+        <section class="ai-lab-home-section" aria-labelledby="ai-lab-group-{{ group.key }}">
+          <div class="ai-lab-home-section-heading">
+            <div><p class="ai-lab-eyebrow">BooStudy AI</p><h2 id="ai-lab-group-{{ group.key }}">{{ group.title }}</h2><p>{{ group.description }}</p></div>
           </div>
+          <div class="ai-lab-home-grid">
+            {% for module in group.modules %}
+              <article class="ai-lab-home-card">
+                <div class="ai-lab-home-card-top">
+                  <span class="ai-lab-home-icon"><i class="ph-bold {{ module.icon }}" aria-hidden="true"></i></span>
+                  <span class="ai-lab-home-status is-{{ module.status_tone }}"{% if module.key == 'knowledge' %} id="ai-lab-knowledge-status"{% endif %}>{{ module.status_label }}</span>
+                </div>
+                <h3>{{ module.name }}</h3>
+                <p class="ai-lab-home-description">{{ module.description }}</p>
+                <dl class="ai-lab-home-details">
+                  <div><dt>Использует</dt><dd>{{ module.data }}</dd></div>
+                  <div><dt>Что сделать</dt><dd>{{ module.action }}</dd></div>
+                </dl>
+                {% if module.attention %}<p class="ai-lab-home-attention" id="ai-lab-knowledge-attention" role="status">{{ module.attention }}</p>{% endif %}
+                <a class="ai-lab-home-action" href="{{ module.href }}">{{ module.action_label }} <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+
+      <section class="ai-lab-home-section" id="ai-lab-expert-review"
+               aria-labelledby="ai-lab-expert-review-title"
+               data-api-url="{{ url_for('ai_lab.knowledge_base_data') }}"
+               data-enabled="{{ 'true' if ai_lab_enabled else 'false' }}"
+               aria-busy="{{ 'true' if ai_lab_enabled else 'false' }}">
+        <div class="ai-lab-home-section-heading">
+          <div><p class="ai-lab-eyebrow">Решение остаётся за преподавателем</p><h2 id="ai-lab-expert-review-title">Экспертная проверка</h2><p>Очередь загружается из текущего снимка Knowledge Base. Черновики и технические проверки сами по себе не означают утверждение.</p></div>
         </div>
-        <div class="ai-lab-work-aside" aria-label="Состояние лаборатории">
-          <div class="ai-lab-future-item"><i class="ph ph-flask" aria-hidden="true"></i>Запуски<span>{{ ai_lab_stats.total_runs if ai_lab_stats else '—' }}</span></div>
-          <div class="ai-lab-future-item"><i class="ph ph-cpu" aria-hidden="true"></i>Доступ к GigaChat<span>{{ 'Готов' if ai_lab_provider.configured and ai_lab_enabled else 'Не подключён' }}</span></div>
-          <div class="ai-lab-future-item"><i class="ph ph-shield-check" aria-hidden="true"></i>Рабочие сдачи<span>Изолировано</span></div>
+        {% if not ai_lab_enabled %}
+          <div class="ai-lab-review-state is-unavailable" role="status"><i class="ph ph-lock-key" aria-hidden="true"></i><div><strong>Проверка недоступна</strong><p>Включите локальный режим AI Lab, чтобы загрузить очередь.</p></div></div>
+        {% else %}
+          <div class="ai-lab-review-state" id="ai-lab-review-loading" role="status" aria-live="polite"><i class="ph ph-circle-notch" aria-hidden="true"></i><div><strong>Загружаем очередь проверки</strong><p>Получаем текущие показатели Knowledge Base.</p></div></div>
+          <div class="ai-lab-review-state is-error" id="ai-lab-review-error" role="alert" hidden><i class="ph ph-warning-circle" aria-hidden="true"></i><div><strong id="ai-lab-review-error-title">Не удалось загрузить очередь</strong><p id="ai-lab-review-error-description">Счётчики не подменены нулями. Откройте базу знаний или повторите загрузку страницы.</p></div></div>
+          <div class="ai-lab-review-state" id="ai-lab-review-empty" role="status" hidden><i class="ph ph-check-circle" aria-hidden="true"></i><div><strong>Очередь сейчас пуста</strong><p id="ai-lab-review-empty-description">На момент загрузки снимка досье и материалы не ожидали проверки.</p></div></div>
+          <div class="ai-lab-review-grid" id="ai-lab-review-metrics" hidden>
+            <article class="ai-lab-review-metric is-attention"><span>Досье пилота ждут преподавателя</span><strong id="ai-lab-pending-dossiers">—</strong></article>
+            <article class="ai-lab-review-metric"><span>Материалов ждут редакционной проверки</span><strong id="ai-lab-pending-materials">—</strong></article>
+            <article class="ai-lab-review-metric"><span>Утверждено для использования учениками</span><strong id="ai-lab-approved-materials">—</strong></article>
+          </div>
+        {% endif %}
+        {% if ai_lab_enabled %}<p class="ai-lab-review-note" id="ai-lab-review-note" hidden>Счётчики получены из текущего снимка Knowledge Base. Они не подтверждают качество материалов или полноту экспертной проверки.</p>{% endif %}
+        <div class="ai-lab-review-actions">
+          <a class="ai-lab-home-action" href="{{ url_for('ai_lab.knowledge_base_page') }}">Проверить материалы базы знаний <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          <a class="ai-lab-home-secondary" href="{{ url_for('ai_lab.quality_review_page') }}">Экспертная оценка результатов AI <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   {% elif ai_lab_section == 'experiments' %}
     <section class="ai-lab-section" aria-label="AI Homework эксперименты">
       <div class="ai-lab-panel">
@@ -635,6 +664,66 @@
   .ai-lab-diagnostics-result { min-height: 20px; margin-top: 10px; color: var(--bs-text-secondary); font-size: 12px; line-height: 1.5; }
   .ai-lab-muted { color: var(--bs-text-muted); font-size: 12px; line-height: 1.55; }
   .ai-lab-tab:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+  .ai-lab-overview { display: grid; gap: clamp(24px, 3.2vw, 38px); }
+  .ai-lab-home-header {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 340px); align-items: center; gap: 28px;
+    padding: clamp(22px, 3vw, 36px); border: 1px solid var(--bs-border-warm); border-radius: var(--bs-radius-xl, 28px);
+    background: linear-gradient(112deg, var(--bs-surface-peach-soft), var(--bs-bg-surface) 58%, var(--bs-surface-lilac-soft)); box-shadow: var(--bs-shadow-e0);
+  }
+  .ai-lab-home-header h1 { margin: 0; color: var(--bs-text-primary); font-size: clamp(30px, 4vw, 46px); font-weight: 850; letter-spacing: -.045em; line-height: 1.08; }
+  .ai-lab-home-header > div > p:last-child { max-width: 700px; margin: 12px 0 0; color: var(--bs-text-secondary); font-size: 14px; line-height: 1.65; }
+  .ai-lab-home-health { display: grid; gap: 11px; min-width: 0; padding: 16px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-lg, 20px); background: var(--bs-bg-surface); }
+  .ai-lab-home-state { display: flex; align-items: flex-start; gap: 8px; color: var(--bs-success-ink); font-size: 12px; font-weight: 800; line-height: 1.45; }
+  .ai-lab-home-state i { flex: 0 0 auto; font-size: 17px; }
+  .ai-lab-home-state.is-unavailable { color: var(--bs-danger-ink, var(--bs-text-secondary)); }
+  .ai-lab-provider-state { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px); background: var(--bs-bg-surface-soft); }
+  .ai-lab-provider-state span { color: var(--bs-text-muted); font-size: 11px; }
+  .ai-lab-provider-state strong { color: var(--bs-text-primary); font-size: 12px; line-height: 1.45; }
+  .ai-lab-home-health > a { min-height: 44px; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px); color: var(--bs-primary); font-size: 12px; font-weight: 800; text-decoration: none; }
+  .ai-lab-home-health > a:hover { background: var(--bs-primary-soft); }
+  .ai-lab-home-health > a:focus-visible, .ai-lab-home-action:focus-visible, .ai-lab-home-secondary:focus-visible { outline: 3px solid var(--bs-primary-soft); outline-offset: 2px; }
+  .ai-lab-home-section { display: grid; gap: 14px; }
+  .ai-lab-home-section-heading h2 { margin: 0; color: var(--bs-text-primary); font-size: clamp(22px, 2.4vw, 29px); font-weight: 850; letter-spacing: -.035em; line-height: 1.2; }
+  .ai-lab-home-section-heading p:last-child { max-width: 780px; margin: 7px 0 0; color: var(--bs-text-secondary); font-size: 13px; line-height: 1.55; }
+  .ai-lab-home-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ai-lab-gap); }
+  .ai-lab-home-card { min-width: 0; display: flex; flex-direction: column; padding: 19px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-lg, 20px); background: var(--bs-bg-surface); transition: border-color var(--bs-motion-fast, 120ms) ease, box-shadow var(--bs-motion-fast, 120ms) ease, transform var(--bs-motion-fast, 120ms) ease; }
+  .ai-lab-home-card:hover { border-color: var(--bs-border-strong); box-shadow: var(--bs-shadow-e1); transform: translateY(-1px); }
+  .ai-lab-home-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .ai-lab-home-icon { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px); background: var(--bs-surface-lilac-soft); color: var(--bs-primary); font-size: 21px; }
+  .ai-lab-home-status { display: inline-flex; align-items: center; min-height: 28px; max-width: 74%; padding: 5px 9px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-pill, 999px); color: var(--bs-text-secondary); background: var(--bs-bg-surface-soft); font-size: 10px; font-weight: 800; line-height: 1.3; }
+  .ai-lab-home-status.is-experimental { color: var(--bs-info-ink, var(--bs-text-secondary)); background: var(--bs-info-soft); border-color: var(--bs-border); }
+  .ai-lab-home-status.is-review { color: var(--bs-warning-ink); background: var(--bs-surface-butter-soft); border-color: var(--bs-border-warm); }
+  .ai-lab-home-status.is-working { color: var(--bs-success-ink); background: var(--bs-success-soft); border-color: var(--bs-border); }
+  .ai-lab-home-status.is-unavailable { color: var(--bs-danger-ink, var(--bs-text-secondary)); background: var(--bs-danger-soft); border-color: var(--bs-border); }
+  .ai-lab-home-status.is-unverified { color: var(--bs-text-muted); }
+  .ai-lab-home-card h3 { margin: 16px 0 0; color: var(--bs-text-primary); font-size: 16px; font-weight: 850; line-height: 1.3; letter-spacing: -.02em; }
+  .ai-lab-home-description { margin: 8px 0 0; color: var(--bs-text-secondary); font-size: 12px; line-height: 1.55; }
+  .ai-lab-home-details { display: grid; gap: 9px; margin: 16px 0; }
+  .ai-lab-home-details div { min-width: 0; }
+  .ai-lab-home-details dt { color: var(--bs-text-muted); font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+  .ai-lab-home-details dd { margin: 3px 0 0; color: var(--bs-text-secondary); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+  .ai-lab-home-attention { margin: auto 0 12px; padding: 9px 10px; border: 1px solid var(--bs-border-warm); border-radius: var(--bs-radius-md, 14px); color: var(--bs-warning-ink); background: var(--bs-surface-butter-soft); font-size: 11px; font-weight: 750; line-height: 1.45; }
+  .ai-lab-home-action, .ai-lab-home-secondary { min-height: 44px; display: inline-flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: auto; padding: 9px 12px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px); color: var(--bs-primary); background: var(--bs-bg-surface-soft); font-size: 11px; font-weight: 850; line-height: 1.4; text-decoration: none; }
+  .ai-lab-home-action:hover, .ai-lab-home-secondary:hover { border-color: var(--bs-border-strong); background: var(--bs-primary-soft); }
+  .ai-lab-review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .ai-lab-review-metric { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; padding: 16px 18px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-lg, 20px); background: var(--bs-bg-surface); }
+  .ai-lab-review-metric span { color: var(--bs-text-secondary); font-size: 12px; font-weight: 750; line-height: 1.45; }
+  .ai-lab-review-metric strong { color: var(--bs-text-primary); font-size: 27px; font-weight: 850; font-variant-numeric: tabular-nums; }
+  .ai-lab-review-metric.is-attention { border-color: var(--bs-border-warm); background: var(--bs-surface-butter-soft); }
+  .ai-lab-review-note { margin: 0; color: var(--bs-text-muted); font-size: 11px; line-height: 1.5; }
+  .ai-lab-review-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ai-lab-review-state { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border: 1px dashed var(--bs-border-strong); border-radius: var(--bs-radius-lg, 20px); background: var(--bs-bg-surface-soft); color: var(--bs-text-secondary); }
+  .ai-lab-review-state[hidden], .ai-lab-review-grid[hidden], .ai-lab-review-note[hidden] { display: none !important; }
+  .ai-lab-review-state > i { flex: 0 0 auto; color: var(--bs-primary); font-size: 22px; }
+  .ai-lab-review-state strong { color: var(--bs-text-primary); font-size: 13px; }
+  .ai-lab-review-state p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; }
+  .ai-lab-review-state.is-unavailable > i, .ai-lab-review-state.is-error > i { color: var(--bs-danger-ink, var(--bs-warning-ink)); }
+  @media (max-width: 1100px) { .ai-lab-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 800px) {
+    .ai-lab-home-header { grid-template-columns: minmax(0, 1fr); gap: 17px; padding: 21px; }
+    .ai-lab-home-health { max-width: none; }
+    .ai-lab-home-grid, .ai-lab-review-grid { grid-template-columns: minmax(0, 1fr); }
+  }
   @media (max-width: 680px) {
     .ai-lab-run { align-items: flex-start; flex-wrap: wrap; padding: 12px; }
     .ai-lab-run-copy { flex-basis: calc(100% - 58px); }
@@ -642,8 +731,110 @@
     .ai-lab-section-heading { align-items: flex-start; flex-direction: column; }
     .ai-lab-section-heading .ai-lab-tab { width: 100%; justify-content: center; }
   }
+  @media (max-width: 430px) {
+    .ai-lab-home-grid, .ai-lab-review-grid { grid-template-columns: minmax(0, 1fr); }
+    .ai-lab-home-card { padding: 16px; }
+    .ai-lab-review-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .ai-lab-review-actions > a { width: 100%; }
+  }
 </style>
 <script>
+  (() => {
+    const review = document.getElementById('ai-lab-expert-review');
+    if (!review || review.dataset.enabled !== 'true') return;
+
+    const loading = document.getElementById('ai-lab-review-loading');
+    const error = document.getElementById('ai-lab-review-error');
+    const empty = document.getElementById('ai-lab-review-empty');
+    const metrics = document.getElementById('ai-lab-review-metrics');
+    const note = document.getElementById('ai-lab-review-note');
+    const moduleStatus = document.getElementById('ai-lab-knowledge-status');
+    const moduleAttention = document.getElementById('ai-lab-knowledge-attention');
+
+    const setUnavailable = (title, description) => {
+      review.setAttribute('aria-busy', 'false');
+      if (loading) loading.hidden = true;
+      if (empty) empty.hidden = true;
+      if (metrics) metrics.hidden = true;
+      if (error) error.hidden = false;
+      const errorTitle = document.getElementById('ai-lab-review-error-title');
+      const errorDescription = document.getElementById('ai-lab-review-error-description');
+      if (errorTitle && title) errorTitle.textContent = title;
+      if (errorDescription && description) errorDescription.textContent = description;
+      if (note) note.hidden = true;
+      if (moduleStatus) {
+        moduleStatus.className = 'ai-lab-home-status is-unverified';
+        moduleStatus.textContent = 'Не проверено';
+      }
+      if (moduleAttention) moduleAttention.textContent = 'Не удалось получить текущее состояние очереди.';
+    };
+
+    const loadReviewCounts = async () => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(review.dataset.apiUrl, {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal
+        });
+        if (response.status === 401 || response.status === 403) {
+          setUnavailable('Нет доступа к очереди', 'У вашей учётной записи нет разрешения на чтение Knowledge Base. Счётчики не показаны; обратитесь к администратору.');
+          return;
+        }
+        if (!response.ok) throw new Error(`Knowledge Base API вернул HTTP ${response.status}.`);
+        const payload = await response.json();
+        const counts = payload?.knowledge_base?.counts;
+        const dossiers = counts?.expert_pilot_dossiers_current;
+        const pending = counts?.pending_review_materials;
+        const approved = counts?.approved_for_student_use;
+        if (![dossiers, pending, approved].every(value => Number.isSafeInteger(value) && value >= 0)) {
+          throw new Error('Knowledge Base API returned incomplete counts');
+        }
+
+        document.getElementById('ai-lab-pending-dossiers').textContent = dossiers.toLocaleString('ru-RU');
+        document.getElementById('ai-lab-pending-materials').textContent = pending.toLocaleString('ru-RU');
+        document.getElementById('ai-lab-approved-materials').textContent = approved.toLocaleString('ru-RU');
+
+        const needsReview = dossiers > 0 || pending > 0;
+        if (loading) loading.hidden = true;
+        if (error) error.hidden = true;
+        if (empty) empty.hidden = needsReview;
+        if (metrics) metrics.hidden = !needsReview;
+        if (note) note.hidden = false;
+        if (needsReview && moduleStatus) {
+          moduleStatus.className = 'ai-lab-home-status is-review';
+          moduleStatus.textContent = 'Требует экспертной проверки';
+        } else if (moduleStatus) {
+          moduleStatus.className = 'ai-lab-home-status is-working';
+          moduleStatus.textContent = 'Работает · очередь пуста';
+        }
+        const emptyDescription = document.getElementById('ai-lab-review-empty-description');
+        if (emptyDescription) {
+          emptyDescription.textContent = `Материалы и досье не ожидают проверки. Утверждено для учеников: ${approved.toLocaleString('ru-RU')}.`;
+        }
+        if (moduleAttention) {
+          moduleAttention.textContent = needsReview
+            ? `${dossiers.toLocaleString('ru-RU')} досье ждут преподавателя · ${pending.toLocaleString('ru-RU')} материалов ждут редактора`
+            : `Очередь проверки пуста · утверждено для учеников: ${approved.toLocaleString('ru-RU')}`;
+        }
+      } catch (loadError) {
+        setUnavailable(
+          loadError.name === 'AbortError' ? 'Knowledge Base отвечает слишком долго' : 'Очередь недоступна',
+          loadError.name === 'AbortError'
+            ? 'За 10 секунд ответ не получен. Счётчики не подменены нулями; повторите загрузку позже.'
+            : `${loadError.message || 'Не удалось связаться с Knowledge Base API'} Счётчики не подменены нулями; повторите загрузку или откройте базу знаний.`
+        );
+      } finally {
+        window.clearTimeout(timeout);
+        review.setAttribute('aria-busy', 'false');
+      }
+    };
+
+    loadReviewCounts();
+  })();
+
   (() => {
     const button = document.getElementById('ai-lab-diagnostics');
     const output = document.getElementById('ai-lab-diagnostics-result');

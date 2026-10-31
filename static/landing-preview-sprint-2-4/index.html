@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111127">
+  <meta name="description" content="Живое демо одного занятия BooStudy OS: от объяснения на доске до кода ученика.">
+  <title>BooStudy OS — Живой класс · Preview 2.4</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./experience.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#story">К истории урока</a>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="BooStudy, к началу">
+      <span class="brand-mark" aria-hidden="true">B</span>
+      <span>BooStudy <em>OS</em></span>
+    </a>
+    <div class="topbar-meta"><span class="live-dot"></span> Демо-урок · режим ученика</div>
+    <a class="topbar-cta" href="#classroom" data-enter-class>Войти в класс <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-orbit orbit-a" aria-hidden="true"></div>
+      <div class="hero-orbit orbit-b" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> Один настоящий урок</p>
+        <h1 id="hero-title">Сначала<br><span>понять.</span><br>Потом решить.</h1>
+        <p class="hero-lede">Загляните в занятие по Python: вопрос на доске раскрывается в условие, а рядом — код преподавателя в ученическом окне.</p>
+        <div class="hero-actions">
+          <button class="button button-primary" type="button" data-enter-class>Открыть демо-класс <span aria-hidden="true">↗</span></button>
+          <a class="quiet-link" href="#story">Пройти историю <span aria-hidden="true">↓</span></a>
+        </div>
+        <p class="hero-note"><span class="note-icon" aria-hidden="true">i</span> Показан реальный локальный урок и доступ ученика. Инструменты преподавателя здесь не подменяются.</p>
+      </div>
+      <div class="hero-proof" aria-label="Тема урока">
+        <div class="proof-label">Сегодня разбираем</div>
+        <div class="proof-equation"><span>12</span><i>%</i><span>2</span><b>==</b><span>0</span></div>
+        <div class="proof-result"><span class="result-dot"></span> 12 — чётное</div>
+        <div class="proof-divider"></div>
+        <p>Одна задача.<br>Несколько способов увидеть логику.</p>
+        <div class="proof-orb" aria-hidden="true">B</div>
+      </div>
+      <div class="hero-bottom"><span>Живое пространство</span><span class="scroll-cue" aria-hidden="true">⌄</span><span>История продолжается ниже</span></div>
+    </section>
+
+    <section class="story-intro" id="story" aria-labelledby="story-title">
+      <div class="story-intro-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> Не набор окон — одно занятие</p>
+        <h2 id="story-title">Мы остаёмся<br>внутри одного класса.</h2>
+      </div>
+      <p class="story-intro-note">Рабочая среда остаётся на месте. Меняется только вопрос, на который мы смотрим: что объясняет доска, где появляется код и как ученик продолжает работу.</p>
+    </section>
+
+    <section class="classroom" id="classroom" aria-label="Живой класс BooStudy OS">
+      <div class="classroom-head">
+        <div>
+          <p class="eyebrow"><span class="eyebrow-line"></span> Войти в демонстрационный урок</p>
+          <h2>Один класс.<br><span>Реальный интерфейс.</span></h2>
+        </div>
+        <div class="classroom-head-aside"><span class="status-chip"><i></i> Локальная среда</span><span class="role-chip">Ученик · demo_student_1</span></div>
+      </div>
+      <p class="classroom-caption">Окно комнаты останется рядом с историей и не будет перерисовываться между главами. Войти можно в любой момент.</p>
+    </section>
+
+    <section class="journey" aria-labelledby="journey-title">
+      <div class="journey-workspace">
+        <div class="workspace-shell" data-workspace>
+          <div class="workspace-chrome" aria-hidden="true">
+            <span class="window-dots"><i></i><i></i><i></i></span>
+            <span class="chrome-title">Условия и ветвления в Python · BooStudy OS</span>
+            <span class="chrome-state"><i></i> Урок в процессе</span>
+          </div>
+          <div class="workspace-frame" data-frame-wrap>
+            <div class="workspace-poster" data-poster>
+              <div class="poster-grid" aria-hidden="true"></div>
+              <div class="poster-content">
+                <span class="poster-kicker"><i></i> Ученический вид · локальный демо-урок</span>
+                <h3>От вопроса<br>на доске — к условию.</h3>
+                <p>Нажмите, чтобы открыть настоящую BooStudy OS. Внутри можно самостоятельно осмотреть доску, код и панели урока.</p>
+                <button class="button button-primary" type="button" data-load-class>Войти в класс <span aria-hidden="true">↗</span></button>
+                <span class="poster-footnote">Демо-урок · 1 участник · без изменения ролей</span>
+              </div>
+              <div class="poster-equation" aria-hidden="true"><span>if</span><b>n % 2 == 0</b><i>→</i><strong>?</strong></div>
+            </div>
+            <iframe class="classroom-frame" data-classroom-frame title="Реальный демо-урок BooStudy OS в режиме ученика" loading="lazy" referrerpolicy="same-origin" allow="clipboard-read; clipboard-write" hidden></iframe>
+          </div>
+          <div class="workspace-footer">
+            <span data-live-status aria-live="polite">До входа в класс урок не загружается.</span>
+            <a data-open-class href="/lesson/2174/room" target="_blank" rel="noopener">Открыть на весь экран <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <p class="classroom-caption">Это не реконструкция интерфейса: здесь загружается сам локальный урок. Аккаунт остаётся учеником, его доступ не меняется.</p>
+      </div>
+      <div class="journey-copy">
+        <div class="journey-heading">
+          <p class="eyebrow"><span class="eyebrow-line"></span> Ход занятия</p>
+          <h2 id="journey-title">Смысл ведёт<br>от шага к шагу.</h2>
+          <p>Прокрутите историю рядом с классом. Окно урока остаётся тем же — вы можете в любой момент перейти к нему и исследовать доступные элементы.</p>
+          <a class="quiet-link" href="#handoff">Перейти дальше <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="journey-steps" data-steps>
+        <article class="journey-step is-active" data-step="0">
+          <span class="step-index">01 <i></i></span>
+          <div><p class="step-kicker">Замечаем вопрос</p><h3>Чётное или нечётное?</h3><p>На доске — условие, варианты и разветвление. Рисунок помогает удерживать ход рассуждения, пока ученик разбирается в задаче.</p><span class="evidence-tag">Видно на доске этого урока</span></div>
+        </article>
+        <article class="journey-step" data-step="1">
+          <span class="step-index">02 <i></i></span>
+          <div><p class="step-kicker">Следуем за объяснением</p><h3>Остаёмся с общей схемой.</h3><p>В этой ученической сессии видны инструменты выбора и руки, масштаба и подгонки, страниц и фона. Само перемещение по холсту и переход между разными страницами остались непроверенными. Рисование преподавателя не выдаётся за действие ученика.</p><span class="evidence-tag">Контролы видны · режим ученика</span></div>
+        </article>
+        <article class="journey-step" data-step="2">
+          <span class="step-index">03 <i></i></span>
+          <div><p class="step-kicker">Переходим к логике</p><h3>Схема встречается с кодом.</h3><p>В той же комнате открыты доска и редактор. Редактор показывает код преподавателя только для чтения; интерфейс сообщает о синхронизации, но совместное обновление с несколькими участниками в этом проходе не проверялось.</p><span class="evidence-tag">Код и статус видны в живой комнате</span></div>
+        </article>
+        <article class="journey-step" data-step="3">
+          <span class="step-index">04 <i></i></span>
+          <div><p class="step-kicker">Продолжаем в рабочем пространстве</p><h3>У следующего шага уже есть место.</h3><p>Внизу комнаты видны входы к заданию, трассировщику, терминалу, конспекту, теории, файлам и материалам. Это не конец урока — отсюда начинается следующая часть работы.</p><span class="evidence-tag">Доступные панели комнаты</span></div>
+        </article>
+        </div>
+        <aside class="journey-rail" aria-hidden="true"><span class="rail-fill" data-rail-fill></span></aside>
+      </div>
+    </section>
+
+    <section class="truth" aria-labelledby="truth-title">
+      <div class="truth-heading"><p class="eyebrow"><span class="eyebrow-line"></span> Проверено в интерфейсе</p><h2 id="truth-title">Демо честно показывает<br><span>только свой доступ.</span></h2><p>Некоторые действия доступны только преподавателю. Чтобы не смешивать роли, этот preview не симулирует кисти, фигуры или совместную правку.</p></div>
+      <div class="truth-grid">
+        <div class="truth-card truth-available"><span class="truth-mark">✓</span><h3>Наблюдается в ученическом окне</h3><p>Холст и его элементы · контролы выбора/руки, масштаба/подгонки, страниц и фона · меню экспорта с PNG, SVG, PDF и JSON · редактор кода только для чтения · метка «Синхронизировано».</p></div>
+        <div class="truth-card truth-open"><span class="truth-mark">…</span><h3>Требует учительского тестового доступа</h3><p>Перья и настройки кисти · цвет и толщина · фигуры · ластик · undo/redo · редактирование и перемещение объектов · реальное создание штриха.</p></div>
+        <div class="truth-card truth-open"><span class="truth-mark">…</span><h3>Совместность ещё не подтверждена</h3><p>Сейчас комната показывает одного участника. Синхронизация между учеником и преподавателем, импорт и фактическая выгрузка файлов в этом проходе не проверены.</p></div>
+      </div>
+    </section>
+
+    <section class="handoff" id="handoff" aria-labelledby="handoff-title">
+      <div class="handoff-orbit" aria-hidden="true"></div>
+      <div class="handoff-copy"><p class="eyebrow"><span class="eyebrow-line"></span> Дальше — больше одной комнаты</p><h2 id="handoff-title">Этот урок<br>продолжается.</h2><p>Мы увидели один способ заниматься. Следующий раздел истории — как BooStudy связывает занятия, самостоятельную практику и прогресс ученика.</p><a class="handoff-link" href="#top">Вернуться к началу <span aria-hidden="true">↑</span></a></div>
+      <div class="handoff-mark" aria-hidden="true"><span>B</span><i></i></div>
+      <span class="handoff-next">Следующая глава <b>Возможности платформы</b> <span aria-hidden="true">→</span></span>
+    </section>
+  </main>
+  <footer class="footer"><span>BooStudy OS · локальный preview 2.4</span><a href="#classroom" data-enter-class>Вернуться в демо-класс ↑</a><span>История построена на проверенных состояниях одного урока.</span></footer>
+</body>
+</html>

@@ -1,0 +1,81 @@
+{# Prototype Preview Floating Switcher (Phase 0 Experience Rebirth) #}
+{% if request.args.get('hide_toolbar') != '1' %}
+<div id="bs-prototype-toolbar" class="sticky top-2 z-50 max-w-[1440px] mx-auto px-4 mb-3 transition-all duration-300">
+  <div class="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl border border-slate-700/80 shadow-2xl p-2.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-3 text-xs flex-wrap">
+    
+    <!-- Left: Badge & Concept Selector -->
+    <div class="flex items-center gap-2.5 flex-wrap">
+      <a href="/schedule/preview?scenario={{ data.scenario }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 font-bold border border-indigo-400/30 transition-all no-underline">
+        <i class="ph-bold ph-squares-four"></i>
+        <span>Preview Hub</span>
+      </a>
+
+      <div class="h-4 w-px bg-slate-700 hidden sm:block"></div>
+
+      <!-- Concepts Pills -->
+      <span class="text-slate-400 font-medium hidden md:inline">Концепция:</span>
+      <div class="inline-flex items-center gap-1 p-0.5 rounded-xl bg-slate-800 border border-slate-700">
+        <a href="/schedule/preview/concept-a?scenario={{ data.scenario }}&week={{ data.week_offset }}" 
+           class="px-2.5 py-1 rounded-lg font-bold transition-all no-underline {% if active_concept == 'a' %}bg-indigo-600 text-white shadow-xs{% else %}text-slate-300 hover:text-white hover:bg-slate-700/60{% endif %}">
+          A: Command Center
+        </a>
+        <a href="/schedule/preview/concept-b?scenario={{ data.scenario }}&week={{ data.week_offset }}" 
+           class="px-2.5 py-1 rounded-lg font-bold transition-all no-underline {% if active_concept == 'b' %}bg-indigo-600 text-white shadow-xs{% else %}text-slate-300 hover:text-white hover:bg-slate-700/60{% endif %}">
+          B: Fluid Week
+        </a>
+        <a href="/schedule/preview/concept-c?scenario={{ data.scenario }}&week={{ data.week_offset }}" 
+           class="px-2.5 py-1 rounded-lg font-bold transition-all no-underline {% if active_concept == 'c' %}bg-indigo-600 text-white shadow-xs{% else %}text-slate-300 hover:text-white hover:bg-slate-700/60{% endif %}">
+          C: Personal Space
+        </a>
+        <a href="/schedule/preview/concept-d?scenario={{ data.scenario }}&week={{ data.week_offset }}" 
+           class="px-2.5 py-1 rounded-lg font-bold transition-all no-underline {% if active_concept == 'd' %}bg-indigo-600 text-white shadow-xs{% else %}text-amber-400 hover:text-white hover:bg-slate-700/60{% endif %}">
+          ✨ D: Unified
+        </a>
+      </div>
+    </div>
+
+    <!-- Right: Scenario Switcher & Hide Toggle -->
+    <div class="flex items-center gap-2.5 ml-auto flex-wrap">
+      <span class="text-slate-400 font-medium hidden lg:inline">Сценарий:</span>
+      <div class="relative">
+        <select onchange="window.location.search = '?scenario=' + this.value + '&week={{ data.week_offset }}'" 
+                class="bg-slate-800 text-slate-200 border border-slate-700 rounded-xl px-2.5 py-1 text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer">
+          <option value="standard" {% if data.scenario == 'standard' %}selected{% endif %}>1. Стандартная неделя (2 урока, 1 ДЗ)</option>
+          <option value="single_lesson" {% if data.scenario == 'single_lesson' %}selected{% endif %}>2. 1 урок (проверка баланса колонок)</option>
+          <option value="multi_event" {% if data.scenario == 'multi_event' %}selected{% endif %}>3. Насыщенный день (2 урока + ДЗ)</option>
+          <option value="empty_week" {% if data.scenario == 'empty_week' %}selected{% endif %}>4. Пустая неделя / Каникулы (Бу)</option>
+          <option value="long_titles" {% if data.scenario == 'long_titles' %}selected{% endif %}>5. Длинные названия (Стресс-тест)</option>
+        </select>
+      </div>
+
+      <!-- Quick Week Navigation buttons -->
+      <div class="inline-flex items-center gap-1">
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset - 1 }}" 
+           class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-all no-underline"
+           title="Предыдущая неделя">
+          <i class="ph-bold ph-caret-left"></i>
+        </a>
+        <a href="?scenario={{ data.scenario }}&week=0" 
+           class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold border border-slate-700 transition-all no-underline"
+           title="Текущая неделя">
+          Сегодня
+        </a>
+        <a href="?scenario={{ data.scenario }}&week={{ data.week_offset + 1 }}" 
+           class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-all no-underline"
+           title="Следующая неделя">
+          <i class="ph-bold ph-caret-right"></i>
+        </a>
+      </div>
+
+      <!-- Collapse Toggle -->
+      <button type="button" 
+              onclick="document.getElementById('bs-prototype-toolbar').classList.toggle('opacity-20'); document.getElementById('bs-prototype-toolbar').classList.toggle('hover:opacity-100');" 
+              class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center border border-slate-700" 
+              title="Приглушить тулбар для чистого визуального осмотра">
+        <i class="ph-bold ph-eye-slash"></i>
+      </button>
+    </div>
+
+  </div>
+</div>
+{% endif %}

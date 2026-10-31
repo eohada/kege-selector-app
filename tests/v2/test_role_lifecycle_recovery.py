@@ -205,7 +205,7 @@ def test_course_builder_creates_an_undated_lesson_with_studio_scenario_and_homew
             'duration': '75',
             'lesson_type': 'regular',
             'status': 'planned',
-            'scenario': 'Цель урока\nРазбор переходов\nПрактика',
+            'studio_scenario': 'Цель урока\nРазбор переходов\nПрактика',
             'content': 'Опорный конспект',
             'homework': 'Решить две задачи',
             'teacher_note': 'Начать с диагностики',
@@ -734,10 +734,10 @@ def test_lesson_room_v3_preserves_canonical_shell_and_student_controls(client, a
 
     finished = client.post(
         f'/lesson/{lesson_id}/studio/finish',
-        json={'outcome': {'completed': ['Циклы'], 'repeat': ['Границы диапазона'], 'homework': 'Решить два задания'}},
+        json={'action': 'save_outcome', 'outcome': {'completed': ['Циклы'], 'repeat': ['Границы диапазона'], 'homework': 'Решить два задания'}},
     )
     assert finished.status_code == 200
-    assert finished.get_json()['status'] == 'completed'
+    assert finished.get_json()['status'] == 'in_progress'
     assert finished.get_json()['state']['outcome']['published'] is True
 
     teacher_note = client.post(f'/lesson/{lesson_id}/studio/state', json={'teacher_private_note': 'Только преподавателю'})

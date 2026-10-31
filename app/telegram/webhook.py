@@ -26,7 +26,7 @@ from telegram.ext import (
     filters,
 )
 
-from app.telegram.config import MAIN_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, telegram_proxy_parts
+from app.telegram.config import MAIN_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, telegram_proxy_parts, get_telegram_bot_version
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +107,15 @@ def _ensure_event_loop() -> asyncio.AbstractEventLoop:
 
 
 def _register_handlers(app: Application) -> None:
+    bot_version = get_telegram_bot_version()
+    if bot_version == 'v3':
+        from app.telegram.v3.registry import register_v3_handlers
+        register_v3_handlers(app)
+        return
     from app.telegram.handlers import (
         # Commands
         cmd_start, cmd_link, cmd_linkforce, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_blitz, cmd_settings, cmd_findstudent, cmd_whatsnew, cmd_lessonnotes,
-        cmd_claim_creator, cmd_testnotify, cmd_broadcast,
+        cmd_claim_creator, cmd_testnotify, cmd_broadcast, cmd_miniapp,
         # FSM
         bug_report_start, bug_report_receive, bug_report_cancel,
         creator_reply_start, creator_reply_receive, creator_reply_cancel,
@@ -222,6 +227,8 @@ def _register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler('claimcreator', cmd_claim_creator))
     app.add_handler(CommandHandler('testnotify', cmd_testnotify))
     app.add_handler(CommandHandler('broadcast', cmd_broadcast))
+    app.add_handler(CommandHandler('miniapp', cmd_miniapp))
+    app.add_handler(CommandHandler('pilot', cmd_miniapp))
 
     # Inline callbacks (after ConversationHandlers so FSM gets priority)
     app.add_handler(CallbackQueryHandler(callback_handler))

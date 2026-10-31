@@ -1,18 +1,8 @@
-"""
-CourseAdaptiveEngine — интеллектуальный алгоритмический сервис адаптации
-образовательной траектории ученика по результатам проведенных уроков.
+"""Update course analytics from an explicitly saved lesson outcome.
 
-Принципы работы:
-1. Непрерывная калибровка навыков (StudentSkill) с учетом самостоятельности и понимания.
-2. Проактивная фиксация ошибок (LearningError) с планированием интервального закрепления.
-3. Динамическая перестройка очереди программы (LearningItem):
-   - При затруднениях (poor/needs_repeat): автоматическое внедрение урока/блока повторения;
-   - При уверенном опережении (mastered + high): разгрузка программы от тривиальных шагов;
-   - Перебалансировка дедлайнов и приоритетов в еженедельном плане.
-4. Автоматическая подготовка умного сценария следующего занятия:
-   - Включение в разминку разбора свежих ошибок;
-   - Формирование актуальной темы и рекомендаций.
-5. Актуализация прогноза первичных и вторичных баллов ЕГЭ (current_forecast, forecast_range).
+This service may update learner analytics and forecasts. It does not reorder,
+insert, skip, or rewrite curriculum items. Those changes require a separate,
+versioned Tutor Core proposal and an explicit teacher decision.
 """
 
 from __future__ import annotations
@@ -49,7 +39,7 @@ class CourseAdaptiveEngine:
         course: LearningTrajectory,
         lesson: Lesson,
         outcome: LessonOutcome,
-        trigger_replan: bool = True,
+        trigger_replan: bool = False,
     ) -> Dict[str, Any]:
         """
         Главная точка входа: применяет результат урока к курсу и перестраивает будущую траекторию.
@@ -76,11 +66,24 @@ class CourseAdaptiveEngine:
 
         # 1. Считываем метрики итога
         covered_ids = [int(sid) for sid in (outcome.covered or []) if str(sid).isdigit()]
-        mastery_eval = (outcome.mastery or 'good').strip().lower()  # good | medium | poor | needs_repeat
+        mastery_eval = (outcome.mastery or '').strip().lower()  # good | medium | poor | needs_repeat
         independence = (outcome.independence_level or 'medium').strip().lower()  # high | medium | low
         pacing = (outcome.pacing or 'optimal').strip().lower()  # too_fast | optimal | needs_slowdown
         comprehension = outcome.comprehension_score or (5 if mastery_eval == 'good' else (3 if mastery_eval == 'medium' else 2))
         next_action = (outcome.next_action or 'continue').strip().lower()  # continue | repeat | mastered | advance
+
+        if mastery_eval not in {'good', 'medium', 'poor', 'needs_repeat'}:
+            diff_summary['adaptation_status'] = 'insufficient_evidence'
+            diff_summary['adaptation_reason'] = 'Оценка освоения не указана; перестройка траектории отложена.'
+            diff_summary['errors_recorded'] = cls._record_errors(
+                course=course,
+                lesson=lesson,
+                errors_data=outcome.identified_errors or [],
+            )
+            outcome.auto_replan_triggered = False
+            outcome.adaptive_diff_summary = diff_summary
+            db.session.commit()
+            return diff_summary
 
         # 2. Калибровка навыков (StudentSkill)
         diff_summary['skills_updated'] = cls._calibrate_skills(
@@ -98,42 +101,16 @@ class CourseAdaptiveEngine:
             errors_data=outcome.identified_errors or [],
         )
 
-        # 4. Адаптивная перестройка очереди программы (LearningItem)
-        if trigger_replan:
-            inserted, skipped = cls._rebalance_learning_items(
-                course=course,
-                lesson=lesson,
-                covered_skill_ids=covered_ids,
-                mastery_eval=mastery_eval,
-                next_action=next_action,
-                pacing=pacing,
-            )
-            diff_summary['items_inserted'] = inserted
-            diff_summary['items_skipped'] = skipped
-            diff_summary['rebalance_stats'] = {
-                'injected_review_items': len(inserted),
-                'skipped_practice_items': len(skipped),
-            }
-
-            # 5. Умный черновик следующего урока
-            next_lesson = cls._ensure_smart_next_lesson(
-                course=course,
-                last_lesson=lesson,
-                outcome=outcome,
-            )
-            if next_lesson:
-                diff_summary['next_lesson_prepared'] = True
-                diff_summary['next_lesson_id'] = next_lesson.lesson_id
-                diff_summary['next_lesson'] = {
-                    'lesson_id': next_lesson.lesson_id,
-                    'topic': next_lesson.topic,
-                    'agenda': next_lesson.content or '',
-                }
-
-            # 6. Пересчет прогноза
-            diff_summary['forecast_diff'] = cls._recalculate_forecast(course)
-
-            outcome.auto_replan_triggered = True
+        # CourseAdaptiveEngine remains the analytics updater. Curriculum changes
+        # are applied only through the versioned Tutor Core teacher decision flow.
+        diff_summary['forecast_diff'] = cls._recalculate_forecast(course)
+        diff_summary['adaptation_status'] = 'teacher_decision_required' if trigger_replan else 'analytics_only'
+        diff_summary['adaptation_reason'] = (
+            'Навыки, ошибки и прогноз обновлены. План не менялся; предложение и решение преподавателя проходят через Tutor Core.'
+            if trigger_replan else
+            'Навыки, ошибки и прогноз обновлены. Учебный план оставлен без изменений.'
+        )
+        outcome.auto_replan_triggered = False
 
         outcome.adaptive_diff_summary = diff_summary
         db.session.commit()

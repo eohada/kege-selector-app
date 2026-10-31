@@ -4,9 +4,11 @@ Supports both JSON API responses and HTMX HTML fragments.
 """
 from __future__ import annotations
 
+import os
+import json
 import logging
 
-from flask import Blueprint, request, jsonify, render_template_string, send_file, abort
+from flask import Blueprint, request, jsonify, render_template_string, send_file, abort, make_response
 from flask_login import login_required, current_user
 
 from app.storage.s3_service import storage
@@ -106,23 +108,68 @@ def upload_file():
 @storage_bp.route('/google-drive/<file_id>', methods=['GET'])
 @login_required
 def serve_google_drive_file(file_id):
-    """Serve private Drive assets through the authenticated BooStudy session."""
-    if not storage.use_google_drive or not file_id or len(file_id) > 200:
+    """Serve private Drive assets through the authenticated BooStudy session with disk caching."""
+    if not file_id or len(file_id) > 200:
         abort(404)
+
+    safe_fid = "".join(c for c in file_id if c.isalnum() or c in ('_', '-'))
+    if not safe_fid:
+        abort(404)
+
+    cache_dir = os.path.join(storage.local_upload_dir or 'uploads', 'gdrive_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    cached_file = os.path.join(cache_dir, f"{safe_fid}.bin")
+    cached_meta = os.path.join(cache_dir, f"{safe_fid}.json")
+
+    # Serve from cache if already downloaded
+    if os.path.isfile(cached_file) and os.path.isfile(cached_meta):
+        try:
+            with open(cached_meta, 'r', encoding='utf-8') as mf:
+                meta = json.load(mf)
+            response = send_file(
+                cached_file,
+                mimetype=meta.get('mime_type') or 'image/png',
+                as_attachment=False,
+                download_name=meta.get('filename') or f"{safe_fid}.png",
+                conditional=True,
+                max_age=86400 * 30,
+            )
+            response.headers['Cache-Control'] = 'private, max-age=2592000, immutable'
+            return response
+        except Exception:
+            pass
+
+    if not storage.use_google_drive:
+        resp = make_response("Asset not found in local cache and remote Drive disabled", 404)
+        resp.headers['Cache-Control'] = 'private, no-cache'
+        return resp
+
+    # Thread-safe download & cache write
     try:
         file_obj, mime_type, filename = storage.download_google_drive_file(file_id)
+        data = file_obj.getvalue()
+        temp_file = cached_file + '.tmp'
+        with open(temp_file, 'wb') as f:
+            f.write(data)
+        os.replace(temp_file, cached_file)
+
+        with open(cached_meta, 'w', encoding='utf-8') as mf:
+            json.dump({'mime_type': mime_type, 'filename': filename}, mf)
     except Exception as exc:
         logger.error('Google Drive asset read failed for %s: %s', file_id, exc, exc_info=True)
-        abort(404)
+        resp = make_response("Asset not found", 404)
+        resp.headers['Cache-Control'] = 'private, no-cache'
+        return resp
+
     response = send_file(
-        file_obj,
+        cached_file,
         mimetype=mime_type,
         as_attachment=False,
         download_name=filename,
         conditional=True,
-        max_age=3600,
+        max_age=86400 * 30,
     )
-    response.headers['Cache-Control'] = 'private, max-age=3600'
+    response.headers['Cache-Control'] = 'private, max-age=2592000, immutable'
     return response
 
 

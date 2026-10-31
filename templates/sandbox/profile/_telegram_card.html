@@ -63,7 +63,7 @@
 <script>
 if (typeof generateTgCode !== 'function') {
     let currentCode = '';
-    function showTgCodeModal(desc, code) {
+    function showTgCodeModal(desc, code, deepLink) {
         const modal = document.getElementById('tg-code-modal');
         const descEl = document.getElementById('tg-code-modal-desc');
         const boxEl = document.getElementById('tg-code-display-box');
@@ -74,7 +74,12 @@ if (typeof generateTgCode !== 'function') {
         currentCode = code || '';
         if (code) {
             valEl.innerText = code;
-            linkEl.href = 'https://t.me/BoostudyDevBot?start=' + code;
+            if (deepLink) {
+                linkEl.href = deepLink;
+                linkEl.classList.remove('hidden');
+            } else {
+                linkEl.classList.add('hidden');
+            }
             boxEl.classList.remove('hidden');
         } else {
             boxEl.classList.add('hidden');
@@ -94,17 +99,19 @@ if (typeof generateTgCode !== 'function') {
     }
 
     function generateTgCode() {
-        fetch('/api/telegram/generate_auth_code', { method: 'POST' })
+        fetch('/api/telegram/link-code', { credentials: 'same-origin', method: 'POST', headers: { 'Content-Type': 'application/json' } })
         .then(r => r.json())
         .then(d => {
             const code = d.code || (d.data && d.data.code);
+            const botName = d.bot_username ? ('@' + d.bot_username) : 'Telegram-боту';
+            const deepLink = d.deep_link || (d.bot_username && code ? ('https://t.me/' + d.bot_username + '?start=' + (d.link_token || code)) : null);
             if (code) {
-                showTgCodeModal('Отправьте этот 6-значный код боту @BoostudyDevBot для автоматического связывания профиля:', code);
+                showTgCodeModal('Отправьте этот 6-значный код ' + botName + ' или перейдите по кнопке ниже:', code, deepLink);
             } else {
-                showTgCodeModal('Код сгенерирован! Откройте бота для завершения привязки.', null);
+                showTgCodeModal('Код сгенерирован! Откройте бота для завершения привязки.', null, null);
             }
         })
-        .catch(() => showTgCodeModal('Генерация кода доступна через Telegram-бот.', null));
+        .catch(() => showTgCodeModal('Генерация кода доступна через Telegram-бот.', null, null));
     }
 }
 </script>

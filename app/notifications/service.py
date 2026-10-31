@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from typing import Iterable
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urljoin
 
 from flask import current_app, has_app_context
@@ -19,6 +19,24 @@ logger = logging.getLogger(__name__)
 
 ASSIGNMENT_NOTIFY_DEBOUNCE_SECONDS = 300
 NOTIFICATION_DEDUPE_SECONDS = 120
+
+
+def _json_safe_notification_meta(meta: dict | None) -> dict | None:
+    """Normalize temporal metadata before storing it in JSON-backed records."""
+    if meta is None:
+        return None
+    if not isinstance(meta, dict):
+        raise TypeError('Notification metadata must be a dictionary.')
+
+    def serialize(value):
+        if isinstance(value, (date, datetime)):
+            return value.isoformat()
+        raise TypeError(f'Unsupported notification metadata value: {type(value).__name__}')
+
+    try:
+        return json.loads(json.dumps(meta, ensure_ascii=False, default=serialize))
+    except (TypeError, ValueError) as exc:
+        raise ValueError('Notification metadata must contain JSON-compatible values; dates are stored as ISO 8601 strings.') from exc
 
 
 def _absolute_link_url(link_url: str | None) -> str | None:
@@ -85,6 +103,7 @@ def _get_parent_user_ids_for_student_user(student_user_id: int) -> list[int]:
 
 
 def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None, link_url: str | None = None, meta: dict | None = None) -> None:
+    meta = _json_safe_notification_meta(meta)
     u = User.query.get(user_id)
     if u and getattr(u, 'is_demo_user', False):
         return
@@ -108,17 +127,27 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
     # This keeps the platform notification model and Telegram delivery in sync.
     try:
         from app.telegram.delivery import enqueue_delivery
+        from app.telegram.notification_templates import render_telegram_notification
 
-        telegram_lines = [
-            f'🔔 <b>{html.escape(str(title or "Уведомление"))}</b>',
-        ]
-        if body:
-            telegram_lines.extend(['', html.escape(str(body))])
-        if link_url:
-            telegram_lines.extend(['', str(link_url)])
-        telegram_text = '\n'.join(telegram_lines)
+        telegram_text, reply_markup = render_telegram_notification(
+            user_id=int(user_id),
+            kind=kind,
+            title=title,
+            body=body,
+            link_url=link_url,
+            meta=meta,
+        )
         db.session.flush()
-        enqueue_delivery(int(user_id), telegram_text, kind=kind, notification_id=n.notification_id)
+        enqueue_delivery(
+            int(user_id),
+            telegram_text,
+            kind=kind,
+            notification_id=n.notification_id,
+            reply_markup=reply_markup,
+            meta=meta,
+            lesson_id=meta.get('lesson_id') if meta else None,
+            student_id=meta.get('student_id') if meta else None,
+        )
     except Exception as e:
         # Do not commit an in-app notification without its durable outbox row.
         # The Telegram HTTP call happens later in Celery, outside this DB
@@ -209,9 +238,16 @@ def notify_student_and_parents(student: Student, *, kind: str, title: str, body:
     if not st_user:
         return
 
-    notify_user(st_user.id, kind=kind, title=title, body=body, link_url=link_url, meta=meta)
+    student_name = getattr(student, 'name', None) or getattr(st_user, 'username', None)
+    student_meta = dict(meta or {})
+    student_meta.setdefault('student_name', student_name)
+    student_meta.setdefault('student_id', st_user.id)
+
+    notify_user(st_user.id, kind=kind, title=title, body=body, link_url=link_url, meta=student_meta)
     for parent_id in _get_parent_user_ids_for_student_user(st_user.id):
-        notify_user(parent_id, kind=kind, title=title, body=body, link_url=link_url, meta=meta)
+        parent_meta = dict(student_meta)
+        parent_meta['parent_id'] = parent_id
+        notify_user(parent_id, kind=kind, title=title, body=body, link_url=link_url, meta=parent_meta)
 
 
 def _merge_task_ids(existing: list[int] | None, new_ids: list[int]) -> list[int]:
@@ -312,7 +348,13 @@ def process_pending_assignment_notifications(*, debounce_seconds: int | None = N
                 title=title,
                 body=body,
                 link_url=link_url,
-                meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': len(task_ids), 'task_numbers': task_numbers},
+                meta={
+                    'lesson_id': lesson.lesson_id,
+                    'assignment_type': atype,
+                    'assignment_title': label,
+                    'tasks_count': len(task_ids),
+                    'task_numbers': task_numbers,
+                },
             )
 
             db.session.delete(pending)

@@ -44,17 +44,13 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     teacher_room = client.get(f'/lesson/{lesson_id}/room')
     teacher_html = teacher_room.get_data(as_text=True)
     assert teacher_room.status_code == 200
-    assert 'ИНДИВИДУАЛЬНЫЙ УРОК' in teacher_html
-    assert 'lesson-studio-os' in teacher_html
-    assert 'room-v3-page-teacher' in teacher_html
-    assert 'room-task-header' in teacher_html
-    assert 'room-theory-layout' in teacher_html
-    assert 'room-board-surface' in teacher_html
-    assert 'room-materials-layout' in teacher_html
-    assert 'os-focus-toggle' in teacher_html
-    assert 'room-panel-toggle' in teacher_html
-    assert '<article id="os-theory-frame"' in teacher_html
-    assert '<iframe id="os-theory-frame"' not in teacher_html
+    assert 'class="lesson-os-system-bar"' in teacher_html
+    assert 'id="lesson-os-status"' in teacher_html
+    assert 'id="lesson-open-completion"' in teacher_html
+    assert 'id="task-authoring-toolbar"' in teacher_html
+    assert 'id="task-visibility-toggle"' in teacher_html
+    assert 'id="dock-icon-teacher-task-bank-window"' in teacher_html
+    assert 'id="room-v3-page-teacher"' not in teacher_html
 
     updated = client.post(
         f'/lesson/{lesson_id}/studio/state',
@@ -87,14 +83,13 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     student_room = client.get(f'/lesson/{lesson_id}/room')
     student_html = student_room.get_data(as_text=True)
     assert student_room.status_code == 200
-    assert 'room-v3-page-student' in student_html
-    assert 'room-v3-page-teacher' not in student_html
-    assert '<button id="os-finish"' not in student_html
+    assert 'class="lesson-os-system-bar"' in student_html
+    assert 'id="task-visibility-toggle"' not in student_html
+    assert 'id="task-answer-visibility-toggle"' not in student_html
+    assert 'id="lesson-open-completion"' not in student_html
     assert 'Личная заметка преподавателя' not in student_html
-    assert 'teacher-note' not in student_html
-    assert 'room-student-signal-current' in student_html
-    assert 'aria-pressed="false"' in student_html
-    assert 'room-student-homework' in student_html
+    assert 'id="teacher-notes-window"' not in student_html
+    assert 'id="student-classwork-submit-form"' in student_html
 
     student_state = client.get(f'/lesson/{lesson_id}/studio/state')
     assert student_state.status_code == 200
@@ -196,6 +191,19 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     assert timer_state.status_code == 200
     assert timer_state.get_json()['state']['phase_timers']['preparation'] == 0
     assert timer_state.get_json()['state']['timer']['seconds'] == 1234
+
+    zero_timer = client.post(
+        f'/lesson/{lesson_id}/studio/state',
+        json={
+            'phase': 'preparation',
+            'timer': {'mode': 'phase', 'seconds': 0, 'running': False},
+            'phase_timers': {'preparation': 0, 'practice': 0, 'reflection': 0},
+            'phase_durations': {'preparation': 600, 'practice': 2400, 'reflection': 600},
+        },
+    )
+    assert zero_timer.status_code == 200
+    assert zero_timer.get_json()['state']['phase_timers']['preparation'] == 0
+    assert zero_timer.get_json()['state']['timer']['seconds'] == 0
 
 
 def test_lesson_studio_workspace_run_executes_selected_task_code(app, client, role_users):
@@ -392,6 +400,7 @@ def test_teacher_finishes_lesson_and_student_receives_readonly_outcome(app, clie
     response = client.post(
         f'/lesson/{lesson_id}/studio/finish',
         json={
+            'action': 'save_outcome',
             'outcome': {
                 'completed': ['Разобран вывод данных'],
                 'repeat': ['Проверять вывод'],
@@ -400,12 +409,13 @@ def test_teacher_finishes_lesson_and_student_receives_readonly_outcome(app, clie
         },
     )
     assert response.status_code == 200
-    assert response.get_json()['status'] == 'completed'
+    assert response.get_json()['status'] == 'in_progress'
+    assert response.get_json()['balance_deducted'] is False
     assert notifications
 
     with app.app_context():
         lesson = db.session.get(Lesson, lesson_id)
-        assert lesson.status == 'completed'
+        assert lesson.status == 'in_progress'
         assert lesson.homework == 'Решить две задачи'
         assert 'Разобран вывод данных' in lesson.notes
 
@@ -511,16 +521,16 @@ def test_lesson_material_upload_persists_in_configured_storage(app, client, role
 def test_studio_resilient_video_conference_jitsi_fallback_and_backup_url(app, client, role_users, monkeypatch):
     lesson_id, _ = _studio_fixture(app, role_users)
 
-    # 1. Check template markup: provider bar, Jitsi container, failover banner, external link
+    # The active room uses the LiveKit UI; Jitsi remains a server-side fallback provider.
+    monkeypatch.setattr('app.lessons.routes.LiveKitService.is_enabled_for_user', lambda *_args: True)
     login_as(client, role_users['tutor_id'], 'tutor')
     room_resp = client.get(f'/lesson/{lesson_id}/room')
     room_html = room_resp.get_data(as_text=True)
-    assert 'os-video-provider-bar' in room_html
-    assert 'os-video-failover-banner' in room_html
-    assert 'os-jitsi-container' in room_html
-    assert 'os-placeholder-jitsi' in room_html
-    assert 'os-placeholder-external' in room_html
-    assert 'meet.jit.si/external_api.js' in room_html
+    assert room_resp.status_code == 200
+    assert 'id="video-window"' in room_html
+    assert 'aria-label="Видеосвязь урока"' in room_html
+    assert 'id="dock-icon-video-window"' in room_html
+    assert 'os-jitsi-container' not in room_html
 
     # 2. Teacher sets backup call URL and changes preferred video provider
     backup_url = 'https://telemost.yandex.ru/j/1234567890'

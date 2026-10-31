@@ -1652,9 +1652,9 @@
       const outcome={completed:toList($('#os-outcome-completed')?.value),repeat:toList($('#os-outcome-repeat')?.value),homework:$('#os-outcome-homework')?.value||''};
       const privateNote=$('#os-outcome-private-note')?.value||'';
       if(privateNote!==String(state.teacher_private_note||'')){const noteSave=await save({teacher_private_note:privateNote});if(!noteSave?.success)return;}
-      const r = await post(`/lesson/${lessonId}/studio/finish`, {outcome});
-      if(r.success){ toast('Урок завершён'); state = r.state || state; render(); }
-      else toast(r.error || 'Не удалось завершить урок');
+      const r = await post(`/lesson/${lessonId}/studio/finish`, {action:'save_outcome',outcome:{...outcome,private_note:privateNote}});
+      if(r.success){ toast('Педагогический итог сохранён'); state = r.state || state; render(); }
+      else toast(r.error || 'Не удалось сохранить педагогический итог');
     });
     function bindAddTaskModal() {
       const modal = $('#room-add-task-modal');

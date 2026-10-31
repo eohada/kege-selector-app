@@ -93,7 +93,12 @@ def register_hooks(app):
         sess_uid = session.get('_user_id')
         cached = getattr(g, '_login_user', None)
         if cached is not None:
-            if sess_uid is None or str(getattr(cached, 'id', None)) != str(sess_uid):
+            from sqlalchemy import inspect as sqlalchemy_inspect
+
+            state = sqlalchemy_inspect(cached, raiseerr=False)
+            identity = getattr(state, 'identity', None)
+            cached_id = identity[0] if identity else getattr(cached, '__dict__', {}).get('id')
+            if sess_uid is None or str(cached_id) != str(sess_uid):
                 g.pop('_login_user', None)
 
     @app.before_request
@@ -533,11 +538,17 @@ def register_hooks(app):
         ):
             return
 
+        # Isolated schedule prototype previews in authorized dev/test environments
+        if request.path == '/schedule/preview' or request.path.startswith('/schedule/preview/'):
+            from app.schedule.prototype_routes import is_preview_environment_allowed
+            if is_preview_environment_allowed():
+                return
+
         if request.path.startswith('/sandbox/') or request.path == '/sandbox' or request.path.startswith('/sandbox_reference/') or request.path == '/sandbox_reference' or request.path.startswith('/u/') or request.path.startswith('/profile') or request.path.startswith('/mentor/') or request.path.startswith('/teacher/'):
             return
 
         excluded_endpoints = ('auth.login', 'auth.logout', 'auth.register', 'auth.register_student_invite', 'auth.register_parent_invite', 'auth.forgot_password', 'auth.reset_password_confirm', 'auth.debug_last_email', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_hub', 'main.legal_offer', 'main.legal_privacy', 'main.legal_consent', 'main.faq', 'billing.billing_plans_public', 'billing.billing_promocode_validate_public')
-        excluded_paths = ('/', '/api/qa/desktop-report', '/landing', '/index', '/home', '/legal', '/legal/offer', '/legal/privacy', '/legal/consent', '/faq', '/billing/plans/public', '/billing/promocode/validate-public', '/favicon.ico', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
+        excluded_paths = ('/', '/api/qa/desktop-report', '/landing', '/landing/preview', '/index', '/home', '/legal', '/legal/offer', '/legal/privacy', '/legal/consent', '/faq', '/billing/plans/public', '/billing/promocode/validate-public', '/favicon.ico', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
         
         if (request.endpoint in excluded_endpoints or 
             request.path in excluded_paths or 
@@ -556,7 +567,7 @@ def register_hooks(app):
         if request.path.startswith('/internal/trainer/'):
             return
 
-        if request.path.startswith('/api/internal/'):
+        if request.path.startswith('/api/internal/') or request.path.startswith('/api/v2/code/'):
             return
 
         # Telegram bot linking endpoint must work without Flask-login:

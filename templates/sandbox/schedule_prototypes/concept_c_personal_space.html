@@ -1,0 +1,389 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block title %}BooStudy · Концепция C: Personal Learning Space{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Concept C: Personal Learning Space Styles */
+  .btn-warm-primary {
+    background: linear-gradient(180deg, #F59E0B 0%, #D97706 100%);
+    border-bottom: 3px solid #B45309;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.28);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-warm-primary:hover {
+    background: linear-gradient(180deg, #D97706 0%, #B45309 100%);
+    box-shadow: 0 6px 18px rgba(245, 158, 11, 0.38);
+    transform: translateY(-1px);
+  }
+  .btn-warm-primary:active {
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+  }
+
+  .btn-3d-secondary {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-bottom: 2px solid #CBD5E1;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-3d-secondary:hover {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+  }
+
+  /* Timeline Spine */
+  .timeline-spine-node {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .timeline-spine-node.is-active {
+    border-color: #D97706 !important;
+    background: #FFFBEB !important;
+    transform: translateX(4px);
+  }
+  .timeline-spine-node.is-active .spine-dot {
+    background: #D97706 !important;
+    box-shadow: 0 0 0 4px #FDE68A !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block sandbox_content %}
+{# Prototype Switcher Toolbar #}
+{% include "sandbox/schedule_prototypes/_prototype_toolbar.html" %}
+
+{# Embedded JSON Data for reactivity #}
+<script type="application/json" id="prototype-data-payload">{{ data | tojson }}</script>
+
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pb-10 space-y-6">
+
+  {# 1. STUDIO GREETING & BOO DESK BANNER #}
+  <div class="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-md relative overflow-hidden flex items-center justify-between gap-6 flex-wrap md:flex-nowrap">
+    <div class="space-y-2.5 max-w-2xl relative z-10">
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-wider">
+          Личный кабинет ученика · Концепция C
+        </span>
+        <span class="px-2.5 py-0.5 rounded-full bg-amber-900/30 text-amber-100 text-[10px] font-bold">
+          🔥 5 дней в ритме
+        </span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black font-display tracking-tight leading-tight">
+        Привет, {{ data.student_name }}! 👋
+      </h1>
+      <p class="text-xs sm:text-sm text-amber-50 leading-relaxed font-medium">
+        Неделя: <strong class="text-white">{{ data.week_label }}</strong>. 
+        Запланировано {{ data.stats.conducted_and_planned }} уроков и {{ data.stats.homework }} дедлайна по домашним работам.
+      </p>
+    </div>
+
+    <!-- Boo Mascot Graphic & Bubble -->
+    <div class="flex items-center gap-4 shrink-0 relative z-10">
+      <div class="hidden sm:block bg-white text-slate-800 p-3 rounded-2xl shadow-lg border border-amber-200/50 text-xs font-bold max-w-[200px] relative">
+        <div class="absolute -right-2 top-1/2 -translate-y-1/2 w-0 h-0 border-y-6 border-y-transparent border-l-8 border-l-white"></div>
+        «Всё получится! Шаг за шагом к 90+ баллам на ЕГЭ!»
+      </div>
+      <img src="/static/images/schedule/hero_mascot_3d.png" alt="Маскот Бу" class="w-20 h-20 sm:w-24 sm:h-24 object-contain filter drop-shadow-md select-none">
+    </div>
+  </div>
+
+  {# 2. STUDIO TIMELINE & DESK WORKSPACE #}
+  {% set cur_day = data.selected_day %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- LEFT: Chronological Timeline Stream (8 cols) -->
+    <div class="lg:col-span-8 space-y-4">
+      
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-6">
+        
+        <!-- Timeline Header and Week Stepper -->
+        <div class="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-lg font-black text-slate-900 font-display">Хроника учебной недели</h2>
+            <p class="text-xs text-slate-500 font-medium">Нажмите на день недели в таймлайне для просмотра задач</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="?scenario={{ data.scenario }}&week={{ data.week_offset - 1 }}" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+              <i class="ph-bold ph-caret-left mr-1"></i>Пред.
+            </a>
+            <a href="?scenario={{ data.scenario }}&week=0" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+              Сегодня
+            </a>
+            <a href="?scenario={{ data.scenario }}&week={{ data.week_offset + 1 }}" class="btn-3d-secondary px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 no-underline">
+              След.<i class="ph-bold ph-caret-right ml-1"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- The 7-Day Timeline Spine Bar -->
+        <div class="grid grid-cols-7 gap-1.5 p-1.5 rounded-2xl bg-slate-50 border border-slate-200/70" id="personal-timeline-spine">
+          {% for d in data.weekdays %}
+          <div class="timeline-spine-node p-2 rounded-xl text-center flex flex-col items-center justify-between gap-1 border border-transparent {% if d.day_index == data.default_selected_day_index %}is-active bg-amber-50 border-amber-300 text-amber-950 font-black shadow-xs{% else %}hover:bg-white text-slate-600{% endif %}"
+               id="spine-node-{{ d.day_index }}"
+               onclick="handlePersonalSelectDay({{ d.day_index }})">
+            <span class="text-[10px] font-bold uppercase tracking-wider opacity-75">{{ d.short_name }}</span>
+            <span class="text-sm font-black">{{ d.date.split()[0] }}</span>
+            <span class="spine-dot w-2 h-2 rounded-full {% if d.day_index == data.default_selected_day_index %}bg-amber-600{% elif d.events_count > 0 %}bg-amber-400{% else %}bg-slate-300{% endif %}"></span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Selected Day Expanded Focus Deck -->
+        <div class="space-y-4 pt-2" id="personal-day-deck">
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+              <h3 class="text-base font-black text-slate-900 font-display" id="personal-day-title">
+                {{ cur_day.day_name }}, {{ cur_day.date }}
+              </h3>
+            </div>
+            <span class="text-xs font-bold text-slate-400" id="personal-day-meta">
+              {{ cur_day.events_count }} {% if cur_day.events_count == 1 %}событие{% elif cur_day.events_count > 1 %}события{% else %}событий{% endif %}
+            </span>
+          </div>
+
+          <!-- Events Stack of the Day -->
+          <div class="space-y-4" id="personal-events-stream">
+            {% if cur_day.events_count > 0 %}
+              {% for ev in cur_day.events %}
+              <div class="p-5 sm:p-6 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-amber-300 shadow-2xs transition-all space-y-4">
+                
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full {% if ev.type == 'lesson' %}bg-amber-100 text-amber-900 border border-amber-200{% else %}bg-indigo-100 text-indigo-900 border border-indigo-200{% endif %} text-[10px] font-black uppercase tracking-wider">
+                      {{ ev.badge }}
+                    </span>
+                    <span class="text-xs font-bold text-slate-600 flex items-center gap-1">
+                      <i class="ph-bold ph-clock"></i>{{ ev.time_str }}
+                    </span>
+                  </div>
+                  {% if ev.countdown_text %}
+                  <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-150">
+                    {{ ev.countdown_text }}
+                  </span>
+                  {% endif %}
+                </div>
+
+                <div class="space-y-1">
+                  <div class="text-[11px] font-bold text-amber-700 uppercase tracking-wide">{{ ev.subject }}</div>
+                  <h4 class="text-base sm:text-lg font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
+                    {{ ev.title }}
+                  </h4>
+                </div>
+
+                {% if ev.teacher %}
+                <div class="flex items-center gap-3 pt-1">
+                  <img src="{{ ev.teacher.avatar }}" alt="" class="w-7 h-7 rounded-full object-cover border border-slate-200">
+                  <span class="text-xs font-bold text-slate-800">{{ ev.teacher.full_name }}</span>
+                </div>
+                {% endif %}
+
+                {% if ev.notes %}
+                <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 leading-relaxed font-medium">
+                  <strong>Заметка репетитора:</strong> {{ ev.notes }}
+                </div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="pt-2 flex items-center gap-3 flex-wrap">
+                  <a href="{{ ev.action_url|default(ev.room_url|default('#')) }}" class="btn-warm-primary px-5 py-2.5 rounded-xl text-white text-xs font-black no-underline">
+                    {{ ev.action_label|default('Открыть →') }}
+                  </a>
+                  {% if ev.secondary_label %}
+                  <a href="{{ ev.secondary_url|default('#') }}" class="btn-3d-secondary px-4 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                    {{ ev.secondary_label }}
+                  </a>
+                  {% endif %}
+                </div>
+
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="p-8 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 text-center space-y-2">
+                <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-16 h-16 object-contain mx-auto">
+                <h4 class="text-sm font-black text-slate-800">День свободен от занятий</h4>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto">
+                  Хороший момент уделить время любимым делам, повторить темы в теории или решить несколько тренировочных тестов.
+                </p>
+              </div>
+            {% endif %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Study Corner & Tutor Notes (4 cols) -->
+    <div class="lg:col-span-4 space-y-5">
+      
+      <!-- Tutor's Corkboard Sticky Note -->
+      <div class="bg-[#FFFDF5] rounded-3xl border border-amber-200/90 p-5 shadow-sm space-y-3 relative overflow-hidden">
+        <div class="flex items-center gap-2 text-amber-800">
+          <i class="ph-bold ph-push-pin text-base"></i>
+          <h3 class="text-xs font-black uppercase tracking-wider font-display">Заметки репетитора</h3>
+        </div>
+        <div class="text-xs leading-relaxed text-slate-700 font-medium">
+          {{ data.student_notes_general }}
+        </div>
+        <div class="pt-2 text-[10px] text-amber-700 font-bold border-t border-amber-100 flex items-center justify-between">
+          <span>Синхронизировано с планом</span>
+          <span>BooStudy Tutor</span>
+        </div>
+      </div>
+
+      <!-- Pinned Study Materials Pocket -->
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="ph-bold ph-folder-simple-star text-indigo-600 text-base"></i>
+            <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider font-display">Материалы недели</h3>
+          </div>
+          <span class="text-[10px] font-bold text-slate-400">{{ data.useful_materials|length }} файла</span>
+        </div>
+
+        <div class="space-y-2">
+          {% if data.useful_materials %}
+            {% for m in data.useful_materials %}
+            <a href="#" class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
+              <span class="truncate">{{ m.title }}</span>
+              <span class="text-[10px] text-slate-400 ml-2 shrink-0">{{ m.size }}</span>
+            </a>
+            {% endfor %}
+          {% else %}
+            <div class="text-xs text-slate-400 py-3 text-center">Нет прикреплённых файлов на эту неделю</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Weekly Rhythm & Balance Card -->
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-sm space-y-3 text-center">
+        <div class="flex items-center justify-between text-xs font-bold">
+          <span class="text-slate-500">Учебный прогресс недели</span>
+          <span class="text-amber-600 font-black">{{ data.stats.percent }}%</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: {{ data.stats.percent }}%;"></div>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+          <span>Уроков: <strong>{{ data.stats.conducted }}/{{ data.stats.conducted_and_planned }}</strong></span>
+          <span>Дедлайнов: <strong>{{ data.stats.homework }}</strong></span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+{# Interactivity Script #}
+<script>
+(function() {
+  const payloadEl = document.getElementById('prototype-data-payload');
+  const DATA = payloadEl ? JSON.parse(payloadEl.textContent || '{}') : {};
+  let currentDay = DATA.default_selected_day_index || 0;
+
+  window.handlePersonalSelectDay = function(dayIndex) {
+    if (!DATA.weekdays || !DATA.weekdays[dayIndex]) return;
+    currentDay = dayIndex;
+    const day = DATA.weekdays[dayIndex];
+
+    // 1. Update spine nodes
+    DATA.weekdays.forEach((d, idx) => {
+      const node = document.getElementById(`spine-node-${idx}`);
+      if (node) {
+        if (idx === dayIndex) {
+          node.className = "timeline-spine-node is-active p-2 rounded-xl text-center flex flex-col items-center justify-between gap-1 border bg-amber-50 border-amber-300 text-amber-950 font-black shadow-xs";
+        } else {
+          node.className = "timeline-spine-node p-2 rounded-xl text-center flex flex-col items-center justify-between gap-1 border border-transparent hover:bg-white text-slate-600";
+        }
+      }
+    });
+
+    // 2. Update Header
+    const titleEl = document.getElementById('personal-day-title');
+    const metaEl = document.getElementById('personal-day-meta');
+    if (titleEl) titleEl.textContent = `${day.day_name}, ${day.date}`;
+    if (metaEl) metaEl.textContent = `${day.events_count} ${day.events_count === 1 ? 'событие' : (day.events_count > 1 ? 'события' : 'событий')}`;
+
+    // 3. Render Events Stream
+    const stream = document.getElementById('personal-events-stream');
+    if (!stream) return;
+
+    if (day.events && day.events.length > 0) {
+      stream.innerHTML = day.events.map(ev => `
+        <div class="p-5 sm:p-6 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-amber-300 shadow-2xs transition-all space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full ${ev.type === 'lesson' ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-indigo-100 text-indigo-900 border border-indigo-200'} text-[10px] font-black uppercase tracking-wider">
+                ${ev.badge || 'Событие'}
+              </span>
+              <span class="text-xs font-bold text-slate-600 flex items-center gap-1">
+                <i class="ph-bold ph-clock"></i>${ev.time_str || ''}
+              </span>
+            </div>
+            ${ev.countdown_text ? `
+              <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-150">
+                ${ev.countdown_text}
+              </span>
+            ` : ''}
+          </div>
+          <div class="space-y-1">
+            <div class="text-[11px] font-bold text-amber-700 uppercase tracking-wide">${ev.subject || ''}</div>
+            <h4 class="text-base sm:text-lg font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
+              ${ev.title || ''}
+            </h4>
+          </div>
+          ${ev.teacher ? `
+            <div class="flex items-center gap-3 pt-1">
+              <img src="${ev.teacher.avatar}" alt="" class="w-7 h-7 rounded-full object-cover border border-slate-200">
+              <span class="text-xs font-bold text-slate-800">${ev.teacher.full_name || ev.teacher.name}</span>
+            </div>
+          ` : ''}
+          ${ev.notes ? `
+            <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 leading-relaxed font-medium">
+              <strong>Заметка репетитора:</strong> ${ev.notes}
+            </div>
+          ` : ''}
+          <div class="pt-2 flex items-center gap-3 flex-wrap">
+            <a href="${ev.action_url || ev.room_url || '#'}" class="btn-warm-primary px-5 py-2.5 rounded-xl text-white text-xs font-black no-underline">
+              ${ev.action_label || 'Открыть →'}
+            </a>
+            ${ev.secondary_label ? `
+              <a href="${ev.secondary_url || '#'}" class="btn-3d-secondary px-4 py-2.5 rounded-xl text-slate-700 text-xs font-bold no-underline">
+                ${ev.secondary_label}
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    } else {
+      stream.innerHTML = `
+        <div class="p-8 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 text-center space-y-2">
+          <img src="/static/images/schedule/hero_mascot_3d.png" alt="Бу" class="w-16 h-16 object-contain mx-auto">
+          <h4 class="text-sm font-black text-slate-800">День свободен от занятий</h4>
+          <p class="text-xs text-slate-500 max-w-sm mx-auto">
+            Хороший момент уделить время любимым делам, повторить темы в теории или решить несколько тренировочных тестов.
+          </p>
+        </div>
+      `;
+    }
+  };
+})();
+</script>
+{% endblock %}

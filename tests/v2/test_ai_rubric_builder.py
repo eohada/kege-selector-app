@@ -67,6 +67,7 @@ def test_rubric_generation_route_saves_proposal_but_does_not_approve(app, client
     monkeypatch.setenv("ENVIRONMENT", "local")
     _login(client, role_users["creator_id"])
     proposal = {"criteria": [_criterion()], "warnings": [], "proposed_tests": [{
+        "id": "zero-test", "criterion_id": "criterion-1",
         "name": "Ноль", "input_json": "[0]", "expected_json": "0",
         "criterion_title": "Сумма цифр", "purpose": "Граница",
     }]}

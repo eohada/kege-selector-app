@@ -9,6 +9,7 @@ from telegram import Update
 from telegram.error import Conflict
 from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
+from app.telegram.config import get_telegram_bot_version
 from app.telegram.webhook import _build_application
 from wsgi import app as flask_app
 
@@ -49,6 +50,51 @@ async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None
     logger.exception('Telegram polling error while processing update=%r', update, exc_info=context.error)
 
 
+def _register_legacy_polling_handlers(application) -> None:
+    from app.telegram.handlers import (
+        lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel, LESSON_CALL_LINK_TEXT,
+        lesson_hw_note_start, lesson_hw_note_receive_text, lesson_hw_note_receive_remind, lesson_hw_note_cancel,
+        LESSON_HW_NOTE_TEXT, LESSON_HW_NOTE_REMIND,
+        cmd_lessonnotes,
+    )
+    
+    lesson_call_link_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
+        ],
+        states={
+            LESSON_CALL_LINK_TEXT: [
+                MessageHandler(
+                    filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                    lesson_call_link_receive,
+                ),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', lesson_call_link_cancel)],
+        allow_reentry=True,
+        conversation_timeout=300,
+    )
+    application.add_handler(lesson_call_link_conv)
+    lesson_hw_note_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(lesson_hw_note_start, pattern=r'^lesson_hw_note:\d+$'),
+        ],
+        states={
+            LESSON_HW_NOTE_TEXT: [
+                MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, lesson_hw_note_receive_text),
+            ],
+            LESSON_HW_NOTE_REMIND: [
+                MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, lesson_hw_note_receive_remind),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', lesson_hw_note_cancel)],
+        allow_reentry=True,
+        conversation_timeout=900,
+    )
+    application.add_handler(lesson_hw_note_conv)
+    application.add_handler(CommandHandler('lessonnotes', cmd_lessonnotes))
+
+
 def main() -> None:
     """
     Run Telegram handlers in Long Polling mode.
@@ -57,48 +103,9 @@ def main() -> None:
     logging.getLogger('httpx').setLevel(logging.WARNING)
     with flask_app.app_context():
         application = _build_application(with_updater=True)
-        from app.telegram.handlers import (
-            lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel, LESSON_CALL_LINK_TEXT,
-            lesson_hw_note_start, lesson_hw_note_receive_text, lesson_hw_note_receive_remind, lesson_hw_note_cancel,
-            LESSON_HW_NOTE_TEXT, LESSON_HW_NOTE_REMIND,
-            cmd_lessonnotes,
-        )
-        
-        lesson_call_link_conv = ConversationHandler(
-            entry_points=[
-                CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
-            ],
-            states={
-                LESSON_CALL_LINK_TEXT: [
-                    MessageHandler(
-                        filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
-                        lesson_call_link_receive,
-                    ),
-                ],
-            },
-            fallbacks=[CommandHandler('cancel', lesson_call_link_cancel)],
-            allow_reentry=True,
-            conversation_timeout=300,
-        )
-        application.add_handler(lesson_call_link_conv)
-        lesson_hw_note_conv = ConversationHandler(
-            entry_points=[
-                CallbackQueryHandler(lesson_hw_note_start, pattern=r'^lesson_hw_note:\d+$'),
-            ],
-            states={
-                LESSON_HW_NOTE_TEXT: [
-                    MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, lesson_hw_note_receive_text),
-                ],
-                LESSON_HW_NOTE_REMIND: [
-                    MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, lesson_hw_note_receive_remind),
-                ],
-            },
-            fallbacks=[CommandHandler('cancel', lesson_hw_note_cancel)],
-            allow_reentry=True,
-            conversation_timeout=900,
-        )
-        application.add_handler(lesson_hw_note_conv)
-        application.add_handler(CommandHandler('lessonnotes', cmd_lessonnotes))
+        bot_version = get_telegram_bot_version()
+        if bot_version != 'v3':
+            _register_legacy_polling_handlers(application)
         application.add_error_handler(_log_error)
 
         print("🔄 Очищаем Webhook и старые очереди обновлений...")
@@ -121,13 +128,21 @@ def main() -> None:
         else:
             loop.run_until_complete(_clear_webhook())
 
-        logger.info('Starting Telegram long-polling runner')
-        application.run_polling(
-            allowed_updates=['message', 'callback_query'],
-            drop_pending_updates=_drop_pending_updates(),
-            bootstrap_retries=-1,
-            close_loop=True,
-        )
+        # Start outbox dispatcher thread
+        from app.telegram.dispatcher import start_dispatcher_thread, stop_dispatcher_thread
+        dispatcher_thread = start_dispatcher_thread(interval=5)
+        logger.info('Telegram outbox dispatcher thread active alongside poller')
+
+        try:
+            logger.info('Starting Telegram long-polling runner (version: %s)', bot_version)
+            application.run_polling(
+                allowed_updates=['message', 'callback_query'],
+                drop_pending_updates=_drop_pending_updates(),
+                bootstrap_retries=-1,
+                close_loop=True,
+            )
+        finally:
+            stop_dispatcher_thread()
 
 
 if __name__ == '__main__':

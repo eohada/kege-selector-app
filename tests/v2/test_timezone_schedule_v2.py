@@ -209,12 +209,11 @@ def test_schedule_update_and_bulk_delete(app, client, role_users):
     assert res3.status_code == 200
     id3 = res3.get_json()['lesson_id']
 
-    # 2. Smooth update test: update topic and duration on id3
+    # 2. Updating schedule details keeps status; completion requires the dedicated confirmation flow.
     res_update = client.post(f'/api/schedule/update_lesson/{id3}', json={
         'student_id': role_users['student_id'],
         'topic': 'Обновлённый урок математики',
         'duration': 90,
-        'status': 'completed',
         'notes': 'Разобрали стереометрию'
     })
     assert res_update.status_code == 200
@@ -223,13 +222,26 @@ def test_schedule_update_and_bulk_delete(app, client, role_users):
     assert 'lesson' in upd_data
     assert upd_data['lesson']['topic'] == 'Обновлённый урок математики'
     assert upd_data['lesson']['duration_minutes'] == 90
-    assert upd_data['lesson']['status'] == 'completed'
+    assert upd_data['lesson']['status'] == 'planned'
 
     with app.app_context():
         l3 = db.session.get(Lesson, id3)
         assert l3.topic == 'Обновлённый урок математики'
         assert l3.duration == 90
-        assert l3.status == 'completed'
+        assert l3.status == 'planned'
+
+    blocked_completion = client.post(f'/api/schedule/update_lesson/{id3}', json={
+        'student_id': role_users['student_id'],
+        'topic': 'Не должно сохраниться',
+        'duration': 120,
+        'status': 'completed',
+    })
+    assert blocked_completion.status_code == 409
+    with app.app_context():
+        l3 = db.session.get(Lesson, id3)
+        assert l3.topic == 'Обновлённый урок математики'
+        assert l3.duration == 90
+        assert l3.status == 'planned'
 
     # 3. Bulk delete by IDs: delete id1
     res_bulk_ids = client.post('/api/schedule/bulk_delete_lessons', json={

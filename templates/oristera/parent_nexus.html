@@ -1,0 +1,92 @@
+{% extends 'oristera/layout_oristera.html' %}
+
+{% block title %}Семейный обзор обучения | Oristera{% endblock %}
+
+{% block content %}
+<div class="ori-field-page ori-parent-field">
+  <header class="ori-field-intro">
+    <div>
+      <p class="ori-field-eyebrow">СЕМЕЙНЫЙ ОБЗОР</p>
+      <h1 class="ori-field-title">Учёба в семье</h1>
+      <p class="ori-field-lede">Расписание, проведённые занятия и связь ребёнка с наставником.</p>
+    </div>
+    <div class="ori-field-facts" aria-label="Семейная сводка">
+      <div class="ori-field-fact"><span class="ori-field-fact-value">{{ children|length }}</span><span class="ori-field-fact-label">подтверждённых связей</span></div>
+      {% if pending_count %}<div class="ori-field-fact"><span class="ori-field-fact-value">{{ pending_count }}</span><span class="ori-field-fact-label">ожидают подтверждения</span></div>{% endif %}
+    </div>
+  </header>
+
+  {% if has_children %}
+  <section class="ori-parent-children" aria-label="Дети и их обучение">
+    {% for child in children %}
+    <article class="ori-field-panel ori-child-panel">
+      <header class="ori-child-heading">
+        <div class="ori-child-identity">
+          <span class="ori-student-avatar" aria-hidden="true">{{ child.child_name[0]|upper if child.child_name else 'У' }}</span>
+          <div><p class="ori-field-eyebrow">ПОДТВЕРЖДЁННАЯ СВЯЗЬ</p><h2>{{ child.child_name }}</h2></div>
+        </div>
+        {% if child.mentor %}<span class="ori-child-mentor">Наставник: {{ child.mentor.full_name or child.mentor.username }}</span>{% endif %}
+      </header>
+
+      <div class="ori-child-progress">
+        <div>
+          <span class="ori-child-progress-value">{% if child.total_lessons %}{{ child.completed_lessons }}<span>/</span>{{ child.total_lessons }}{% else %}—{% endif %}</span>
+          <span class="ori-child-progress-label">проведено занятий</span>
+        </div>
+        {% if child.total_lessons %}
+          <p>Число завершённых занятий среди назначенных. Баллы и уровень освоения здесь не рассчитываются.</p>
+        {% else %}
+          <p>История занятий появится после добавления занятий в расписание.</p>
+        {% endif %}
+      </div>
+
+      <div class="ori-child-sections">
+        <section aria-labelledby="ori-upcoming-{{ loop.index }}">
+          <h3 id="ori-upcoming-{{ loop.index }}">Ближайшие занятия</h3>
+          {% if child.upcoming_lessons %}
+          <ul class="ori-child-list">
+            {% for lesson in child.upcoming_lessons %}
+            <li><span>{{ lesson.topic or 'Тема не указана' }}</span><time>{% if lesson.lesson_date %}{{ lesson.lesson_date.strftime('%d.%m · %H:%M') }}{% else %}Дата не назначена{% endif %}</time></li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="ori-child-empty">Запланированных занятий пока нет.</p>
+          {% endif %}
+        </section>
+
+        <section aria-labelledby="ori-recent-{{ loop.index }}">
+          <h3 id="ori-recent-{{ loop.index }}">Последние работы</h3>
+          {% if child.submissions %}
+          <ul class="ori-child-list">
+            {% for submission in child.submissions[:3] %}
+            <li>
+              <span>{{ submission.assignment.title if submission.assignment else 'Задание' }}</span>
+              <time>{% if submission.status == 'GRADED' %}Проверено{% elif submission.status == 'SUBMITTED' %}На проверке{% elif submission.status == 'RETURNED' %}Нужно доработать{% elif submission.status == 'IN_PROGRESS' %}В работе{% else %}Назначено{% endif %}</time>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="ori-child-empty">Работы появятся после назначения заданий.</p>
+          {% endif %}
+        </section>
+      </div>
+
+      {% if child.recent_lessons %}
+      <p class="ori-child-history-note">Последнее проведённое занятие: {{ child.recent_lessons[0].topic or 'Тема не указана' }}{% if child.recent_lessons[0].lesson_date %} · {{ child.recent_lessons[0].lesson_date.strftime('%d.%m.%Y') }}{% endif %}</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% else %}
+  <section class="ori-parent-empty" aria-labelledby="ori-parent-empty-title">
+    <span class="ori-parent-empty-mark" aria-hidden="true"></span>
+    <div>
+      <p class="ori-field-eyebrow">СЕМЕЙНЫЕ СВЯЗИ</p>
+      <h2 id="ori-parent-empty-title">Подтверждённых учеников пока нет</h2>
+      <p>Когда семейная связь будет подтверждена, здесь появятся расписание и сведения об обучении ребёнка.</p>
+      {% if pending_count %}<p class="ori-pending-note">Ожидают подтверждения: {{ pending_count }}.</p>{% endif %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

@@ -15,6 +15,16 @@ from flask import has_request_context, request, g
 from flask_login import current_user
 
 
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler resilient to Windows file lock contention during rollover."""
+
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except (PermissionError, OSError):
+            pass
+
+
 class RequestContextFilter(logging.Filter):
     """Injects request/user context into every log record."""
 
@@ -127,7 +137,8 @@ def configure_logging(base_dir: str, environment: str, service_name: str = "boos
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, log_level, logging.INFO)
 
-    logs_dir = os.path.join(base_dir, "logs")
+    configured_logs_dir = os.environ.get("BOOSTUDY_LOG_DIR", "").strip()
+    logs_dir = os.path.abspath(configured_logs_dir) if configured_logs_dir else os.path.join(base_dir, "logs")
     os.makedirs(logs_dir, exist_ok=True)
     log_file = os.path.join(logs_dir, "app.log")
 
@@ -144,7 +155,7 @@ def configure_logging(base_dir: str, environment: str, service_name: str = "boos
     console.addFilter(context_filter)
     root.addHandler(console)
 
-    file_handler = RotatingFileHandler(
+    file_handler = SafeRotatingFileHandler(
         log_file,
         maxBytes=10 * 1024 * 1024,
         backupCount=5,

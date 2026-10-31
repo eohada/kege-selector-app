@@ -34,6 +34,8 @@
       this.isLoading = false;
       this.inputs = [];
       this._skipInputModal = false;
+      this.currentRunId = null;
+      this.syncSeq = 0;
 
       this.initDom();
       this.bindGutterBreakpoints();
@@ -132,10 +134,10 @@
                 <button type="button" class="boo-tracer-ctrl-btn" id="boo-tracer-btn-bp" title="Продолжить до брейкпоинта">
                   <i class="ph-bold ph-fast-forward"></i>
                 </button>
-                <button type="button" class="boo-tracer-ctrl-btn" id="boo-tracer-btn-reset" title="В начало">
+                <button type="button" class="boo-tracer-ctrl-btn" id="boo-tracer-btn-reset" title="В начало (Шаг 0)" aria-label="В начало">
                   <i class="ph-bold ph-arrow-counter-clockwise"></i>
                 </button>
-                <button type="button" class="boo-tracer-ctrl-btn" id="boo-tracer-btn-reload" title="Перезапустить трассировку">
+                <button type="button" class="boo-tracer-ctrl-btn" id="boo-tracer-btn-reload" title="Начать заново (перезапустить трассировку)" aria-label="Начать заново">
                   <i class="ph-bold ph-arrows-clockwise"></i>
                 </button>
               </div>
@@ -310,12 +312,20 @@
       });
     }
 
-    /** Переключает видимость панели трассировщика (или перезапускает с новым кодом, если уже открыт) */
+    /** Переключает видимость панели трассировщика или выводит на передний план */
     toggle(code, fileName) {
-      if (this.isOpen) {
-        this.restartTrace();
+      const win = document.getElementById('tracer-window');
+      const isWindowHidden = !win || win.classList.contains('hidden') || win.dataset.isMinimized === 'true' || win.style.display === 'none' || win.style.opacity === '0';
+      if (this.isOpen && !isWindowHidden) {
+        if (window.windowManager && win) {
+          window.windowManager.bringToFront(win);
+        }
       } else {
-        this.open(code, fileName);
+        if (typeof window.openWindow === 'function') {
+          window.openWindow('tracer-window');
+        } else {
+          this.open(code, fileName);
+        }
       }
     }
 
@@ -323,38 +333,162 @@
     async restartTrace(skipSync = false) {
       this.pause();
       this.inputs = [];
+      this.frames = [];
+      this.currentIndex = 0;
+      this.pendingStep = null;
+      this.isWaitingInput = false;
+      this.currentInputPrompt = '';
+      if (!skipSync) {
+        this.currentRunId = 'run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      }
       this.activeFileName = window.activeFileName || this.activeFileName || 'main.py';
       this.lastCode = document.getElementById('code-editor-textarea')?.value || window.virtualFS?.[this.activeFileName] || '';
-      this.currentIndex = 0;
-      this.pendingStep = 0;
-      this.renderInteractiveInputPrompt(null);
+
+      const inputSec = document.getElementById('boo-tracer-interactive-input-sec');
+      if (inputSec) {
+        inputSec.classList.add('hidden');
+        inputSec.innerHTML = '';
+      }
+
+      if (!skipSync && window.boostudyLessonControl?.sendUi) {
+        window.boostudyLessonControl.sendUi({
+          kind: 'tracer_restart',
+          run_id: this.currentRunId,
+          code: this.lastCode,
+          file_name: this.activeFileName,
+          inputs: [],
+          step: 0,
+        });
+      }
+
       await this.runTrace(this.lastCode, this.activeFileName, []);
+      if (!this.isWaitingInput) {
+        this.currentIndex = 0;
+      }
+      this.updateSliderBounds();
+      this.renderCurrentStep();
       if (!skipSync) {
         this.broadcastSync();
       }
     }
 
-    /** Открывает трассировщик и запускает сбор кадров */
-    async open(code, fileName, skipSync = false) {
+    /**
+     * Активирует оболочку трассировщика при открытии окна Window Manager.
+     * Не сбрасывает текущие frames / inputs / step, если код не изменился.
+     */
+    async ensureActive(options = {}) {
       this.isOpen = true;
-      this.activeFileName = fileName || window.activeFileName || 'main.py';
+      this.isDetached = true;
+      const remote = Boolean(options.remote);
+
+      const currentFileName = window.activeFileName || this.activeFileName || 'main.py';
+      const currentCode = document.getElementById('code-editor-textarea')?.value || window.virtualFS?.[currentFileName] || '';
+      const codeChanged = Boolean(currentCode && this.lastCode && currentCode !== this.lastCode);
+
+      this.activeFileName = currentFileName;
+
+      const content = document.getElementById('tracer-window-content');
+      if (!content || !content.children.length) {
+        this.renderTracerShell();
+      }
+
+      const toggleBtn = document.getElementById('editor-tracer-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.classList.add('is-active', 'ring-2', 'ring-cyan-400');
+      }
+
+      const dockIcon = document.getElementById('dock-icon-tracer-window');
+      dockIcon?.classList.add('is-active');
+
+      // Если уже есть готовые кадры и код не изменился — восстанавливаем состояние без пересчета
+      if (this.frames && this.frames.length > 0 && !codeChanged) {
+        if (this.pendingStep !== null && this.pendingStep !== undefined) {
+          this.currentIndex = Math.max(0, Math.min(this.pendingStep, this.frames.length - 1));
+          this.pendingStep = null;
+        }
+        this.updateSliderBounds();
+        this.renderCurrentStep();
+        this.updateStdinIndicator();
+        if (!remote) {
+          this.broadcastSync();
+        }
+        return;
+      }
+
+      // Если кадров нет или код изменился — инициируем сбор трассировки
+      this.lastCode = currentCode;
+      this.pendingStep = null;
+      this.inputs = [];
+      this.currentIndex = 0;
+      this.isWaitingInput = false;
+      this.renderInteractiveInputPrompt(null);
+      await this.runTrace(this.lastCode, this.activeFileName, []);
+
+      if (!remote) {
+        this.broadcastSync();
+      }
+    }
+
+    /**
+     * Вызывается Window Manager при скрытии / сворачивании окна в Dock.
+     * Приостанавливает воспроизведение, снимает подсветку строк,
+     * устанавливает isOpen = false, но СОХРАНЯЕТ кадры, ввод и текущий шаг.
+     */
+    onWindowMinimized() {
+      this.pause();
+      this.isOpen = false;
+      this.dockedPanel?.classList.add('hidden');
+
+      const toggleBtn = document.getElementById('editor-tracer-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.classList.remove('is-active', 'ring-2', 'ring-cyan-400');
+      }
+
+      const dockIcon = document.getElementById('dock-icon-tracer-window');
+      dockIcon?.classList.remove('is-active');
+
+      this.clearActiveLineHighlight();
+    }
+
+    /** Открывает трассировщик (делегирует в openWindow или фоллбек) */
+    async open(code, fileName, skipSync = false) {
+      if (typeof window.openWindow === 'function') {
+        const win = document.getElementById('tracer-window');
+        const isHidden = !win || win.classList.contains('hidden') || win.dataset.isMinimized === 'true' || win.style.display === 'none' || win.style.opacity === '0';
+        if (isHidden) {
+          window.openWindow('tracer-window', { remote: Boolean(skipSync) });
+          return;
+        }
+      }
+
+      this.isOpen = true;
+      this.isDetached = true;
+      this.activeFileName = fileName || window.activeFileName || this.activeFileName || 'main.py';
       this.lastCode = typeof code === 'string' && code ? code : (document.getElementById('code-editor-textarea')?.value || window.virtualFS?.[this.activeFileName] || '');
-      this.inputs = []; // Очищаем историю stdin при первичном/повторном открытии
+      this.inputs = [];
+      this.pendingStep = null;
+      this.currentIndex = 0;
+      this.isWaitingInput = false;
       this.renderInteractiveInputPrompt(null);
 
-      if (this.isDetached) {
-        if (typeof window.openWindow === 'function') {
-          window.openWindow('tracer-window');
-        } else {
-          this.floatingWindow?.classList.remove('hidden');
-        }
-        if (window.windowManager && this.floatingWindow) {
+      this.renderTracerShell();
+
+      const win = document.getElementById('tracer-window') || this.floatingWindow;
+      if (win) {
+        win.classList.remove('hidden', 'pointer-events-none', 'window-minimized');
+        win.dataset.isMinimized = 'false';
+        win.style.display = 'flex';
+        win.style.opacity = '1';
+        win.style.pointerEvents = 'auto';
+        if (window.windowManager) {
           window.windowManager.registerWindow('tracer-window');
-          window.windowManager.bringToFront(this.floatingWindow);
+          window.windowManager.bringToFront(win, { remote: Boolean(skipSync) });
+          window.windowManager.ensureRoomWindowAccessible(win);
         }
-      } else {
-        this.dockedPanel?.classList.remove('hidden');
       }
+
+      const dockIcon = document.getElementById('dock-icon-tracer-window');
+      dockIcon?.classList.add('is-active');
 
       const toggleBtn = document.getElementById('editor-tracer-toggle-btn');
       if (toggleBtn) {
@@ -367,25 +501,26 @@
       }
     }
 
-    /** Закрывает трассировщик */
+    /** Закрывает трассировщик (делегирует в minimizeToDock) */
     close(skipSync = false) {
-      this.pause();
-      this.isOpen = false;
-      this.dockedPanel?.classList.add('hidden');
-      if (typeof window.closeWindow === 'function') {
-        window.closeWindow('tracer-window');
-      } else {
-        this.floatingWindow?.classList.add('hidden');
+      if (typeof window.minimizeToDock === 'function') {
+        const win = document.getElementById('tracer-window');
+        const isHidden = !win || win.classList.contains('hidden') || win.dataset.isMinimized === 'true' || win.style.display === 'none';
+        if (!isHidden) {
+          window.minimizeToDock('tracer-window', { remote: Boolean(skipSync) });
+          return;
+        }
       }
 
-      const toggleBtn = document.getElementById('editor-tracer-toggle-btn');
-      if (toggleBtn) {
-        toggleBtn.classList.remove('is-active', 'ring-2', 'ring-cyan-400');
-      }
+      this.onWindowMinimized();
 
-      this.clearActiveLineHighlight();
-      if (!skipSync) {
-        this.broadcastSync();
+      const win = document.getElementById('tracer-window') || this.floatingWindow;
+      if (win) {
+        win.classList.add('hidden', 'window-minimized');
+        win.dataset.isMinimized = 'true';
+        win.style.display = 'none';
+        win.style.opacity = '0';
+        win.style.pointerEvents = 'none';
       }
     }
 
@@ -423,6 +558,10 @@
     async runTrace(code, fileName, inputs = null) {
       if (this.isLoading) return;
 
+      if (!this.currentRunId || !inputs || !inputs.length) {
+        this.currentRunId = 'run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      }
+
       if (Array.isArray(inputs)) {
         this.inputs = inputs;
       } else {
@@ -458,6 +597,15 @@
           }),
         });
 
+        if (!res.ok) {
+          if (res.status === 404) {
+            this.renderError('Маршрут /api/v2/code/trace не найден (требуется деплой бэкенда на прод-сервер)');
+          } else {
+            this.renderError(`Ошибка сервера трассировки (HTTP ${res.status})`);
+          }
+          return;
+        }
+
         const data = await res.json();
         if (data.success && Array.isArray(data.frames) && data.frames.length > 0) {
           this.frames = data.frames;
@@ -491,8 +639,7 @@
       const container = document.getElementById('boo-tracer-interactive-input-sec');
       if (!container) return;
 
-      const isLastStep = this.currentIndex === this.frames.length - 1;
-      if (!this.isWaitingInput || !isLastStep) {
+      if (!this.isWaitingInput || this.currentIndex < this.frames.length - 1) {
         container.classList.add('hidden');
         container.innerHTML = '';
         return;
@@ -503,6 +650,7 @@
       const promptHtml = promptText
         ? `<div class="text-slate-800 font-mono text-xs bg-slate-100/90 px-3 py-1.5 rounded-xl border border-slate-200">Подсказка: <strong>${escapeHtml(promptText)}</strong></div>`
         : '';
+      const lineNum = this.currentInputLine || frame?.line || this.frames[this.frames.length - 1]?.line || 1;
 
       container.innerHTML = `
         <div id="boo-tracer-step-input-card" class="m-3 p-4 bg-[#F8FAFC] border-2 border-slate-300 shadow-[0_8px_20px_rgba(15,23,42,0.14),0_4px_0_#CBD5E1] rounded-[1.25rem] flex flex-col gap-3 z-20">
@@ -513,7 +661,7 @@
               </div>
               <div>
                 <h5 class="font-extrabold text-slate-900 text-xs">Программа ожидает ввод для input()</h5>
-                <span class="text-[11px] text-indigo-700 font-mono font-bold">Строка ${this.currentInputLine || frame.line}</span>
+                <span class="text-[11px] text-indigo-700 font-mono font-bold">Строка ${lineNum}</span>
               </div>
             </div>
             <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black uppercase tracking-wider animate-pulse">Ожидание</span>
@@ -556,15 +704,19 @@
       this.inputs.push(val);
       this.isWaitingInput = false;
 
+      const stepAfter = this.frames.length;
+      this.pendingStep = stepAfter;
+
       if (window.boostudyLessonControl?.sendUi) {
         window.boostudyLessonControl.sendUi({
           kind: 'tracer_input_submit',
+          run_id: this.currentRunId,
           input_val: val,
           inputs: this.inputs,
+          pending_step: stepAfter,
         });
       }
 
-      this.pendingStep = this.frames.length;
       this.runTrace(this.lastCode, this.activeFileName, this.inputs);
     }
 
@@ -579,12 +731,17 @@
     /** Обновляет границы ползунка таймлайна */
     updateSliderBounds() {
       const slider = document.getElementById('boo-tracer-slider');
+      const curBadge = document.getElementById('boo-tracer-cur-step');
       const totalBadge = document.getElementById('boo-tracer-total-step');
-      const max = Math.max(0, this.frames.length - 1);
+      const max = Math.max(0, (this.frames?.length || 1) - 1);
+      const safeIndex = Math.max(0, Math.min(this.currentIndex, max));
 
       if (slider) {
         slider.max = max;
-        slider.value = this.currentIndex;
+        slider.value = safeIndex;
+      }
+      if (curBadge) {
+        curBadge.textContent = safeIndex;
       }
       if (totalBadge) {
         totalBadge.textContent = max;
@@ -612,14 +769,20 @@
 
     /** Переход к конкретному шагу */
     jumpToStep(idx, skipSync = false) {
+      if (!this.frames || !this.frames.length) {
+        this.currentIndex = 0;
+        const curBadge = document.getElementById('boo-tracer-cur-step');
+        if (curBadge) curBadge.textContent = '0';
+        return;
+      }
       if (idx < 0) idx = 0;
       if (idx >= this.frames.length) idx = this.frames.length - 1;
-      this.currentIndex = idx;
+      this.currentIndex = Math.max(0, idx);
 
       const slider = document.getElementById('boo-tracer-slider');
       const curBadge = document.getElementById('boo-tracer-cur-step');
-      if (slider) slider.value = idx;
-      if (curBadge) curBadge.textContent = idx;
+      if (slider) slider.value = this.currentIndex;
+      if (curBadge) curBadge.textContent = this.currentIndex;
 
       this.renderCurrentStep();
       if (!skipSync) {
@@ -704,6 +867,11 @@
     /** Отрисовывает состояние памяти текущего шага */
     renderCurrentStep() {
       if (!this.frames.length || this.currentIndex >= this.frames.length) return;
+      const curBadge = document.getElementById('boo-tracer-cur-step');
+      if (curBadge) curBadge.textContent = this.currentIndex;
+      const slider = document.getElementById('boo-tracer-slider');
+      if (slider) slider.value = this.currentIndex;
+
       const frame = this.frames[this.currentIndex];
 
       // 0. Интерактивная карточка ожидания ввода input()
@@ -1011,6 +1179,8 @@
 
       window.boostudyLessonControl.sendUi({
         kind: 'tracer_state',
+        run_id: this.currentRunId,
+        seq: ++this.syncSeq,
         step: this.currentIndex,
         playing: this.isPlaying,
         speed: this.playSpeed,
@@ -1026,6 +1196,29 @@
     /** Применение удаленного состояния трассировщика из сети */
     applyRemoteState(payload) {
       if (!payload) return;
+
+      // Обработка явного перезапуска трассировки
+      if (payload.kind === 'tracer_restart') {
+        this.currentRunId = payload.run_id;
+        this.inputs = [];
+        this.pendingStep = typeof payload.step === 'number' ? payload.step : 0;
+        if (payload.code) {
+          this.lastCode = payload.code;
+        }
+        if (payload.file_name) {
+          this.activeFileName = payload.file_name;
+        }
+        const win = document.getElementById('tracer-window');
+        const isVisible = win && !win.classList.contains('hidden') && win.dataset.isMinimized !== 'true' && win.style.display !== 'none';
+        if (isVisible) {
+          this.restartTrace(true);
+        }
+        return;
+      }
+
+      if (payload.run_id) {
+        this.currentRunId = payload.run_id;
+      }
 
       // 1. Синхронизация точек останова (брейкпоинтов)
       if (Array.isArray(payload.breakpoints)) {
@@ -1045,21 +1238,20 @@
         }
       }
 
-      // 2. Синхронизация открытия / закрытия / перезапуска трассировки
-      if (typeof payload.is_open === 'boolean' && payload.is_open !== this.isOpen) {
-        if (payload.is_open) {
-          if (typeof payload.step === 'number') {
-            this.pendingStep = payload.step;
-          }
-          this.open(payload.code || null, payload.file_name, true);
-        } else {
-          this.close(true);
-        }
-      } else if (payload.is_open && payload.code && payload.code !== this.lastCode) {
+      // 2. Синхронизация флага активности и кода (без принудительного открытия окна DOM)
+      if (typeof payload.is_open === 'boolean') {
+        this.isOpen = payload.is_open;
+      }
+      if (payload.code && payload.code !== this.lastCode) {
+        this.lastCode = payload.code;
         if (typeof payload.step === 'number') {
           this.pendingStep = payload.step;
         }
-        this.open(payload.code, payload.file_name, true);
+        const win = document.getElementById('tracer-window');
+        const isVisible = win && !win.classList.contains('hidden') && win.dataset.isMinimized !== 'true' && win.style.display !== 'none';
+        if (isVisible) {
+          this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+        }
       }
 
       // 3. Синхронизация открепления/прикрепления панели
@@ -1102,12 +1294,15 @@
         this.inputs = payload.inputs;
       }
       if (payload.kind === 'tracer_input_submit') {
+        if (payload.run_id) this.currentRunId = payload.run_id;
+        const prevLength = this.frames.length;
         if (Array.isArray(payload.inputs)) {
           this.inputs = payload.inputs;
         } else if (payload.input_val) {
           if (!Array.isArray(this.inputs)) this.inputs = [];
           this.inputs.push(payload.input_val);
         }
+        this.pendingStep = typeof payload.pending_step === 'number' ? payload.pending_step : prevLength;
         this.runTrace(this.lastCode, this.activeFileName, this.inputs);
       }
     }

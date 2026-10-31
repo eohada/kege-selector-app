@@ -14,13 +14,14 @@ import csv
 import io
 from flask import Response
 
-from flask_wtf.csrf import validate_csrf, CSRFError
+from flask_wtf.csrf import generate_csrf as csrf_token, validate_csrf, CSRFError
 
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
 from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
+from app.lessons.lifecycle import transition_lesson_status
 from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
 from app.utils.datetime_utc import effective_timezone_name
@@ -3465,6 +3466,286 @@ def lesson_new(student_id):
 
     return render_template('lesson_form.html', form=form, student=student, title='Добавить урок', is_new=True)
 
+
+def _adaptive_practice_subject_id(student):
+    """Keep experimental practice available only for an explicitly safe synthetic DB."""
+    from app.ai_lab.provider import is_local_ai_lab_enabled
+    from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+    from core.db_models import User
+
+    if not has_verified_safe_ai_lab_db() or not is_local_ai_lab_enabled() or not student.user_id:
+        return None
+    user = User.query.filter_by(id=int(student.user_id)).first()
+    if not user or not str(user.username or '').startswith(('demo_', 'synthetic_')):
+        return None
+    return f"platform-student:{int(student.user_id)}"
+
+
+def _adaptive_practice_api_error(message, status, code):
+    from flask import jsonify
+    return jsonify({"ok": False, "error": message, "error_code": code}), status
+
+
+def _adaptive_practice_session_for_subject(actor_user_id, session_id, subject_id):
+    from app.ai_lab.practice import get_practice_session
+    session = get_practice_session(int(actor_user_id), session_id)
+    return session if session and session.get("subject_id") == subject_id else None
+
+
+@students_bp.route('/student/<int:student_id>/practice')
+@login_required
+def student_practice(student_id: int):
+    """Student Practice reuses teacher-assigned platform work and the normal task workspace."""
+    student = _guard_student_access(student_id)
+    from sqlalchemy.orm import selectinload, joinedload
+    from app.models import AssignmentTask
+    from app.ai_lab.analytics import all_analytics_evidence, build_analytics_snapshot
+    from app.ai_lab.practice import recommend_practice
+
+    subject_id = f"platform-student:{student.user_id}" if student.user_id else ""
+    evidence = [event for event in all_analytics_evidence()
+                if subject_id and event.get("subject_id") == subject_id]
+    snapshot = build_analytics_snapshot(evidence, subject_id) if subject_id else {
+        "subject_id": "", "skills": [], "events": [],
+    }
+    completed_ids = [event.get("assignment", {}).get("id") for event in evidence if event.get("assignment")]
+
+    submissions = (Submission.query.options(
+        selectinload(Submission.assignment).selectinload(Assignment.tasks).joinedload(AssignmentTask.task)
+    ).filter(Submission.student_id == student.student_id)
+     .order_by(Submission.submission_id.desc()).limit(50).all())
+    open_statuses = {"ASSIGNED", "IN_PROGRESS", "RETURNED"}
+    history_statuses = {"GRADED", "SUBMITTED", "NEEDS_MANUAL_REVIEW"}
+    tasks = []
+    recent_results = []
+    catalog = []
+    for submission in submissions:
+        assignment = submission.assignment
+        status = str(submission.status or "").strip().upper()
+        if not assignment or status not in open_statuses | history_statuses:
+            continue
+        if str(assignment.assignment_type or "homework").lower() not in {"homework", "classwork"}:
+            continue
+        assignment_ref = f"platform-assignment:{assignment.assignment_id}"
+        for item in assignment.tasks or []:
+            task = item.task
+            if not task:
+                continue
+            answer_spec = task.answer_spec if isinstance(task.answer_spec, dict) else {}
+            task_title = str(answer_spec.get("title") or answer_spec.get("prompt")
+                             or f"Задание №{task.task_number}")[:180]
+            python_task = (
+                getattr(task, "bank_category", "") == "python_practice"
+                or str(answer_spec.get("language") or "").lower() == "python"
+            )
+            topic = str(answer_spec.get("topic") or answer_spec.get("topic_id")
+                        or getattr(task, "topic", "") or getattr(task, "category", "") or task_title)[:180]
+            task_url = url_for(
+                "task_workspace.workspace_page", context_type="submission_task",
+                context_id=submission.submission_id, assignment_task_id=item.assignment_task_id,
+            )
+            task_row = {
+                "assignment_id": assignment_ref,
+                "assignment_title": str(assignment.title or "Работа"),
+                "assignment_task_id": item.assignment_task_id,
+                "task_id": item.task_id,
+                "title": task_title,
+                "topic": topic,
+                "status": status,
+                "url": task_url,
+            }
+            (tasks if status in open_statuses else recent_results).append(task_row)
+            if python_task:
+                catalog.append({
+                    "assignment_id": assignment_ref,
+                    "assignment_version": 1,
+                    "title": task_title,
+                    "topic": topic,
+                    "difficulty": getattr(task, "difficulty_level", None),
+                    "type": "python",
+                })
+
+    recommendations = recommend_practice(snapshot, catalog, completed_ids)
+    recommended_ids = {item["assignment_id"]: item for item in recommendations["recommendations"]}
+    for item in tasks:
+        item["recommendation"] = recommended_ids.get(item["assignment_id"])
+
+    adaptive_practice_enabled = False
+    adaptive_practice_skills = []
+    adaptive_practice_history = []
+    adaptive_practice_initial_session = None
+    adaptive_practice_error = None
+    adaptive_subject_id = _adaptive_practice_subject_id(student)
+    if adaptive_subject_id:
+        try:
+            from app.ai_lab.practice import list_practice_skills, practice_history, latest_active_practice_session
+            adaptive_practice_skills = list_practice_skills()
+            adaptive_practice_history = practice_history(adaptive_subject_id)
+            adaptive_practice_initial_session = latest_active_practice_session(int(current_user.id), adaptive_subject_id)
+            adaptive_practice_enabled = bool(adaptive_practice_skills)
+        except Exception:
+            current_app.logger.exception("Adaptive practice catalog failed to load for a synthetic student")
+            adaptive_practice_error = "Не удалось загрузить упражнения. Попробуйте обновить страницу; текущие назначения не затронуты."
+
+    return render_template(
+        "sandbox/student_practice.html", student=student, tasks=tasks,
+        recent_results=recent_results, recommendations=recommendations, analytics_snapshot=snapshot,
+        adaptive_practice_enabled=adaptive_practice_enabled,
+        adaptive_practice_skills=adaptive_practice_skills,
+        adaptive_practice_history=adaptive_practice_history,
+        adaptive_practice_initial_session=adaptive_practice_initial_session,
+        adaptive_practice_error=adaptive_practice_error,
+        adaptive_practice_course_id=request.args.get("course_id", type=int),
+        adaptive_practice_lesson_id=request.args.get("lesson_id", type=int),
+        adaptive_practice_api_url=url_for('students.adaptive_practice_sessions', student_id=student_id),
+        adaptive_practice_csrf_token=csrf_token(),
+    )
+
+
+@students_bp.post('/student/<int:student_id>/practice/api/sessions')
+@login_required
+def adaptive_practice_sessions(student_id: int):
+    from flask import current_app, jsonify, request
+    student = _guard_student_access(student_id)
+    subject_id = _adaptive_practice_subject_id(student)
+    if not subject_id:
+        return _adaptive_practice_api_error("Свободная практика доступна только в изолированной локальной среде для синтетического ученика.", 404, "synthetic_practice_unavailable")
+    if request.content_length and request.content_length > 128 * 1024:
+        return _adaptive_practice_api_error("Запрос превышает допустимый размер 128 КБ.", 413, "practice_payload_too_large")
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _adaptive_practice_api_error("Передайте параметры сессии в формате JSON.", 400, "invalid_practice_payload")
+    skill_id = str(payload.get("skill_id") or "")
+    mode = str(payload.get("mode") or "topic")
+    try:
+        from app.ai_lab.practice import list_practice_skills, start_practice_session
+        skill = next((item for item in list_practice_skills() if item["skill_id"] == skill_id), None)
+        if not skill:
+            return _adaptive_practice_api_error("Выбранная тема сейчас недоступна для проверяемой практики.", 409, "practice_skill_unavailable")
+        if mode == "gaps":
+            from app.ai_lab.analytics import all_analytics_evidence, build_analytics_snapshot
+            evidence = [item for item in all_analytics_evidence(actor_user_id=int(current_user.id))
+                        if item.get("subject_id") == subject_id]
+            snapshot = build_analytics_snapshot(evidence, subject_id)
+            gap = next((item for item in snapshot.get("skills", [])
+                        if item.get("skill_id") == skill_id and item.get("status") == "needs_support"), None)
+            if not gap:
+                return _adaptive_practice_api_error("По этой теме пока нет повторных подтверждённых затруднений. Выберите тему для диагностического старта.", 409, "insufficient_gap_evidence")
+        start_key = payload.get("idempotency_key")
+        session = start_practice_session(
+            int(current_user.id), subject_id, skill_id, mode, start_key,
+            course_id=payload.get("course_id"),
+            lesson_id=payload.get("lesson_id"),
+        )
+        return jsonify({"ok": True, "session": session}), 201
+    except ValueError as exc:
+        return _adaptive_practice_api_error(str(exc), 400, "invalid_practice_session")
+    except Exception:
+        current_app.logger.exception("Unable to create synthetic adaptive practice session")
+        return _adaptive_practice_api_error("Не удалось начать сессию практики. Повторите попытку; новый запрос к модели не выполнялся.", 500, "practice_session_failed")
+
+
+@students_bp.get('/student/<int:student_id>/practice/api/sessions/<string:session_id>')
+@login_required
+def adaptive_practice_session(student_id: int, session_id: str):
+    from flask import current_app, jsonify
+    student = _guard_student_access(student_id)
+    if not _adaptive_practice_subject_id(student):
+        return _adaptive_practice_api_error("Сессия свободной практики недоступна.", 404, "synthetic_practice_unavailable")
+    try:
+        session = _adaptive_practice_session_for_subject(current_user.id, session_id, _adaptive_practice_subject_id(student))
+        if not session:
+            return _adaptive_practice_api_error("Сессия не найдена или недоступна этому пользователю.", 404, "practice_session_not_found")
+        return jsonify({"ok": True, "session": session})
+    except Exception:
+        current_app.logger.exception("Unable to load synthetic adaptive practice session")
+        return _adaptive_practice_api_error("Не удалось загрузить сохранённую сессию.", 500, "practice_session_load_failed")
+
+
+@students_bp.post('/student/<int:student_id>/practice/api/sessions/<string:session_id>/answer')
+@login_required
+def adaptive_practice_answer(student_id: int, session_id: str):
+    from flask import current_app, jsonify, request
+    student = _guard_student_access(student_id)
+    if not _adaptive_practice_subject_id(student):
+        return _adaptive_practice_api_error("Сохранение свободной практики недоступно.", 404, "synthetic_practice_unavailable")
+    if not _adaptive_practice_session_for_subject(current_user.id, session_id, _adaptive_practice_subject_id(student)):
+        return _adaptive_practice_api_error("Сессия не найдена или недоступна этому ученику.", 404, "practice_session_not_found")
+    if request.content_length and request.content_length > 128 * 1024:
+        return _adaptive_practice_api_error("Запрос превышает допустимый размер 128 КБ.", 413, "practice_payload_too_large")
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return _adaptive_practice_api_error("Передайте ответ в формате JSON.", 400, "invalid_practice_answer")
+    answer = payload.get("answer")
+    if (isinstance(answer, str) and len(answer) > 256) or (isinstance(answer, list) and len(answer) > 20):
+        return _adaptive_practice_api_error("Ответ слишком длинный для этого формата упражнения.", 400, "practice_answer_too_long")
+    try:
+        from app.ai_lab.practice import submit_practice_answer
+        feedback = submit_practice_answer(int(current_user.id), session_id, answer, payload.get("idempotency_key"))
+        return jsonify({"ok": True, "feedback": feedback})
+    except ValueError as exc:
+        return _adaptive_practice_api_error(str(exc), 409, "practice_answer_rejected")
+    except Exception:
+        current_app.logger.exception("Unable to save synthetic adaptive practice answer")
+        return _adaptive_practice_api_error("Не удалось сохранить ответ. Его можно безопасно отправить повторно с тем же ключом попытки.", 500, "practice_answer_failed")
+
+
+@students_bp.post('/student/<int:student_id>/practice/api/sessions/<string:session_id>/hint')
+@login_required
+def adaptive_practice_hint(student_id: int, session_id: str):
+    from flask import current_app, jsonify
+    student = _guard_student_access(student_id)
+    if not _adaptive_practice_subject_id(student):
+        return _adaptive_practice_api_error("Подсказка свободной практики недоступна.", 404, "synthetic_practice_unavailable")
+    if not _adaptive_practice_session_for_subject(current_user.id, session_id, _adaptive_practice_subject_id(student)):
+        return _adaptive_practice_api_error("Сессия не найдена или недоступна этому ученику.", 404, "practice_session_not_found")
+    try:
+        from app.ai_lab.practice import request_practice_hint
+        return jsonify({"ok": True, **request_practice_hint(int(current_user.id), session_id)})
+    except ValueError as exc:
+        return _adaptive_practice_api_error(str(exc), 409, "practice_hint_unavailable")
+    except Exception:
+        current_app.logger.exception("Unable to load synthetic adaptive practice hint")
+        return _adaptive_practice_api_error("Не удалось загрузить подсказку.", 500, "practice_hint_failed")
+
+
+@students_bp.post('/student/<int:student_id>/practice/api/sessions/<string:session_id>/next')
+@login_required
+def adaptive_practice_next(student_id: int, session_id: str):
+    from flask import current_app, jsonify
+    student = _guard_student_access(student_id)
+    if not _adaptive_practice_subject_id(student):
+        return _adaptive_practice_api_error("Следующее упражнение недоступно.", 404, "synthetic_practice_unavailable")
+    if not _adaptive_practice_session_for_subject(current_user.id, session_id, _adaptive_practice_subject_id(student)):
+        return _adaptive_practice_api_error("Сессия не найдена или недоступна этому ученику.", 404, "practice_session_not_found")
+    try:
+        from app.ai_lab.practice import next_practice_exercise
+        return jsonify({"ok": True, "session": next_practice_exercise(int(current_user.id), session_id)})
+    except ValueError as exc:
+        return _adaptive_practice_api_error(str(exc), 409, "next_practice_unavailable")
+    except Exception:
+        current_app.logger.exception("Unable to select next synthetic adaptive practice exercise")
+        return _adaptive_practice_api_error("Не удалось подобрать следующее упражнение.", 500, "next_practice_failed")
+
+
+@students_bp.post('/student/<int:student_id>/practice/api/sessions/<string:session_id>/finish')
+@login_required
+def adaptive_practice_finish(student_id: int, session_id: str):
+    from flask import current_app, jsonify
+    student = _guard_student_access(student_id)
+    if not _adaptive_practice_subject_id(student):
+        return _adaptive_practice_api_error("Завершение сессии недоступно.", 404, "synthetic_practice_unavailable")
+    if not _adaptive_practice_session_for_subject(current_user.id, session_id, _adaptive_practice_subject_id(student)):
+        return _adaptive_practice_api_error("Сессия не найдена или недоступна этому ученику.", 404, "practice_session_not_found")
+    try:
+        from app.ai_lab.practice import finish_practice_session
+        return jsonify({"ok": True, "session": finish_practice_session(int(current_user.id), session_id)})
+    except ValueError as exc:
+        return _adaptive_practice_api_error(str(exc), 404, "practice_session_not_found")
+    except Exception:
+        current_app.logger.exception("Unable to finish synthetic adaptive practice session")
+        return _adaptive_practice_api_error("Не удалось завершить сессию.", 500, "practice_finish_failed")
+
 @students_bp.route('/student/<int:student_id>/lesson/<int:lesson_id>/test-reminder', methods=['POST'])
 @login_required
 def lesson_test_reminder(student_id, lesson_id):
@@ -3531,7 +3812,12 @@ def student_start_lesson(student_id):
     ).order_by(Lesson.lesson_date).limit(1).first()
 
     if upcoming_lesson:
-        upcoming_lesson.status = 'in_progress'
+        transition_lesson_status(
+            upcoming_lesson, "in_progress",
+            source="student_start_lesson",
+            reason="student_opened_scheduled_lesson",
+            actor_user_id=getattr(current_user, "id", None),
+        )
         lid = upcoming_lesson.lesson_id
         try:
             db.session.commit()
@@ -3550,11 +3836,18 @@ def student_start_lesson(student_id):
             lesson_type='regular',
             lesson_date=moscow_now(),
             duration=60,
-            status='in_progress',
+            status='planned',
             topic='Занятие'
         )
         db.session.add(new_lesson)
         try:
+            db.session.flush()
+            transition_lesson_status(
+                new_lesson, "in_progress",
+                source="student_start_lesson_create",
+                reason="student_started_unscheduled_lesson",
+                actor_user_id=getattr(current_user, "id", None),
+            )
             db.session.commit()
         except Exception as e:
             db.session.rollback()

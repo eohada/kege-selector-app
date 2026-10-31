@@ -44,6 +44,99 @@ def test_master_course_creation_and_catalog(client, app, role_users):
         assert 'Базовый мастер-курс'.encode('utf-8') in view.data or 'Базовый курс'.encode('utf-8') in view.data
 
 
+def test_course_can_be_assigned_without_creating_a_schedule(client, app, role_users):
+    from app import db
+    from app.models import LearningTrajectory, Lesson, LessonTask, Student, Tasks, TrajectoryModule
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    catalog = client.get('/courses')
+    assert 'Назначить пока без расписания'.encode('utf-8') in catalog.data
+    with app.app_context():
+        student = Student.query.filter_by(user_id=role_users['student_user_id']).first()
+        master = LearningTrajectory(
+            is_template=True,
+            student_id=None,
+            created_by_user_id=role_users['tutor_id'],
+            title='Синтетический план без расписания',
+            subject='Информатика',
+            default_lesson_duration=60,
+            status='active',
+        )
+        db.session.add(master)
+        db.session.flush()
+        module = TrajectoryModule(course_id=master.course_id, title='IPv4', order_index=1)
+        db.session.add(module)
+        db.session.flush()
+        lesson = Lesson(
+            student_id=None,
+            learning_trajectory_id=master.course_id,
+            course_module_id=module.module_id,
+            topic='IPv4: синтетическая диагностика',
+            duration=60,
+            course_order_index=1,
+            status='planned',
+        )
+        db.session.add(lesson)
+        db.session.flush()
+        task = Tasks(task_number=9901, content_html='<p>Укажите результат проверки.</p>', answer='1',
+                     created_by_id=role_users['tutor_id'])
+        db.session.add(task)
+        db.session.flush()
+        db.session.add(LessonTask(lesson_id=lesson.lesson_id, task_id=task.task_id,
+                                  assignment_type='classwork', is_visible_to_student=True,
+                                  is_answer_visible_to_student=False, status='pending'))
+        task_id = task.task_id
+        db.session.commit()
+        master_id = master.course_id
+        student_id = student.student_id
+
+    response = client.post(f'/courses/{master_id}/assign-to-student', data={
+        'student_id': str(student_id),
+        'without_schedule': '1',
+    }, follow_redirects=False)
+    assert response.status_code == 302
+
+    with app.app_context():
+        course_copy = LearningTrajectory.query.filter_by(
+            parent_course_id=master_id,
+            student_id=student_id,
+            is_template=False,
+        ).order_by(LearningTrajectory.course_id.desc()).first()
+        assert course_copy is not None
+        assert len(course_copy.lessons) == 1
+        assert course_copy.lessons[0].course_display_date is None
+        linked_task = LessonTask.query.filter_by(lesson_id=course_copy.lessons[0].lesson_id).one()
+        assert linked_task.task_id == task_id
+        assert linked_task.assignment_type == 'classwork'
+        assert linked_task.is_answer_visible_to_student is False
+
+
+def test_teacher_cannot_assign_master_course_to_unlinked_student(client, app, role_users):
+    from app import db
+    from app.models import LearningTrajectory, Student, User
+
+    with app.app_context():
+        master = LearningTrajectory(is_template=True, title='Ограниченный мастер-курс', status='active')
+        outsider = User(username='unlinked_v2_student', email='unlinked_v2_student@example.test',
+                        role='student', is_active=True)
+        db.session.add_all([master, outsider])
+        db.session.flush()
+        foreign_student = Student(name='Не связанный с преподавателем', user_id=outsider.id, is_active=True)
+        db.session.add(foreign_student)
+        db.session.commit()
+        master_id, foreign_student_id = master.course_id, foreign_student.student_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.post(f'/courses/{master_id}/assign-to-student', data={
+        'student_id': str(foreign_student_id), 'without_schedule': '1',
+    })
+    assert response.status_code == 403
+
+    with app.app_context():
+        assert LearningTrajectory.query.filter_by(parent_course_id=master_id,
+                                                   student_id=foreign_student_id).count() == 0
+
+
 def test_master_course_modules_and_control_exam(client, app, role_users):
     from app import db
     from app.models import LearningTrajectory, TrajectoryModule

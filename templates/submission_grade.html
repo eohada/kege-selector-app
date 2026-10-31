@@ -14,9 +14,9 @@
 </style>
 
 <!-- Prism.js Light Theme for Python Code -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/prism/prism.min.css') }}?v=1.29.0">
+<script src="{{ url_for('static', filename='vendor/prism/prism.min.js') }}?v=1.29.0"></script>
+<script src="{{ url_for('static', filename='vendor/prism/prism-python.min.js') }}?v=1.29.0"></script>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
 <style>
@@ -3142,7 +3142,7 @@
                 return;
             } catch (e3) {}
             try {
-                alert(msg);
+                console.warn('[BooStudy Grade]', msg);
             } catch (e4) {}
         }
 

@@ -38,6 +38,7 @@ from app.telegram.user_notify import notify_user_by_id
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
 from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls, normalize_task_attachments
+from app.task_bank.answer_safety import answer_appears_in_labeled_example
 from app.lessons.utils import normalize_answer_value
 from app.constants import SubmissionStatus
 from app.assignments.submission_lifecycle_service import (
@@ -257,6 +258,13 @@ def _assignment_builder_task_payload(
     can_edit = bool((task.bank_origin == 'manual' and task.created_by_id == getattr(current_user, 'id', None)) or is_admin)
 
     effective_ans = answer_override if (answer_override is not None and str(answer_override).strip() != '') else (task.answer or '')
+    answer_spec = getattr(task, 'answer_spec', None)
+    if not isinstance(answer_spec, dict) and isinstance(answer_spec, str):
+        try:
+            answer_spec = json.loads(answer_spec)
+        except (TypeError, ValueError):
+            answer_spec = None
+    synthetic_binding = answer_spec.get('synthetic_course_skill_binding') if isinstance(answer_spec, dict) else None
 
     return {
         'task_id': int(task.task_id),
@@ -277,9 +285,19 @@ def _assignment_builder_task_payload(
         'starter_code': getattr(task, 'starter_code', '') or '',
         'solution': solution_text or '',
         'hints': getattr(task, 'hints', None) or [],
-        'answer_spec': getattr(task, 'answer_spec', None),
+        'answer_spec': answer_spec,
         'attached_files': getattr(task, 'attached_files', []) or [],
         'can_edit': can_edit,
+        'synthetic_revision_allowed': bool(
+            isinstance(synthetic_binding, dict)
+            and synthetic_binding.get('contract') == 'boostudy.synthetic-course-skill.v1'
+            and getattr(task, 'bank_category', None) == 'synthetic_adaptive_draft'
+            and str(getattr(task, 'source_key', '') or '').startswith('boostudy.synthetic.adaptive-v1/')
+            and getattr(task, 'created_by_id', None) == getattr(current_user, 'id', None)
+        ),
+        'answer_exposure_detected': answer_appears_in_labeled_example(
+            getattr(task, 'content_html', None), effective_ans
+        ),
     }
 
 
@@ -335,11 +353,19 @@ def _apply_assignment_builder_payload(assignment: Assignment, data: dict[str, An
     assignment.exam_course_id = course.id if course else None
 
     raw_lesson_id = data.get('lesson_id')
-    if raw_lesson_id:
-        try:
-            assignment.lesson_id = int(raw_lesson_id)
-        except (TypeError, ValueError):
-            pass
+    if raw_lesson_id is not None:
+        if str(raw_lesson_id).strip() == '':
+            assignment.lesson_id = None
+        else:
+            try:
+                lid = int(raw_lesson_id)
+                from app.models import Lesson
+                l_obj = db.session.get(Lesson, lid)
+                scope = get_user_scope(current_user)
+                if l_obj and (scope.get('can_see_all') or l_obj.tutor_id == current_user.id):
+                    assignment.lesson_id = lid
+            except (TypeError, ValueError):
+                pass
 
     raw_tasks = data.get('tasks') if isinstance(data.get('tasks'), list) else []
     task_rows = _expand_tasks_data_for_triplets(raw_tasks)
@@ -1057,6 +1083,7 @@ def assignment_review_bulk_update(assignment_id: int):
             transition_submission_status(sub, 'GRADED', force=True)
             sub.graded_at = utc_now()
             _set_submission_task_revision_flags(sub, mark_all=False, selected_task_ids=set())
+        _sync_synthetic_lesson_task_projection(sub)
         try:
             _record_submission_attempt(sub)
         except Exception:
@@ -1156,6 +1183,7 @@ def submission_quick_return(submission_id: int):
 
     _mark_submission_returned_for_revision(submission)
     _set_submission_task_revision_flags(submission, mark_all=True)
+    _sync_synthetic_lesson_task_projection(submission)
     try:
         _record_submission_attempt(submission)
     except Exception:
@@ -1239,7 +1267,7 @@ def _upsert_gradebook_from_submission(submission: Submission, actor_user_id: int
 
 
 def _record_submission_attempt(submission: Submission) -> None:
-    """Записываем попытку сдачи для Submission (история пересдач)."""
+    """Записываем попытку сдачи для Submission (история пересдач) с полным snapshot данных."""
     if not submission:
         return
     try:
@@ -1252,6 +1280,86 @@ def _record_submission_attempt(submission: Submission) -> None:
     except Exception:
         next_no = 1
 
+    from core.db_models import CodeWorkspaceVersion
+    tasks_snapshot = {}
+    for a in (submission.answers or []):
+        atid = a.assignment_task_id
+        if not atid:
+            continue
+        latest_ver = None
+        if getattr(a, 'answer_id', None):
+            latest_ver = (
+                CodeWorkspaceVersion.query.filter_by(answer_id=a.answer_id)
+                .order_by(CodeWorkspaceVersion.version_id.desc())
+                .first()
+            )
+        if not latest_ver and atid:
+            latest_ver = (
+                CodeWorkspaceVersion.query.filter_by(
+                    context_type="submission_task",
+                    context_id=atid,
+                )
+                .order_by(CodeWorkspaceVersion.version_id.desc())
+                .first()
+            )
+        if not latest_ver:
+            latest_ver = (
+                CodeWorkspaceVersion.query.filter_by(
+                    context_type="submission_task",
+                    context_id=submission.submission_id,
+                )
+                .order_by(CodeWorkspaceVersion.version_id.desc())
+                .first()
+            )
+        files = None
+        open_tabs = None
+        active_file = None
+        if latest_ver:
+            snap = latest_ver.snapshot
+            if isinstance(snap, str):
+                try:
+                    import json
+                    snap = json.loads(snap)
+                except Exception:
+                    snap = None
+            if isinstance(snap, dict):
+                files = snap.get("files")
+                open_tabs = snap.get("open_tabs")
+                active_file = snap.get("active_file")
+        if isinstance(files, dict):
+            files["main.py"] = a.student_code if a.student_code is not None else files.get("main.py", "")
+        elif a.student_code is not None:
+            files = {"main.py": a.student_code}
+            open_tabs = ["main.py"]
+            active_file = "main.py"
+        else:
+            files = {"main.py": ""}
+            open_tabs = ["main.py"]
+            active_file = "main.py"
+
+        tasks_snapshot[str(atid)] = {
+            "answer": a.value or "",
+            "student_code": a.student_code or "",
+            "files": files or {"main.py": a.student_code or ""},
+            "open_tabs": open_tabs or ["main.py"],
+            "active_file": active_file or "main.py",
+            "score": a.score,
+            "max_score": a.max_score,
+            "is_correct": a.is_correct,
+            "needs_revision": getattr(a, "needs_revision", False),
+            "teacher_comment": getattr(a, "teacher_comment", "") or "",
+        }
+
+    attempt_data = {
+        "tasks": tasks_snapshot,
+        "total_score": submission.total_score,
+        "max_score": submission.max_score,
+        "percentage": submission.percentage,
+        "status": submission.status,
+        "submitted_at": (submission.submitted_at or utc_now()).isoformat(),
+        "teacher_feedback": submission.teacher_feedback or "",
+    }
+
     attempt = SubmissionAttempt(
         submission_id=submission.submission_id,
         attempt_no=next_no,
@@ -1262,8 +1370,211 @@ def _record_submission_attempt(submission: Submission) -> None:
         max_score=submission.max_score,
         percentage=submission.percentage,
         teacher_feedback=submission.teacher_feedback,
+        attempt_data=attempt_data,
     )
     db.session.add(attempt)
+
+
+def _sync_synthetic_lesson_task_projection(
+    submission: Submission,
+    *,
+    task_ids: set[int] | None = None,
+) -> int:
+    """Keep the Lesson Room task view in step with an allowlisted synthetic Assignment.
+
+    Assignment/Submission remain the source of truth. This projection is updated
+    only when the safe SQLite, teacher, learner, course copy, task binding, and
+    exact lesson/task relationship all match. The legacy lesson homework summary
+    is refreshed from its linked task results so it cannot contradict the grade.
+    """
+    from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+
+    if not has_verified_safe_ai_lab_db() or not submission or not submission.assignment:
+        return 0
+
+    from app.ai_lab.course_adapter import (
+        _allowed_copy_ids, resolve_assigned_synthetic_copy, resolve_course_version_at,
+    )
+    from app.ai_lab.platform_homework import (
+        _allowlisted_task_author_ids,
+        _allowlisted_user_ids,
+        _task_fingerprint,
+        platform_homework_enabled,
+    )
+    from core.db_models import LearningTrajectory, LessonTask
+
+    assignment = submission.assignment
+    if (not assignment.lesson_id or assignment.assignment_type not in {"homework", "classwork"}
+            or not platform_homework_enabled(int(assignment.created_by_id))):
+        return 0
+
+    student = submission.student or Student.query.get(submission.student_id)
+    if (not student or int(student.user_id or 0) not in _allowlisted_user_ids()):
+        return 0
+    resolution = resolve_assigned_synthetic_copy(int(student.student_id))
+    course_copy = resolution.get("copy") if resolution.get("status") == "resolved" else None
+    lesson = Lesson.query.get(assignment.lesson_id)
+    if (not course_copy or not lesson
+            or int(course_copy.course_id) not in _allowed_copy_ids()
+            or int(course_copy.course_id) != int(lesson.learning_trajectory_id or 0)
+            or int(course_copy.student_id or 0) != int(submission.student_id)
+            or int(lesson.student_id or 0) != int(submission.student_id)
+            or str(course_copy.status or "").casefold() != "active"):
+        return 0
+
+    from app.ai_lab.analytics import (
+        _synthetic_master_task_link, _synthetic_teacher_selected_shared_review,
+    )
+
+    allowed_authors = _allowlisted_task_author_ids()
+    normalized_status = normalize_legacy_status(submission.status)
+    if normalized_status not in {"SUBMITTED", "NEEDS_MANUAL_REVIEW", "GRADED", "RETURNED"}:
+        normalized_status = None
+    updated = 0
+    for assignment_task in assignment.tasks or []:
+        task_id = int(assignment_task.task_id or 0)
+        if not task_id or (task_ids is not None and task_id not in task_ids):
+            continue
+        task = assignment_task.task
+        spec = task.answer_spec if task and isinstance(task.answer_spec, dict) else {}
+        binding = spec.get("synthetic_course_skill_binding")
+        if (not task or int(task.created_by_id or 0) not in allowed_authors
+                or not str(task.bank_category or "").casefold().startswith("synthetic")
+                or not isinstance(binding, dict)
+                or binding.get("task_fingerprint") != _task_fingerprint(task)):
+            continue
+
+        contract = str(binding.get("contract") or "")
+        if contract == "boostudy.synthetic-course-skill.v1":
+            try:
+                binding_matches = (
+                    int(binding.get("course_id")) == int(course_copy.course_id)
+                    and int(binding.get("course_version")) <= int(course_copy.current_version or 1)
+                    and int(binding.get("lesson_id")) == int(lesson.lesson_id)
+                )
+                bound_skill_id = str(binding.get("skill_id") or "")
+                criterion_id = str(binding.get("criterion_id") or "")
+                topic_code = str(binding.get("topic_code") or "")
+            except (TypeError, ValueError):
+                binding_matches = False
+                bound_skill_id = criterion_id = topic_code = ""
+            valid_skill = next((skill for skill in (lesson.skills or [])
+                                if skill.is_active
+                                and f"exam-skill:{int(skill.skill_id)}" == bound_skill_id
+                                and str(skill.topic_code or "") == topic_code), None)
+            criteria = valid_skill.mastery_criteria if valid_skill else []
+            if isinstance(criteria, str):
+                try:
+                    criteria = json.loads(criteria or "[]")
+                except (TypeError, ValueError):
+                    criteria = []
+            binding_matches = bool(
+                binding_matches and valid_skill and isinstance(criteria, list)
+                and any(isinstance(item, dict) and str(item.get("key") or "") == criterion_id
+                        for item in criteria)
+            )
+            if not binding_matches:
+                selected_mapping = _synthetic_teacher_selected_shared_review(
+                    task, binding, course_copy, lesson,
+                    actor_user_id=int(assignment.created_by_id or 0), assignment=assignment,
+                )
+                if selected_mapping:
+                    binding_matches = True
+                    bound_skill_id = str(selected_mapping["skill_id"])
+                    criterion_id = str(selected_mapping["criterion_id"])
+                    topic_code = str(selected_mapping["topic_code"])
+        elif contract == "boostudy.synthetic-course-task-binding.v1":
+            binding_matches = bool(_synthetic_master_task_link(task, binding, course_copy, lesson))
+        elif contract == "boostudy.synthetic-course-source-skill.v1":
+            # Bank tasks can be bound to a verified source lesson in the base
+            # course. Reuse the semantic-copy validator used by Learning Evidence
+            # so only an unchanged, exactly corresponding copy lesson is accepted.
+            binding_matches = bool(_synthetic_master_task_link(task, binding, course_copy, lesson))
+        else:
+            binding_matches = False
+        if not binding_matches:
+            continue
+
+        lesson_tasks = LessonTask.query.filter_by(
+            lesson_id=lesson.lesson_id,
+            task_id=task_id,
+            assignment_type=assignment.assignment_type,
+            is_error_review=False,
+        ).all()
+        if len(lesson_tasks) != 1:
+            continue
+        lesson_task = lesson_tasks[0]
+        try:
+            lesson_note = json.loads(str(lesson_task.notes or '{}'))
+        except (TypeError, ValueError):
+            lesson_note = {}
+        assignment_binding = lesson_note.get('assignment_binding') if isinstance(lesson_note, dict) else None
+        if isinstance(assignment_binding, dict):
+            version_resolution = resolve_course_version_at(
+                int(course_copy.course_id), assignment.created_at,
+            )
+            try:
+                assignment_binding_matches = (
+                    int(assignment_binding.get('assignment_id') or 0) == int(assignment.assignment_id)
+                    and int(assignment_binding.get('course_id') or 0) == int(course_copy.course_id)
+                    and int(assignment_binding.get('lesson_id') or 0) == int(lesson.lesson_id)
+                    and int(assignment_binding.get('student_id') or 0) == int(submission.student_id)
+                    and int(assignment_binding.get('task_id') or 0) == task_id
+                    and int(assignment_binding.get('course_version') or 0)
+                    == int(version_resolution.get('course_version') or 0)
+                )
+            except (TypeError, ValueError):
+                assignment_binding_matches = False
+            if (
+                assignment_binding.get('contract') != 'boostudy.synthetic-assignment-course-binding.v1'
+                or version_resolution.get('status') != 'resolved'
+                or not assignment_binding_matches
+                or str(assignment_binding.get('skill_id') or '') != str(binding.get('skill_id') or '')
+                or str(assignment_binding.get('criterion_id') or '') != str(binding.get('criterion_id') or '')
+                or assignment_binding.get('task_fingerprint') != binding.get('task_fingerprint')
+            ):
+                continue
+        answer = next((row for row in (submission.answers or [])
+                       if int(row.assignment_task_id or 0) == int(assignment_task.assignment_task_id)), None)
+        if not answer:
+            continue
+
+        if normalized_status == "GRADED":
+            # GRADED is the current submission state. A leftover task-level
+            # revision marker from an earlier attempt must not reopen it.
+            answer.needs_revision = False
+        lesson_task.student_submission = answer.value
+        lesson_task.submission_correct = answer.is_correct
+        if answer.needs_revision and normalized_status == "RETURNED":
+            lesson_task.status = "returned"
+        elif normalized_status == "GRADED" or answer.reviewed_at or answer.is_correct is not None:
+            lesson_task.status = "graded"
+        elif normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW"} or answer.submitted_separately_at:
+            lesson_task.status = "submitted"
+        else:
+            continue
+        updated += 1
+
+    if updated and assignment.assignment_type == "homework":
+        homework_tasks = LessonTask.query.filter_by(
+            lesson_id=lesson.lesson_id,
+            assignment_type="homework",
+            is_error_review=False,
+        ).all()
+        if homework_tasks:
+            lesson.homework_status = (
+                "assigned_done"
+                if all(task.status == "graded" and task.submission_correct is True
+                       for task in homework_tasks)
+                else "assigned_not_done"
+            )
+
+    if updated:
+        logger.info(
+            "Synced %s synthetic LessonTask projection(s) from submission %s (assignment %s, lesson %s)",
+            updated, submission.submission_id, assignment.assignment_id, lesson.lesson_id,
+        )
+    return updated
 
 
 
@@ -2047,6 +2358,8 @@ def distribute_assignment():
             max_attempts_default = 1
         description = data.get('description', '').strip()
         lesson_id = data.get('lesson_id')
+        synthetic_course_id = data.get('synthetic_course_id')
+        synthetic_course_version = data.get('synthetic_course_version')
         draft_id = data.get('draft_id')
         tasks_data = data.get('tasks', [])  # [{"task_id": 123, "max_score": 1, "order": 0, "max_attempts": null}, ...]
         recipient_ids = data.get('recipientIds', [])  # Список student_id
@@ -2095,6 +2408,261 @@ def distribute_assignment():
         if not student_ids:
             return jsonify({'success': False, 'error': 'Не выбраны получатели работы'}), 400
 
+        synthetic_lesson_context = None
+        from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+        safe_ai_lab_db = has_verified_safe_ai_lab_db()
+        if synthetic_course_id is not None and not safe_ai_lab_db:
+            return jsonify({'success': False, 'error': 'Synthetic-контекст доступен только в проверенном safe mode.'}), 403
+        if synthetic_course_id is not None and not lesson_id:
+            return jsonify({'success': False, 'error': 'Synthetic-работу необходимо связать с конкретным уроком.'}), 409
+        if safe_ai_lab_db and lesson_id:
+            from app.ai_lab.course_adapter import _allowed_copy_ids
+            from app.ai_lab.platform_homework import _allowlisted_actor_ids
+            from core.db_models import LearningTrajectory, LessonTask
+
+            try:
+                selected_lesson_id = int(lesson_id)
+            except (TypeError, ValueError):
+                selected_lesson_id = None
+            bound_lesson = (db.session.query(Lesson).filter_by(lesson_id=selected_lesson_id)
+                            .with_for_update().first() if selected_lesson_id else None)
+            course_copy = (LearningTrajectory.query.filter_by(
+                course_id=int(bound_lesson.learning_trajectory_id or 0), is_template=False,
+            ).with_for_update().first() if bound_lesson and bound_lesson.learning_trajectory_id else None)
+            if synthetic_course_id is not None and not course_copy:
+                return jsonify({'success': False, 'error': 'Урок не связан с индивидуальной копией курса.'}), 409
+            if course_copy:
+                try:
+                    requested_course_id = int(synthetic_course_id)
+                    requested_course_version = int(synthetic_course_version)
+                except (TypeError, ValueError):
+                    return jsonify({
+                        'success': False,
+                        'error': 'Обновите мастер задания: в запросе отсутствует проверяемая версия synthetic-курса.',
+                    }), 409
+                if (int(course_copy.course_id) not in _allowed_copy_ids()
+                        or int(current_user.id) not in _allowlisted_actor_ids()):
+                    return jsonify({'success': False, 'error': 'Нет разрешения на назначение в эту synthetic-копию.'}), 403
+                if (str(course_copy.status or '').casefold() != 'active'
+                        or not course_copy.student_id
+                        or bound_lesson.student_id != course_copy.student_id
+                        or requested_course_id != int(course_copy.course_id)
+                        or requested_course_version != int(course_copy.current_version or 1)):
+                    return jsonify({
+                        'success': False,
+                        'error': 'Synthetic-курс или его версия изменились. Обновите страницу урока и проверьте задание заново.',
+                    }), 409
+                if (len(student_ids) != 1
+                        or int(student_ids[0]) != int(course_copy.student_id)):
+                    return jsonify({'success': False, 'error': 'Synthetic-задание можно назначить только ученику связанного урока.'}), 403
+                if selected_lesson_id is None:
+                    return jsonify({'success': False, 'error': 'Не удалось определить урок synthetic-курса.'}), 409
+
+                try:
+                    selected_task_ids = [
+                        int(item.get('task_id')) for item in tasks_data
+                        if isinstance(item, dict) and item.get('task_id')
+                    ]
+                except (TypeError, ValueError):
+                    return jsonify({'success': False, 'error': 'В работе есть некорректный ID задания.'}), 400
+                if len(selected_task_ids) != len(tasks_data):
+                    return jsonify({'success': False, 'error': 'Каждый элемент работы должен содержать задание из урока.'}), 400
+                if len(selected_task_ids) != len(set(selected_task_ids)):
+                    return jsonify({'success': False, 'error': 'В работе повторяется одно и то же задание.'}), 409
+                if not selected_task_ids:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Можно назначить только ещё не выполненные задания, подготовленные для этого урока и типа работы.',
+                    }), 409
+                synthetic_lesson_context = {
+                    'lesson_id': selected_lesson_id,
+                    'course_id': int(course_copy.course_id),
+                    'course_version': int(course_copy.current_version or 1),
+                    'student_id': int(course_copy.student_id),
+                    'task_ids': set(selected_task_ids),
+                }
+
+        synthetic_bindings = []
+        for task_data in tasks_data:
+            task = Tasks.query.get(task_data.get('task_id')) if task_data.get('task_id') else None
+            if not task:
+                continue
+            effective_answer = task.answer or task_data.get('answer_override') or ''
+            if answer_appears_in_labeled_example(task.content_html, effective_answer):
+                return jsonify({
+                    'success': False,
+                    'error': f'Задание #{task.task_id} содержит эталон в примере формата. Создайте безопасную редакцию до назначения.',
+                }), 409
+            spec = task.answer_spec if isinstance(task.answer_spec, dict) else {}
+            binding = spec.get('synthetic_course_skill_binding')
+            if isinstance(binding, dict):
+                synthetic_bindings.append((task, binding))
+
+        if synthetic_bindings:
+            from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+            from core.db_models import LearningTrajectory
+
+            if not has_verified_safe_ai_lab_db():
+                return jsonify({'success': False, 'error': 'Synthetic-задания можно назначать только в проверенном safe mode.'}), 403
+            try:
+                selected_lesson_id = int(lesson_id)
+            except (TypeError, ValueError):
+                selected_lesson_id = None
+            bound_lesson = Lesson.query.get(selected_lesson_id) if selected_lesson_id else None
+            course_copy = LearningTrajectory.query.filter_by(
+                course_id=bound_lesson.learning_trajectory_id if bound_lesson else None,
+                is_template=False,
+                status='active',
+            ).first() if bound_lesson else None
+            if (not course_copy or not course_copy.student_id
+                    or bound_lesson.student_id != course_copy.student_id):
+                return jsonify({
+                    'success': False,
+                    'error': 'Урок не принадлежит активной synthetic-копии курса.',
+                }), 409
+            if {int(student_id) for student_id in student_ids} != {int(course_copy.student_id)}:
+                return jsonify({
+                    'success': False,
+                    'error': 'Synthetic-задание можно назначить только ученику связанного урока.',
+                }), 403
+            from app.ai_lab.analytics import (
+                _synthetic_master_task_link, _synthetic_teacher_selected_shared_review,
+            )
+            from app.ai_lab.platform_homework import _allowlisted_task_author_ids, _task_fingerprint
+
+            allowed_task_authors = _allowlisted_task_author_ids()
+
+            def binding_matches_lesson(task, binding):
+                contract = str(binding.get('contract') or '')
+                if contract == 'boostudy.synthetic-course-skill.v1':
+                    try:
+                        course_id = int(binding.get('course_id'))
+                        course_version = int(binding.get('course_version'))
+                        lesson_id_bound = int(binding.get('lesson_id'))
+                        skill_id_bound = str(binding.get('skill_id') or '')
+                        criterion_id = str(binding.get('criterion_id') or '')
+                        topic_code = str(binding.get('topic_code') or '')
+                    except (TypeError, ValueError):
+                        return False
+                    if (int(task.created_by_id or 0) not in allowed_task_authors
+                            or not str(task.bank_category or '').casefold().startswith('synthetic')
+                            or not str(task.source_key or '').startswith('boostudy.synthetic.adaptive-v1/')
+                            or binding.get('task_fingerprint') != _task_fingerprint(task)):
+                        return False
+                    if (course_id != int(course_copy.course_id)
+                            or course_version != int(course_copy.current_version or 1)
+                            or lesson_id_bound != int(bound_lesson.lesson_id)):
+                        return bool(_synthetic_teacher_selected_shared_review(
+                            task, binding, course_copy, bound_lesson,
+                            actor_user_id=int(current_user.id),
+                        ))
+                    skill = next((item for item in (bound_lesson.skills or [])
+                                  if item.is_active
+                                  and f'exam-skill:{int(item.skill_id)}' == skill_id_bound
+                                  and str(item.topic_code or '') == topic_code), None)
+                    criteria = skill.mastery_criteria if skill else []
+                    if isinstance(criteria, str):
+                        try:
+                            criteria = json.loads(criteria or '[]')
+                        except (TypeError, ValueError):
+                            criteria = []
+                    return bool(
+                        skill and criterion_id and isinstance(criteria, list)
+                        and any(isinstance(item, dict) and str(item.get('key') or '') == criterion_id
+                                for item in criteria)
+                    )
+                return bool(_synthetic_master_task_link(task, binding, course_copy, bound_lesson))
+
+            if any(not binding_matches_lesson(task, binding) for task, binding in synthetic_bindings):
+                return jsonify({
+                    'success': False,
+                    'error': 'Synthetic-задание не связано с выбранным уроком или его версия устарела.',
+                }), 409
+
+        if synthetic_lesson_context:
+            from core.db_models import AssignmentTask as AssignmentTaskModel, Submission as SubmissionModel
+
+            bound_task_ids = {int(task.task_id) for task, _binding in synthetic_bindings}
+            if bound_task_ids != synthetic_lesson_context['task_ids']:
+                return jsonify({
+                    'success': False,
+                    'error': 'У каждого задания должна быть проверенная связь с навыком и критерием этого урока.',
+                }), 409
+
+            existing_pairs = (
+                db.session.query(Assignment, SubmissionModel)
+                .join(SubmissionModel, SubmissionModel.assignment_id == Assignment.assignment_id)
+                .filter(
+                    Assignment.lesson_id == synthetic_lesson_context['lesson_id'],
+                    Assignment.assignment_type == assignment_type,
+                    SubmissionModel.student_id == synthetic_lesson_context['student_id'],
+                    Assignment.is_active.is_(True),
+                ).all()
+            )
+            for existing_assignment, existing_submission in existing_pairs:
+                if str(existing_submission.status or '').upper() == 'REVOKED':
+                    continue
+                existing_task_ids = {
+                    int(row.task_id) for row in AssignmentTaskModel.query.filter_by(
+                        assignment_id=existing_assignment.assignment_id
+                    ).all()
+                }
+                overlap = existing_task_ids & synthetic_lesson_context['task_ids']
+                if not overlap:
+                    continue
+                if existing_task_ids == synthetic_lesson_context['task_ids']:
+                    return jsonify({
+                        'success': True,
+                        'assignment_id': int(existing_assignment.assignment_id),
+                        'submissions_count': 1,
+                        'already_assigned': True,
+                        'message': 'Это задание уже назначено; повторная работа не создана.',
+                    }), 200
+                return jsonify({
+                    'success': False,
+                    'error': f'Часть заданий уже назначена в работе #{existing_assignment.assignment_id}. Повторно назначить их нельзя.',
+                }), 409
+
+            expected_assignment_type = assignment_type.casefold()
+            lesson_rows = LessonTask.query.filter_by(lesson_id=synthetic_lesson_context['lesson_id']).all()
+            eligible_task_ids = {
+                int(row.task_id) for row in lesson_rows
+                if (str(row.assignment_type or 'homework').casefold() == expected_assignment_type
+                    and not bool(row.is_error_review)
+                    and str(row.status or 'pending').casefold() == 'pending'
+                    and not (row.student_submission or '').strip())
+            }
+            if not synthetic_lesson_context['task_ids'].issubset(eligible_task_ids):
+                return jsonify({
+                    'success': False,
+                    'error': 'Можно назначить только ещё не выполненные задания, подготовленные для этого урока и типа работы.',
+                }), 409
+
+            previously_assigned = (
+                db.session.query(AssignmentTaskModel.assignment_task_id)
+                .join(Assignment, Assignment.assignment_id == AssignmentTaskModel.assignment_id)
+                .join(SubmissionModel, SubmissionModel.assignment_id == Assignment.assignment_id)
+                .filter(
+                    SubmissionModel.student_id == synthetic_lesson_context['student_id'],
+                    SubmissionModel.status != 'REVOKED',
+                    Assignment.lesson_id != synthetic_lesson_context['lesson_id'],
+                    AssignmentTaskModel.task_id.in_(synthetic_lesson_context['task_ids']),
+                ).first()
+            )
+            previously_used = LessonTask.query.join(
+                Lesson, Lesson.lesson_id == LessonTask.lesson_id,
+            ).filter(
+                Lesson.student_id == synthetic_lesson_context['student_id'],
+                Lesson.lesson_id != synthetic_lesson_context['lesson_id'],
+                LessonTask.task_id.in_(synthetic_lesson_context['task_ids']),
+                LessonTask.is_error_review.is_(False),
+            ).first()
+            if previously_assigned or previously_used:
+                return jsonify({
+                    'success': False,
+                    'error': 'Этот вариант уже встречался ученику. Для независимой проверки выберите неиспользованное задание.',
+                }), 409
+
         draft_to_remove = None
         if draft_id:
             try:
@@ -2136,6 +2704,7 @@ def distribute_assignment():
         db.session.add(assignment)
         db.session.flush()  # Получаем assignment_id
         
+        created_assignment_tasks = []
         for idx, task_data in enumerate(tasks_data):
             task_id = task_data.get('task_id')
             max_score = task_data.get('max_score', 1)
@@ -2170,6 +2739,7 @@ def distribute_assignment():
                 requires_manual_grading=requires_manual_grading
             )
             db.session.add(assignment_task)
+            created_assignment_tasks.append(assignment_task)
         
         for student_id in student_ids:
             submission = Submission(
@@ -2177,9 +2747,64 @@ def distribute_assignment():
                 student_id=student_id,
                 status='ASSIGNED',
                 assigned_at=utc_now(),
-                max_score=sum(at.max_score for at in assignment.tasks)
+                # Do not lazy-load assignment.tasks here: its autoflush would
+                # record Assignment exposure before the lesson binding below is
+                # mirrored to the visible LessonTask.
+                max_score=sum(float(item.max_score or 0) for item in created_assignment_tasks),
             )
             db.session.add(submission)
+
+        if synthetic_lesson_context:
+            from core.db_models import LessonTask as LessonTaskModel
+
+            # Keep pending Assignment/Submission rows from autoflushing before
+            # the selected lesson material is marked visible and bound below.
+            with db.session.no_autoflush:
+                lesson_task_links = LessonTaskModel.query.filter(
+                    LessonTaskModel.lesson_id == synthetic_lesson_context['lesson_id'],
+                    LessonTaskModel.task_id.in_(synthetic_lesson_context['task_ids']),
+                ).all()
+                links_by_task_id: dict[int, list[Any]] = {}
+                for link in lesson_task_links:
+                    links_by_task_id.setdefault(int(link.task_id), []).append(link)
+                if any(len(links_by_task_id.get(task_id, [])) != 1
+                       for task_id in synthetic_lesson_context['task_ids']):
+                    db.session.rollback()
+                    return jsonify({
+                        'success': False,
+                        'error': 'Для одного из заданий не удалось подтвердить единственную связь с уроком; Assignment не создан.',
+                    }), 409
+
+                assigned_at = utc_now().isoformat()
+                for task_id in synthetic_lesson_context['task_ids']:
+                    link = links_by_task_id[task_id][0]
+                    task = Tasks.query.get(task_id)
+                    task_spec = task.answer_spec if task and isinstance(task.answer_spec, dict) else {}
+                    task_binding = task_spec.get('synthetic_course_skill_binding') or {}
+                    try:
+                        existing_note = json.loads(str(link.notes or '{}'))
+                    except (TypeError, ValueError):
+                        existing_note = {'preparation_note': str(link.notes or '')} if link.notes else {}
+                    if not isinstance(existing_note, dict):
+                        existing_note = {}
+                    existing_note['assignment_binding'] = {
+                        'contract': 'boostudy.synthetic-assignment-course-binding.v1',
+                        'assignment_id': int(assignment.assignment_id),
+                        'course_id': int(synthetic_lesson_context['course_id']),
+                        'course_version': int(synthetic_lesson_context['course_version']),
+                        'lesson_id': int(synthetic_lesson_context['lesson_id']),
+                        'student_id': int(synthetic_lesson_context['student_id']),
+                        'task_id': int(task_id),
+                        'skill_id': str(existing_note.get('skill_id') or task_binding.get('skill_id') or ''),
+                        'criterion_id': str(existing_note.get('criterion_id') or task_binding.get('criterion_id') or ''),
+                        'task_fingerprint': str(task_binding.get('task_fingerprint') or ''),
+                        'assigned_by_user_id': int(current_user.id),
+                        'assigned_at': assigned_at,
+                    }
+                    link.notes = json.dumps(existing_note, ensure_ascii=False)
+                    link.is_visible_to_student = True
+                    link.is_answer_visible_to_student = False
+                    link.status = 'assigned'
 
         if draft_to_remove is not None:
             db.session.delete(draft_to_remove)
@@ -2825,6 +3450,35 @@ def assignment_template_preview(template_id: int):
     )
 
 
+def _query_available_lessons_for_user(user):
+    available_lessons = []
+    try:
+        from app.models import Lesson
+        lesson_q = Lesson.query.options(db.joinedload(Lesson.student))
+        scope = get_user_scope(user)
+        if not scope.get('can_see_all'):
+            allowed_students = get_students_for_tutor(user.id) or []
+            allowed_ids = [s.student_id for s in allowed_students if getattr(s, 'student_id', None)]
+            lesson_q = lesson_q.filter(Lesson.student_id.in_(allowed_ids))
+        lessons_raw = lesson_q.order_by(Lesson.lesson_date.desc().nullslast(), Lesson.lesson_id.desc()).limit(50).all()
+        for l in lessons_raw:
+            st_name = l.student.name if l.student else ''
+            d_str = l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else ''
+            t_str = l.topic or f'Урок #{l.lesson_id}'
+            available_lessons.append({
+                'lesson_id': int(l.lesson_id),
+                'topic': t_str,
+                'date': d_str,
+                'student_id': int(l.student_id) if l.student_id else None,
+                'student_name': st_name,
+                'display_label': f"Урок #{l.lesson_id}" + (f" ({d_str})" if d_str else "") + f" — {t_str}" + (f" · {st_name}" if st_name else "")
+            })
+    except Exception as e:
+        logger.warning("Failed to query available lessons: %s", e)
+        available_lessons = []
+    return available_lessons
+
+
 @assignments_bp.route('/assignments/create')
 @login_required
 @check_access('assignment.create')
@@ -2849,8 +3503,10 @@ def assignment_create():
     task_ids_param = request.args.get('task_ids', type=str, default=None)
     recipient_ids_param = request.args.get('recipient_ids', type=str, default=None)
     draft_id = request.args.get('assignment_id', type=int) or request.args.get('draft_id', type=int, default=None)
+    synthetic_course_id_param = request.args.get('synthetic_course_id', type=int)
 
     tasks: list[Tasks] = []
+    lesson_task_assignment_types: dict[int, str] = {}
     source_label = ''
     source_meta: dict[str, Any] = {}
     default_recipient_ids: list[int] = []
@@ -2864,6 +3520,56 @@ def assignment_create():
                 default_recipient_ids = [x for x in default_recipient_ids if x in allowed_ids]
         except Exception:
             default_recipient_ids = []
+
+    synthetic_context: dict[str, Any] | None = None
+    synthetic_context_error: str | None = None
+    if synthetic_course_id_param is not None:
+        from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+        from app.ai_lab.course_adapter import _allowed_copy_ids
+        from app.ai_lab.platform_homework import _allowlisted_actor_ids
+        from core.db_models import LearningTrajectory
+
+        if not has_verified_safe_ai_lab_db() or not lesson_id:
+            synthetic_context_error = 'Synthetic-контекст доступен только в safe mode и при явном выборе урока.'
+        elif int(current_user.id) not in _allowlisted_actor_ids():
+            synthetic_context_error = 'Эта учётная запись не разрешена для synthetic-заданий.'
+        elif synthetic_course_id_param not in _allowed_copy_ids():
+            synthetic_context_error = 'Индивидуальная synthetic-копия не входит в разрешённый список.'
+        else:
+            course_copy = LearningTrajectory.query.filter_by(
+                course_id=synthetic_course_id_param,
+                is_template=False,
+                status='active',
+            ).first()
+            lesson_context = Lesson.query.filter_by(
+                lesson_id=lesson_id,
+                learning_trajectory_id=synthetic_course_id_param,
+                student_id=course_copy.student_id if course_copy else None,
+            ).first() if course_copy and course_copy.student_id else None
+            if not course_copy or not lesson_context:
+                synthetic_context_error = 'Указанные synthetic-курс и урок не связаны с одним учеником.'
+            else:
+                context_student_id = int(course_copy.student_id)
+                scope = get_user_scope(current_user)
+                if not scope.get('can_see_all'):
+                    allowed_students = get_students_for_tutor(current_user.id) or []
+                    allowed_ids = {int(item.student_id) for item in allowed_students if getattr(item, 'student_id', None)}
+                    if context_student_id not in allowed_ids:
+                        synthetic_context_error = 'Нет доступа к ученику этого synthetic-урока.'
+                if not synthetic_context_error:
+                    synthetic_context = {
+                        'course_id': int(course_copy.course_id),
+                        'course_title': str(course_copy.title or ''),
+                        'course_version': int(course_copy.current_version or 1),
+                        'lesson_id': int(lesson_context.lesson_id),
+                        'lesson_title': str(lesson_context.topic or ''),
+                        'student_id': context_student_id,
+                    }
+                    if default_recipient_ids and set(default_recipient_ids) != {context_student_id}:
+                        synthetic_context = None
+                        synthetic_context_error = 'Synthetic-редакция может быть назначена только ученику связанного урока.'
+                    else:
+                        default_recipient_ids = [context_student_id]
 
     # Каждый новый запуск мастера должен стартовать с пустого пула задач.
     # "Новая работа" = нет явно переданных task_ids/template/lesson.
@@ -2978,6 +3684,7 @@ def assignment_create():
             if t and tid and tid not in seen:
                 seen.add(tid)
                 out_tasks.append(t)
+                lesson_task_assignment_types[int(tid)] = str(getattr(lt, 'assignment_type', None) or 'homework')
         tasks = out_tasks
 
         st = getattr(lesson, 'student', None)
@@ -3025,7 +3732,11 @@ def assignment_create():
 
     recipient_options: list[Student] = []
     try:
-        if source == 'lesson' and default_recipient_ids:
+        if synthetic_context:
+            recipient_options = Student.query.filter_by(
+                student_id=synthetic_context['student_id'], is_active=True
+            ).all()
+        elif source == 'lesson' and default_recipient_ids:
             recipient_options = (
                 Student.query.filter(Student.student_id.in_(default_recipient_ids))
                 .order_by(Student.name.asc(), Student.student_id.asc())
@@ -3069,13 +3780,14 @@ def assignment_create():
     from app.models import SchoolGroup
     available_groups = []
     try:
-        scope = get_user_scope(current_user)
-        if scope.get('can_see_all'):
-            available_groups = SchoolGroup.query.filter_by(status='active').order_by(SchoolGroup.title.asc()).all()
-        else:
-            available_groups = SchoolGroup.query.filter_by(
-                status='active', owner_user_id=current_user.id
-            ).order_by(SchoolGroup.title.asc()).all()
+        if not synthetic_context:
+            scope = get_user_scope(current_user)
+            if scope.get('can_see_all'):
+                available_groups = SchoolGroup.query.filter_by(status='active').order_by(SchoolGroup.title.asc()).all()
+            else:
+                available_groups = SchoolGroup.query.filter_by(
+                    status='active', owner_user_id=current_user.id
+                ).order_by(SchoolGroup.title.asc()).all()
     except Exception:
         pass
 
@@ -3128,6 +3840,10 @@ def assignment_create():
         bank_course_id_for_links = default_probnik_course_id
 
     initial_tasks = [_assignment_builder_task_payload(t) for t in (tasks or [])]
+    for task_payload in initial_tasks:
+        assignment_type_for_task = lesson_task_assignment_types.get(int(task_payload['task_id']))
+        if assignment_type_for_task:
+            task_payload['assignment_type'] = assignment_type_for_task
 
     return render_template(
         'sandbox/create_assignment.html',
@@ -3158,6 +3874,9 @@ def assignment_create():
         existing_assignment=existing_assignment,
         is_admin=bool(get_user_scope(current_user).get('can_see_all')),
         courses=[{'id': course.id, 'title': course.title} for course in courses_for_probnik],
+        available_lessons=_query_available_lessons_for_user(current_user),
+        synthetic_context=synthetic_context,
+        synthetic_context_error=synthetic_context_error,
     )
 
 
@@ -3275,7 +3994,7 @@ def assignment_edit(assignment_id: int):
         assignment_type=assignment.assignment_type or 'homework',
         task_type=None,
         template_id=None,
-        lesson_id=None,
+        lesson_id=assignment.lesson_id,
         tasks=tasks,
         initial_tasks=initial_tasks,
         task_ids=[t.task_id for t in tasks if t and t.task_id],
@@ -3294,6 +4013,7 @@ def assignment_edit(assignment_id: int):
         existing_assignment=existing_assignment,
         is_admin=bool(scope.get('can_see_all')),
         courses=[{'id': c.id, 'title': c.title} for c in courses_for_probnik],
+        available_lessons=_query_available_lessons_for_user(current_user),
     )
 
 
@@ -3346,11 +4066,19 @@ def assignment_update(assignment_id: int):
                 pass
 
         raw_lesson_id = data.get('lesson_id')
-        if raw_lesson_id:
-            try:
-                assignment.lesson_id = int(raw_lesson_id)
-            except (ValueError, TypeError):
-                pass
+        if raw_lesson_id is not None:
+            if str(raw_lesson_id).strip() == '':
+                assignment.lesson_id = None
+            else:
+                try:
+                    lid = int(raw_lesson_id)
+                    from app.models import Lesson
+                    l_obj = db.session.get(Lesson, lid)
+                    scope = get_user_scope(current_user)
+                    if l_obj and (scope.get('can_see_all') or l_obj.tutor_id == current_user.id):
+                        assignment.lesson_id = lid
+                except (ValueError, TypeError):
+                    pass
 
         grading_mode = str(data.get('grading_mode') or '').strip().lower()
         if grading_mode == 'manual':
@@ -3962,6 +4690,19 @@ def submissions_list():
     
     lesson_workspaces = []
     try:
+        assigned_lesson_task_keys = set()
+        for submission in submissions:
+            assignment = submission.assignment
+            if not assignment or not assignment.lesson_id:
+                continue
+            for assignment_task in (assignment.tasks or []):
+                assigned_lesson_task_keys.add((
+                    int(assignment.lesson_id),
+                    str(assignment.assignment_type or 'homework').casefold(),
+                    int(assignment_task.task_id),
+                    bool(getattr(assignment_task, 'is_error_review', False)),
+                ))
+
         lessons = Lesson.query.filter_by(student_id=student.student_id).options(
             joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
         ).order_by(Lesson.lesson_date.desc()).limit(10).all()
@@ -3969,11 +4710,23 @@ def submissions_list():
         for l in lessons:
             all_tasks = []
             for t in get_sorted_assignments(l, 'homework'):
-                all_tasks.append(t)
+                assignment_type = 'homework'
+                if t.is_visible_to_student and (
+                    int(l.lesson_id), assignment_type, int(t.task_id), bool(t.is_error_review)
+                ) not in assigned_lesson_task_keys:
+                    all_tasks.append(t)
             for t in get_sorted_assignments(l, 'classwork'):
-                all_tasks.append(t)
+                assignment_type = 'classwork'
+                if t.is_visible_to_student and (
+                    int(l.lesson_id), assignment_type, int(t.task_id), bool(t.is_error_review)
+                ) not in assigned_lesson_task_keys:
+                    all_tasks.append(t)
             for t in get_sorted_assignments(l, 'exam'):
-                all_tasks.append(t)
+                assignment_type = 'exam'
+                if t.is_visible_to_student and (
+                    int(l.lesson_id), assignment_type, int(t.task_id), bool(t.is_error_review)
+                ) not in assigned_lesson_task_keys:
+                    all_tasks.append(t)
 
             if not all_tasks:
                 continue
@@ -4588,8 +5341,24 @@ def submission_view(submission_id):
 
             is_locked = bool(submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW']) or (task_attempts_used >= max_for_task)
 
-            # Ответы и решения не должны показываться ученику до тех пор, пока препод не проверит работу
-            can_see_solution = is_teacher or is_reviewed
+            # A linked LessonTask's explicit answer-visibility choice overrides
+            # the generic post-review release rule. Grading cannot bypass a deny.
+            linked_answer_visibility = None
+            if not is_teacher and task and getattr(submission, 'assignment', None):
+                from app.task_workspace.service import _explicit_lesson_answer_visibility
+
+                linked_answer_visibility = _explicit_lesson_answer_visibility(
+                    student_id=submission.student_id,
+                    lesson_id=getattr(submission.assignment, 'lesson_id', None),
+                    task_id=getattr(task, 'task_id', None),
+                    assignment_type=getattr(submission.assignment, 'assignment_type', None),
+                    is_error_review=getattr(assignment_task, 'is_error_review', False),
+                )
+            can_see_solution = is_teacher or (
+                bool(linked_answer_visibility)
+                if linked_answer_visibility is not None
+                else is_reviewed
+            )
             correct_ans_val = (task.answer if task and can_see_solution else None)
             sol_html_val = getattr(task, 'solution_html', None) if (task and can_see_solution) else None
             sol_code_val = getattr(task, 'solution_code', None) if (task and can_see_solution) else None
@@ -4751,23 +5520,31 @@ def _attachment_fallback_url_from_db(task_id: int, filename: str):
         name = (f.get('name') or f.get('filename') or '').strip()
         path = (f.get('path') or '').strip()
         path_basename = path.split('/')[-1].split('?')[0] if path else ''
-        if name == safe_name or path_basename == safe_name:
+        if name.lower() == safe_name.lower() or path_basename.lower() == safe_name.lower():
             url = (f.get('url') or f.get('href') or '').strip()
             if url.startswith('//'):
                 url = 'https:' + url
             elif url.startswith('/'):
                 url = 'https://kompege.ru' + url
-            if url.startswith('https://kompege.ru/') or url.startswith('http://kompege.ru/'):
+            if url.startswith(('https://kompege.ru/', 'http://kompege.ru/')):
+                return url
+            elif url.startswith(('https://', 'http://')):
                 return url
             break
     return None
 
 
 def _can_current_user_access_task_attachment(task_id: int) -> bool:
-    """Allow task attachments only through assignments/lessons visible to the user."""
+    """Allow task attachments through assignments/lessons visible to the user, or for instructors."""
     try:
         scope = get_user_scope(current_user)
-        if scope.get('can_see_all'):
+        if (
+            scope.get('can_see_all')
+            or getattr(current_user, 'is_teacher', lambda: False)()
+            or getattr(current_user, 'is_tutor', lambda: False)()
+            or getattr(current_user, 'is_admin', lambda: False)()
+            or getattr(current_user, 'is_creator', lambda: False)()
+        ):
             return True
         visible_user_ids = [int(v) for v in (scope.get('student_ids') or []) if v is not None]
         if not visible_user_ids:
@@ -5210,10 +5987,13 @@ def submission_submit_task(submission_id):
                 assignment_task_id=assignment_task_id,
                 max_score=assignment_task.max_score
             )
-            db.session.add(answer)
-        if answer.attempts_used >= max_for_task:
+        is_revision_target = bool(getattr(answer, "needs_revision", False) or normalize_legacy_status(submission.status) == 'RETURNED')
+        if not is_revision_target and answer.attempts_used >= max_for_task:
             return jsonify({'success': False, 'error': f'Попытки по этому заданию исчерпаны ({answer.attempts_used}/{max_for_task})'}), 403
         answer.value = value
+        # A fresh per-task submission leaves the revision queue for this task.
+        # The parent Submission can remain RETURNED while other tasks are open.
+        answer.needs_revision = False
         answer.attempts_used = (answer.attempts_used or 0) + 1
         answer.submitted_separately_at = utc_now()
         answer.updated_at = utc_now()
@@ -5307,6 +6087,10 @@ def submission_submit_task(submission_id):
             transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
                 submission.started_at = utc_now()
+        _sync_synthetic_lesson_task_projection(
+            submission,
+            task_ids={int(assignment_task.task_id)},
+        )
         db.session.commit()
         triplet_nav = _triplet_nav_update_meta(submission, assignment, int(assignment_task_id))
         payload = {
@@ -5362,6 +6146,81 @@ def submission_submit(submission_id):
             return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
 
         data = request.get_json(silent=True) or {}
+        dirty_answers = data.get('dirty_answers') if isinstance(data, dict) else None
+        if isinstance(dirty_answers, dict):
+            for at_id_str, dirty_val in dirty_answers.items():
+                try:
+                    at_id_int = int(at_id_str)
+                    ans_item = next((a for a in submission.answers if a.assignment_task_id == at_id_int), None)
+                    if not ans_item:
+                        atask = AssignmentTask.query.get(at_id_int)
+                        if atask:
+                            ans_item = Answer(
+                                submission_id=submission_id,
+                                assignment_task_id=at_id_int,
+                                max_score=atask.max_score,
+                            )
+                            db.session.add(ans_item)
+                    if ans_item and dirty_val is not None:
+                        ans_item.value = str(dirty_val)
+                except Exception as ex:
+                    logger.warning("Error persisting dirty answer in submission_submit: %s", ex)
+            db.session.flush()
+
+        task_files_payload = data.get('task_files') if isinstance(data, dict) else None
+        if isinstance(task_files_payload, dict):
+            at_id = task_files_payload.get('assignment_task_id')
+            if at_id:
+                try:
+                    at_id_int = int(at_id)
+                    ans = next((a for a in submission.answers if a.assignment_task_id == at_id_int), None)
+                    if not ans:
+                        atask = AssignmentTask.query.get(at_id_int)
+                        if atask:
+                            ans = Answer(
+                                submission_id=submission_id,
+                                assignment_task_id=at_id_int,
+                                max_score=atask.max_score,
+                            )
+                            db.session.add(ans)
+                    if ans:
+                        sub_files = task_files_payload.get('files') or {}
+                        sub_code = task_files_payload.get('code') or sub_files.get('main.py') or ans.student_code or ''
+                        ans.student_code = sub_code
+                        ans.student_code_saved_at = utc_now()
+                        from app.task_workspace.service import save_workspace_version, cache_workspace_snapshot, _resolve_submission_task_context, load_workspace_multi_file_state
+                        try:
+                            ws_ctx = _resolve_submission_task_context(current_user, submission_id, at_id_int)
+                            curr_mf = load_workspace_multi_file_state(ws_ctx)
+                            merged_files = dict(curr_mf.get("files") or {})
+                            if isinstance(sub_files, dict):
+                                merged_files.update(sub_files)
+                            merged_files["main.py"] = sub_code
+                            save_workspace_version(
+                                ws_ctx,
+                                code=sub_code,
+                                answer=ans.value or '',
+                                source='submit',
+                                files=merged_files,
+                                open_tabs=['main.py'],
+                                active_file='main.py',
+                                revision=task_files_payload.get('revision') or 1,
+                            )
+                            cache_workspace_snapshot(
+                                ws_ctx,
+                                code=sub_code,
+                                answer=ans.value or '',
+                                source='submit',
+                                files=merged_files,
+                                open_tabs=['main.py'],
+                                active_file='main.py',
+                                revision=task_files_payload.get('revision') or 1,
+                            )
+                        except Exception as wse:
+                            logger.warning('Could not save version snapshot on submit: %s', wse)
+                except Exception as tfe:
+                    logger.warning('Could not process task_files in submit: %s', tfe)
+
         raw_task_times = data.get('task_times') if isinstance(data, dict) else {}
         task_times_by_assignment_task_id: dict[int, int] = {}
         if isinstance(raw_task_times, dict):
@@ -5433,7 +6292,7 @@ def submission_submit(submission_id):
                 else:
                     all_auto_graded = False
                 continue
-            
+
             if attempts_per_task:
                 max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task)
                 if (not was_submitted_separately) and (answer.attempts_used or 0) < max_for_task and answer.value:
@@ -5478,6 +6337,10 @@ def submission_submit(submission_id):
                 else:
                     is_correct, score = auto_grade_answer(answer, assignment_task)
                 if is_correct is not None:
+                    # A new confirmed automatic grade resolves the prior
+                    # revision request. Manual or unavailable checks keep the
+                    # marker until a teacher records the next evaluation.
+                    answer.needs_revision = False
                     answer.is_correct = is_correct
                     answer.score = score
                     from app.assignments.evaluation_history import record_answer_evaluation
@@ -5560,6 +6423,8 @@ def submission_submit(submission_id):
             _record_submission_attempt(submission)
         except Exception as e:
             logger.warning(f"Could not record SubmissionAttempt for {submission.submission_id}: {e}")
+
+        _sync_synthetic_lesson_task_projection(submission)
         
         db.session.commit()
 
@@ -6371,6 +7236,7 @@ def submission_grade_save(submission_id):
     from app.utils.relationship_scope import _resolve_active_user
     active_user = _resolve_active_user(current_user)
     cur_user_id = active_user.id if active_user else None
+    actor_user_id = int(cur_user_id) if cur_user_id is not None else None
     scope = get_user_scope(active_user or current_user)
     if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
@@ -6385,6 +7251,7 @@ def submission_grade_save(submission_id):
         scores_data = data.get('scores', [])
         teacher_feedback_provided = 'teacher_feedback' in data
         teacher_feedback = (data.get('teacher_feedback') or '').strip() if teacher_feedback_provided else None
+        publish_requested = data.get('publish') in (True, 'true', 'True', 1, '1', 'yes', 'YES')
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
         raw_return_task_ids = data.get('return_assignment_task_ids') or []
         raw_reviewed_task_ids = data.get('reviewed_assignment_task_ids') or []
@@ -6474,7 +7341,7 @@ def submission_grade_save(submission_id):
                 answer.is_correct = bool((answer.score or 0) >= 1)
                 from app.assignments.evaluation_history import record_answer_evaluation
                 record_answer_evaluation(
-                    answer, method="teacher_manual", actor_user_id=int(current_user.id),
+                    answer, method="teacher_manual", actor_user_id=actor_user_id,
                     score=int(answer.score), max_score=int(assignment_task.max_score),
                     is_correct=bool(answer.is_correct), teacher_comment=answer.teacher_comment,
                 )
@@ -6519,7 +7386,7 @@ def submission_grade_save(submission_id):
             if assignment_task_id not in evaluation_recorded_task_ids:
                 from app.assignments.evaluation_history import record_answer_evaluation
                 record_answer_evaluation(
-                    answer, method="teacher_reviewed_without_score", actor_user_id=int(current_user.id),
+                    answer, method="teacher_reviewed_without_score", actor_user_id=actor_user_id,
                     score=None, max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
                     is_correct=None, teacher_comment=answer.teacher_comment,
                 )
@@ -6555,7 +7422,7 @@ def submission_grade_save(submission_id):
                 rid = int(rubric_template_id)
                 q = RubricTemplate.query.filter_by(rubric_id=rid, is_active=True)
                 if not _can_manage_all_rubrics():
-                    q = q.filter(RubricTemplate.owner_user_id == current_user.id)
+                    q = q.filter(RubricTemplate.owner_user_id == actor_user_id)
                 selected_rubric = q.first()
             if not selected_rubric and assignment.rubric_template_id:
                 selected_rubric = RubricTemplate.query.filter_by(rubric_id=assignment.rubric_template_id, is_active=True).first()
@@ -6632,11 +7499,17 @@ def submission_grade_save(submission_id):
                 for ans in (submission.answers or []):
                     if ans.reviewed_at is None:
                         ans.reviewed_at = utc_now()
+                if publish_requested:
+                    submission.results_published_at = utc_now()
                 _upsert_gradebook_from_submission(submission, actor_user_id=cur_user_id)
+            elif status == 'RETURNED':
+                submission.results_published_at = None
             try:
                 _record_submission_attempt(submission)
             except Exception as e:
                 logger.warning(f"Could not record SubmissionAttempt (grade) for {submission.submission_id}: {e}")
+
+            _sync_synthetic_lesson_task_projection(submission)
 
             try:
                 student = Student.query.get(submission.student_id)
@@ -6708,7 +7581,7 @@ def submission_grade_save(submission_id):
                             mode=AnalyticsEngine.TEACHER_GRADE_MODE,
                             manual_mmr_delta=manual_delta,
                             rating_comment=r_comment if manual_delta is not None else None,
-                            grader_user_id=current_user.id if manual_delta is not None else None,
+                            grader_user_id=actor_user_id if manual_delta is not None else None,
                         )
                     except Exception as anal_err:
                         logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
@@ -6750,12 +7623,38 @@ def submission_grade_save(submission_id):
             'max_score': max_score,
             'percentage': submission.percentage,
             'scores_only': scores_only,
+            'results_published_at': submission.results_published_at.isoformat() if submission.results_published_at else None,
         }), 200
 
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in submission_grade_save: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/publish-results', methods=['POST'])
+@login_required
+@check_access('assignment.grade')
+def submission_publish_results(submission_id):
+    """
+    Teacher action to publish grading results and solutions to the student.
+    """
+    submission = Submission.query.get_or_404(submission_id)
+    assignment = submission.assignment
+    from app.utils.relationship_scope import _resolve_active_user
+    active_user = _resolve_active_user(current_user)
+    cur_user_id = active_user.id if active_user else None
+    scope = get_user_scope(active_user or current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    submission.results_published_at = utc_now()
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'submission_id': submission.submission_id,
+        'results_published_at': submission.results_published_at.isoformat(),
+    })
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/comments', methods=['POST'])

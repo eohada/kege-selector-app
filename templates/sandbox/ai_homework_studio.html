@@ -15,7 +15,7 @@
   .ai-hw-studio *, .ai-hw-studio *::before, .ai-hw-studio *::after { box-sizing: border-box; }
   body:has(#ai-homework-studio) #qa-widget-trigger-btn { display: none !important; }
   .hw-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--bs-text-muted); font-size: 12px; }
-  .hw-topbar a { color: var(--bs-primary); font-weight: 800; text-decoration: none; }
+  .hw-topbar a { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; padding-inline: 4px; color: var(--bs-primary); font-weight: 800; text-decoration: none; }
   .hw-hero, .hw-panel, .hw-warning {
     min-width: 0;
     border: 1px solid var(--bs-border);
@@ -102,7 +102,7 @@
   .hw-mistake strong { display: block; margin-bottom: 5px; color: var(--bs-text-primary); font-size: 11px; }
   .hw-mistake p { font-size: 11px; }
   .hw-pill-tabs { display: flex; flex-wrap: wrap; gap: 7px; padding: 5px; border: 1px solid var(--bs-border); border-radius: 999px; background: var(--bs-bg-base, var(--bs-bg-surface)); }
-  .hw-pill-tab { min-height: 34px; padding: 6px 12px; border: 1px solid transparent; border-radius: 999px; color: var(--bs-text-muted); background: transparent; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
+  .hw-pill-tab { min-height: 40px; padding: 6px 12px; border: 1px solid transparent; border-radius: 999px; color: var(--bs-text-muted); background: transparent; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
   .hw-pill-tab.is-active { border-color: var(--bs-border); color: var(--bs-primary); background: var(--bs-bg-surface); box-shadow: var(--bs-shadow-e1); }
   .hw-tab-panel[hidden] { display: none !important; }
   .hw-quality { display: grid; gap: 8px; }
@@ -120,7 +120,7 @@
   .hw-inline-state { min-height: 18px; color: var(--bs-text-muted); font-size: 11px; }
   .hw-back-link { display: inline-flex; align-items: center; gap: 7px; color: var(--bs-primary); font-size: 11px; font-weight: 850; text-decoration: none; }
   .hw-judge-actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
-  .hw-judge-check { display: inline-flex; align-items: center; gap: 9px; color: var(--bs-text-primary); font-size: 12px; font-weight: 800; }
+  .hw-judge-check { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 4px 0; color: var(--bs-text-primary); font-size: 12px; font-weight: 800; }
   .hw-judge-check input { width: 18px; height: 18px; accent-color: var(--bs-primary); }
   .hw-judge-evidence { display: grid; gap: 8px; margin-top: 12px; }
   .hw-judge-evidence article { padding: 10px 12px; border: 1px solid var(--bs-border); border-radius: 12px; background: var(--bs-bg-base, var(--bs-bg-surface)); font-size: 11px; }
@@ -144,6 +144,7 @@
     <a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a>
     <i class="ph ph-caret-right" aria-hidden="true"></i>
     <span>AI Homework Studio</span>
+    <a href="{{ url_for('ai_lab.quality_review_page') }}">Экспертная проверка</a>
   </nav>
 
   <header class="hw-hero">
@@ -186,6 +187,7 @@
           </div>
           <div class="hw-field"><label for="hw-condition">Условие</label><textarea id="hw-condition">{{ current_input.condition }}</textarea></div>
           <div class="hw-field"><label for="hw-solution">Решение ученика</label><textarea id="hw-solution" class="{% if current_input.type == 'python' %}is-code{% endif %}">{{ current_input.student_solution }}</textarea></div>
+          <div class="hw-field"><label for="hw-subject-id">Синтетический профиль ученика</label><input id="hw-subject-id" type="text" maxlength="100" value="{{ (saved_result.synthetic_subject_id if saved_result else '') or 'synthetic-learner-01' }}" autocomplete="off"><small>Локальный профиль связывает синтетические попытки в Analytics и Practice. Используйте ID с префиксом synthetic-.</small></div>
           <div class="hw-field"><label for="hw-reference">Эталонный ответ</label><textarea id="hw-reference">{{ current_input.reference_answer }}</textarea></div>
           <div class="hw-field"><label for="hw-criteria">Критерии оценивания · по одному на строку</label><textarea id="hw-criteria">{{ current_input.criteria | join('\n') }}</textarea></div>
           <div class="hw-field"><label for="hw-max-score">Максимальный балл</label><input id="hw-max-score" type="number" min="0.1" max="100" step="0.1" value="{{ current_input.max_score }}"></div>
@@ -194,6 +196,14 @@
       </article>
 
       <article class="hw-panel" id="hw-judge-panel" {% if selected_scenario.type != 'python' %}hidden{% endif %}>
+        {% if assignment_family_versions %}
+        <div class="hw-panel-head"><div><p class="hw-eyebrow">Проверенные правила задания</p><h2>Семейство вариантов</h2><p>Утверждённые критерии и тесты повторно используются только для точной версии задания.</p></div><a class="hw-back-link" href="{{ url_for('ai_lab.assignment_families_page') }}">Управление семействами</a></div>
+        <div class="hw-form hw-family-picker">
+          <div class="hw-field"><label for="hw-family-select">Утверждённая версия</label><select id="hw-family-select"><option value="">Не использовать семейство</option>{% for family in assignment_family_versions %}<option value="{{ family.family_id }}|{{ family.version_no }}">{{ family.title }} · {{ family.family_id }} v{{ family.version_no }} · рубрика v{{ family.rubric_version_no }} · тесты v{{ family.test_set_version }}</option>{% endfor %}</select></div>
+          <div class="hw-field"><label for="hw-family-parameters">Параметры этого варианта · JSON</label><textarea id="hw-family-parameters" rows="2">{}</textarea></div>
+          <div class="hw-judge-actions"><button class="hw-soft-button" type="button" id="hw-family-resolve">Проверить совместимость</button><span id="hw-family-state" class="hw-inline-state" role="status" aria-live="polite">Выберите утверждённую версию, чтобы переиспользовать её правила.</span></div>
+        </div>
+        {% endif %}
         <div class="hw-panel-head"><div><p class="hw-eyebrow">Отдельный этап · по желанию</p><h2>Проверка кода</h2><p>Code Judge фиксирует результаты исполнения. Вы сами решаете, передавать ли отчёт модели.</p></div></div>
         <div class="hw-form">
           <label class="hw-judge-check" for="hw-judge-enabled"><input type="checkbox" id="hw-judge-enabled">Использовать Code Judge для этого запуска</label>
@@ -255,9 +265,11 @@
             {% if saved_result and saved_result.result %}
               {% set result = saved_result.result %}
               <div class="hw-score-card"><div><span class="hw-score-number">{% if result.score_awarded is not none %}{{ result.score_awarded }}{% else %}—{% endif %} / {{ result.max_score }}</span><small class="hw-score-caption">{{ 'Баллы по подтверждённым критериям' if saved_result.quality and saved_result.quality.technical and saved_result.quality.technical.code_judge else 'Предварительный балл' }} · {{ {'checked':'проверено по эталону','partially_checked':'частично проверено','insufficient_data':'недостаточно данных','manual_review':'нужна ручная проверка'}.get(result.grading_status, result.grading_status) }}</small></div><span class="hw-pill{% if result.needs_human_review %} is-off{% else %} is-ready{% endif %}">{% if result.needs_human_review %}Требуется проверка{% else %}По эталону{% endif %}</span></div>
+              {% if saved_result.quality and saved_result.quality.decision_assurance %}{% set assurance = saved_result.quality.decision_assurance %}<div class="hw-result-card"><h3>Раздельные статусы надёжности</h3><p><b>Баллы:</b> {{ assurance.score_label }}.</p><p><b>Комментарий:</b> {{ assurance.comment_label }}.</p><p><b>Эскалация:</b> {{ 'требуется решение преподавателя' if assurance.human_escalation_required else 'не требуется' }}{% if assurance.reason %} · {{ assurance.reason }}{% endif %}</p></div>{% endif %}
               <div class="hw-result-card"><h3>Краткий вывод</h3><p>{{ result.summary }}</p></div>
-              {% if result.mistakes %}<div class="hw-result-card"><h3>Обнаруженные ошибки</h3>{% for mistake in result.mistakes %}<div class="hw-mistake"><strong>{{ mistake.description }} · {{ mistake.mistake_type }}</strong>{% if mistake.solution_excerpt %}<p><b>Фрагмент:</b> {{ mistake.solution_excerpt }}</p>{% endif %}<p>{{ mistake.explanation }}</p><p><b>Как исправить:</b> {{ mistake.correction_recommendation }}</p></div>{% endfor %}</div>{% endif %}
+              {% if result.mistakes %}<div class="hw-result-card"><h3>Обнаруженные ошибки</h3>{% for mistake in result.mistakes %}<div class="hw-mistake"><strong>{{ mistake.description }} · {{ mistake.mistake_type }}</strong>{% if mistake.solution_excerpt %}<p><b>Фрагмент:</b> {{ mistake.solution_excerpt }}</p>{% endif %}<p>{{ mistake.explanation }}</p>{% if mistake.evidence_gate and mistake.evidence_gate.status == 'contradicted' %}<p>{{ mistake.evidence_gate.message }}</p>{% else %}<p><b>Как исправить:</b> {{ mistake.correction_recommendation or 'Вариант исправления не указан.' }}{% if mistake.evidence_gate %}<br><b>Доказательность:</b> {{ {'verified':'прошёл сохранённые тесты; это не доказательство для всех входов','contradicted':'опровергнут','unverified':'не проверен; требуется подтверждение преподавателя'}.get(mistake.evidence_gate.status, mistake.evidence_gate.status) }} · {{ mistake.evidence_gate.message }}{% endif %}</p>{% endif %}</div>{% endfor %}</div>{% endif %}
               <div class="hw-result-card"><h3>Комментарий ученику · черновик для преподавателя</h3><p>{{ result.student_feedback or '—' }}</p></div>
+              {% if result.feedback_evidence_gate %}<div class="hw-result-card"><h3>Проверка утверждений и исправлений</h3><p><b>Состояние:</b> {{ {'verified':'подтверждено на доступных проверках','contradicted':'обнаружено противоречие','unverified':'недостаточно доказательств'}.get(result.feedback_evidence_gate.status, result.feedback_evidence_gate.status) }}. Педагогический текст не считается доказательством поведения кода.</p>{% for claim in result.feedback_evidence_gate.claims %}<p><b>{{ {'verified':'Подтверждено','contradicted':'Опровергнуто','unverified':'Не проверено'}.get(claim.status, claim.status) }}:</b> {{ claim.claim }}{% if claim.note %} {{ claim.note }}{% endif %}{% if claim.evidence_refs %} Проверки: {{ claim.evidence_refs | join(', ') }}.{% endif %}{% if claim.counterexample and claim.counterexample.visibility == 'public' %} Контрпример {{ claim.counterexample.id }}{% if 'expected' in claim.counterexample and 'actual' in claim.counterexample %}: ожидалось {{ claim.counterexample.expected | tojson }}, получено {{ claim.counterexample.actual | tojson }}.{% else %}: статус исполнения {{ claim.counterexample.status }}.{% endif %}{% elif claim.counterexample and claim.counterexample.visibility == 'hidden' %} Детали скрытой проверки не раскрываются.{% endif %}</p>{% endfor %}</div>{% endif %}
               <div class="hw-result-card"><h3>Рекомендации преподавателю</h3><p>{{ result.teacher_feedback or '—' }}</p></div>
               <div class="hw-result-card"><h3>Темы, предложенные моделью · не назначены</h3><p>{{ result.recommended_topics | join(' · ') if result.recommended_topics else 'Дополнительные темы не указаны.' }}{% if result.review_reason %}{{ '\n' }}{{ result.review_reason }}{% endif %}{{ '\n' }}Уверенность модели — самооценка, не вероятность правильности.</p></div>
               {% if saved_result.quality and saved_result.quality.pedagogical_layers %}{% set layers = saved_result.quality.pedagogical_layers %}<div class="hw-result-card"><h3>Педагогические уровни · доказательная база</h3><p><b>Ученик:</b> подтверждено: {{ layers.student.correct | join(', ') if layers.student.correct else 'нет подтверждённых критериев' }}; ошибки: {{ layers.student.error | join('; ') if layers.student.error else 'не подтверждены' }}. Исправление из ответа модели требует просмотра преподавателем.</p><p><b>Преподаватель:</b> требует проверки: {{ layers.teacher.manual_check | join(', ') if layers.teacher.manual_check else 'нет неподтверждённых критериев' }}.</p><p><b>Курс:</b> {% if layers.adaptive %}{% for item in layers.adaptive %}{{ item.skill }} — {{ item.suggested_review or 'тема повторения не предложена' }}{% if not loop.last %}; {% endif %}{% endfor %}{% else %}подтверждённых оснований для новой темы нет{% endif %}. Самооценка уверенности модели не является вероятностью.</p></div>{% endif %}
@@ -322,6 +334,7 @@
 
 <script id="hw-scenarios-data" type="application/json">{{ scenarios | tojson }}</script>
 <script id="hw-judge-sets-data" type="application/json">{{ code_judge_test_sets | tojson }}</script>
+<script id="hw-families-data" type="application/json">{{ assignment_family_versions | tojson }}</script>
 <script id="hw-initial-result" type="application/json">{{ saved_result | tojson }}</script>
 <script>
   (() => {
@@ -352,6 +365,11 @@
     const judgeSend = document.getElementById('hw-judge-send');
     const judgeState = document.getElementById('hw-judge-state');
     const judgeReportNode = document.getElementById('hw-judge-report');
+    const familyVersions = JSON.parse(document.getElementById('hw-families-data').textContent || '[]');
+    const familySelect = document.getElementById('hw-family-select');
+    const familyParameters = document.getElementById('hw-family-parameters');
+    const familyState = document.getElementById('hw-family-state');
+    let resolvedFamily = null;
     let judgeRun = null;
 
     function renderJudgeReport(report) {
@@ -404,6 +422,13 @@
         judgeSetSelect.append(option);
       });
       if (compatible.some((item) => String(item.id) === previous)) judgeSetSelect.value = previous;
+      if (resolvedFamily) {
+        const familySet = compatible.find((item) => Number(item.id) === Number(resolvedFamily.test_set_id));
+        if (familySet) judgeSetSelect.value = String(familySet.id);
+        judgeSetSelect.disabled = Boolean(familySet);
+      } else {
+        judgeSetSelect.disabled = false;
+      }
       const canUseJudge = scenario?.type === 'python' && compatible.length > 0;
       document.getElementById('hw-judge-run').disabled = !canUseJudge;
       if (scenario?.type === 'python' && !canUseJudge) judgeState.textContent = 'Для этого стабильного ID и версии задания ещё нет связанного набора тестов.';
@@ -440,11 +465,81 @@
       finally { button.disabled = false; }
     });
 
+    function clearFamilyBinding(message = 'Семейство не выбрано.') {
+      resolvedFamily = null;
+      if (familyState) familyState.textContent = message;
+      updateJudgeAvailability();
+      clearJudgeReport();
+    }
+    function updateFamilyOptions(scenario = selectedScenario()) {
+      if (!familySelect) return;
+      const current = familySelect.value;
+      familySelect.replaceChildren(new Option('Не использовать семейство', ''));
+      familyVersions.filter((item) => item.assignment_id === scenario?.assignment_id
+        && Number(item.assignment_version) === Number(scenario?.assignment_version))
+        .forEach((item) => {
+          familySelect.append(new Option(
+            `${item.title} · ${item.family_id} v${item.version_no} · рубрика v${item.rubric_version_no} · тесты v${item.test_set_version}`,
+            `${item.family_id}|${item.version_no}`
+          ));
+        });
+      if ([...familySelect.options].some((option) => option.value === current)) familySelect.value = current;
+      if (familyState && familySelect.options.length === 1) familyState.textContent = 'Для этой точной версии задания нет утверждённых семейств.';
+    }
+    if (familySelect) {
+      updateFamilyOptions();
+      familySelect.addEventListener('change', () => clearFamilyBinding(
+        familySelect.value ? 'Проверьте параметры и подтвердите совместимость версии.' : 'Семейство не выбрано.'
+      ));
+      familyParameters.addEventListener('input', () => clearFamilyBinding('Параметры изменены. Повторно проверьте совместимость.'));
+      document.getElementById('hw-family-resolve').addEventListener('click', async () => {
+        const [familyId, versionText] = (familySelect.value || '').split('|');
+        if (!familyId) { familyState.textContent = 'Выберите утверждённую версию семейства.'; return; }
+        let variantParameters;
+        try { variantParameters = JSON.parse(familyParameters.value || '{}'); }
+        catch { familyState.textContent = 'Параметры варианта должны быть корректным JSON.'; return; }
+        const scenario = selectedScenario();
+        const button = document.getElementById('hw-family-resolve');
+        button.disabled = true;
+        familyState.textContent = 'Проверяем точный ID, версии и параметры варианта…';
+        try {
+          const response = await fetch('/admin/ai-lab/api/assignment-families/resolve', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify({ family_id: familyId, version_no: Number(versionText), assignment_id: scenario.assignment_id, assignment_version: scenario.assignment_version, variant_parameters: variantParameters })
+          });
+          const data = await response.json();
+          if (!response.ok || !data.family) throw new Error(data.error || `Ошибка HTTP ${response.status}.`);
+          resolvedFamily = data.family;
+          judgeEnabled.checked = true;
+          updateJudgeAvailability();
+          const suite = judgeSets.find((item) => Number(item.id) === Number(resolvedFamily.test_set_id));
+          if (!suite) throw new Error('Связанный набор тестов отсутствует в локальной лаборатории.');
+          judgeSetSelect.value = String(suite.id);
+          judgeSetSelect.disabled = true;
+          judgeState.textContent = 'Выбран закреплённый набор тестов семейства.';
+          familyState.textContent = `Совместимость подтверждена: ${resolvedFamily.family_id} v${resolvedFamily.family_version}, рубрика v${resolvedFamily.rubric_version}, тесты v${resolvedFamily.test_set_version}.`;
+          clearJudgeReport();
+        } catch (error) {
+          resolvedFamily = null;
+          familyState.textContent = error.message || 'Не удалось проверить совместимость.';
+          updateJudgeAvailability();
+        } finally { button.disabled = false; }
+      });
+      for (const key of ['condition', 'reference', 'criteria', 'maxScore', 'extra']) {
+        fields[key].addEventListener('input', () => {
+          if (resolvedFamily) clearFamilyBinding('Текст задания или критерии изменены. Версия семейства больше не применяется.');
+        });
+      }
+    }
+
     function selectedScenario() {
       return scenarios.find((item) => item.id === scenarioSelect.value) || scenarios[0];
     }
     function setScenario(scenario) {
       if (!scenario) return;
+      resolvedFamily = null;
+      if (familySelect) familySelect.value = '';
       document.getElementById('hw-subject').textContent = scenario.subject || '';
       document.getElementById('hw-topic').textContent = scenario.topic || '';
       document.getElementById('hw-difficulty').textContent = scenario.difficulty || '';
@@ -456,6 +551,7 @@
       fields.maxScore.value = scenario.max_score || '';
       fields.extra.value = '';
       fields.solution.classList.toggle('is-code', scenario.type === 'python');
+      updateFamilyOptions(scenario);
     }
     scenarioSelect.addEventListener('change', () => { setScenario(selectedScenario()); clearJudgeReport(); updateJudgeAvailability(); });
 
@@ -569,6 +665,17 @@
       review.textContent = result.needs_human_review ? 'Требуется проверка' : 'Проверено по эталону';
       score.append(scoreBlock, review);
       human.append(score);
+      const assurance = data.quality?.decision_assurance;
+      if (assurance) {
+        const card = document.createElement('section');
+        card.className = 'hw-result-card';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Раздельные статусы надёжности';
+        const text = document.createElement('p');
+        text.textContent = 'Баллы: ' + (assurance.score_label || assurance.score_status) + '. Комментарий: ' + (assurance.comment_label || assurance.comment_status) + '. Эскалация: ' + (assurance.human_escalation_required ? 'требуется решение преподавателя' : 'не требуется') + (assurance.reason ? ' · ' + assurance.reason : '');
+        card.append(heading, text);
+        human.append(card);
+      }
       addTextCard(human, 'Краткий вывод', result.summary);
       if (Array.isArray(result.mistakes) && result.mistakes.length) {
         const card = document.createElement('section');
@@ -590,7 +697,11 @@
           const explanation = document.createElement('p');
           explanation.textContent = mistake.explanation || '';
           const recommendation = document.createElement('p');
-          recommendation.textContent = 'Как исправить: ' + (mistake.correction_recommendation || '—');
+          const gate = mistake.evidence_gate;
+          const statusLabels = { verified: 'проверено на сохранённом наборе; не доказательство для всех входов', contradicted: 'опровергнуто', unverified: 'не проверено; требуется подтверждение преподавателя' };
+          recommendation.textContent = gate?.status === 'contradicted'
+            ? gate.message
+            : (gate ? 'Доказательность: ' + (statusLabels[gate.status] || gate.status) + '. ' + (gate.message || '') + '\n' : '') + 'Как исправить: ' + (mistake.correction_recommendation || 'Вариант исправления не указан.');
           item.append(explanation, recommendation);
           card.append(item);
         });
@@ -605,6 +716,36 @@
         'Ученик: подтверждено — ' + (layers.student.correct.join(', ') || 'нет') + '; ошибки — ' + (layers.student.error.join('; ') || 'не подтверждены') + '.\n' +
         'Преподаватель: ручная проверка — ' + (layers.teacher.manual_check.join(', ') || 'нет неподтверждённых критериев') + '.\n' +
         'Курс: ' + (layers.adaptive.map((item) => item.skill + ' — ' + (item.suggested_review || 'тема не предложена')).join('; ') || 'оснований для новой темы нет') + '. Самооценка модели не является вероятностью.');
+      const evidenceGate = result.feedback_evidence_gate || data.quality?.technical?.feedback_evidence_gate;
+      if (evidenceGate) {
+        const card = document.createElement('section');
+        card.className = 'hw-result-card';
+        const title = document.createElement('h3');
+        title.textContent = 'Проверка утверждений и исправлений';
+        card.append(title);
+        const labels = { verified: 'подтверждено на доступных проверках', contradicted: 'обнаружено противоречие', unverified: 'недостаточно доказательств' };
+        const statusLabels = { verified: 'подтверждено', contradicted: 'опровергнуто', unverified: 'не проверено' };
+        const intro = document.createElement('p');
+        intro.textContent = 'Состояние: ' + (labels[evidenceGate.status] || evidenceGate.status) + '. Педагогический текст не считается доказательством поведения кода.';
+        card.append(intro);
+        (evidenceGate.claims || []).forEach((claim) => {
+          const paragraph = document.createElement('p');
+          let detail = `${statusLabels[claim.status] || claim.status}: ${claim.claim || ''} ${claim.note || ''}`;
+          if (claim.evidence_refs?.length) detail += ' Проверки: ' + claim.evidence_refs.join(', ') + '.';
+          if (claim.counterexample?.visibility === 'public') {
+            if (Object.hasOwn(claim.counterexample, 'expected') && Object.hasOwn(claim.counterexample, 'actual')) {
+              detail += ` Контрпример ${claim.counterexample.id}: ожидалось ${JSON.stringify(claim.counterexample.expected)}, получено ${JSON.stringify(claim.counterexample.actual)}.`;
+            } else {
+              detail += ` Контрпример ${claim.counterexample.id}: статус исполнения ${claim.counterexample.status || 'не завершено'}.`;
+            }
+          } else if (claim.counterexample?.visibility === 'hidden') {
+            detail += ' Детали скрытой проверки не раскрываются.';
+          }
+          paragraph.textContent = detail;
+          card.append(paragraph);
+        });
+        human.append(card);
+      }
       if (data.expected) {
         const expectedText = data.quality?.benchmark_comparable === false
           ? 'Входные данные изменены. Ожидания относятся к исходному сценарию и не используются для автоматического сравнения.'
@@ -823,7 +964,7 @@
           setProviderVerified(true);
           const tls = payload.tls;
           const tlsLabel = tls?.ca_bundle_file_exists
-            ? 'TLS проверен · сертификат из ' + tls.ca_bundle_source
+            ? 'TLS проверен · источник сертификата: ' + tls.ca_bundle_source
             : 'TLS проверен штатным хранилищем';
           runState.textContent = 'Загружено ' + payload.models.length + ' доступных моделей. ' + tlsLabel + '.';
         } catch (error) {
@@ -857,10 +998,22 @@
         };
         const requestData = {
           scenario_id: scenario.id,
+          synthetic_subject_id: document.getElementById('hw-subject-id').value.trim(),
           model: modelSelect.value,
           prompt_version_id: document.getElementById('hw-prompt-version').value || null,
           input
         };
+        if (resolvedFamily) {
+          if (!judgeEnabled.checked || !judgeSend.checked) {
+            runState.textContent = 'Для утверждённого семейства передайте в AI отчёт его Code Judge.';
+            runButton.disabled = false; stopQueuePolling(); return;
+          }
+          requestData.assignment_family = {
+            family_id: resolvedFamily.family_id,
+            version_no: resolvedFamily.family_version,
+            variant_parameters: resolvedFamily.variant_parameters
+          };
+        }
         if (judgeEnabled.checked && judgeSend.checked) {
           if (!judgeRun) { runState.textContent = 'Сначала выполните полную проверку Code Judge.'; runButton.disabled = false; stopQueuePolling(); return; }
           requestData.code_judge_run_id = judgeRun.id || judgeRun.run_id;

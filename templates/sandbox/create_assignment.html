@@ -29,6 +29,12 @@
               <i class="ph-bold ph-notebook text-emerald-600"></i> К уроку #{{ source_meta.lesson_id if source_meta and source_meta.lesson_id else lesson_id }}{% if source_meta and source_meta.lesson_topic %} ({{ source_meta.lesson_topic }}){% endif %}
             </span>
             {% endif %}
+            {% if synthetic_context %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold shadow-xs">
+              <i class="ph-bold ph-git-branch text-indigo-600"></i>
+              {{ synthetic_context.course_title }} · версия {{ synthetic_context.course_version }}
+            </span>
+            {% endif %}
           </div>
           <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
             {% if is_edit_mode %}✏️ Редактирование работы{% else %}🛠️ Создайте и отправьте работу{% endif %}
@@ -73,7 +79,7 @@
           <!-- Умные Пресеты типов работы -->
           <div class="space-y-2">
             <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Тип работы (Умный Пресет):</label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               
               <!-- Пресет: Домашнее задание -->
               <div id="preset-card-homework" onclick="applyPreset('homework')" class="preset-card bg-indigo-50 border-2 border-indigo-600 shadow-[0_4px_0_#4338CA] rounded-2xl p-4 transition-all cursor-pointer space-y-1">
@@ -82,6 +88,15 @@
                   <i class="ph-fill ph-check-circle text-indigo-600 text-base preset-check"></i>
                 </div>
                 <p class="text-[11px] text-slate-600 leading-tight">Без таймера, сдача по 1 задаче, ответы открыты.</p>
+              </div>
+
+              <!-- Пресет: Классная работа -->
+              <div id="preset-card-classwork" onclick="applyPreset('classwork')" class="preset-card bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 hover:border-indigo-300 transition-all cursor-pointer space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black text-slate-800"><i class="ph-bold ph-chalkboard-teacher text-indigo-600 text-base" aria-hidden="true"></i> Классная работа</span>
+                  <i class="ph-bold ph-circle text-slate-300 text-base preset-check" aria-hidden="true"></i>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-tight">Для урока, одна попытка; можно сдавать задания по очереди.</p>
               </div>
 
               <!-- Пресет: Контрольная -->
@@ -123,6 +138,17 @@
                 <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Макс. Попыток сдачи:</label>
                 <input type="number" id="assignment-max-attempts" min="1" max="99" value="3" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
               </div>
+            </div>
+
+            <div class="space-y-1">
+              <label for="assignment-lesson-select" class="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><i class="ph-bold ph-chalkboard-teacher text-emerald-600"></i> Привязка к онлайн-уроку:</span>
+                <span id="assignment-lesson-linked-badge" class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hidden"></span>
+              </label>
+              <select id="assignment-lesson-select" onchange="handleLessonSelectChange(this.value)" class="bg-white border-2 border-slate-200 focus:border-emerald-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+                <option value="">Без привязки к уроку (самостоятельная работа)</option>
+              </select>
+              <p class="text-[11px] text-slate-400">При привязке к уроку домашняя работа отобразится в приватном окне урока, а задания можно разбирать прямо на онлайн-доске.</p>
             </div>
 
             <div class="space-y-1">
@@ -351,6 +377,7 @@
     <div class="boostudy-scroll p-6 space-y-5 overflow-y-auto flex-1">
       <input id="custom-task-number" name="task_number" type="hidden" value="1">
       <input id="custom-answer-spec-json" name="answer_spec" type="hidden" value="">
+      <div id="synthetic-task-context" class="hidden rounded-xl border-2 border-violet-200 bg-violet-50 px-4 py-3 text-xs font-semibold text-violet-900"></div>
 
       <!-- БЛОК 1: ОСНОВНЫЕ ПАРАМЕТРЫ -->
       <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-5 space-y-4">
@@ -679,6 +706,7 @@
   "activeUserId": {{ (current_user.id if current_user is defined and current_user else None) | tojson | safe }},
   "isAdmin": {{ (is_admin if is_admin is defined else False) | tojson | safe }},
   "courses": {{ (courses if courses is defined else []) | tojson | safe }},
+  "assignmentType": {{ (assignment_type if assignment_type is defined else 'homework') | tojson | safe }},
   "students": [
     {% if recipient_options %}
       {% for st in recipient_options %}
@@ -708,7 +736,10 @@
   "isEditMode": {{ (is_edit_mode if is_edit_mode is defined else false) | tojson | safe }},
   "hasAnswers": {{ (has_answers if has_answers is defined else (existing_assignment.has_answers if (existing_assignment is defined and existing_assignment and existing_assignment.has_answers is defined) else false)) | tojson | safe }},
   "lessonId": {{ ((source_meta.lesson_id if (source_meta is defined and source_meta and source_meta.lesson_id) else (lesson_id if lesson_id is defined else None))) | tojson | safe }},
-  "defaultRecipientIds": {{ (default_recipient_ids if default_recipient_ids is defined else []) | tojson | safe }}
+  "availableLessons": {{ (available_lessons if available_lessons is defined else []) | tojson | safe }},
+  "defaultRecipientIds": {{ (default_recipient_ids if default_recipient_ids is defined else []) | tojson | safe }},
+  "syntheticContext": {{ (synthetic_context if synthetic_context is defined else None) | tojson | safe }},
+  "syntheticContextError": {{ (synthetic_context_error if synthetic_context_error is defined else None) | tojson | safe }}
 }
 </script>
 
@@ -727,6 +758,13 @@ let isBuilderReady = false;
 
 // Ensure all sidebar links to generator contain our assignment_id
 document.addEventListener('DOMContentLoaded', () => {
+  if (pageData.syntheticContext) {
+    const courseSelect = document.getElementById('assignment-course');
+    if (courseSelect) {
+      courseSelect.value = '';
+      courseSelect.disabled = true;
+    }
+  }
   if (pageData.assignmentId) {
     document.querySelectorAll('a[href="/task-generator"]').forEach(a => {
       a.href = `/task-generator?assignment_id=${pageData.assignmentId}`;
@@ -791,6 +829,11 @@ function applyPreset(presetType) {
     timeLimitInput.value = '';
     allowSeparateCheckbox.checked = false;
     allowSeparateCheckbox.disabled = true;
+    maxAttemptsInput.value = 1;
+  } else if (presetType === 'classwork') {
+    timeLimitInput.value = '';
+    allowSeparateCheckbox.checked = true;
+    allowSeparateCheckbox.disabled = false;
     maxAttemptsInput.value = 1;
   } else {
     // homework
@@ -1015,6 +1058,29 @@ function extractEditableContent(html) {
   return textResult;
 }
 
+function taskContentForAssignment(task) {
+  const content = document.createElement('div');
+  content.innerHTML = String(task.content_html || '');
+  const firstBlock = content.querySelector('h1, h2, h3, h4, h5, h6, p, div, li') || content;
+  const rolePrefix = /^(Классная|Домашняя)\s*[·•:—-]/i;
+  if (!rolePrefix.test(firstBlock.textContent.trimStart())) {
+    return content.innerHTML;
+  }
+
+  const roleLabel = task.assignment_type === 'homework' ? 'Домашняя' :
+    task.assignment_type === 'classwork' ? 'Классная' : null;
+  if (!roleLabel) return content.innerHTML;
+
+  const walker = document.createTreeWalker(firstBlock, NodeFilter.SHOW_TEXT);
+  let textNode;
+  while ((textNode = walker.nextNode())) {
+    if (!textNode.nodeValue.trim()) continue;
+    textNode.nodeValue = textNode.nodeValue.replace(/^(\s*)(Классная|Домашняя)(?=[\s·•:—-])/i, `$1${roleLabel}`);
+    break;
+  }
+  return content.innerHTML;
+}
+
 function renderAttachedTasks() {
   const container = document.getElementById('assignment-tasks-container');
   const badge = document.getElementById('task-count-badge');
@@ -1035,7 +1101,7 @@ function renderAttachedTasks() {
 
   let html = '';
   attachedTasks.forEach((t, idx) => {
-    const cleanRaw = (t.content_html || '').replace(/<[^>]*>?/gm, '').replace(/^[(\[][А-ЯЁ][^)\]]{1,60}[)\]]\s*/i, '').trim();
+    const cleanRaw = taskContentForAssignment(t).replace(/<[^>]*>?/gm, '').replace(/^[(\[][А-ЯЁ][^)\]]{1,60}[)\]]\s*/i, '').trim();
     const snippet = cleanRaw.substring(0, 70);
     const isManual = requiresManualGrading(t);
     const examBadge = t.task_number ? `ЕГЭ №${t.task_number}` : (t.topic || 'Задание');
@@ -1059,7 +1125,7 @@ function renderAttachedTasks() {
           <div class="flex items-center gap-1.5 flex-shrink-0">
             <button type="button" onclick="editAttachedTask(${idx})" title="Редактировать задание" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 border-b-[2px] active:border-b-[1px] active:translate-y-[1px] text-xs font-bold flex items-center gap-1 cursor-pointer transition-all">
               <i class="ph-bold ph-pencil-simple"></i>
-              <span class="hidden sm:inline">Изменить</span>
+              <span class="hidden sm:inline">${pageData.syntheticContext && t.synthetic_revision_allowed ? 'Новая редакция' : 'Изменить'}</span>
             </button>
 
             <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5">
@@ -1080,8 +1146,9 @@ function renderAttachedTasks() {
         </div>
 
         <div id="task-expand-body-${idx}" class="hidden pt-3 border-t-2 border-slate-100 space-y-3">
+          ${t.answer_exposure_detected ? '<div class="rounded-xl border-2 border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-800">Пример формата повторяет эталонный ответ. Ученический экран будет заблокирован до безопасной редакции.</div>' : ''}
           <div class="space-y-2 text-xs text-slate-700 leading-relaxed math-content bg-slate-50 p-3 rounded-xl border border-slate-200">
-            ${t.content_html}
+            ${taskContentForAssignment(t)}
           </div>
 
           <div class="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs font-bold text-amber-900 flex flex-wrap items-center justify-between gap-2">
@@ -1113,7 +1180,7 @@ function renderAttachedTasks() {
             </div>
             <button type="button" onclick="editAttachedTask(${idx})" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2 rounded-xl border border-indigo-700 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs flex items-center gap-1.5 cursor-pointer shadow-xs">
               <i class="ph-bold ph-pencil-simple text-sm"></i>
-              <span>Редактировать в конструкторе</span>
+              <span>${pageData.syntheticContext && t.synthetic_revision_allowed ? 'Создать безопасную редакцию' : 'Редактировать в конструкторе'}</span>
             </button>
           </div>
         </div>
@@ -1360,7 +1427,10 @@ async function loadBankTasks() {
     list.innerHTML = tasks.length ? tasks.map(task => {
       const text = (task.content_html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
       const added = attachedTasks.some(item => Number(item.task_id) === Number(task.task_id));
-      return `<article onclick="selectBankTask(${task.task_id})" class="cursor-pointer bg-white border-2 border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3 transition-colors"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Средний'}</span></div><h4 class="text-sm font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h4><p class="text-xs leading-relaxed text-slate-600 line-clamp-3">${escapeHtml(text || 'Без текста условия')}</p><button type="button" onclick="event.stopPropagation(); addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
+      const draftBadge = task.bank_category === 'synthetic_adaptive_draft'
+        ? '<span class="inline-flex w-fit px-2 py-1 rounded-lg bg-amber-100 text-amber-800 text-[10px] font-black">Synthetic · черновик, не утверждено</span>'
+        : '';
+      return `<article onclick="selectBankTask(${task.task_id})" class="cursor-pointer bg-white border-2 border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3 transition-colors"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Средний'}</span></div>${draftBadge}<h4 class="text-sm font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h4><p class="text-xs leading-relaxed text-slate-600 line-clamp-3">${escapeHtml(text || 'Без текста условия')}</p><button type="button" onclick="event.stopPropagation(); addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
     }).join('') : '<p class="col-span-full text-center text-xs text-slate-500 py-8">По этим фильтрам заданий нет.</p>';
     window.bankTasksById = Object.fromEntries(tasks.map(task => [task.task_id, task]));
     if (tasks.length) selectBankTask(window.selectedBankTaskId && window.bankTasksById[window.selectedBankTaskId] ? window.selectedBankTaskId : tasks[0].task_id);
@@ -1792,11 +1862,20 @@ function removeBuilderMatchingPair(idx) {
 }
 
 function openCustomTaskModal(sourceTask = null, attachedIndex = null) {
+  const syntheticContext = pageData.syntheticContext;
+  if (pageData.syntheticContextError) {
+    show3DToast(pageData.syntheticContextError, null, 'error');
+    return;
+  }
+  if (syntheticContext && (!sourceTask || !sourceTask.synthetic_revision_allowed)) {
+    show3DToast('Выберите привязанное synthetic-задание, чтобы создать его новую редакцию без изменения истории.', null, 'error');
+    return;
+  }
   const courseSelect = document.getElementById('assignment-course');
-  if (sourceTask && sourceTask.course_id && courseSelect.querySelector(`option[value="${sourceTask.course_id}"]`)) {
+  if (!syntheticContext && sourceTask && sourceTask.course_id && courseSelect.querySelector(`option[value="${sourceTask.course_id}"]`)) {
     courseSelect.value = String(sourceTask.course_id);
   }
-  if (!courseSelect.value && courseSelect.options.length > 0) {
+  if (!syntheticContext && !courseSelect.value && courseSelect.options.length > 0) {
     for (let i = 0; i < courseSelect.options.length; i++) {
       if (courseSelect.options[i].value) {
         courseSelect.value = courseSelect.options[i].value;
@@ -1804,22 +1883,34 @@ function openCustomTaskModal(sourceTask = null, attachedIndex = null) {
       }
     }
   }
-  if (!courseSelect.value && pageData.courses && pageData.courses.length > 0) {
+  if (!syntheticContext && !courseSelect.value && pageData.courses && pageData.courses.length > 0) {
     courseSelect.value = String(pageData.courses[0].id);
   }
-  if (!courseSelect.value) {
+  if (!syntheticContext && !courseSelect.value) {
     show3DToast('Сначала выберите курс для авторского задания');
     return;
   }
 
   const form = document.getElementById('custom-task-form');
   form.reset();
-  form.dataset.editId = sourceTask && sourceTask.can_edit ? String(sourceTask.task_id) : '';
+  form.dataset.editId = sourceTask && sourceTask.can_edit && !syntheticContext ? String(sourceTask.task_id) : '';
+  form.dataset.revisionOfTaskId = syntheticContext ? String(sourceTask.task_id) : '';
   form.dataset.attachedIndex = (attachedIndex !== null && attachedIndex !== undefined) ? String(attachedIndex) : '';
+  const taskNumberInput = document.getElementById('builder-task-number-input');
+  taskNumberInput.max = syntheticContext ? '999999' : '99';
+
+  const contextNotice = document.getElementById('synthetic-task-context');
+  contextNotice.classList.toggle('hidden', !syntheticContext);
+  contextNotice.textContent = syntheticContext
+    ? `Черновая редакция для курса «${syntheticContext.course_title}», версия ${syntheticContext.course_version}; урок ${syntheticContext.lesson_id}: ${syntheticContext.lesson_title}. Исходное задание и его попытки останутся неизменными.`
+    : '';
 
   const modalTitle = document.getElementById('custom-modal-title');
   const submitLabel = document.getElementById('builder-submit-label');
-  if (sourceTask && sourceTask.can_edit) {
+  if (syntheticContext && sourceTask) {
+    modalTitle.textContent = `Новая редакция задания #${sourceTask.task_number || 1}`;
+    submitLabel.textContent = 'Сохранить новую редакцию в работе';
+  } else if (sourceTask && sourceTask.can_edit) {
     modalTitle.textContent = `Редактировать задание #${sourceTask.task_number || 1}`;
     submitLabel.textContent = 'Сохранить изменения';
   } else if (sourceTask) {
@@ -1832,7 +1923,7 @@ function openCustomTaskModal(sourceTask = null, attachedIndex = null) {
 
   const taskNumber = sourceTask?.task_number || 1;
   document.getElementById('custom-task-number').value = String(taskNumber);
-  document.getElementById('builder-task-number-input').value = String(taskNumber);
+  taskNumberInput.value = String(taskNumber);
   setBuilderDifficulty(sourceTask?.difficulty_level || 1);
   document.getElementById('builder-max-score').value = String(sourceTask?.max_score || 1);
   document.getElementById('custom-manual-grading').checked = Boolean(sourceTask?.requires_manual_grading || (sourceTask && !sourceTask.answer));
@@ -1925,9 +2016,14 @@ function closeCustomTaskModal() {
 async function createCustomTask(event) {
   event.preventDefault();
   const form = document.getElementById('custom-task-form');
-  const courseId = document.getElementById('assignment-course').value;
-  if (!courseId) {
+  const syntheticContext = pageData.syntheticContext;
+  const courseId = syntheticContext ? '' : document.getElementById('assignment-course').value;
+  if (!courseId && !syntheticContext) {
     show3DToast('Сначала выберите курс');
+    return;
+  }
+  if (syntheticContext && !form.dataset.revisionOfTaskId) {
+    show3DToast('Выберите исходное привязанное задание для новой редакции.', null, 'error');
     return;
   }
 
@@ -2050,6 +2146,11 @@ async function createCustomTask(event) {
     } else {
       const formData = new FormData(form);
       formData.set('course_id', courseId);
+      if (syntheticContext) {
+        formData.set('synthetic_course_id', String(syntheticContext.course_id));
+        formData.set('synthetic_lesson_id', String(syntheticContext.lesson_id));
+        formData.set('revision_of_task_id', form.dataset.revisionOfTaskId);
+      }
       formData.set('task_number', String(taskNumber));
       formData.set('content', content);
       if (answer != null) formData.set('answer', answer);
@@ -2495,12 +2596,14 @@ function buildAssignmentData() {
   selectedGroups.forEach(group => (group.member_ids || []).forEach(studentId => recipientIds.add(studentId)));
 
   const titleInput = document.getElementById('assignment-title')?.value?.trim();
-  const title = titleInput || (pageData.isEditMode ? 'Без названия' : `${presetType === 'exam' ? 'Пробник' : presetType === 'test' ? 'Контрольная работа' : 'Домашняя работа'} — ${new Intl.DateTimeFormat('ru-RU').format(new Date())}`);
+  const title = titleInput || (pageData.isEditMode ? 'Без названия' : `${presetType === 'exam' ? 'Пробник' : presetType === 'test' ? 'Контрольная работа' : presetType === 'classwork' ? 'Классная работа' : 'Домашняя работа'} — ${new Intl.DateTimeFormat('ru-RU').format(new Date())}`);
 
   return {
     draft_id: pageData.assignmentId,
     assignment_id: pageData.assignmentId,
     lesson_id: pageData.lessonId || null,
+    synthetic_course_id: pageData.syntheticContext?.course_id || null,
+    synthetic_course_version: pageData.syntheticContext?.course_version || null,
     title,
     description: document.getElementById('assignment-description')?.value || '',
     type: presetType,
@@ -2583,6 +2686,10 @@ async function submitAssignmentForm() {
     });
     const data = await res.json();
     if (data.success) {
+      if (data.already_assigned) {
+        show3DToast(data.message || 'Это задание уже назначено; повторная работа не создана.');
+        return;
+      }
       if (pageData.isEditMode) {
         show3DToast('Изменения сохранены!', data.redirect || `/assignments/${pageData.assignmentId}`);
         setTimeout(() => {
@@ -2614,9 +2721,61 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Populate lesson dropdown
+  const lessonSelect = document.getElementById('assignment-lesson-select');
+  const lessonBadge = document.getElementById('assignment-lesson-linked-badge');
+  if (lessonSelect && Array.isArray(pageData.availableLessons)) {
+    pageData.availableLessons.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.lesson_id;
+      opt.textContent = l.display_label || `Урок #${l.lesson_id} — ${l.topic}`;
+      if (l.student_id) opt.setAttribute('data-student-id', l.student_id);
+      lessonSelect.appendChild(opt);
+    });
+    if (pageData.lessonId) {
+      lessonSelect.value = String(pageData.lessonId);
+      updateLessonBadge(pageData.lessonId);
+    }
+  }
+
+  window.handleLessonSelectChange = function(val) {
+    pageData.lessonId = val ? Number(val) : null;
+    updateLessonBadge(pageData.lessonId);
+    if (pageData.lessonId) {
+      const opt = lessonSelect?.querySelector(`option[value="${pageData.lessonId}"]`);
+      const stId = opt?.getAttribute('data-student-id');
+      if (stId && typeof selectedStudentIds !== 'undefined') {
+        const numId = Number(stId);
+        if (!selectedStudentIds.has(numId)) {
+          selectedStudentIds.add(numId);
+          if (typeof renderStudentsList === 'function') renderStudentsList();
+          if (typeof switchRecipientTab === 'function') switchRecipientTab('students');
+          if (typeof updatePublishSummary === 'function') updatePublishSummary();
+        }
+      }
+    }
+  };
+
+  function updateLessonBadge(lid) {
+    if (!lessonBadge) return;
+    if (lid) {
+      const found = (pageData.availableLessons || []).find(x => Number(x.lesson_id) === Number(lid));
+      const topic = found ? found.topic : `Урок #${lid}`;
+      lessonBadge.textContent = `Привязано: ${topic}`;
+      lessonBadge.classList.remove('hidden');
+    } else {
+      lessonBadge.textContent = '';
+      lessonBadge.classList.add('hidden');
+    }
+  }
+
   // Populate existing data if loaded
   if (pageData.initialTasks && pageData.initialTasks.length > 0) {
     attachedTasks = pageData.initialTasks;
+  }
+
+  if (!pageData.isEditMode && ['homework', 'classwork', 'test', 'exam'].includes(pageData.assignmentType)) {
+    applyPreset(pageData.assignmentType);
   }
 
   if (pageData.existingAssignment) {
@@ -2653,7 +2812,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ea.recipient_ids && Array.isArray(ea.recipient_ids)) {
       ea.recipient_ids.forEach(id => selectedStudentIds.add(Number(id)));
     }
-  } else {
+  } else if (!['homework', 'classwork', 'test', 'exam'].includes(pageData.assignmentType)) {
     applyPreset('homework');
   }
 

@@ -1,0 +1,102 @@
+<header class="ori-topbar">
+  <div class="ori-container">
+    <nav class="ori-island" aria-label="Основная навигация Oristera">
+      <a href="{{ url_for('oristera.nexus') }}" class="ori-brand" title="ORISTERA — обзор обучения">
+        <div class="ori-brand-logo" aria-hidden="true">
+          <!-- Геометрический знак направления и связи -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-dasharray="3 3"></circle>
+            <circle cx="12" cy="12" r="4" stroke="currentColor"></circle>
+            <line x1="12" y1="3" x2="12" y2="7"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+            <line x1="3" y1="12" x2="7" y2="12"></line>
+            <line x1="17" y1="12" x2="21" y2="12"></line>
+            <circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>
+          </svg>
+        </div>
+        <div class="ori-brand-text">
+          <span class="ori-brand-name">ORISTERA</span>
+          <span class="ori-brand-coords" id="ori-spatial-coords">
+            {% if active_space == 'nexus' %}Обзор обучения{% elif active_space == 'atlas' %}Карта знаний{% elif active_space == 'practice' %}Практика{% elif active_space == 'prep' %}Подготовка к уроку{% elif active_space == 'studio' %}Студия преподавателя{% else %}Пространство обучения{% endif %}
+          </span>
+        </div>
+      </a>
+
+      <div class="ori-spatial-compass" id="ori-spatial-compass" aria-label="Разделы обучения">
+        <div class="ori-compass-ring">
+          <a href="{{ url_for('oristera.nexus') }}" 
+             class="ori-compass-node {% if active_space == 'nexus' %}active{% endif %}" 
+             data-space="nexus" 
+             title="Обзор обучения">
+            <span class="ori-compass-dot"></span>
+            <span class="ori-compass-label">Обзор</span>
+          </a>
+          <span class="ori-compass-link"></span>
+          <a href="{{ url_for('oristera.atlas') }}" 
+             class="ori-compass-node {% if active_space == 'atlas' %}active{% endif %}" 
+             data-space="atlas" 
+             title="Карта знаний">
+            <span class="ori-compass-dot"></span>
+            <span class="ori-compass-label">Карта</span>
+          </a>
+          <span class="ori-compass-link"></span>
+          <a href="{{ url_for('oristera.practice') }}" 
+             class="ori-compass-node {% if active_space == 'practice' %}active{% endif %}" 
+             data-space="practice" 
+             title="Задачи и самостоятельная практика">
+            <span class="ori-compass-dot"></span>
+            <span class="ori-compass-label">Практика</span>
+          </a>
+          <span class="ori-compass-link"></span>
+          <a href="{{ url_for('oristera.lessons_space') }}" 
+             class="ori-compass-node {% if active_space == 'lessons' or active_space == 'prep' %}active{% endif %}" 
+             data-space="lessons" 
+             title="Расписание и уроки">
+            <span class="ori-compass-dot"></span>
+            <span class="ori-compass-label">Уроки</span>
+          </a>
+          {% if current_user.role in ['teacher', 'tutor'] or current_user.is_tutor() or current_user.is_admin() or current_user.is_creator() %}
+          <span class="ori-compass-link"></span>
+          <a href="{{ url_for('oristera.teacher_studio') }}" 
+             class="ori-compass-node {% if active_space == 'studio' %}active{% endif %}" 
+             data-space="studio" 
+             title="Студия преподавателя">
+            <span class="ori-compass-dot"></span>
+            <span class="ori-compass-label">Студия</span>
+          </a>
+          {% endif %}
+          {% if current_user.role == 'parent' or current_user.is_parent() or current_user.is_admin() or current_user.is_creator() %}
+          <span class="ori-compass-link"></span>
+          <a href="{{ url_for('oristera.parent_nexus') }}" 
+             class="ori-compass-node {% if active_space == 'parent' %}active{% endif %}" 
+             data-space="parent" 
+             title="Родительский центр">
+            <span class="ori-compass-dot"></span>
+            <span class="ori-compass-label">Родитель</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="ori-island-actions">
+        <a href="{{ url_for('oristera.toggle_mode', to='classic', return_to=url_for('main.dashboard')) }}" 
+           id="ori-mode-toggle-btn"
+           class="ori-mode-toggle" 
+           title="Переключиться в классический интерфейс BooStudy Classic">
+          <span aria-hidden="true">←</span>
+          <span>BooStudy Classic</span>
+        </a>
+
+        <div class="ori-user-beacon" title="Профиль пользователя">
+          <div class="ori-avatar" aria-hidden="true">
+            {{ current_user.username[0]|upper if current_user.username else 'U' }}
+          </div>
+          <div class="ori-user-meta">
+            <span class="ori-user-name">{{ current_user.full_name or current_user.username }}</span>
+            <span class="ori-user-status"><span class="ori-status-pulse"></span>{% if current_user.role == 'student' %}Ученик{% elif current_user.role in ['teacher', 'tutor'] %}Преподаватель{% elif current_user.role == 'parent' %}Родитель{% else %}{{ current_user.role }}{% endif %}</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,155 @@
+{% extends "sandbox/layout_dashboard.html" %}
+
+{% block title %}Практика · BooStudy{% endblock %}
+
+{% block extra_head %}
+{{ super() }}
+{% if adaptive_practice_enabled %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/student-adaptive-practice.css') }}">
+<script defer src="{{ url_for('static', filename='js/student-adaptive-practice.js') }}"></script>
+{% endif %}
+<style>
+  .student-practice-page { display: grid; gap: 16px; width: min(100%, 920px); margin-inline: auto; }
+  .student-practice-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .student-practice-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-lg); background: var(--bs-bg-surface-soft); }
+  .student-practice-copy { min-width: 0; }
+  .student-practice-copy h3 { margin: 4px 0; color: var(--bs-text-primary); }
+  .student-practice-copy p { margin: 4px 0; color: var(--bs-text-secondary); }
+  .student-practice-eyebrow { color: var(--bs-text-muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .student-practice-empty { padding: 20px; border: 1px dashed var(--bs-border); border-radius: var(--bs-radius-lg); color: var(--bs-text-secondary); background: var(--bs-bg-surface-soft); }
+  .student-practice-note { color: var(--bs-text-secondary); line-height: 1.55; }
+  .student-practice-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .student-practice-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+  .student-practice-flow li { padding: 10px 12px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md); color: var(--bs-text-secondary); background: var(--bs-bg-surface-soft); font-size: 13px; }
+  .student-practice-flow strong { display: block; color: var(--bs-text-primary); }
+  .adaptive-practice__summary { padding: 16px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-lg); background: var(--bs-bg-surface-soft); }
+  .adaptive-practice__history summary { color: var(--bs-text-primary); cursor: pointer; font-weight: 700; }
+  @media (max-width: 640px) {
+    .student-practice-item { align-items: flex-start; flex-direction: column; }
+    .student-practice-item .bs-button { width: 100%; justify-content: center; }
+    .student-practice-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+{% endblock %}
+
+{% block sandbox_content %}
+<main class="bs-dashboard-page student-practice-page" data-dashboard-role="student">
+  <header class="bs-dashboard-card">
+    <div class="bs-dashboard-card-header">
+      <h1>Свободная практика</h1>
+    </div>
+    <p class="student-practice-note">Тренируй отдельную тему короткими вариантами. Ответ проверяется правилом для конкретного упражнения и сохраняется в истории. Это дополнительная практика, она не заменяет классную или домашнюю работу.</p>
+    <div class="student-practice-actions">
+      {% if current_user.id == student.user_id %}
+        <a class="bs-button bs-button-secondary" href="{{ url_for('main.dashboard') }}">К занятиям</a>
+        <a class="bs-button bs-button-secondary" href="{{ url_for('assignments.submissions_list') }}">Мои задания</a>
+      {% else %}
+        <a class="bs-button bs-button-secondary" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">Вернуться к профилю ученика</a>
+      {% endif %}
+    </div>
+    <ol class="student-practice-flow" aria-label="Как проходит практика">
+      <li><strong>1. Цель</strong>Выбери тему и способ старта</li>
+      <li><strong>2. Упражнение</strong>Реши один вариант</li>
+      <li><strong>3. Разбор</strong>Сверь ответ и объяснение</li>
+      <li><strong>4. Дальше</strong>Выбери следующий шаг</li>
+    </ol>
+  </header>
+
+  {% if not adaptive_practice_enabled %}
+  <section class="bs-dashboard-card" role="status" aria-labelledby="practice-unavailable-title">
+    <h2 id="practice-unavailable-title">Свободная практика сейчас недоступна</h2>
+    <p class="student-practice-note">Она работает только в изолированной локальной среде с синтетическими данными и доступна для ограниченного набора тем. Назначенные занятия и домашние задания открываются в разделе «Мои задания».</p>
+  </section>
+  {% endif %}
+
+  {% if adaptive_practice_enabled %}
+  <section class="bs-dashboard-card adaptive-practice" id="adaptive-practice"
+           aria-labelledby="adaptive-practice-title"
+           data-api-url="{{ adaptive_practice_api_url }}"
+           data-csrf-token="{{ adaptive_practice_csrf_token }}"
+           data-course-id="{{ adaptive_practice_course_id or '' }}"
+           data-lesson-id="{{ adaptive_practice_lesson_id or '' }}"
+           data-initial-session='{{ adaptive_practice_initial_session|tojson|forceescape }}'>
+    <header class="adaptive-practice__header">
+      <div>
+        <span class="student-practice-eyebrow">Только синтетическая локальная практика</span>
+        <h2 id="adaptive-practice-title">Начать тренировку</h2>
+        <p class="student-practice-note">Доступны отдельные проверяемые форматы по темам базы знаний. Каталог ограничен: система не создаёт произвольные новые задания. Верный ответ на одном варианте сам по себе не подтверждает освоение темы.</p>
+      </div>
+      <span class="adaptive-practice__badge">Синтетический режим</span>
+    </header>
+
+    {% if adaptive_practice_error %}
+      <div class="adaptive-practice__message adaptive-practice__message--error" role="status">{{ adaptive_practice_error }}</div>
+    {% else %}
+      <div class="adaptive-practice__setup" data-practice-setup>
+        <label class="adaptive-practice__field">Тема
+          <select data-practice-skill>
+            {% for skill in adaptive_practice_skills %}
+              <option value="{{ skill.skill_id }}">{{ skill.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="adaptive-practice__field">Как начать
+          <select data-practice-mode>
+            <option value="topic" selected>Выбрать тему</option>
+            <option value="diagnostic">Сначала короткая проверка</option>
+            <option value="continue">Продолжить по теме</option>
+          </select>
+        </label>
+        <p class="adaptive-practice__note" data-practice-mode-help>Начнём с выбранной темы. Проверка показывает только результат этого варианта.</p>
+        <p class="adaptive-practice__note">Система учитывает только подсказки, зарегистрированные в BooStudy. Внешняя помощь она не видит.</p>
+        <button type="button" class="bs-button bs-button-primary adaptive-practice__start" data-practice-start>Начать практику</button>
+      </div>
+
+      <div class="adaptive-practice__session" data-practice-session hidden>
+        <div class="adaptive-practice__session-head">
+          <div>
+            <span class="student-practice-eyebrow" data-practice-progress>Новое упражнение</span>
+            <h3 data-practice-exercise-title></h3>
+          </div>
+          <button type="button" class="bs-button bs-button-secondary" data-practice-finish>Завершить тренировку</button>
+        </div>
+        <p class="adaptive-practice__note">Почему выбрано это упражнение</p>
+        <p class="adaptive-practice__decision" data-practice-decision></p>
+        <p class="adaptive-practice__prompt" data-practice-prompt></p>
+        <form class="adaptive-practice__answer" data-practice-answer-form>
+          <div class="adaptive-practice__answer-control" data-practice-answer-control></div>
+          <div class="adaptive-practice__actions">
+            <button type="submit" class="bs-button bs-button-primary" data-practice-submit>Проверить ответ</button>
+            <button type="button" class="bs-button bs-button-secondary" data-practice-hint>Подсказка</button>
+          </div>
+        </form>
+        <div class="adaptive-practice__message" data-practice-feedback role="status" aria-live="polite"></div>
+        <div class="adaptive-practice__actions" data-practice-next-wrap hidden>
+          <button type="button" class="bs-button bs-button-primary" data-practice-next>Следующее упражнение</button>
+        </div>
+      </div>
+
+      <div class="adaptive-practice__summary" data-practice-summary role="status" hidden></div>
+      <div class="adaptive-practice__message" data-practice-error role="alert" hidden></div>
+      <details class="adaptive-practice__history">
+        <summary>История свободной практики</summary>
+        {% if adaptive_practice_history %}
+          <ul class="student-practice-list" data-practice-history>
+            {% for item in adaptive_practice_history %}
+              <li class="student-practice-item">
+                <div class="student-practice-copy">
+                  <span class="student-practice-eyebrow">{{ item.title }}</span>
+                  <p>{% if item.verification_status == 'verified' %}{% if item.is_correct %}Ответ подтверждён на этом варианте{% else %}Ответ не совпал с эталоном{% endif %}{% else %}Результат не удалось проверить{% endif %}</p>
+                </div>
+                <time datetime="{{ item.occurred_at }}">{{ item.occurred_at[:10] if item.occurred_at else '' }}</time>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="student-practice-note" data-practice-history-empty>Здесь появятся сохранённые ответы и результат проверки.</p>
+          <ul class="student-practice-list" data-practice-history hidden></ul>
+        {% endif %}
+      </details>
+    {% endif %}
+  </section>
+  {% endif %}
+
+</main>
+{% endblock %}

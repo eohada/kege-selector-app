@@ -1,11 +1,18 @@
 {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or current_user.role in ['tester', 'chief_tester']) %}
 <!-- FLOATING QA COMPANION BUTTON -->
 <div id="qa-widget-trigger-btn" class="fixed bottom-6 right-6 z-[9999]">
-    <button onclick="if(!window.qaWidgetWasDragged) toggleQaWidgetModal()" type="button" class="btn-3d px-4 py-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-2xl border-b-[4px] border-rose-800 shadow-[0_10px_25px_rgba(244,63,94,0.4)] flex items-center gap-2 cursor-pointer border-0">
+    <button onclick="if(!window.qaWidgetWasDragged) toggleQaWidgetModal()" type="button" aria-label="Сообщить об ошибке" class="btn-3d px-4 py-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-2xl border-b-[4px] border-rose-800 shadow-[0_10px_25px_rgba(244,63,94,0.4)] flex items-center gap-2 cursor-pointer border-0">
         <i class="ph-bold ph-bug text-lg"></i>
         <span>🐞 QA Bug Report</span>
     </button>
 </div>
+<style>
+@media (max-width: 640px) {
+    #qa-widget-trigger-btn { bottom: calc(7.25rem + env(safe-area-inset-bottom)); right: 12px; }
+    #qa-widget-trigger-btn button { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+    #qa-widget-trigger-btn button span { display: none; }
+}
+</style>
 
 <!-- QA COMPANION MODAL OVERLAY -->
 <div id="qa-companion-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[10000] flex items-center justify-center hidden p-4">

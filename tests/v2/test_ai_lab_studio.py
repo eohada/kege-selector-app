@@ -1,6 +1,8 @@
 import json
 import uuid
 
+import pytest
+
 def _login(client, user_id, role):
     client.delete_cookie("session")
     with client.session_transaction() as session:
@@ -163,6 +165,188 @@ def test_mock_experiment_is_idempotent_validated_and_keeps_hidden_expectations_o
     assert "не найден в базе AI Lab этого backend" in missing.get_json()["error"]
 
 
+def test_runner_claim_without_code_judge_is_suppressed_and_recorded(
+    app, client, role_users, monkeypatch
+):
+    _configure_local_lab(app, monkeypatch)
+    _login(client, role_users["creator_id"], "creator")
+
+    from app.ai_lab import routes
+    from app.ai_lab.mock_provider import MockProvider
+
+    raw_response = json.loads(_valid_response(1, 1))
+    raw_response["criterion_scores"] = [{
+        "criterion": "1 балл — За точное название типа начисляется 1 балл.",
+        "score_awarded": 1,
+        "max_score": 1,
+        "rationale": "Ответ совпадает с эталоном.",
+    }]
+    raw_response["teacher_feedback"] = "Code Judge подтверждает правильность ответа."
+    mock_provider = MockProvider(json.dumps(raw_response, ensure_ascii=False))
+    route_module, fake_run = _fake_run_with(mock_provider)
+    monkeypatch.setattr(route_module, "run_experiment", fake_run)
+
+    response = client.post("/admin/ai-lab/api/experiments", json={
+        "request_key": str(uuid.uuid4()),
+        "scenario_id": "py-types-01",
+        "model": mock_provider.model,
+        "input": {
+            "student_solution": "int",
+            "criteria": "1 балл — За точное название типа начисляется 1 балл.",
+        },
+    })
+
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    result = body["result"]
+    quality = body["quality"]
+    assert "technical" in quality, body
+    gate = quality["technical"]["feedback_evidence_gate"]
+    execution_claims = [item for item in gate["claims"] if item["claim_type"] == "execution_result"]
+    assert execution_claims, gate
+    execution_claim = execution_claims[0]
+    assert result["score_awarded"] == 1
+    assert result["grading_status"] == "checked"
+    assert "Code Judge подтверждает" not in result["teacher_feedback"]
+    assert "скрыт" in result["summary"].lower()
+    assert execution_claim["status"] == "contradicted"
+    assert quality["decision_assurance"]["comment_status"] == "conflict_blocked"
+
+
+def test_synthetic_subject_id_is_namespaced_and_rejects_personal_identifiers():
+    from app.ai_lab.service import LabInputError, _validated_synthetic_subject_id
+
+    assert _validated_synthetic_subject_id(None) == "synthetic-learner-01"
+    assert _validated_synthetic_subject_id("synthetic-course-a.learner_2") == "synthetic-course-a.learner_2"
+    with pytest.raises(LabInputError, match="начинаться с synthetic-"):
+        _validated_synthetic_subject_id("learner@example.com")
+
+
+def test_homework_evidence_uses_explicit_synthetic_profile():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    from app.ai_lab.analytics import evidence_from_homework_experiment
+
+    record = SimpleNamespace(
+        id=991,
+        status="succeeded",
+        scenario_id="python.synthetic-check",
+        scenario_snapshot={"synthetic_subject_id": "synthetic-learner-02", "max_score": 3},
+        input_snapshot={"student_solution": "def solve(): return 1"},
+        quality_json={},
+        result_json={"grading_status": "manual_review", "score_awarded": None},
+        created_at=datetime(2026, 10, 21, tzinfo=timezone.utc),
+    )
+    event = evidence_from_homework_experiment(record)
+
+    assert event["subject_id"] == "synthetic-learner-02"
+    assert event["outcome"]["score"] is None
+
+
+def test_homework_evidence_projects_nested_code_judge_rubric():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    from app.ai_lab.analytics import evidence_from_homework_experiment
+
+    record = SimpleNamespace(
+        id=992,
+        status="succeeded",
+        scenario_id="ai-lab.python.digit-sum",
+        scenario_snapshot={
+            "synthetic_subject_id": "synthetic-learner-03",
+            "assignment_id": "ai-lab.python.digit-sum",
+            "assignment_version": 1,
+            "max_score": 3,
+            "assignment_criteria": [
+                {"id": "multi-digit"},
+                {"id": "zero-single"},
+            ],
+        },
+        input_snapshot={"student_solution": "def digit_sum(n): return n % 10"},
+        quality_json={"technical": {"code_judge": {
+            "report_type": "criterion_evidence_report",
+            "rubric": {
+                "confirmed_score": 1,
+                "max_score": 3,
+                "criteria": [
+                    {"assignment_criterion_id": "multi-digit", "max_score": 1, "score_awarded": 1,
+                     "status": "fulfilled", "rationale": "Проверка пройдена."},
+                    {"assignment_criterion_id": "zero-single", "max_score": 1, "score_awarded": 0,
+                     "status": "not_fulfilled", "rationale": "Ноль обработан неверно."},
+                ],
+            },
+        }}},
+        result_json={"grading_status": "checked", "score_awarded": 3, "max_score": 3},
+        created_at=datetime(2026, 10, 21, tzinfo=timezone.utc),
+        model="synthetic-test-model",
+    )
+
+    event = evidence_from_homework_experiment(record)
+
+    assert event["evidence_status"] == "technical_confirmed"
+    assert event["subject_id"] == "synthetic-learner-03"
+    assert event["source_record_id"] == "ai-lab-experiment:992"
+    assert event["outcome"]["score"] == 1
+    assert event["outcome"]["maximum"] == 3
+    assert [(item["criterion_id"], item["skill_id"], item["status"], item["earned"])
+            for item in event["criteria"]] == [
+                ("multi-digit", "python.functions", "met", 1),
+                ("zero-single", "python.boundary_cases", "not_met", 0),
+            ]
+
+
+def test_saved_homework_evidence_is_scoped_to_requesting_actor(app, role_users):
+    from app.ai_lab.analytics import evidence_from_homework_experiment, stored_homework_evidence
+    from core.db_models import AiLabExperiment, db
+
+    with app.app_context():
+        record_ids = []
+        for actor_id, subject_id in (
+            (role_users["creator_id"], "synthetic-owned-profile"),
+            (role_users["student_user_id"], "synthetic-other-profile"),
+        ):
+            record = AiLabExperiment(
+                actor_user_id=actor_id,
+                request_key=str(uuid.uuid4()),
+                scenario_id="synthetic-analytics-isolation",
+                status="succeeded",
+                prompt_snapshot="Synthetic test only",
+                scenario_snapshot={
+                    "synthetic_subject_id": subject_id,
+                    "assignment_id": "python.synthetic-check",
+                    "assignment_version": 1,
+                    "topic": "python.conditions",
+                    "max_score": 1,
+                    "assignment_criteria": [{"id": "criterion-1", "skill_id": "python.conditions"}],
+                },
+                input_snapshot={"student_solution": "def solve(): return True"},
+                expected_snapshot={},
+                result_json={"grading_status": "checked", "score_awarded": 1, "max_score": 1},
+                quality_json={"technical": {"code_judge": {
+                    "score_awarded": 1,
+                    "max_score": 1,
+                    "criteria": [{"id": "criterion-1", "score_awarded": 1, "max_score": 1, "status": "met"}],
+                }}},
+                validation_status="valid",
+            )
+            db.session.add(record)
+            db.session.flush()
+            record.quality_json = {
+                **record.quality_json,
+                "learning_evidence": evidence_from_homework_experiment(record),
+            }
+            record_ids.append(record.id)
+        db.session.commit()
+
+        visible = stored_homework_evidence(actor_user_id=role_users["creator_id"])
+
+    visible_ids = {event["event_id"] for event in visible}
+    assert f"ai-lab-experiment:{record_ids[0]}" in visible_ids
+    assert f"ai-lab-experiment:{record_ids[1]}" not in visible_ids
+
+
 def test_invalid_model_json_retries_once_then_requires_manual_review(
     app, client, role_users, monkeypatch
 ):
@@ -275,6 +459,27 @@ def test_checked_status_without_numeric_score_is_rejected():
         assert "checked" in str(exc)
     else:
         raise AssertionError("checked с отсутствующей оценкой должен быть неконсистентен")
+
+
+def test_optional_evidence_refs_accepts_omission_and_list_but_rejects_wrong_type():
+    from app.ai_lab.schemas import ResponseValidationError, validate_response
+
+    mistake = {
+        "description": "Неверная ветвь условия.",
+        "mistake_type": "logic",
+        "solution_excerpt": "if n > 0:",
+        "explanation": "Ноль не попадает в нужную ветвь.",
+        "correction_recommendation": "Проверьте граничное значение.",
+    }
+    without_refs = json.loads(_valid_response(2, 2, [mistake]))
+    assert validate_response(without_refs, 2)["mistakes"][0]["description"] == mistake["description"]
+
+    with_refs = json.loads(_valid_response(2, 2, [{**mistake, "evidence_refs": ["case-zero"]}]))
+    assert validate_response(with_refs, 2)["mistakes"][0]["evidence_refs"] == ["case-zero"]
+
+    invalid_refs = json.loads(_valid_response(2, 2, [{**mistake, "evidence_refs": "case-zero"}]))
+    with pytest.raises(ResponseValidationError, match="evidence_refs"):
+        validate_response(invalid_refs, 2)
 
 
 def test_python_static_score_is_retained_as_manual_review_without_sandbox(
@@ -429,7 +634,11 @@ def test_provider_uses_tls_and_refreshes_token_from_millisecond_expiry(monkeypat
         assert url == provider_module.OAUTH_URL
         assert kwargs["verify"] is not False
         from app.ai_lab.config import ai_lab_limits
-        assert kwargs["timeout"] == (8, ai_lab_limits()["provider_read_timeout_seconds"])
+        limits = ai_lab_limits()
+        assert kwargs["timeout"] == (
+            limits["provider_connect_timeout_seconds"],
+            limits["provider_read_timeout_seconds"],
+        )
         assert kwargs["headers"]["Authorization"] == "Basic encoded-auth-key"
         assert kwargs["data"]["scope"] == "GIGACHAT_API_PERS"
 

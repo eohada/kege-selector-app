@@ -3364,9 +3364,10 @@
 
 .tw-review-answer-row {
     display: flex;
+    flex-wrap: wrap !important;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px 12px !important;
     padding: 10px 14px;
     border-radius: 0.75rem;
     font-size: 14px;
@@ -3412,6 +3413,9 @@
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 6px;
+    min-width: 0 !important;
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
 }
 
 .tw-review-correct-answer .tw-review-answer-value {

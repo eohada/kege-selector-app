@@ -15,6 +15,9 @@
     testSet: initial.selected ? structuredClone(initial.selected) : null,
     history: initial.history || [], runner: initial.runner || {}, limits: initial.limits || {},
     assignments: initial.assignments || [],
+    examSkills: initial.exam_skills || [],
+    platformHomeworkEnabled: initial.platform_homework_enabled === true,
+    platformTasks: [],
     drafts: new Map(), currentRun: null, selectedCase: 0, selectedCriterion: 0,
     selectedResultTest: 0, busy: false, dirty: false
   };
@@ -262,6 +265,27 @@
     rule.value = criterion.policy || 'all_or_nothing';
     rule.addEventListener('change', () => { criterion.policy = rule.value; setDirty(); });
     ruleLabel.append(rule); editor.append(ruleLabel);
+    const skillLabel = element('label', '', 'Связанный навык курса · необязательно');
+    const skill = document.createElement('select');
+    const noSkill = element('option', '', 'Не сопоставлен · Tutor Core не сделает вывод по навыку');
+    noSkill.value = '';
+    skill.append(noSkill);
+    state.examSkills.forEach((item) => {
+      const taskTag = item.task_number ? ` · задание №${item.task_number}` : '';
+      const option = element('option', '', `${item.title}${taskTag}`);
+      option.value = item.skill_id;
+      skill.append(option);
+    });
+    const currentSkillId = criterion.skill_id || '';
+    if (currentSkillId && !state.examSkills.some((item) => item.skill_id === currentSkillId)) {
+      const legacyOption = element('option', '', `${currentSkillId} · сохранённая связь`);
+      legacyOption.value = currentSkillId;
+      skill.append(legacyOption);
+    }
+    skill.value = currentSkillId;
+    skill.addEventListener('change', () => { criterion.skill_id = skill.value || null; setDirty(); });
+    skillLabel.append(skill); editor.append(skillLabel);
+    editor.append(element('p', 'cj-hint', 'Сопоставляйте критерий по его содержанию. Навык появится в Tutor Core только после полного подтверждения Runner.'));
     const assignment = state.assignments.find((item) => item.assignment_id === state.testSet.assignment_id && item.assignment_version === state.testSet.assignment_version);
     if (assignment) {
       const mappingLabel = element('label', '', 'Критерий задания AI Homework');
@@ -451,6 +475,47 @@
       updateRunner(data.runner, data.limits);
       renderHistory();
     } catch (error) { say(error.message, 'error'); }
+    if (state.platformHomeworkEnabled) await loadPlatformTasks();
+  }
+  async function loadPlatformTasks() {
+    const select = $('#cj-platform-task');
+    if (!select) return;
+    try {
+      const data = await request(`${api}/platform-tasks`);
+      state.platformTasks = data.tasks || [];
+      select.replaceChildren();
+      if (!state.platformTasks.length) {
+        const option = element('option', '', 'Нет доступных Python-заданий с автопроверкой');
+        option.value = ''; select.append(option); return;
+      }
+      const placeholder = element('option', '', 'Выберите задание BooStudy');
+      placeholder.value = ''; select.append(placeholder);
+      state.platformTasks.forEach((task) => {
+        const option = element('option', '', `${task.title} · #${task.task_id} · ${task.max_score} б.${task.is_linked ? ' · уже связано' : ''}`);
+        option.value = String(task.task_id); select.append(option);
+      });
+    } catch (error) {
+      select.replaceChildren(element('option', '', 'Не удалось загрузить задания BooStudy'));
+      say(error.message, 'error');
+    }
+  }
+  async function linkPlatformTask() {
+    if (!state.platformHomeworkEnabled) return;
+    if (!state.testSet?.id) { say('Сначала сохраните набор тестов и критерии.', 'warning'); return; }
+    if (state.dirty) { say('Сначала сохраните изменения набора, затем привяжите его версию.', 'warning'); return; }
+    const taskId = Number($('#cj-platform-task')?.value || 0);
+    if (!taskId) { say('Выберите Python-задание BooStudy.', 'warning'); return; }
+    try {
+      const result = await request(`${api}/test-sets/${state.testSet.id}/platform-task`, {
+        method: 'POST', headers: headers(), body: JSON.stringify({ task_id: taskId })
+      });
+      const task = state.platformTasks.find((item) => item.task_id === taskId);
+      if (task) task.is_linked = true;
+      const version = result.binding?.test_set_version || state.testSet.test_set_version;
+      $('#cj-platform-link-status').textContent = `Связано: задание #${taskId}, набор v${version}, рубрика v${result.binding?.rubric_version || state.testSet.rubric_version}.`;
+      say('Версия Code Judge связана с реальным Python-заданием BooStudy.', 'success');
+      await loadPlatformTasks();
+    } catch (error) { say(error.message, 'error'); }
   }
   async function pollQueue() {
     try { const data = await request(`${api}/queue`); updateRunner(data.runner, data.limits); }
@@ -532,6 +597,7 @@
     say('Новый набор готов. Добавьте тесты и сохраните его.');
   });
   $('#cj-save-set').addEventListener('click', saveSet);
+  $('#cj-link-platform-task')?.addEventListener('click', linkPlatformTask);
   $('#cj-delete-set').addEventListener('click', deleteSet);
   $('#cj-add-case').addEventListener('click', () => {
     if (state.testSet.test_cases.length >= Number(state.limits.max_test_cases || 30)) { say('Достигнут лимит тестов.', 'warning'); return; }
@@ -552,7 +618,7 @@
     state.testSet.assignment_version = assignment.assignment_version;
     state.testSet.rubric_json = assignment.criteria.map((item) => ({
       id: item.id, assignment_criterion_id: item.id, title: item.title,
-      description: item.description, max_score: item.max_score,
+      description: item.description, max_score: item.max_score, skill_id: item.skill_id || null,
       policy: item.policy || 'all_or_nothing', checks: []
     }));
     state.selectedCriterion = 0; setDirty(); renderRubric();

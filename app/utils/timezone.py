@@ -420,3 +420,17 @@ def get_grouped_timezones_for_ui() -> list[dict[str, Any]]:
             result.append({'group': g['group'], 'zones': g_zones})
 
     return result
+
+
+def local_to_utc_instant(date_str: str, time_str: str, tz_name: str | None) -> datetime:
+    """Convert local date and time in given IANA timezone to aware UTC instant."""
+    return parse_local_to_utc(date_str, time_str, tz_name)
+
+
+def utc_to_local_naive(dt: datetime | str | None, tz_name: str | None) -> datetime | None:
+    """Convert UTC instant to naive local datetime in given IANA timezone."""
+    local_aware = to_viewer_tz(dt, tz_name)
+    if local_aware is None:
+        return None
+    return local_aware.replace(tzinfo=None)
+

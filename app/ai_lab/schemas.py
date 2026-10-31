@@ -29,7 +29,10 @@ MISTAKE_FIELDS = {
     "solution_excerpt",
     "explanation",
     "correction_recommendation",
+    "criterion_id",
+    "evidence_refs",
 }
+MISTAKE_REQUIRED_FIELDS = MISTAKE_FIELDS - {"criterion_id", "evidence_refs"}
 CRITERION_SCORE_FIELDS = {"criterion", "score_awarded", "max_score", "rationale"}
 
 
@@ -49,6 +52,8 @@ MISTAKE_SCHEMA = _object_schema(
         "solution_excerpt": {"type": "string"},
         "explanation": {"type": "string"},
         "correction_recommendation": {"type": "string"},
+        "criterion_id": {"type": ["string", "null"]},
+        "evidence_refs": {"type": "array", "items": {"type": "string"}},
     },
     [
         "description",
@@ -135,12 +140,27 @@ def validate_response(
     if not math.isfinite(float(max_score)) or abs(float(max_score) - expected_max_score) > 0.001:
         raise ResponseValidationError("Максимальный балл в ответе не совпадает с условием.")
 
-    if result["grading_status"] not in GRADING_STATUSES:
-        raise ResponseValidationError("Неизвестный статус проверки.")
     if not isinstance(result["criterion_scores"], list):
         raise ResponseValidationError("Оценки по критериям должны быть массивом.")
     if not isinstance(result["insufficient_data_reason"], str):
         raise ResponseValidationError("Причина недостаточности данных должна быть строкой.")
+    if score is not None and result["criterion_scores"]:
+        criterion_values = [
+            item.get("score_awarded") if isinstance(item, dict) else None
+            for item in result["criterion_scores"]
+        ]
+        if all(isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value))
+               for value in criterion_values):
+            if abs(float(score) - sum(float(value) for value in criterion_values)) > 0.001:
+                raise ResponseValidationError(
+                    "Итоговый балл не совпадает с суммой баллов по критериям. "
+                    "Проверьте каждое criterion_scores[].score_awarded и score_awarded."
+                )
+    if result["grading_status"] not in GRADING_STATUSES:
+        raise ResponseValidationError(
+            "Неизвестный grading_status. Допустимы только checked, partially_checked, "
+            "insufficient_data или manual_review."
+        )
     if result["grading_status"] == "checked" and score is None:
         raise ResponseValidationError("Статус checked несовместим с отсутствующей числовой оценкой.")
     if result["grading_status"] == "insufficient_data":
@@ -223,14 +243,21 @@ def validate_response(
     if not isinstance(mistakes, list) or len(mistakes) > 30:
         raise ResponseValidationError("Список ошибок должен быть массивом не более чем из 30 элементов.")
     for mistake in mistakes:
-        if not isinstance(mistake, dict) or set(mistake) != MISTAKE_FIELDS:
+        if (not isinstance(mistake, dict)
+                or not MISTAKE_REQUIRED_FIELDS <= set(mistake)
+                or not set(mistake) <= MISTAKE_FIELDS):
             raise ResponseValidationError("Описание ошибки не соответствует схеме.")
         if mistake["mistake_type"] not in MISTAKE_TYPES:
             raise ResponseValidationError("Неизвестный тип ошибки.")
-        if any(not isinstance(mistake[key], str) for key in MISTAKE_FIELDS):
+        if any(not isinstance(mistake.get(key), str) for key in MISTAKE_REQUIRED_FIELDS):
             raise ResponseValidationError("Поля описания ошибки должны быть строками.")
         if not mistake["description"].strip() or not mistake["explanation"].strip():
             raise ResponseValidationError("У ошибки должны быть описание и объяснение.")
+        if mistake.get("criterion_id") is not None and not isinstance(mistake.get("criterion_id"), str):
+            raise ResponseValidationError("criterion_id ошибки должен быть строкой или null.")
+        evidence_refs = mistake.get("evidence_refs", [])
+        if not isinstance(evidence_refs, list) or any(not isinstance(ref, str) or not ref.strip() for ref in evidence_refs):
+            raise ResponseValidationError("evidence_refs ошибки должен содержать только непустые строки.")
 
     topics = result["recommended_topics"]
     if not isinstance(topics, list) or len(topics) > 20 or any(

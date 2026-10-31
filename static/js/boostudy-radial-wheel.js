@@ -166,7 +166,7 @@
     return maxZ;
   }
 
-  function bringElementToFront(el) {
+  function bringElementToFront(el, options = {}) {
     if (!el || el.id === 'canvas-window') return MIN_ORBIT_Z;
     let nextZ = getTopZIndex() + 1;
     if (nextZ >= MAX_ORBIT_Z) {
@@ -182,9 +182,13 @@
 
   function hookOSWindowManager() {
     if (window.windowManager && !window.windowManager._orbitZHooked) {
-      window.windowManager.bringToFront = function (element) {
+      const origBringToFront = window.windowManager.bringToFront;
+      window.windowManager.bringToFront = function (element, options = {}) {
         if (!element) return;
-        return bringElementToFront(element);
+        bringElementToFront(element, options);
+        if (typeof origBringToFront === 'function') {
+          origBringToFront.call(window.windowManager, element, options);
+        }
       };
       window.windowManager._orbitZHooked = true;
     }
@@ -199,7 +203,11 @@
     if (e.target.closest('button, input, textarea, select, .lesson-os-window-dot, #board-dock, .board-dock, .board-dock-item, .lesson-os-system-bar')) return;
     const el = e.target.closest('.glass-os-window, .boo-orbit-card, .boo-orbit-sticky-card, .boo-orbit-stamp-item, .lesson-studio-window');
     if (el && el.id !== 'canvas-window') {
-      bringElementToFront(el);
+      if (window.windowManager?.bringToFront) {
+        window.windowManager.bringToFront(el);
+      } else {
+        bringElementToFront(el);
+      }
     }
   }, false);
 
@@ -244,11 +252,21 @@
     init(options = {}) {
       if (this.overlayEl) return;
 
+      const isEmbeddedAnswer =
+        document.body.classList.contains('tw-embedded-answer') ||
+        window.location.search.includes('embedded_answer=1') ||
+        (window.self !== window.top && (window.location.pathname.includes('/workspace') || window.location.pathname.includes('/task-workspace')));
+      if (isEmbeddedAnswer) return;
+
       hookOSWindowManager();
       this.createDOM();
       this.bindEvents();
 
-      if (options.showOrb !== false) {
+      const isHomeworkOs =
+        document.body.classList.contains('homework-os') ||
+        Boolean(window.trainerOsConfig?.homework_mode);
+
+      if (options.showOrb !== false && !isHomeworkOs) {
         this.createTriggerOrb();
       }
     }
@@ -459,6 +477,24 @@
       );
     }
 
+    isRestrictedTarget(e) {
+      if (this.isTypingInputActive()) return true;
+      const restrictedSelector = '.glass-os-window, .os-window, [id$="-window"], #homework-answer-window, #homework-window, #code-window, #task-window, #notes-window, #tracer-window, #homework-files-window, #terminal-window, #board-dock, .modal, .glass-modal, #glass-modal, .monaco-editor, .CodeMirror, input, textarea, select, button, a, [contenteditable="true"], .homework-os-task-drawer, .boo-sidebar-panel, .drawer, [role="dialog"], iframe';
+      const target = e && e.target;
+      if (target && target.closest && target.closest(restrictedSelector)) {
+        return true;
+      }
+      if (this.cursorX && this.cursorY) {
+        try {
+          const hovered = document.elementFromPoint(this.cursorX, this.cursorY);
+          if (hovered && hovered.closest && hovered.closest(restrictedSelector)) {
+            return true;
+          }
+        } catch (_) {}
+      }
+      return false;
+    }
+
     onKeyDown(e) {
       if (e.key === 'Escape') {
         if (this.isOpen) {
@@ -480,13 +516,14 @@
       }
       const isTildeTrigger = e.key === '`' || e.key === '~' || e.code === 'Backquote' || e.key === 'ё' || e.key === 'Ё';
 
-      // Only block tilde/ё when typing in an active text input/editor so character typing is preserved.
-      // Alt is a modifier key and MUST ALWAYS summon Boo Orbit, even when typing inside notes or code!
-      if (isTildeTrigger && this.isTypingInputActive()) {
+      if (!isAltTrigger && !isTildeTrigger) return;
+
+      // Orbit must only activate on bare canvas background (never inside mini-windows, editor, dock, or dialogs)
+      if (this.isRestrictedTarget(e)) {
         return;
       }
 
-      if ((isAltTrigger || isTildeTrigger) && !this.isOpen && !e.repeat) {
+      if (!this.isOpen && !e.repeat) {
         this.activeKey = e.key;
         this.show(this.cursorX, this.cursorY);
         e.preventDefault();
@@ -1340,9 +1377,27 @@
   // ==========================================================================
 
   function triggerPulseBeacon(x, y, options = {}) {
-    const px = (typeof x === 'number' && x > 0) ? x : (orbitInstance?.cursorX || window.innerWidth / 2);
-    const py = (typeof y === 'number' && y > 0) ? y : (orbitInstance?.cursorY || window.innerHeight / 2);
+    let px = (typeof x === 'number' && x > 0) ? x : (orbitInstance?.cursorX || window.innerWidth / 2);
+    let py = (typeof y === 'number' && y > 0) ? y : (orbitInstance?.cursorY || window.innerHeight / 2);
     const author = options.author || (window.boostudyOS?.viewerName || document.getElementById('trainer-os-config')?.dataset?.viewerName || 'Участник');
+
+    let worldX = options.worldX;
+    let worldY = options.worldY;
+    const isBoard = Boolean(options.isBoard || (!options.isRemote && window.BooCanvasOverlay?.screenToWorld));
+
+    if (options.isRemote && typeof worldX === 'number' && typeof worldY === 'number' && window.BooCanvasOverlay?.worldToScreen) {
+      const sp = window.BooCanvasOverlay.worldToScreen(worldX, worldY);
+      if (sp) {
+        px = sp.x;
+        py = sp.y;
+      }
+    } else if (!options.isRemote && window.BooCanvasOverlay?.screenToWorld) {
+      const wp = window.BooCanvasOverlay.screenToWorld(px, py);
+      if (wp) {
+        worldX = wp.x;
+        worldY = wp.y;
+      }
+    }
 
     const anchor = document.createElement('div');
     anchor.className = 'boo-orbit-beacon-anchor';
@@ -1381,13 +1436,33 @@
     anchor.appendChild(tag);
     document.body.appendChild(anchor);
 
-    setTimeout(() => anchor.remove(), 2800);
+    // Keep beacon anchored to exact world coordinates during canvas pan / zoom
+    let animId = null;
+    if (typeof worldX === 'number' && typeof worldY === 'number' && window.BooCanvasOverlay?.worldToScreen) {
+      const updateScreenPos = () => {
+        const cur = window.BooCanvasOverlay.worldToScreen(worldX, worldY);
+        if (cur) {
+          anchor.style.left = `${cur.x}px`;
+          anchor.style.top = `${cur.y}px`;
+        }
+        animId = requestAnimationFrame(updateScreenPos);
+      };
+      animId = requestAnimationFrame(updateScreenPos);
+    }
+
+    setTimeout(() => {
+      if (animId) cancelAnimationFrame(animId);
+      anchor.remove();
+    }, 2800);
 
     if (!options.isRemote) {
       window.boostudyLessonControl?.sendUi?.({
         kind: 'orbit_beacon',
         x: px,
         y: py,
+        worldX: worldX,
+        worldY: worldY,
+        isBoard: isBoard,
         maxW: window.innerWidth,
         maxH: window.innerHeight,
         author: author
@@ -2233,7 +2308,13 @@
       const h = window.innerHeight;
       const rx = (payload.x / (payload.maxW || w)) * w;
       const ry = (payload.y / (payload.maxH || h)) * h;
-      triggerPulseBeacon(rx, ry, { isRemote: true, author: payload.author });
+      triggerPulseBeacon(rx, ry, {
+        isRemote: true,
+        author: payload.author,
+        worldX: payload.worldX,
+        worldY: payload.worldY,
+        isBoard: payload.isBoard
+      });
     },
 
     handleRemoteStamp(payload) {

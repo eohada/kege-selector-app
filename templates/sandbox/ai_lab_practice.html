@@ -1,0 +1,42 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Практика — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<style>
+.ap-page{max-width:1400px;margin:auto;padding:24px;color:var(--bs-text-primary)}.ap-nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 22px}.ap-nav a,.ap-link,.ap-vote{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 14px;border:1px solid var(--bs-border);border-radius:999px;background:var(--bs-bg-surface);color:var(--bs-text-primary);text-decoration:none;font-weight:700}.ap-nav a:hover,.ap-link:hover,.ap-vote:hover{box-shadow:var(--bs-shadow-e1)}.ap-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}.ap-head h1{font-size:clamp(27px,3vw,38px);margin:8px 0}.ap-muted{color:var(--bs-text-secondary);line-height:1.55}.ap-select{display:grid;gap:6px;min-width:min(100%,340px);color:var(--bs-text-secondary);font-size:13px;font-weight:700}.ap-select select{min-height:44px;padding:8px 12px;border:1px solid var(--bs-border);border-radius:12px;background:var(--bs-bg-surface);color:var(--bs-text-primary)}.ap-card{margin:18px 0;padding:20px;background:var(--bs-bg-surface);border:1px solid var(--bs-border);border-radius:var(--bs-radius-xl);box-shadow:var(--bs-shadow-e1);overflow-wrap:anywhere}.ap-card h2{font-size:18px;margin:0 0 10px}.ap-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}.ap-tags{display:flex;gap:8px;flex-wrap:wrap}.ap-tag{border-radius:999px;padding:4px 10px;background:var(--bs-bg-subtle,var(--bs-bg-surface));font-size:12px;font-weight:700}.ap-evidence{font-size:13px;line-height:1.55;color:var(--bs-text-secondary)}.ap-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.ap-vote{cursor:pointer}.ap-vote[aria-pressed="true"]{border-color:var(--bs-primary,#4169e1);box-shadow:0 0 0 2px color-mix(in srgb,var(--bs-primary,#4169e1) 20%,transparent)}.ap-feedback{min-height:20px;margin:9px 0 0;font-size:12px;color:var(--bs-text-secondary)}.ap-empty{padding:22px;border:1px dashed var(--bs-border);border-radius:16px;color:var(--bs-text-secondary)}.ap-disclaimer{padding:13px 15px;border-left:4px solid var(--bs-warning,#b7791f);border-radius:10px;background:var(--bs-bg-surface);line-height:1.5}@media(max-width:600px){.ap-page{padding:16px 12px 140px}.ap-card{padding:16px}.ap-actions>*{flex:1 1 100%}}
+.ap-page{width:min(100%,1400px);box-sizing:border-box}@media(max-width:600px){.ap-head,.ap-head form{min-width:0;max-width:100%}.ap-select{width:100%;min-width:0}.ap-select select{width:100%;min-width:0;max-width:100%;box-sizing:border-box}}
+</style>{% endblock %}
+{% block admin_content %}<main class="ap-page">
+<nav class="ap-nav" aria-label="Разделы AI Lab"><a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a><a href="{{ url_for('ai_lab.analytics_page', subject_id=selected_subject_id) }}">Аналитика</a><a href="{{ url_for('ai_lab.code_judge_page') }}">Code Judge</a><a href="{{ url_for('ai_lab.quality_review_page') }}">Экспертная проверка</a></nav>
+<header class="ap-head"><div><p class="ap-muted">Локальный MVP · без изменений курса и назначений</p><h1>Следующая практика</h1><p class="ap-muted">Подбор основан на структурированных выводах аналитики и существующем каталоге синтетических заданий.</p></div>
+<form method="get" action="{{ url_for('ai_lab.practice_page') }}"><label class="ap-select">Синтетический профиль<select name="subject_id" onchange="this.form.submit()">{% for profile in profiles %}<option value="{{ profile.id }}" {% if profile.id == selected_subject_id %}selected{% endif %}>{{ profile.label }}</option>{% endfor %}</select></label></form></header>
+<p class="ap-disclaimer">Рекомендация не является диагнозом. Единичная ошибка подавляется; для сигнала «нужна практика» нужны повторные подтверждённые ошибки в разных заданиях.</p>
+<p class="ap-muted">История учтена: заданий с доказательствами — {{ recommendations.history.completed_count }}. Предпосылки: {{ recommendations.prerequisites.status }} — {{ recommendations.prerequisites.note }}</p>
+{% for item in recommendations.recommendations %}<article class="ap-card" data-recommendation-id="{{ item.assignment_id }}"><div class="ap-row"><div><div class="ap-tags"><span class="ap-tag">Навык: {{ item.skill_id }}</span><span class="ap-tag">{{ item.difficulty }}</span><span class="ap-tag">Техническое подтверждение</span></div><h2>{{ item.title }}</h2><p class="ap-muted">Тема: {{ item.topic }}</p></div><a class="ap-link" href="{{ url_for('ai_lab.code_judge_page') }}?assignment_id={{ item.assignment_id|urlencode }}">Открыть задание</a></div><p>{{ item.reason }}</p><p class="ap-evidence">Основание: {{ item.basis.failed_evidence }} неуспешных подтверждений из {{ item.basis.confirmed_evidence }} наблюдений; источники: {% for source in item.basis.source_refs %}<code>{{ source }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.</p><p class="ap-evidence">Ограничение: {{ item.limitations|join(' ') }}</p><div class="ap-actions"><button type="button" class="ap-vote" data-vote="helpful" aria-pressed="false">Рекомендация полезна</button><button type="button" class="ap-vote" data-vote="unhelpful" aria-pressed="false">Нужна другая</button></div><p class="ap-feedback" aria-live="polite">Оценка сохраняется только в этом браузере и не входит в метрики качества.</p></article>{% else %}<div class="ap-empty"><strong>Сейчас нет обоснованной рекомендации.</strong><p>Для этого профиля недостаточно повторных подтверждённых данных либо подходящее задание из существующего каталога уже встречалось.</p></div>{% endfor %}
+{% if recommendations.suppressed %}<section class="ap-card"><h2>Сигналы, которые не стали диагнозом</h2>{% for item in recommendations.suppressed %}<p class="ap-muted">{{ item.skill_id }}: {{ item.reason }}</p>{% endfor %}</section>{% endif %}
+<details class="ap-card"><summary><strong>История заданий этого профиля</strong></summary>{% if recommendations.history.completed_assignment_ids %}<ul>{% for assignment_id in recommendations.history.completed_assignment_ids %}<li><code>{{ assignment_id }}</code></li>{% endfor %}</ul>{% else %}<p class="ap-muted">История пока пуста.</p>{% endif %}<p class="ap-muted">Задания из этой истории повторно не рекомендуются.</p></details>
+<script>
+(() => {
+  const token = {{ csrf_token()|tojson }};
+  document.querySelectorAll('[data-recommendation-id]').forEach((card) => {
+    const buttons = card.querySelectorAll('[data-vote]');
+    const feedback = card.querySelector('.ap-feedback');
+    buttons.forEach((button) => button.addEventListener('click', async () => {
+      buttons.forEach((item) => item.disabled = true);
+      if (feedback) feedback.textContent = 'Сохраняем оценку…';
+      try {
+        const response = await fetch('{{ url_for("ai_lab.practice_feedback") }}', {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': token},
+          body: JSON.stringify({assignment_id: card.dataset.recommendationId, vote: button.dataset.vote,
+            subject_id: {{ selected_subject_id|tojson }}, course_analysis_id: {{ selected_course_analysis_id|tojson }}})
+        });
+        const body = await response.json();
+        if (!response.ok || !body.ok) throw new Error(body.error || 'Не удалось сохранить оценку.');
+        buttons.forEach((item) => { item.setAttribute('aria-pressed', String(item === button)); item.disabled = false; });
+        if (feedback) feedback.textContent = 'Спасибо. Оценка сохранена в локальной истории AI Lab; она не считается экспертной оценкой качества.';
+      } catch (error) {
+        buttons.forEach((item) => item.disabled = false);
+        if (feedback) feedback.textContent = error.message || 'Не удалось сохранить оценку.';
+      }
+    }));
+  });
+})();
+</script></main>{% endblock %}
