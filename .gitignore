@@ -251,5 +251,6 @@ bin/
 docs/audits/
 docs/oristera-next/
 docs/schedule_rebirth_prototypes/
-docs/schedule_sprint*_screenshots/
+docs/schedule_sprint*/
+scripts/*lan_access.py
 docs/*.png

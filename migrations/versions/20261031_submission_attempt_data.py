@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "20261031_submission_attempt_data"
-down_revision = "schedule_sprint2_4_recurring_and_availability"
+down_revision = "sched_s2_recur_availability"
 branch_labels = None
 depends_on = None
 

@@ -47,6 +47,24 @@ def run_migrations_offline():
         context.run_migrations()
 
 
+from sqlalchemy import text, Table, MetaData, Column, String, PrimaryKeyConstraint
+from alembic.ddl.impl import DefaultImpl
+
+# Ensure Alembic handles revision IDs up to 128 characters
+def _patched_version_table_impl(self, *, version_table, version_table_schema, version_table_pk, **kw):
+    vt = Table(
+        version_table,
+        MetaData(),
+        Column("version_num", String(128), nullable=False),
+        schema=version_table_schema,
+    )
+    if version_table_pk:
+        vt.append_constraint(PrimaryKeyConstraint("version_num", name=f"{version_table}_pkc"))
+    return vt
+
+DefaultImpl.version_table_impl = _patched_version_table_impl
+
+
 def run_migrations_online():
     """Run migrations in 'online' mode."""
     def process_revision_directives(context, revision, directives):
@@ -59,6 +77,25 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        if connection.dialect.name == 'postgresql':
+            try:
+                with connection.begin():
+                    connection.execute(text("""
+                        DO $$
+                        BEGIN
+                            IF EXISTS (
+                                SELECT 1 FROM information_schema.columns 
+                                WHERE table_name = 'alembic_version' 
+                                  AND column_name = 'version_num' 
+                                  AND (character_maximum_length IS NULL OR character_maximum_length < 128)
+                            ) THEN
+                                ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128);
+                            END IF;
+                        END $$;
+                    """))
+            except Exception as e:
+                logger.warning("Pre-migration: could not alter alembic_version column: %s", e)
+
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),

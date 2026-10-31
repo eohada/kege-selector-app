@@ -10,8 +10,8 @@ Create Date: 2026-10-31
 from alembic import op
 import sqlalchemy as sa
 
-revision = "schedule_sprint2_4_recurring_and_availability"
-down_revision = "schedule_sprint2_2_teacher_and_subject"
+revision = "sched_s2_recur_availability"
+down_revision = "sched_s2_teacher_and_subject"
 branch_labels = None
 depends_on = None
 

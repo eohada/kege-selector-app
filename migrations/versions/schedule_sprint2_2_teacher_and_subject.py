@@ -10,8 +10,8 @@ Create Date: 2026-10-29
 from alembic import op
 import sqlalchemy as sa
 
-revision = "schedule_sprint2_2_teacher_and_subject"
-down_revision = "release_r0_workflow_bans_and_publication"
+revision = "sched_s2_teacher_and_subject"
+down_revision = "release_r0_wf_bans_pub"
 branch_labels = None
 depends_on = None
 

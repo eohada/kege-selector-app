@@ -7,7 +7,7 @@ Create Date: 2026-10-27
 from alembic import op
 import sqlalchemy as sa
 
-revision = "release_r0_workflow_bans_and_publication"
+revision = "release_r0_wf_bans_pub"
 down_revision = "answer_evaluation_provenance"
 branch_labels = None
 depends_on = None
