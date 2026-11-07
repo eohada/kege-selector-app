@@ -64,13 +64,7 @@ jobs:
           set -euo pipefail
           BRANCH="$1"
           cd /opt/boostudy
-          if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
-            echo "Deployment stopped: the server checkout contains local changes or untracked files." >&2
-            exit 1
-          fi
-          git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
-          git switch --force-create "$BRANCH" "origin/$BRANCH"
-          sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy
+          BRANCH="$BRANCH" sudo -n --preserve-env=BRANCH /opt/boostudy/scripts/deploy_blue_green.sh deploy
           REMOTE
             then
               exit 0
