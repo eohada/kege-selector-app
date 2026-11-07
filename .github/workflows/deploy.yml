@@ -17,7 +17,6 @@ jobs:
       SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-      DEPLOY_BRANCH: ${{ github.ref_name }}
 
     steps:
       - name: Validate deployment access secrets
@@ -28,7 +27,6 @@ jobs:
           test -n "${USERNAME}" || { echo "::error::Secret USERNAME is not set"; exit 1; }
           test -n "${SSH_PRIVATE_KEY}" || { echo "::error::Secret SSH_PRIVATE_KEY is not set"; exit 1; }
           test -n "${SSH_KNOWN_HOSTS}" || { echo "::error::Secret SSH_KNOWN_HOSTS is not set"; exit 1; }
-          [[ "${DEPLOY_BRANCH}" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::Invalid deployment branch name"; exit 1; }
           case "${SSH_PORT}" in
             ''|*[!0-9]*) echo "::error::SSH_PORT must be numeric"; exit 1 ;;
           esac
@@ -60,13 +58,8 @@ jobs:
               -o ConnectTimeout=30 \
               -o ServerAliveInterval=25 \
               -o ServerAliveCountMax=8 \
-              "${USERNAME}@${HOST}" "bash -s -- '${DEPLOY_BRANCH}'" <<'REMOTE'
-          set -euo pipefail
-          BRANCH="$1"
-          cd /opt/boostudy
-          BRANCH="$BRANCH" sudo -n --preserve-env=BRANCH /opt/boostudy/scripts/deploy_blue_green.sh deploy
-          REMOTE
-            then
+              "${USERNAME}@${HOST}" \
+              'sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy'; then
               exit 0
             fi
             if [[ "${attempt}" -lt 3 ]]; then
