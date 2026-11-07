@@ -754,41 +754,26 @@ def _synthetic_curriculum_context(subject_id: str, events: list[dict[str, Any]],
     }
 
 
-def get_tutor_core31_evidence_bundle(
-    actor_user_id: int, *, subject_id: str | None = None,
-) -> dict[str, Any]:
+def get_tutor_core31_state(actor_user_id: int) -> dict[str, Any]:
     from app.ai_lab.analytics import stored_lesson_task_evidence, stored_platform_homework_evidence
     from app.ai_lab.lesson_intelligence import stored_lesson_evidence
     from app.ai_lab.practice import stored_ai_practice_evidence
-    from app.ai_lab.tutor_core_contract import stored_tutor_core_client_events
-
-    homework = stored_platform_homework_evidence(actor_user_id=actor_user_id)
-    lessons = stored_lesson_evidence(actor_user_id=actor_user_id)
-    classwork = stored_lesson_task_evidence(actor_user_id=actor_user_id)
-    practice = stored_ai_practice_evidence(actor_user_id=actor_user_id)
-    client_events = stored_tutor_core_client_events(actor_user_id=actor_user_id)
-    user_cache: dict[int, bool] = {}
-    source_events = homework + lessons + classwork + practice + client_events
-    accepted = [event for event in source_events if _synthetic_subject_id(event, user_cache)]
-    rejected_count = len(source_events) - len(accepted)
-    if subject_id is not None:
-        accepted = [event for event in accepted if event["subject_id"] == subject_id]
-    if accepted:
-        bundle = merge_evidence_events([accepted], allowed_subject_ids={item["subject_id"] for item in accepted})
-    else:
-        bundle = merge_evidence_events([[]], allowed_subject_ids={subject_id} if subject_id else set())
-    return {**bundle, "excluded_unmatched_events": rejected_count}
-
-
-def get_tutor_core31_state(actor_user_id: int) -> dict[str, Any]:
     from app.ai_lab.provider import is_local_ai_lab_enabled
 
     if not is_local_ai_lab_enabled():
         raise EvidenceContractError("Tutor Core 3.1 доступен только в локальной AI Lab.")
-    bundle = get_tutor_core31_evidence_bundle(actor_user_id)
+    homework = stored_platform_homework_evidence(actor_user_id=actor_user_id)
+    lessons = stored_lesson_evidence(actor_user_id=actor_user_id)
+    classwork = stored_lesson_task_evidence(actor_user_id=actor_user_id)
+    practice = stored_ai_practice_evidence(actor_user_id=actor_user_id)
+    user_cache: dict[int, bool] = {}
+    accepted = [event for event in homework + lessons + classwork + practice if _synthetic_subject_id(event, user_cache)]
+    rejected_count = len(homework) + len(lessons) + len(classwork) + len(practice) - len(accepted)
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for event in bundle["events"]:
-        grouped[event["subject_id"]].append(event)
+    if accepted:
+        bundle = merge_evidence_events([accepted], allowed_subject_ids={item["subject_id"] for item in accepted})
+        for event in bundle["events"]:
+            grouped[event["subject_id"]].append(event)
     learners = [
         _profile_card(subject_id, events, index, actor_user_id)
         for index, (subject_id, events) in enumerate(sorted(grouped.items()), 1)
@@ -802,18 +787,16 @@ def get_tutor_core31_state(actor_user_id: int) -> dict[str, Any]:
         "totals": {
             "profiles": len(learners),
             "events": sum(len(events) for events in grouped.values()),
-            "excluded_unmatched_events": bundle["excluded_unmatched_events"],
+            "excluded_unmatched_events": rejected_count,
             "knowledge_links": sum(len(item["knowledge"]) for item in learners),
         },
         "integrations": [
             {"source": "Домашняя работа + Code Judge", "status": "connected", "detail": "Считываются подтверждённые отчёты sandbox Code Judge и повторно проверенные точные ответы. Связи синтетических заданий с навыками помечены отдельно и не считаются экспертными."},
             {"source": "AI Lesson", "status": "teacher_confirmed_only", "detail": "В поток попадают только наблюдения с явным решением преподавателя и тем же синтетическим субъектом."},
-            {"source": "Классная работа в Lesson Room", "status": "connected" if bundle["source_counts"].get("ai_classwork") else "available_no_events",
+            {"source": "Классная работа в Lesson Room", "status": "connected" if classwork else "available_no_events",
              "detail": "В синтетическом режиме читаются сохранённые попытки по заданиям типа classwork. Засчитывается только штатная точная проверка; связь с навыком и помощь в комнате остаются неизвестными."},
-            {"source": "AI Practice", "status": "connected" if bundle["source_counts"].get("ai_practice") else "available_no_events",
+            {"source": "AI Practice", "status": "connected" if practice else "available_no_events",
              "detail": "Сохранённые попытки входят в Learning Evidence v2. Навык разрешается по точному ExamSkill ID или уникальному topic_code; семейства без точного соответствия остаются несопоставленными."},
-            {"source": "Внешние клиенты Tutor Core", "status": "connected" if bundle["source_counts"].get("ai_tutor_core") else "available_no_events",
-             "detail": "События входят в общую память только после серверной проверки источника, точного subject_id и контракта Learning Evidence v2."},
             {"source": "Ручная оценка", "status": "explicit_revision_audit",
              "detail": "Новые ручные оценки имеют отдельную ревизию с методом и автором; исправления замещают текущую запись, а предыдущие остаются в аудите. Для старых записей без ревизии происхождение неизвестно; reviewed_at не используется как доказательство."},
             {"source": "Curriculum", "status": "explicit_synthetic_copy_required", "detail": "Предложения могут ссылаться только на единственную индивидуальную копию разрешённого синтетического шаблона и связанные с уроком ExamSkills; исходный курс не меняется."},

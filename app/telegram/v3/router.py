@@ -112,9 +112,11 @@ from app.telegram.v3.screens.teacher_student_notifications import (
     show_teacher_students_list as show_teacher_students_list_notif,
 )
 from app.telegram.v3.screens.student import (
+    show_student_help,
     show_student_hw_item,
     show_student_hw_list,
     show_student_home,
+    show_student_lesson_card,
     show_student_progress,
     show_student_schedule,
 )
@@ -557,14 +559,39 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         elif action == "sch":
             await show_student_schedule(update, user)
             return
+        elif action in ("les", "lesson") and params:
+            lesson_id = int(params[0])
+            await show_student_lesson_card(update, user, lesson_id=lesson_id)
+            return
+        elif action == "help":
+            await show_student_help(update, user)
+            return
         elif action == "hw":
-            page = int(params[0]) if params else 1
-            await show_student_hw_list(update, user, page=page)
+            category = "all"
+            page = 1
+            if len(params) == 1:
+                if params[0].isdigit():
+                    page = int(params[0])
+                else:
+                    category = params[0]
+            elif len(params) >= 2:
+                category = params[0]
+                page = int(params[1]) if params[1].isdigit() else 1
+            await show_student_hw_list(update, user, category=category, page=page)
             return
         elif action in ("hw_item", "hw_view") and params:
             assignment_id = int(params[0])
-            page = int(params[1]) if len(params) > 1 else 1
-            await show_student_hw_item(update, user, assignment_id=assignment_id, return_page=page)
+            category = "all"
+            page = 1
+            if len(params) == 2:
+                if params[1].isdigit():
+                    page = int(params[1])
+                else:
+                    category = params[1]
+            elif len(params) >= 3:
+                category = params[1]
+                page = int(params[2]) if params[2].isdigit() else 1
+            await show_student_hw_item(update, user, assignment_id=assignment_id, return_category=category, return_page=page)
             return
         elif action == "prog":
             await show_student_progress(update, user)

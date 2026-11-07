@@ -2298,10 +2298,8 @@ def _platform_profile_case(profile_id: str, events: list[dict[str, Any]], studen
 def _platform_profile_cases(actor_id: int) -> list[dict[str, Any]]:
     from app.ai_lab.analytics import all_analytics_evidence
     from app.ai_lab.course_adapter import resolve_assigned_synthetic_copy
-    from app.ai_lab.learning_evidence import merge_evidence_events
     from app.ai_lab.platform_homework import _allowlisted_actor_ids, _allowlisted_user_ids
     from app.ai_lab.provider import is_local_ai_lab_enabled
-    from app.ai_lab.tutor_core_contract import stored_tutor_core_client_events
     from core.db_models import Student, User
 
     if not is_local_ai_lab_enabled():
@@ -2315,11 +2313,7 @@ def _platform_profile_cases(actor_id: int) -> list[dict[str, Any]]:
             or int(actor_id) not in _allowlisted_actor_ids()):
         return []
     global_scope = actor_role in {"admin", "creator", "superadmin", "super_admin"}
-    event_bundle = merge_evidence_events([
-        all_analytics_evidence(actor_user_id=actor_id),
-        stored_tutor_core_client_events(actor_user_id=actor_id),
-    ])
-    events = event_bundle["events"]
+    events = all_analytics_evidence(actor_user_id=actor_id)
     by_subject: dict[str, list[dict[str, Any]]] = {}
     for event in events:
         if event["subject_id"].startswith("platform-student:"):

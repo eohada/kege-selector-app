@@ -5,7 +5,7 @@ import math
 from typing import Any
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_, and_
 
 from app.models import db, User, Student, Submission, Lesson, Assignment
@@ -377,25 +377,28 @@ async def show_teacher_student_card(update: Update, user: User, student_id: int,
         tg_status = "⚠️ Не подключён к платформе"
 
     # 2. Upcoming lesson with THIS teacher
-    is_admin = bool(user.is_creator() or user.is_admin())
-    next_lesson_q = Lesson.query.filter(
+    cand_lessons = Lesson.query.filter(
         Lesson.student_id == student.student_id,
         Lesson.lesson_date.isnot(None),
-        Lesson.lesson_date >= now,
-    )
-    if not is_admin:
-        next_lesson_q = next_lesson_q.filter(or_(Lesson.teacher_id == user.id, Lesson.teacher_id.is_(None)))
-    next_lesson = next_lesson_q.order_by(Lesson.lesson_date.asc()).first()
+        Lesson.lesson_date >= now - timedelta(hours=3),
+        Lesson.status.notin_(('cancelled', 'completed')),
+        or_(Lesson.teacher_id == user.id, Lesson.teacher_id.is_(None)),
+    ).order_by(Lesson.lesson_date.asc()).all()
+    next_lesson = None
+    for cand in cand_lessons:
+        st_utc = coerce_to_utc(cand.lesson_date)
+        dur = int(cand.duration or 60)
+        if st_utc and st_utc + timedelta(minutes=dur) >= now:
+            next_lesson = cand
+            break
 
     # 3. Last completed lesson with this teacher
-    last_lesson_q = Lesson.query.filter(
+    last_lesson = Lesson.query.filter(
         Lesson.student_id == student.student_id,
         Lesson.lesson_date.isnot(None),
         Lesson.lesson_date < now,
-    )
-    if not is_admin:
-        last_lesson_q = last_lesson_q.filter(or_(Lesson.teacher_id == user.id, Lesson.teacher_id.is_(None)))
-    last_lesson = last_lesson_q.order_by(Lesson.lesson_date.desc()).first()
+        or_(Lesson.teacher_id == user.id, Lesson.teacher_id.is_(None)),
+    ).order_by(Lesson.lesson_date.desc()).first()
 
     # 4. Multi-teacher isolated homework breakdown
     sub_q = db.session.query(Submission, Assignment).join(
@@ -403,16 +406,13 @@ async def show_teacher_student_card(update: Update, user: User, student_id: int,
     ).filter(
         Submission.student_id == student.student_id,
         Assignment.is_active.is_(True),
+        or_(
+            Assignment.created_by_id == user.id,
+            Assignment.lesson_id.in_(
+                db.session.query(Lesson.lesson_id).filter(Lesson.teacher_id == user.id)
+            ),
+        ),
     )
-    if not is_admin:
-        sub_q = sub_q.filter(
-            or_(
-                Assignment.created_by_id == user.id,
-                Assignment.lesson_id.in_(
-                    db.session.query(Lesson.lesson_id).filter(Lesson.teacher_id == user.id)
-                ),
-            )
-        )
     submissions = sub_q.all()
 
     active_count = 0
@@ -522,22 +522,18 @@ async def show_teacher_student_hw_list(update: Update, user: User, student_id: i
     tz_name = getattr(user.profile, "timezone", "Europe/Moscow")
     now = datetime.now(timezone.utc)
 
-    is_admin = bool(user.is_creator() or user.is_admin())
     sub_q = db.session.query(Submission, Assignment).join(
         Assignment, Submission.assignment_id == Assignment.assignment_id
     ).filter(
         Submission.student_id == student_id,
         Assignment.is_active.is_(True),
+        or_(
+            Assignment.created_by_id == user.id,
+            Assignment.lesson_id.in_(
+                db.session.query(Lesson.lesson_id).filter(Lesson.teacher_id == user.id)
+            ),
+        ),
     )
-    if not is_admin:
-        sub_q = sub_q.filter(
-            or_(
-                Assignment.created_by_id == user.id,
-                Assignment.lesson_id.in_(
-                    db.session.query(Lesson.lesson_id).filter(Lesson.teacher_id == user.id)
-                ),
-            )
-        )
     submissions = sub_q.order_by(Assignment.deadline.asc().nullslast(), Submission.submission_id.desc()).all()
 
     total_count = len(submissions)
@@ -595,16 +591,21 @@ async def show_teacher_student_schedule(update: Update, user: User, student_id: 
     tz_name = getattr(user.profile, "timezone", "Europe/Moscow")
     now = datetime.now(timezone.utc)
 
-    is_admin = bool(user.is_creator() or user.is_admin())
-    q = Lesson.query.filter(
+    raw_lessons = Lesson.query.filter(
         Lesson.student_id == student_id,
         Lesson.lesson_date.isnot(None),
-        Lesson.lesson_date >= now,
+        Lesson.lesson_date >= now - timedelta(hours=3),
         Lesson.status.notin_(("cancelled", "completed")),
-    )
-    if not is_admin:
-        q = q.filter(or_(Lesson.teacher_id == user.id, Lesson.teacher_id.is_(None)))
-    lessons = q.order_by(Lesson.lesson_date.asc()).limit(10).all()
+        or_(Lesson.teacher_id == user.id, Lesson.teacher_id.is_(None)),
+    ).order_by(Lesson.lesson_date.asc()).limit(15).all()
+
+    lessons = []
+    for l in raw_lessons:
+        st_utc = coerce_to_utc(l.lesson_date)
+        dur = int(l.duration or 60)
+        if st_utc and st_utc + timedelta(minutes=dur) >= now:
+            lessons.append(l)
+    lessons = lessons[:10]
 
     text = f"{card_header(f'📅 Расписание · {name}', 'Ближайшие занятия')}\n"
     keyboard: list[list[InlineKeyboardButton]] = []

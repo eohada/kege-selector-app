@@ -164,65 +164,6 @@ def validate_evidence_event(raw: Any) -> dict[str, Any]:
     else:
         event["assignment"] = None
 
-    response = raw.get("response")
-    if response is None:
-        event["response"] = None
-    else:
-        if (not isinstance(response, dict) or set(response) not in (
-                {"format", "value"}, {"format", "value", "submitted_at"},
-        )):
-            raise EvidenceContractError("Ответ должен содержать формат, значение и необязательное время отправки.")
-        response_format = response.get("format")
-        response_value = response.get("value")
-        if (not isinstance(response_format, str)
-                or not re.fullmatch(r"[a-z][a-z0-9_.-]{0,39}", response_format)
-                or not _is_json_value(response_value)):
-            raise EvidenceContractError("Ответ содержит неподдерживаемый формат или не-JSON значение.")
-        try:
-            response_size = len(json.dumps(
-                response_value, ensure_ascii=False, separators=(",", ":"), allow_nan=False,
-            ).encode("utf-8"))
-        except (TypeError, ValueError) as exc:
-            raise EvidenceContractError("Ответ не сериализуется как JSON.") from exc
-        if response_size > 16_384:
-            raise EvidenceContractError("Размер сохранённого ответа не должен превышать 16 КБ.")
-        submitted_at = response.get("submitted_at")
-        if submitted_at is not None:
-            if not isinstance(submitted_at, str):
-                raise EvidenceContractError("Время отправки ответа должно быть ISO 8601 или null.")
-            try:
-                parsed_submitted_at = datetime.fromisoformat(submitted_at.replace("Z", "+00:00"))
-            except ValueError as exc:
-                raise EvidenceContractError("Время отправки ответа должно быть ISO 8601.") from exc
-            if parsed_submitted_at.tzinfo is None:
-                raise EvidenceContractError("Время отправки ответа должно содержать часовой пояс.")
-            submitted_at = parsed_submitted_at.isoformat()
-        event["response"] = {
-            "format": response_format, "value": response_value, "submitted_at": submitted_at,
-        }
-
-    attempt_context = raw.get("attempt_context")
-    if attempt_context is None:
-        event["attempt_context"] = None
-    else:
-        fields = {"attempt_no", "material_id", "exposure_count", "difficulty"}
-        if not isinstance(attempt_context, dict) or set(attempt_context) != fields:
-            raise EvidenceContractError("Контекст попытки должен содержать номер, материал, знакомство и сложность.")
-        attempt_no = attempt_context.get("attempt_no")
-        exposure_count = attempt_context.get("exposure_count")
-        material_id = attempt_context.get("material_id")
-        difficulty = attempt_context.get("difficulty")
-        if (type(attempt_no) is not int or attempt_no < 1
-                or type(exposure_count) is not int or exposure_count < 1
-                or not isinstance(material_id, str) or not material_id.strip() or len(material_id) > 240
-                or difficulty is not None and (type(difficulty) is not int or not 1 <= difficulty <= 5)
-                or assignment is not None and material_id.strip() != assignment["id"]):
-            raise EvidenceContractError("Контекст попытки содержит недопустимую атрибуцию материала.")
-        event["attempt_context"] = {
-            "attempt_no": attempt_no, "material_id": material_id.strip(),
-            "exposure_count": exposure_count, "difficulty": difficulty,
-        }
-
     course_context = raw.get("course_context")
     if course_context is not None:
         if not isinstance(course_context, dict):
@@ -732,21 +673,6 @@ def validate_evidence_event(raw: Any) -> dict[str, Any]:
 
 def _finite_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-
-
-def _is_json_value(value: Any, depth: int = 0) -> bool:
-    if depth > 8:
-        return False
-    if value is None or isinstance(value, (str, bool, int)):
-        return True
-    if isinstance(value, float):
-        return math.isfinite(value)
-    if isinstance(value, list):
-        return all(_is_json_value(item, depth + 1) for item in value)
-    if isinstance(value, dict):
-        return all(isinstance(key, str) and _is_json_value(item, depth + 1)
-                   for key, item in value.items())
-    return False
 
 
 def _string_list(value: Any, field: str) -> list[str]:
