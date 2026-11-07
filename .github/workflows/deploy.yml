@@ -60,7 +60,7 @@ jobs:
               -o ConnectTimeout=30 \
               -o ServerAliveInterval=25 \
               -o ServerAliveCountMax=8 \
-              "${USERNAME}@${HOST}" "sudo -n bash -s -- '${DEPLOY_BRANCH}'" <<'REMOTE'
+              "${USERNAME}@${HOST}" "bash -s -- '${DEPLOY_BRANCH}'" <<'REMOTE'
           set -euo pipefail
           BRANCH="$1"
           cd /opt/boostudy
@@ -70,7 +70,7 @@ jobs:
           fi
           git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
           git switch --force-create "$BRANCH" "origin/$BRANCH"
-          BRANCH="$BRANCH" /opt/boostudy/scripts/deploy_blue_green.sh deploy
+          sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy
           REMOTE
             then
               exit 0

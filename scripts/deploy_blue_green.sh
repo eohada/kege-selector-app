@@ -18,7 +18,7 @@ set -euo pipefail
 # switches nginx back.
 
 APP_DIR="${APP_DIR:-/opt/boostudy}"
-BRANCH="${BRANCH:-main}"
+BRANCH="${BRANCH:-}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.bluegreen.yml}"
 STATE_DIR="${STATE_DIR:-$APP_DIR/.deploy}"
 ACTIVE_FILE="${ACTIVE_FILE:-$STATE_DIR/active_color}"
@@ -38,6 +38,10 @@ MIGRATION_RECOVERY_ANCHOR="${MIGRATION_RECOVERY_ANCHOR:-f2b3c4d5e6f7}"
 UPDATE_CELERY="${UPDATE_CELERY:-0}"
 
 cd "$APP_DIR"
+if [[ -z "$BRANCH" ]]; then
+    BRANCH="$(git branch --show-current)"
+    BRANCH="${BRANCH:-main}"
+fi
 mkdir -p "$STATE_DIR"
 
 compose() {
@@ -189,8 +193,9 @@ deploy() {
 
     echo "Current: $current, target: $target"
     ensure_clean_worktree
-    git fetch origin "$BRANCH"
-    git pull --ff-only origin "$BRANCH"
+    git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+    git switch --force-create "$BRANCH" "origin/$BRANCH"
+    ensure_clean_worktree
     ensure_internal_token
 
     if [[ ! -f "$COMPOSE_FILE" ]]; then
