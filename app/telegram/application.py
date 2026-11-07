@@ -7,10 +7,10 @@ role-specific SQL.  It deliberately contains no Telegram SDK types.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 
 from app.auth.rbac_utils import get_user_scope, has_permission
 from app.models import (
@@ -58,6 +58,10 @@ class TodayView:
     pending_review_count: int = 0
     overdue_count: int = 0
     actions: tuple[ActionItem, ...] = ()
+    urgent_assignments: tuple[dict[str, Any], ...] = ()
+    recently_graded: dict[str, Any] | None = None
+    teachers: tuple[dict[str, Any], ...] = ()
+    oldest_submission: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -88,6 +92,9 @@ class ParentChildSummary:
     active_assignments: int
     overdue_assignments: int
     latest_result_percent: float | None
+    category: str | None = None
+    overdue_items: tuple[dict[str, Any], ...] = ()
+    latest_graded_info: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -109,6 +116,9 @@ class OperationalSummary:
     pending_deliveries: int = 0
     retry_deliveries: int = 0
     failed_deliveries: int = 0
+    sent_deliveries: int = 0
+    oldest_review_wait_days: int = 0
+    critical_bugs_count: int = 0
 
 
 def _can_view_operations(user: User) -> bool:
@@ -210,61 +220,148 @@ def _student_ids_for_context(user: User, context: str) -> list[int]:
             return [int(selected)]
         return ids
     if context in TEACHER_CONTEXTS or context == "teacher":
+        from app.utils.relationship_scope import get_student_user_ids_for_tutor
+        student_uids = get_student_user_ids_for_tutor(user.id)
+        conditions = [Student.mentor_id == user.id]
+        if student_uids:
+            conditions.append(Student.user_id.in_(student_uids))
         rows = db.session.query(Student.student_id).filter(
-            Student.mentor_id == user.id,
+            or_(*conditions),
             Student.is_active.is_(True),
-        ).all()
+        ).distinct().all()
         return [int(row[0]) for row in rows]
     return []
 
 
+
 def _lesson_dict(lesson: Lesson) -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    teacher_name = None
+    if lesson.teacher_id:
+        tch = db.session.get(User, lesson.teacher_id)
+        if tch:
+            teacher_name = tch.full_name or tch.username
+    starts_at = coerce_to_utc(lesson.lesson_date)
+    duration = int(lesson.duration or 60)
+    is_live = False
+    if starts_at and lesson.status not in ("cancelled", "completed"):
+        ends_at = starts_at + timedelta(minutes=duration)
+        if starts_at <= now <= ends_at:
+            is_live = True
     return {
         "id": int(lesson.lesson_id),
         "student_id": int(lesson.student_id) if lesson.student_id is not None else None,
+        "subject": lesson.subject or "Занятие",
         "topic": lesson.topic or "Урок",
-        "starts_at": coerce_to_utc(lesson.lesson_date),
-        "duration_minutes": int(lesson.duration or 60),
+        "teacher_name": teacher_name,
+        "teacher_id": lesson.teacher_id,
+        "starts_at": starts_at,
+        "duration": duration,
+        "duration_minutes": duration,
         "status": lesson.status or "planned",
+        "is_live": is_live,
         "room_available": bool(lesson.lesson_id),
+        "lesson_url": deep_links.lesson(lesson.lesson_id),
         "deep_link": deep_links.lesson(lesson.lesson_id),
     }
 
 
 def _assignment_dict(assignment: Assignment, submission: Submission | None) -> dict[str, Any]:
     status = (submission.status if submission else "ASSIGNED") or "ASSIGNED"
+    teacher_name = None
+    if assignment.created_by_id:
+        tch = db.session.get(User, assignment.created_by_id)
+        if tch:
+            teacher_name = tch.full_name or tch.username
     return {
         "id": int(assignment.assignment_id),
+        "assignment_id": int(assignment.assignment_id),
         "title": assignment.title,
-        "type": assignment.assignment_type,
+        "type": assignment.assignment_type or "ДЗ",
+        "teacher_name": teacher_name,
+        "teacher_id": assignment.created_by_id,
         "deadline": coerce_to_utc(assignment.deadline),
         "submission_id": int(submission.submission_id) if submission else None,
         "status": status,
         "percentage": submission.percentage if submission else None,
+        "total_score": getattr(submission, "total_score", None) if submission else None,
+        "max_score": getattr(submission, "max_score", None) if submission else None,
+        "teacher_feedback": getattr(submission, "teacher_feedback", None) if submission else None,
+        "graded_at": coerce_to_utc(submission.graded_at) if submission and submission.graded_at else None,
+        "submitted_at": coerce_to_utc(submission.submitted_at) if submission and submission.submitted_at else None,
         "deep_link": deep_links.assignment(assignment.assignment_id),
+        "url": deep_links.assignment(assignment.assignment_id),
     }
 
 
 def _student_today(user: User, context: str, student_ids: list[int]) -> TodayView:
     now = datetime.now(timezone.utc)
-    lessons = db.session.query(Lesson).filter(
+    lessons_raw = db.session.query(Lesson).filter(
         Lesson.student_id.in_(student_ids),
         Lesson.lesson_date.isnot(None),
-        Lesson.lesson_date >= now,
-    ).order_by(Lesson.lesson_date.asc()).limit(8).all() if student_ids else []
+        Lesson.lesson_date >= now - timedelta(hours=3),
+        Lesson.status.notin_(("cancelled", "completed")),
+    ).order_by(Lesson.lesson_date.asc()).limit(12).all() if student_ids else []
+    lessons = []
+    for l in lessons_raw:
+        st_utc = coerce_to_utc(l.lesson_date)
+        dur = int(l.duration or 60)
+        if st_utc and st_utc + timedelta(minutes=dur) >= now:
+            lessons.append(l)
+    lessons = lessons[:8]
     submissions = db.session.query(Submission).join(Assignment).filter(
         Submission.student_id.in_(student_ids),
         Assignment.is_active.is_(True),
     ).order_by(Assignment.deadline.asc()).limit(25).all() if student_ids else []
     assignments = [_assignment_dict(sub.assignment, sub) for sub in submissions]
+
     actions: list[ActionItem] = []
+    urgent_assignments = []
+    teachers_dict: dict[int, dict[str, Any]] = {}
+
     for item in assignments:
         deadline = item["deadline"]
         status = str(item["status"]).upper()
-        if deadline and status not in {"CHECKED", "GRADED", "COMPLETED"} and deadline < now:
-            actions.append(ActionItem("assignment.overdue", "high", "Просроченное задание", item["title"], deadline, "assignment", item["id"], "open_assignment"))
-        elif deadline and status not in {"CHECKED", "GRADED", "COMPLETED"}:
-            actions.append(ActionItem("assignment.deadline", "normal", "Приближается дедлайн", item["title"], deadline, "assignment", item["id"], "open_assignment"))
+        t_name = item.get("teacher_name")
+        if t_name and item.get("teacher_id"):
+            teachers_dict[item["teacher_id"]] = {
+                "id": item["teacher_id"],
+                "name": t_name,
+                "subject": item.get("type", "Курс"),
+            }
+
+        if deadline and status not in {"CHECKED", "GRADED", "COMPLETED"}:
+            is_overdue = deadline < now
+            is_soon = not is_overdue and (deadline - now).total_seconds() <= 172800  # 48 hours
+            if is_overdue:
+                actions.append(ActionItem("assignment.overdue", "high", "Просроченное задание", item["title"], deadline, "assignment", item["id"], "open_assignment"))
+                urgent_assignments.append({**item, "is_overdue": True})
+            elif is_soon:
+                actions.append(ActionItem("assignment.deadline", "normal", "Приближается дедлайн", item["title"], deadline, "assignment", item["id"], "open_assignment"))
+                urgent_assignments.append({**item, "is_overdue": False})
+
+    # Find teachers from lessons too
+    for lesson in lessons:
+        if lesson.teacher_id:
+            tch = db.session.get(User, lesson.teacher_id)
+            if tch:
+                teachers_dict[lesson.teacher_id] = {
+                    "id": lesson.teacher_id,
+                    "name": tch.full_name or tch.username,
+                    "subject": lesson.subject or "Информатика",
+                }
+
+    # Find recently graded submission
+    recently_graded = None
+    recent_graded_sub = db.session.query(Submission).join(Assignment).filter(
+        Submission.student_id.in_(student_ids),
+        Submission.status.in_(("CHECKED", "GRADED", "COMPLETED")),
+        Submission.percentage.isnot(None),
+    ).order_by(Submission.graded_at.desc().nullslast(), Submission.submission_id.desc()).first() if student_ids else None
+
+    if recent_graded_sub:
+        recently_graded = _assignment_dict(recent_graded_sub.assignment, recent_graded_sub)
+
     return TodayView(
         context=context,
         user_id=int(user.id),
@@ -274,7 +371,59 @@ def _student_today(user: User, context: str, student_ids: list[int]) -> TodayVie
         assignments=tuple(assignments),
         overdue_count=sum(1 for action in actions if action.type == "assignment.overdue"),
         actions=tuple(actions[:10]),
+        urgent_assignments=tuple(urgent_assignments[:3]),
+        recently_graded=recently_graded,
+        teachers=tuple(teachers_dict.values()),
     )
+
+
+def _build_teacher_review_query(user: User, student_ids: list[int] | None = None):
+    scope = get_user_scope(user)
+    if scope.get("can_see_all"):
+        return db.session.query(Submission, Student, Assignment).join(
+            Student, Submission.student_id == Student.student_id
+        ).join(
+            Assignment, Submission.assignment_id == Assignment.assignment_id
+        ).filter(
+            Submission.status.in_(("SUBMITTED", "IN_REVIEW", "RETURNED"))
+        )
+    if student_ids is None:
+        student_ids = _student_ids_for_context(user, "teacher")
+
+    lesson_taught_by_teacher = db.session.query(Lesson.lesson_id).filter(
+        Lesson.lesson_id == Assignment.lesson_id,
+        Lesson.teacher_id == user.id,
+    ).exists()
+    teacher_ownership = or_(
+        Assignment.created_by_id == user.id,
+        lesson_taught_by_teacher,
+    )
+    conditions = [teacher_ownership]
+    if student_ids:
+        conditions.append(and_(Student.student_id.in_(student_ids), Student.mentor_id == user.id))
+
+    q = db.session.query(Submission, Student, Assignment).join(
+        Student, Submission.student_id == Student.student_id
+    ).join(
+        Assignment, Submission.assignment_id == Assignment.assignment_id
+    ).filter(
+        or_(*conditions),
+        Submission.status.in_(("SUBMITTED", "IN_REVIEW", "RETURNED")),
+    )
+    if student_ids:
+        q = q.filter(Submission.student_id.in_(student_ids))
+    return q
+
+
+def can_teacher_review_submission(user: User, submission_id: int) -> bool:
+    """Verify that user has permission and strictly scoped access to this submission (zero IDOR)."""
+    if not (has_permission(user, "assignment.grade") or has_permission(user, "assignment.view")):
+        return False
+    scope = get_user_scope(user)
+    if scope.get("can_see_all"):
+        return bool(db.session.get(Submission, int(submission_id)))
+    q = _build_teacher_review_query(user).filter(Submission.submission_id == int(submission_id))
+    return db.session.query(q.exists()).scalar() is True
 
 
 def build_today_view(user: User, requested_context: str | None = None) -> TodayView:
@@ -285,21 +434,74 @@ def build_today_view(user: User, requested_context: str | None = None) -> TodayV
         return _student_today(user, context, student_ids)
 
     now = datetime.now(timezone.utc)
-    lessons = db.session.query(Lesson).join(Student, Lesson.student_id == Student.student_id).filter(
-        Student.mentor_id == user.id,
+    teacher_lesson_cond = or_(
+        Lesson.teacher_id == user.id,
+        and_(Lesson.student_id.in_(student_ids), Lesson.teacher_id.is_(None)),
+    ) if student_ids else (Lesson.teacher_id == user.id)
+
+    lessons_raw = db.session.query(Lesson).filter(
+        teacher_lesson_cond,
         Lesson.lesson_date.isnot(None),
-        Lesson.lesson_date >= now,
-    ).order_by(Lesson.lesson_date.asc()).limit(12).all() if context in TEACHER_CONTEXTS or context == "teacher" else []
-    review_count = db.session.query(Submission).join(Student, Submission.student_id == Student.student_id).filter(
-        Student.mentor_id == user.id,
-        Submission.status.in_(("SUBMITTED", "RETURNED", "IN_REVIEW")),
-    ).count() if context in TEACHER_CONTEXTS or context == "teacher" else 0
+        Lesson.lesson_date >= now - timedelta(hours=3),
+        Lesson.status.notin_(('cancelled', 'completed')),
+    ).order_by(Lesson.lesson_date.asc()).limit(16).all() if context in TEACHER_CONTEXTS or context == "teacher" else []
+    lessons = []
+    for l in lessons_raw:
+        st_utc = coerce_to_utc(l.lesson_date)
+        dur = int(l.duration or 60)
+        if st_utc and st_utc + timedelta(minutes=dur) >= now:
+            lessons.append(l)
+    lessons = lessons[:12]
+
+    review_count = _build_teacher_review_query(user, student_ids).count() if (context in TEACHER_CONTEXTS or context == "teacher") else 0
     overdue_count = db.session.query(Submission).join(Student, Submission.student_id == Student.student_id).join(Assignment).filter(
-        Student.mentor_id == user.id,
+        Submission.student_id.in_(student_ids),
         Assignment.is_active.is_(True),
         Submission.status.notin_(('CHECKED', 'GRADED', 'COMPLETED')),
         Assignment.deadline.isnot(None), Assignment.deadline < now,
-    ).count() if context in TEACHER_CONTEXTS or context == "teacher" else 0
+    ).count() if (context in TEACHER_CONTEXTS or context == "teacher") and student_ids else 0
+
+    oldest_submission = None
+    urgent_teacher_items = []
+    if context in TEACHER_CONTEXTS or context == "teacher":
+        oldest_row = _build_teacher_review_query(user, student_ids).order_by(
+            Submission.submitted_at.asc().nullsfirst(),
+            Submission.submission_id.asc(),
+        ).first()
+        if oldest_row:
+            sub_r, st_r, asgn_r = oldest_row
+            sub_utc = sub_r.submitted_at if (sub_r.submitted_at and sub_r.submitted_at.tzinfo) else (sub_r.submitted_at.replace(tzinfo=timezone.utc) if sub_r.submitted_at else None)
+            wait_days = (now - sub_utc).days if sub_utc else 0
+            oldest_submission = {
+                "submission_id": int(sub_r.submission_id),
+                "student_name": st_r.name,
+                "student_id": int(st_r.student_id),
+                "assignment_title": asgn_r.title,
+                "submitted_at": coerce_to_utc(sub_r.submitted_at),
+                "wait_days": max(0, wait_days),
+            }
+
+        if student_ids:
+            overdue_rows = db.session.query(Submission, Student, Assignment).join(
+                Student, Submission.student_id == Student.student_id
+            ).join(
+                Assignment, Submission.assignment_id == Assignment.assignment_id
+            ).filter(
+                Submission.student_id.in_(student_ids),
+                Assignment.is_active.is_(True),
+                Submission.status.notin_(('CHECKED', 'GRADED', 'COMPLETED')),
+                Assignment.deadline.isnot(None), Assignment.deadline < now,
+            ).order_by(Assignment.deadline.asc()).limit(3).all()
+
+            for o_sub, o_st, o_asgn in overdue_rows:
+                urgent_teacher_items.append({
+                    "student_id": int(o_st.student_id),
+                    "student_name": o_st.name,
+                    "assignment_id": int(o_asgn.assignment_id),
+                    "assignment_title": o_asgn.title,
+                    "deadline": coerce_to_utc(o_asgn.deadline),
+                })
+
     actions = ()
     teacher_actions = []
     if review_count:
@@ -316,6 +518,8 @@ def build_today_view(user: User, requested_context: str | None = None) -> TodayV
         pending_review_count=int(review_count),
         overdue_count=int(overdue_count),
         actions=actions,
+        urgent_assignments=tuple(urgent_teacher_items),
+        oldest_submission=oldest_submission,
     )
 
 
@@ -324,14 +528,8 @@ def build_teacher_review_queue(user: User, *, limit: int = 50) -> tuple[ReviewQu
     if not (has_permission(user, "assignment.grade") or has_permission(user, "assignment.view")):
         return ()
     limit = max(1, min(int(limit), 100))
-    rows = db.session.query(Submission, Student, Assignment).join(
-        Student, Submission.student_id == Student.student_id
-    ).join(
-        Assignment, Submission.assignment_id == Assignment.assignment_id
-    ).filter(
-        Student.mentor_id == user.id,
-        Submission.status.in_(("SUBMITTED", "IN_REVIEW", "RETURNED")),
-    ).order_by(
+    q = _build_teacher_review_query(user)
+    rows = q.order_by(
         Submission.submitted_at.asc().nullsfirst(),
         Submission.submission_id.asc(),
     ).limit(limit).all()
@@ -354,8 +552,11 @@ def build_teacher_students(user: User, *, query: str = '', limit: int = 50) -> t
     """Bounded teacher-scoped student cards, aggregated without per-student queries."""
     if not (user.is_tutor() or user.is_creator()) or not has_permission(user, 'assignment.view'):
         return ()
+    student_ids = _student_ids_for_context(user, 'teacher')
+    if not student_ids:
+        return ()
     limit = max(1, min(int(limit), 100))
-    rows = db.session.query(Student).filter(Student.mentor_id == user.id, Student.is_active.is_(True))
+    rows = db.session.query(Student).filter(Student.student_id.in_(student_ids), Student.is_active.is_(True))
     term = (query or '').strip()
     if term:
         rows = rows.filter(Student.name.ilike(f'%{term}%'))
@@ -363,6 +564,8 @@ def build_teacher_students(user: User, *, query: str = '', limit: int = 50) -> t
     ids = [int(item.student_id) for item in students]
     if not ids:
         return ()
+
+    now = datetime.now(timezone.utc)
     counts = db.session.query(
         Submission.student_id, db.func.count(Submission.submission_id),
     ).join(Assignment).filter(
@@ -373,12 +576,61 @@ def build_teacher_students(user: User, *, query: str = '', limit: int = 50) -> t
         Submission.student_id, db.func.count(Submission.submission_id),
     ).filter(Submission.student_id.in_(ids), Submission.status.in_(('SUBMITTED', 'IN_REVIEW', 'RETURNED'))
     ).group_by(Submission.student_id).all()
-    return tuple({
-        'student_id': int(student.student_id), 'name': student.name,
-        'active_assignments': int(dict(counts).get(student.student_id, 0)),
-        'in_review': int(dict(review_counts).get(student.student_id, 0)),
-        'deep_link': deep_links.student(student.student_id),
-    } for student in students)
+
+    overdue_counts = db.session.query(
+        Submission.student_id, db.func.count(Submission.submission_id),
+    ).join(Assignment).filter(
+        Submission.student_id.in_(ids), Assignment.is_active.is_(True),
+        Submission.status.notin_(('CHECKED', 'GRADED', 'COMPLETED')),
+        Assignment.deadline.isnot(None), Assignment.deadline < now,
+    ).group_by(Submission.student_id).all()
+
+    teacher_lesson_cond = or_(
+        Lesson.teacher_id == user.id,
+        and_(Lesson.student_id.in_(ids), Lesson.teacher_id.is_(None)),
+    )
+    next_lessons = db.session.query(Lesson).filter(
+        Lesson.student_id.in_(ids),
+        teacher_lesson_cond,
+        Lesson.lesson_date.isnot(None),
+        Lesson.lesson_date >= now - timedelta(hours=3),
+        Lesson.status.notin_(('cancelled', 'completed')),
+    ).order_by(Lesson.lesson_date.asc()).all()
+    next_lesson_by_st: dict[int, Lesson] = {}
+    for l in next_lessons:
+        st_utc = coerce_to_utc(l.lesson_date)
+        dur = int(l.duration or 60)
+        if st_utc and st_utc + timedelta(minutes=dur) >= now:
+            next_lesson_by_st.setdefault(int(l.student_id), l)
+
+    from collections import Counter
+    name_counts = Counter(s.name for s in students)
+    result = []
+    for student in students:
+        display_name = student.name
+        if name_counts[student.name] > 1:
+            if getattr(student, "category", None):
+                display_name = f"{student.name} ({student.category})"
+            else:
+                display_name = f"{student.name} (#{student.student_id})"
+
+        nl = next_lesson_by_st.get(int(student.student_id))
+        result.append({
+            'student_id': int(student.student_id),
+            'user_id': int(student.user_id) if student.user_id is not None else None,
+            'name': display_name,
+            'raw_name': student.name,
+            'category': getattr(student, "category", None) or "ЕГЭ",
+            'target_score': getattr(student, "target_score", None),
+            'active_assignments': int(dict(counts).get(student.student_id, 0)),
+            'in_review': int(dict(review_counts).get(student.student_id, 0)),
+            'overdue_assignments': int(dict(overdue_counts).get(student.student_id, 0)),
+            'next_lesson_topic': nl.topic if nl else None,
+            'next_lesson_date': coerce_to_utc(nl.lesson_date) if nl else None,
+            'deep_link': deep_links.student(student.student_id),
+        })
+    return tuple(result)
+
 
 
 def build_parent_children(user: User, *, limit: int = 20) -> tuple[ParentChildSummary, ...]:
@@ -415,6 +667,9 @@ def build_parent_children(user: User, *, limit: int = 20) -> tuple[ParentChildSu
         overdue = [s for s in active if s.assignment and s.assignment.deadline and coerce_to_utc(s.assignment.deadline) < now]
         graded = [s for s in submissions if s.percentage is not None]
         latest = max(graded, key=lambda s: coerce_to_utc(s.graded_at) or datetime.min.replace(tzinfo=timezone.utc)) if graded else None
+        overdue_items = tuple(_assignment_dict(s.assignment, s) for s in overdue if s.assignment)
+        latest_graded_info = _assignment_dict(latest.assignment, latest) if latest and latest.assignment else None
+        category = "overdue" if overdue else ("active" if active else "good")
         result.append(ParentChildSummary(
             student_id=int(student.student_id),
             name=student.name,
@@ -422,6 +677,9 @@ def build_parent_children(user: User, *, limit: int = 20) -> tuple[ParentChildSu
             active_assignments=len(active),
             overdue_assignments=len(overdue),
             latest_result_percent=float(latest.percentage) if latest and latest.percentage is not None else None,
+            category=category,
+            overdue_items=overdue_items,
+            latest_graded_info=latest_graded_info,
         ))
     return tuple(result)
 
@@ -485,25 +743,69 @@ def build_student_assignments(
     rows = db.session.query(Submission).join(Assignment).filter(
         Submission.student_id.in_(student_ids),
         Assignment.is_active.is_(True),
-    ).order_by(Assignment.deadline.asc()).limit(limit).all()
+    ).order_by(Assignment.deadline.asc().nullslast(), Submission.submission_id.desc()).limit(limit).all()
     normalized_filter = (status_filter or "").strip().lower()
+    now = datetime.now(timezone.utc)
     result: list[dict[str, Any]] = []
     for submission in rows:
+        asgn = submission.assignment
         status = str(submission.status or "ASSIGNED").upper()
-        category = "checked" if status in {"CHECKED", "GRADED", "COMPLETED"} else "in_review" if status in {"SUBMITTED", "IN_REVIEW", "RETURNED"} else "needs_action"
-        if normalized_filter in {"pending", "needs_action"} and category != "needs_action":
-            continue
-        if normalized_filter in {"graded", "checked"} and category != "checked":
-            continue
+        is_graded = status in {"CHECKED", "GRADED", "COMPLETED"}
+        is_in_review = status in {"SUBMITTED", "IN_REVIEW"}
+        is_active = not is_graded and not is_in_review
+        dl = coerce_to_utc(asgn.deadline)
+        is_urgent = is_active and dl is not None and (dl < now or (dl - now).total_seconds() <= 172800)
+
+        # Canonical category
+        if is_graded:
+            cat = "graded"
+        elif is_in_review:
+            cat = "review"
+        elif is_urgent:
+            cat = "urgent"
+        else:
+            cat = "active"
+
+        # Filter check
+        if normalized_filter in {"urgent"}:
+            if not is_urgent:
+                continue
+        elif normalized_filter in {"active", "in_progress", "pending", "needs_action"}:
+            if not is_active:
+                continue
+        elif normalized_filter in {"review", "in_review"}:
+            if not is_in_review:
+                continue
+        elif normalized_filter in {"graded", "checked"}:
+            if not is_graded:
+                continue
+
+        # Teacher info
+        teacher_name = None
+        if asgn.created_by_id:
+            tch = db.session.get(User, asgn.created_by_id)
+            if tch:
+                teacher_name = tch.full_name or tch.username
+
         result.append({
             "submission_id": int(submission.submission_id),
-            "assignment_id": int(submission.assignment_id),
-            "title": submission.assignment.title,
+            "assignment_id": int(asgn.assignment_id),
+            "title": asgn.title,
+            "description": asgn.description,
+            "assignment_type": asgn.assignment_type or "ДЗ",
+            "teacher_name": teacher_name,
+            "teacher_id": asgn.created_by_id,
             "status": status,
-            "category": category,
-            "deadline": coerce_to_utc(submission.assignment.deadline),
+            "category": cat,
+            "deadline": dl,
             "percentage": submission.percentage,
-            "url": deep_links.assignment(submission.assignment_id),
+            "total_score": getattr(submission, "total_score", None),
+            "max_score": getattr(submission, "max_score", None),
+            "teacher_feedback": getattr(submission, "teacher_feedback", None) or getattr(submission, "teacher_comment", None),
+            "submitted_at": coerce_to_utc(submission.submitted_at),
+            "graded_at": coerce_to_utc(submission.graded_at),
+            "is_urgent": is_urgent,
+            "url": deep_links.assignment(asgn.assignment_id),
         })
     return tuple(result)
 
@@ -517,13 +819,29 @@ def build_student_schedule(user: User, *, limit: int = 20) -> tuple[dict[str, An
     now = datetime.now(timezone.utc)
     rows = (db.session.query(Lesson).filter(
         Lesson.student_id.in_(ids), Lesson.lesson_date.isnot(None),
-        Lesson.lesson_date >= now, Lesson.status.in_(('planned', 'in_progress')),
+        Lesson.lesson_date >= now - timedelta(hours=3), Lesson.status.in_(('planned', 'in_progress')),
     ).order_by(Lesson.lesson_date.asc()).limit(max(1, min(int(limit), 50))).all())
-    return tuple({
-        'lesson_id': int(row.lesson_id), 'topic': row.topic or 'Урок',
-        'starts_at': coerce_to_utc(row.lesson_date), 'duration': int(row.duration or 60),
-        'status': row.status, 'lesson_url': deep_links.lesson(row.lesson_id),
-    } for row in rows)
+    teacher_ids = {row.teacher_id for row in rows if row.teacher_id}
+    teachers = {u.id: (u.full_name or u.username) for u in db.session.query(User).filter(User.id.in_(teacher_ids)).all()} if teacher_ids else {}
+    active_lessons = []
+    for row in rows:
+        st_utc = coerce_to_utc(row.lesson_date)
+        dur = int(row.duration or 60)
+        if not st_utc or st_utc + timedelta(minutes=dur) < now:
+            continue
+        is_live = (st_utc <= now <= st_utc + timedelta(minutes=dur))
+        active_lessons.append({
+            'lesson_id': int(row.lesson_id),
+            'topic': row.topic or 'Урок',
+            'subject': row.subject or 'Информатика',
+            'starts_at': st_utc,
+            'duration': dur,
+            'status': row.status,
+            'is_live': is_live,
+            'lesson_url': deep_links.lesson(row.lesson_id),
+            'teacher_name': teachers.get(row.teacher_id) if row.teacher_id else None,
+        })
+    return tuple(active_lessons[:limit])
 
 
 def build_parent_schedule(user: User, *, limit: int = 20) -> tuple[dict[str, Any], ...] | None:
@@ -537,11 +855,14 @@ def build_parent_schedule(user: User, *, limit: int = 20) -> tuple[dict[str, Any
         Lesson.student_id.in_(ids), Lesson.lesson_date.isnot(None),
         Lesson.lesson_date >= now, Lesson.status.in_(('planned', 'in_progress')),
     ).order_by(Lesson.lesson_date.asc()).limit(max(1, min(int(limit), 50))).all())
+    teacher_ids = {row.teacher_id for row in rows if row.teacher_id}
+    teachers = {u.id: (u.full_name or u.username) for u in db.session.query(User).filter(User.id.in_(teacher_ids)).all()} if teacher_ids else {}
     return tuple({
         'lesson_id': int(row.lesson_id), 'student_id': int(row.student_id),
         'topic': row.topic or 'Урок', 'starts_at': coerce_to_utc(row.lesson_date),
         'duration': int(row.duration or 60), 'status': row.status,
         'lesson_url': deep_links.lesson(row.lesson_id),
+        'teacher_name': teachers.get(row.teacher_id) if row.teacher_id else None,
     } for row in rows)
 
 
@@ -550,19 +871,55 @@ def build_student_progress(user: User, *, limit: int = 25) -> dict[str, Any] | N
         return None
     ids = _student_ids_for_context(user, 'student')
     if not ids:
-        return {'pending_homework': 0, 'submissions': [], 'gradebook': []}
+        return {'pending_homework': 0, 'submissions': [], 'by_subject': {}, 'gradebook': []}
     rows = (db.session.query(Submission).join(Assignment).filter(
         Submission.student_id.in_(ids), Assignment.is_active.is_(True),
-    ).order_by(Submission.submitted_at.desc().nullslast(), Submission.submission_id.desc())
+    ).order_by(Submission.graded_at.desc().nullslast(), Submission.submitted_at.desc().nullslast(), Submission.submission_id.desc())
      .limit(max(1, min(int(limit), 50))).all())
     active = [row for row in rows if str(row.status or '').upper() in {'ASSIGNED', 'IN_PROGRESS', 'RETURNED'}]
-    submissions = [{
-        'assignment_id': int(row.assignment_id), 'title': row.assignment.title,
-        'status': row.status, 'percentage': row.percentage,
-        'updated_at': coerce_to_utc(row.updated_at or row.submitted_at),
-        'assignment_url': deep_links.assignment(row.assignment_id),
-    } for row in rows]
-    return {'pending_homework': len(active), 'submissions': submissions, 'gradebook': []}
+
+    teacher_ids = {row.assignment.created_by_id for row in rows if row.assignment and row.assignment.created_by_id}
+    teachers = {u.id: (u.full_name or u.username) for u in db.session.query(User).filter(User.id.in_(teacher_ids)).all()} if teacher_ids else {}
+
+    submissions = []
+    subject_scores: dict[str, list[float]] = {}
+    for row in rows:
+        t_name = teachers.get(row.assignment.created_by_id) if row.assignment and row.assignment.created_by_id else None
+        subj = row.assignment.assignment_type or "Курс"
+        pct = float(row.percentage) if row.percentage is not None else None
+        sub_dict = {
+            'submission_id': int(row.submission_id),
+            'assignment_id': int(row.assignment_id),
+            'title': row.assignment.title,
+            'subject': subj,
+            'teacher_name': t_name,
+            'status': row.status,
+            'percentage': pct,
+            'total_score': getattr(row, 'total_score', None),
+            'max_score': getattr(row, 'max_score', None),
+            'graded_at': coerce_to_utc(row.graded_at),
+            'updated_at': coerce_to_utc(row.updated_at or row.submitted_at),
+            'assignment_url': deep_links.assignment(row.assignment_id),
+        }
+        submissions.append(sub_dict)
+        if pct is not None:
+            subj_label = f"{subj} ({t_name})" if t_name else subj
+            subject_scores.setdefault(subj_label, []).append(pct)
+
+    by_subject = {
+        k: {
+            "count": len(scores),
+            "avg": sum(scores) / len(scores),
+        }
+        for k, scores in subject_scores.items()
+    }
+
+    return {
+        'pending_homework': len(active),
+        'submissions': submissions,
+        'by_subject': by_subject,
+        'gradebook': [],
+    }
 
 
 def build_parent_progress(user: User, *, limit: int = 25) -> dict[str, Any] | None:
@@ -595,8 +952,23 @@ def build_operational_summary(user: User) -> OperationalSummary | None:
     ).count()
     delivery_counts = dict(db.session.query(
         TelegramDelivery.status, db.func.count(TelegramDelivery.delivery_id)
-    ).filter(TelegramDelivery.status.in_(("pending", "retry", "failed")))
+    ).filter(TelegramDelivery.status.in_(("pending", "retry", "failed", "sent")))
      .group_by(TelegramDelivery.status).all())
+
+    oldest_sub = db.session.query(Submission).filter(
+        Submission.status.in_(("SUBMITTED", "IN_REVIEW", "RETURNED")),
+        Submission.submitted_at.isnot(None),
+    ).order_by(Submission.submitted_at.asc()).first()
+    oldest_review_wait_days = 0
+    if oldest_sub and oldest_sub.submitted_at:
+        wait_sec = (datetime.now(timezone.utc) - coerce_to_utc(oldest_sub.submitted_at)).total_seconds()
+        oldest_review_wait_days = max(0, int(wait_sec // 86400))
+
+    critical_bugs = db.session.query(BugReport).filter(
+        BugReport.status.in_(("NEW", "IN_PROGRESS", "new", "in_progress")),
+        BugReport.severity.in_(("CRITICAL", "HIGH", "critical", "high")),
+    ).count()
+
     return OperationalSummary(
         users=db.session.query(User).filter(User.is_active.is_(True)).count(),
         active_students=db.session.query(Student).filter(Student.is_active.is_(True)).count(),
@@ -609,6 +981,9 @@ def build_operational_summary(user: User) -> OperationalSummary | None:
         pending_deliveries=int(delivery_counts.get('pending', 0)),
         retry_deliveries=int(delivery_counts.get('retry', 0)),
         failed_deliveries=int(delivery_counts.get('failed', 0)),
+        sent_deliveries=int(delivery_counts.get('sent', 0)),
+        oldest_review_wait_days=oldest_review_wait_days,
+        critical_bugs_count=int(critical_bugs),
     )
 
 

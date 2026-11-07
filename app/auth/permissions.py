@@ -72,6 +72,7 @@ DEFAULT_ROLE_PERMISSIONS = {
     ],
     'designer': [],
     'tutor': ['lesson.create', 'lesson.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'diagnostics.view', 'diagnostics.checkpoints', 'trainer.use', 'trainer.manage_knowledge', 'theory.view', 'theory.manage'],
+    'teacher': ['lesson.create', 'lesson.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'diagnostics.view', 'diagnostics.checkpoints', 'trainer.use', 'trainer.manage_knowledge', 'theory.view', 'theory.manage'],
     'student': ['gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use', 'theory.view'],
     'parent': ['gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use', 'theory.view'],
     'tester': []

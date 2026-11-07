@@ -13,8 +13,7 @@
   #profile-page-shell .profile-bento { gap: .875rem; margin-top: .875rem; }
   #profile-page-shell .profile-bento > div { gap: .875rem; }
   #profile-page-shell .profile-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-  #profile-page-shell .profile-metrics > :last-child { grid-column: span 2; }
-  #profile-page-shell .profile-metrics > div { min-height: 7.5rem; padding: 1rem; border-radius: 1.35rem; }
+  #profile-page-shell .profile-metrics > div { min-height: 10rem; padding: 1rem; border-radius: 1.35rem; }
   #profile-page-shell .profile-metrics h3 { font-size: 1.6rem; line-height: 1; }
   #profile-page-shell .profile-metrics p { letter-spacing: .06em; }
   #profile-page-shell .rounded-\[2rem\] { border-radius: 1.5rem; }
@@ -341,7 +340,7 @@
   <div class="max-w-[1600px] mx-auto w-full space-y-4">
     {% if can_manage_student and not current_user.is_student() %}
     <!-- STAFF MANAGEMENT BANNER (Режим просмотра и управления со стороны преподавателя/админа) -->
-    <div class="w-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-[2rem] p-4 sm:p-5 shadow-[0_5px_0_#312E81] text-white flex flex-col sm:flex-row items-center justify-between gap-4 border-2 border-indigo-500/50 relative overflow-hidden">
+    <div data-profile-staff-toolbar class="w-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-[2rem] p-4 sm:p-5 shadow-[0_5px_0_#312E81] text-white flex flex-col sm:flex-row items-center justify-between gap-4 border-2 border-indigo-500/50 relative overflow-hidden">
       <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
       <div class="flex items-center gap-3.5 relative z-10">
         <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center shrink-0 border border-white/30 text-2xl shadow-inner">
@@ -625,84 +624,85 @@
     {% endif %}
 
     <!-- 2. METRICS ROW (4 Cards in 1 Row - Level moved below to main content) -->
-    <div class="profile-metrics grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mt-6">
+    <div class="profile-metrics grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6">
       
       <!-- Metric 1: Прогресс обучения (Real DB Calculation) -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+      <div class="profile-metric-card bg-white border-2 border-slate-200/90 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9]">
+        <div class="profile-metric-heading">
+          <div class="profile-metric-heading-content">
+          <div class="profile-metric-icon w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
             <i class="ph-bold ph-crosshair text-base"></i>
           </div>
-          <span class="text-xs font-bold text-slate-500">Общий учебный прогресс</span>
+          <span class="profile-metric-label text-xs font-bold text-slate-500">Общий учебный прогресс</span>
+          </div>
         </div>
         <div>
           <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ progress_pct }}%</h3>
-          <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-            <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ progress_pct }}%;"></div>
-          </div>
         </div>
-        <p class="text-[11px] font-medium text-slate-400 mb-0">{{ completed_cnt }}/{{ total_cnt }} занятий · {{ read_theory_cnt }}/{{ total_theory_cnt }} тем теории</p>
-        <p class="text-[11px] font-medium text-slate-500 mb-0">Учитываются уроки и темы теории; работы и практика учитываются отдельно.</p>
+        <div class="profile-metric-footer text-[11px] font-semibold text-slate-500">
+          <i class="profile-metric-footer-icon ph-bold ph-books text-purple-600" aria-hidden="true"></i>
+          <span>Уроки и теория</span>
+        </div>
       </div>
 
       <!-- Metric 2: Стрик -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5 relative group">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+      <div class="profile-metric-card relative group bg-white border-2 border-slate-200/90 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9]">
+        <div class="profile-metric-heading">
+          <div class="profile-metric-heading-content">
+            <div class="profile-metric-icon w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
               <i class="ph-fill ph-fire text-base"></i>
             </div>
-            <span class="text-xs font-bold text-slate-500">Серия активности</span>
+            <span class="profile-metric-label text-xs font-bold text-slate-500">Серия активности</span>
           </div>
           {% if can_manage_student %}
           <button type="button" onclick="openManageStreakModal()" class="px-2 py-0.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-600 text-[10px] font-black border border-orange-200 cursor-pointer flex items-center gap-1 transition-colors" title="Управление стриком">
             <i class="ph-bold ph-pencil-simple"></i> Изменить
           </button>
-          {% elif user_streak_weeks is defined and user_streak_weeks > 0 %}
-          <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200/60 flex items-center gap-1">
-            <i class="ph-bold ph-calendar-check"></i> {{ user_streak_weeks }} нед.
-          </span>
           {% endif %}
         </div>
         <div>
           <h3 id="user-streak-display" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ user_streak }} {{ days_word }}</h3>
-          {% if user_streak_weeks is defined and user_streak_weeks > 0 %}
-          <p id="user-streak-weeks-display" class="text-[11px] font-bold text-indigo-600 mt-1 flex items-center gap-1 mb-0">
-            <i class="ph-bold ph-calendar-check"></i> Ритм: {{ user_streak_weeks }} {{ weeks_word if weeks_word is defined else 'недель' }} подряд
-          </p>
-          {% else %}
-          <p id="user-streak-weeks-display" class="text-[11px] font-semibold text-orange-500 mt-1 mb-0">Продолжай в том же духе!</p>
-          {% endif %}
         </div>
+          {% if user_streak_weeks is defined and user_streak_weeks > 0 %}
+          <div id="user-streak-weeks-display" class="profile-metric-footer text-[11px] font-semibold text-indigo-600">
+            <i class="profile-metric-footer-icon ph-bold ph-calendar-check" aria-hidden="true"></i>
+            <span>Ритм: {{ user_streak_weeks }} {{ weeks_word if weeks_word is defined else 'недель' }} подряд</span>
+          </div>
+          {% else %}
+          <div id="user-streak-weeks-display" class="profile-metric-footer text-[11px] font-semibold text-orange-500">
+            <i class="profile-metric-footer-icon ph-bold ph-calendar-check" aria-hidden="true"></i>
+            <span>Продолжай в том же духе!</span>
+          </div>
+          {% endif %}
       </div>
 
       <!-- Metric 3: Пройдено уроков -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+      <div class="profile-metric-card bg-white border-2 border-slate-200/90 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9]">
+        <div class="profile-metric-heading">
+          <div class="profile-metric-heading-content">
+          <div class="profile-metric-icon w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <i class="ph-bold ph-book-open text-base"></i>
           </div>
-          <span class="text-xs font-bold text-slate-500">Пройдено уроков</span>
+          <span class="profile-metric-label text-xs font-bold text-slate-500">Пройдено уроков</span>
+          </div>
         </div>
         <div>
           <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{% if current_user.is_authenticated and current_user.is_demo_user %}36{% else %}{{ module_completed_cnt if module_completed_cnt is defined else completed_cnt }} / {{ module_total_cnt if module_total_cnt is defined else total_cnt }}{% endif %}</h3>
         </div>
-        <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-          <span class="truncate max-w-[80%]" title="{{ '7 тем освоено' if (current_user.is_authenticated and current_user.is_demo_user) else (module_label if module_label is defined else 'Всего уроков') }}">{{ '7 тем освоено' if (current_user.is_authenticated and current_user.is_demo_user) else (module_label if module_label is defined else 'Всего уроков') }}</span>
-          <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] shrink-0">
-            <i class="ph-bold ph-check"></i>
-          </span>
+        <div class="profile-metric-footer text-[11px] font-semibold text-slate-500">
+          <i class="profile-metric-footer-icon ph-bold ph-check-circle text-emerald-600" aria-hidden="true"></i>
+          <span class="truncate" title="{{ '7 тем освоено' if (current_user.is_authenticated and current_user.is_demo_user) else (module_label if module_label is defined else 'Всего уроков') }}">{{ '7 тем освоено' if (current_user.is_authenticated and current_user.is_demo_user) else (module_label if module_label is defined else 'Всего уроков') }}</span>
         </div>
       </div>
 
       <!-- Metric 4: Учебное время (Real Heartbeat Tracker) -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5 relative group">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+      <div class="profile-metric-card relative group bg-white border-2 border-slate-200/90 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9]">
+        <div class="profile-metric-heading">
+          <div class="profile-metric-heading-content">
+            <div class="profile-metric-icon w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <i class="ph-bold ph-clock text-base"></i>
             </div>
-            <span class="text-xs font-bold text-slate-500">Учебное время</span>
+            <span class="profile-metric-label text-xs font-bold text-slate-500">Учебное время</span>
           </div>
           {% if can_manage_student %}
           <button type="button" onclick="openManageStudyTimeModal()" class="px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-[10px] font-black border border-blue-200 cursor-pointer flex items-center gap-1 transition-colors" title="Управление учебным временем">
@@ -713,10 +713,50 @@
         <div>
           <h3 id="study-time-val" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ study_time_display if study_time_display is defined else '0 мин' }}</h3>
         </div>
-        <p class="text-[11px] font-medium text-slate-400 mb-0">За всё время</p>
+        <div class="profile-metric-footer text-[11px] font-semibold text-slate-500">
+          <i class="profile-metric-footer-icon ph-bold ph-clock text-blue-600" aria-hidden="true"></i>
+          <span>За всё время</span>
+        </div>
       </div>
 
     </div>
+
+    {% if can_view_course_balance %}
+    <section class="mt-4 rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9] sm:p-6" aria-labelledby="student-course-balances-title">
+      {% set additional_lesson_balance = (student_obj.lessons_balance or 0) if student_obj else 0 %}
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-indigo-200 bg-indigo-100 text-indigo-700 shadow-[0_3px_0_#C7D2FE]"><i class="ph-bold ph-books text-lg"></i></span>
+          <div>
+            <p class="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Баланс обучения</p>
+            <h2 id="student-course-balances-title" class="mb-0 text-lg font-black text-slate-900">Остаток занятий</h2>
+          </div>
+        </div>
+        {% if course_balance_summary.has_active_subscriptions %}
+        <span class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">
+          {% if course_balance_summary.total_lessons is none %}Итого доступно: без лимита{% else %}Итого доступно: {{ course_balance_summary.total_lessons + additional_lesson_balance }} занятий{% endif %}
+        </span>
+        {% endif %}
+      </div>
+      {% if course_balance_summary.load_error %}
+      <p class="mt-4 mb-0 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Не удалось загрузить курсовые остатки. Дополнительный баланс вне курсов: <b>{{ additional_lesson_balance }} занятий</b>.</p>
+      {% elif course_balance_summary.courses %}
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {% for course in course_balance_summary.courses %}
+        <article class="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-[0_3px_0_#E2E8F0]">
+          <p class="mb-1 text-xs font-black uppercase tracking-wider text-slate-500">{{ course.label }}</p>
+          <p class="mb-0 text-2xl font-black {% if course.is_unlimited %}text-emerald-600{% elif course.lessons_remaining <= 2 %}text-rose-600{% else %}text-slate-900{% endif %}">{% if course.is_unlimited %}Без лимита{% else %}{{ course.lessons_remaining }} ур.{% endif %}</p>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="mt-4 flex flex-wrap items-end justify-between gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-[0_3px_0_#E2E8F0]">
+        <div><p class="mb-1 text-xs font-black uppercase tracking-wider text-slate-500">Дополнительные занятия</p><p class="mb-0 text-xs text-slate-500">Занятия вне тарифных курсов</p></div>
+        <p class="mb-0 text-2xl font-black text-slate-900">{{ (student_obj.lessons_balance or 0) if student_obj else 0 }} ур.</p>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
 
     {% if adaptive_learning_summary %}
     <section id="adaptive-learning-summary" class="mt-6 rounded-[1.5rem] border-2 border-slate-200/90 bg-white p-5 shadow-[0_4px_0_#DAE1E9]" aria-labelledby="adaptive-learning-summary-title">
@@ -1239,7 +1279,6 @@
                 <span class="text-[9px] font-extrabold text-amber-600 uppercase">{{ current_level_info.title }}</span>
                 <!-- Floating tiny sparkles -->
                 <span class="absolute top-2 right-2 text-amber-400 text-xs">✨</span>
-                <span class="absolute bottom-2 left-2 text-indigo-400 text-[10px]">★</span>
               </div>
             </div>
           </div>
@@ -1269,8 +1308,9 @@
                 <div class="w-5 h-5 rounded-full border-2 {% if g.status == 'done' %}bg-indigo-600 border-indigo-600 text-white{% else %}border-slate-300 text-transparent{% endif %} flex items-center justify-center shrink-0 transition-colors">
                   <i class="ph-bold ph-check text-[10px]"></i>
                 </div>
-                <span class="text-xs font-bold {% if g.status == 'done' %}text-slate-400 line-through{% else %}text-slate-800{% endif %} truncate">
-                  {{ g.title }}
+                <span class="min-w-0">
+                  <span class="block text-xs font-bold {% if g.status == 'done' %}text-slate-400 line-through{% else %}text-slate-800{% endif %} truncate">{{ g.title }}</span>
+                  {% if g.event != 'manual' %}<small class="block text-[10px] font-semibold text-indigo-500">{{ g.event_label }}</small>{% endif %}
                 </span>
               </div>
               <div class="flex items-center gap-3 shrink-0">
@@ -1285,9 +1325,26 @@
 
           {% if is_owner or can_manage_student %}
           <!-- Inline Add Goal Form -->
-          <div class="pt-2 flex items-center gap-2 border-t border-slate-100">
-            <input type="text" id="new-goal-input" placeholder="Новая цель на неделю..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 shadow-inner">
-            <button onclick="addNewGoal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all cursor-pointer border-0 shadow-xs flex items-center gap-1">
+          <div class="profile-goal-add-form pt-3 border-t border-slate-100">
+            <input type="text" id="new-goal-input" placeholder="Новая цель на неделю..." class="profile-goal-add-title min-w-0 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 shadow-inner">
+            <div class="profile-goal-select" data-profile-select>
+              <input type="hidden" id="new-goal-event" value="manual">
+              <button type="button" class="profile-goal-select-trigger" data-profile-select-trigger aria-label="Событие для отслеживания" aria-haspopup="listbox" aria-expanded="false" aria-controls="new-goal-event-options">
+                <i class="profile-goal-select-current-icon ph-bold ph-link" data-profile-select-icon aria-hidden="true"></i>
+                <span data-profile-select-value>Без привязки</span>
+                <i class="ph-bold ph-caret-down profile-goal-select-chevron" aria-hidden="true"></i>
+              </button>
+              <div id="new-goal-event-options" class="profile-goal-select-menu" role="listbox" aria-label="Событие для отслеживания" hidden>
+                <button type="button" class="profile-goal-select-option" role="option" aria-selected="true" data-value="manual" data-icon="ph-link"><i class="ph-bold ph-link" aria-hidden="true"></i><span>Без привязки</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+                <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="streak" data-icon="ph-fire"><i class="ph-fill ph-fire" aria-hidden="true"></i><span>Дни серии</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+                <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="tasks" data-icon="ph-check-square"><i class="ph-bold ph-check-square" aria-hidden="true"></i><span>Решённые задачи</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+                <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="theory" data-icon="ph-book-open"><i class="ph-bold ph-book-open" aria-hidden="true"></i><span>Изученные темы</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+                <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="lessons" data-icon="ph-graduation-cap"><i class="ph-bold ph-graduation-cap" aria-hidden="true"></i><span>Пройденные уроки</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <label class="sr-only" for="new-goal-target">Плановое количество</label>
+            <input type="number" id="new-goal-target" aria-label="Плановое количество" min="1" max="100000" value="1" class="w-full px-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 text-center focus:outline-none focus:border-indigo-500">
+            <button type="button" onclick="addNewGoal()" aria-label="Добавить цель" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all cursor-pointer border-0 shadow-xs flex items-center justify-center gap-1">
               <i class="ph-bold ph-plus text-sm"></i>
             </button>
           </div>
@@ -1326,9 +1383,7 @@
                 Ученик
               {% endif %}
             </h4>
-            <p id="user-bio-text" class="text-xs text-slate-500 font-medium leading-relaxed mb-0 break-words break-all [overflow-wrap:anywhere] whitespace-pre-wrap">
-              {{ user_bio if user_bio else ('Создатель платформы BooStudy' if is_creator else ('Расскажи немного о себе.' if (is_admin or is_tutor) else 'Расскажи немного о себе — это поможет преподавателям лучше тебя узнать.')) }}
-            </p>
+            <p id="user-bio-text" class="m-0 w-full text-left text-xs text-slate-500 font-medium leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{{ user_bio if user_bio else ('Создатель платформы BooStudy' if is_creator else ('Расскажи немного о себе.' if (is_admin or is_tutor) else 'Расскажи немного о себе — это поможет преподавателям лучше тебя узнать.')) }}</p>
           </div>
         </div>
 
@@ -2074,9 +2129,26 @@
 
     <!-- Add New Goal in Modal -->
     <div class="pt-3 border-t border-slate-100 space-y-2 shrink-0">
-      <div class="flex items-center gap-2">
-        <input type="text" id="modal-new-goal-title" placeholder="Добавить новую цель..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-        <button type="button" onclick="addNewGoalFromModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors flex items-center gap-1">
+      <div class="profile-goal-add-form profile-goal-add-form--modal">
+        <input type="text" id="modal-new-goal-title" placeholder="Добавить новую цель..." class="profile-goal-add-title min-w-0 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        <div class="profile-goal-select" data-profile-select>
+          <input type="hidden" id="modal-new-goal-event" value="manual">
+          <button type="button" class="profile-goal-select-trigger" data-profile-select-trigger aria-label="Событие для отслеживания" aria-haspopup="listbox" aria-expanded="false" aria-controls="modal-new-goal-event-options">
+            <i class="profile-goal-select-current-icon ph-bold ph-link" data-profile-select-icon aria-hidden="true"></i>
+            <span data-profile-select-value>Без привязки</span>
+            <i class="ph-bold ph-caret-down profile-goal-select-chevron" aria-hidden="true"></i>
+          </button>
+          <div id="modal-new-goal-event-options" class="profile-goal-select-menu" role="listbox" aria-label="Событие для отслеживания" hidden>
+            <button type="button" class="profile-goal-select-option" role="option" aria-selected="true" data-value="manual" data-icon="ph-link"><i class="ph-bold ph-link" aria-hidden="true"></i><span>Без привязки</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+            <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="streak" data-icon="ph-fire"><i class="ph-fill ph-fire" aria-hidden="true"></i><span>Дни серии</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+            <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="tasks" data-icon="ph-check-square"><i class="ph-bold ph-check-square" aria-hidden="true"></i><span>Решённые задачи</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+            <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="theory" data-icon="ph-book-open"><i class="ph-bold ph-book-open" aria-hidden="true"></i><span>Изученные темы</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+            <button type="button" class="profile-goal-select-option" role="option" aria-selected="false" data-value="lessons" data-icon="ph-graduation-cap"><i class="ph-bold ph-graduation-cap" aria-hidden="true"></i><span>Пройденные уроки</span><i class="ph-bold ph-check profile-goal-select-check" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <label class="sr-only" for="modal-new-goal-target">Плановое количество</label>
+        <input type="number" id="modal-new-goal-target" aria-label="Плановое количество" min="1" max="100000" value="1" class="w-full px-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 text-center focus:outline-none focus:border-indigo-500">
+        <button type="button" onclick="addNewGoalFromModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors flex items-center justify-center gap-1">
           <i class="ph-bold ph-plus"></i> Добавить
         </button>
       </div>
@@ -3283,24 +3355,85 @@ function deleteGoalItem(itemId) {
   });
 }
 
+function initProfileGoalSelects() {
+  document.querySelectorAll('[data-profile-select]').forEach(root => {
+    const input = root.querySelector('input[type="hidden"]');
+    const trigger = root.querySelector('[data-profile-select-trigger]');
+    const menu = root.querySelector('[role="listbox"]');
+    const label = root.querySelector('[data-profile-select-value]');
+    const icon = root.querySelector('[data-profile-select-icon]');
+    const options = Array.from(root.querySelectorAll('[role="option"]'));
+    if (!input || !trigger || !menu || !label || !icon || !options.length || root.dataset.initialized === 'true') return;
+    root.dataset.initialized = 'true';
+
+    const selectedOption = () => options.find(option => option.dataset.value === input.value) || options[0];
+    const syncValue = () => {
+      const selected = selectedOption();
+      input.value = selected.dataset.value;
+      label.textContent = selected.querySelector('span').textContent;
+      trigger.setAttribute('aria-label', `Событие для отслеживания: ${label.textContent}`);
+      icon.className = `profile-goal-select-current-icon ph-bold ${selected.dataset.icon}`;
+      options.forEach(option => option.setAttribute('aria-selected', String(option === selected)));
+    };
+    const closeMenu = (restoreFocus = false) => {
+      menu.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) trigger.focus();
+    };
+    const openMenu = (focusSelected = false) => {
+      menu.hidden = false;
+      trigger.setAttribute('aria-expanded', 'true');
+      if (focusSelected) selectedOption().focus();
+    };
+
+    syncValue();
+    trigger.addEventListener('click', () => {
+      if (menu.hidden) openMenu();
+      else closeMenu();
+    });
+    trigger.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !menu.hidden) {
+        event.preventDefault();
+        closeMenu(true);
+        return;
+      }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      openMenu(true);
+    });
+    options.forEach((option, index) => {
+      option.addEventListener('click', () => {
+        input.value = option.dataset.value;
+        syncValue();
+        closeMenu(true);
+      });
+      option.addEventListener('keydown', event => {
+        let nextIndex = index;
+        if (event.key === 'ArrowDown') nextIndex = (index + 1) % options.length;
+        else if (event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length;
+        else if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = options.length - 1;
+        else if (event.key === 'Escape') {
+          event.preventDefault();
+          closeMenu(true);
+          return;
+        } else return;
+        event.preventDefault();
+        options[nextIndex].focus();
+      });
+    });
+    document.addEventListener('pointerdown', event => {
+      if (!root.contains(event.target)) closeMenu();
+    });
+  });
+}
+
+initProfileGoalSelects();
+
 function addNewGoalFromModal() {
   const input = document.getElementById('modal-new-goal-title');
   if (!input || !input.value.trim()) return;
-
-  let body = 'title=' + encodeURIComponent(input.value.trim());
-  if (CURRENT_STUDENT_ID) body += `&student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}`;
-
-  fetch('/api/profile/goal/add', {
-    method: 'POST',
-    headers: profileApiHeaders('application/x-www-form-urlencoded'),
-    body: body
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.status === 'ok') {
-      window.location.reload();
-    }
-  });
+  submitNewWeeklyGoal(input.value.trim(), 'modal-new-goal-event', 'modal-new-goal-target');
 }
 
 function openGoalResultModal(id, currentNote) {
@@ -3424,25 +3557,47 @@ function toggleWeeklyGoal(itemId) {
     });
 }
 
-function addNewGoal() {
-  const input = document.getElementById('new-goal-input');
-  if (!input || !input.value.trim()) return;
-  
-  let body = 'title=' + encodeURIComponent(input.value.trim());
-  if (CURRENT_STUDENT_ID) body += `&student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}`;
+function submitNewWeeklyGoal(title, eventSelectId, targetInputId) {
+  const eventSelect = document.getElementById(eventSelectId);
+  const targetInput = document.getElementById(targetInputId);
+  const targetValue = Number.parseInt(targetInput?.value || '1', 10);
+  if (!Number.isInteger(targetValue) || targetValue < 1 || targetValue > 100000) {
+    window.BooNotify?.error?.('Укажи количество от 1 до 100 000.');
+    return;
+  }
+
+  const params = new URLSearchParams({
+    title,
+    event: eventSelect?.value || 'manual',
+    target: String(targetValue),
+  });
+  if (CURRENT_STUDENT_ID) params.set('student_id', String(CURRENT_STUDENT_ID));
 
   fetch('/api/profile/goal/add', {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
-    body: body
+    body: params.toString()
   })
-  .then(r => r.json())
+  .then(async response => {
+    const data = await response.json();
+    if (!response.ok || data.status !== 'ok') throw new Error(data.message || 'Не получилось добавить цель.');
+    return data;
+  })
   .then(data => {
     if (data.status === 'ok') {
-      input.value = '';
       window.location.reload();
     }
+  })
+  .catch(error => {
+    if (window.BooNotify?.error) window.BooNotify.error(error.message || 'Не получилось добавить цель.');
+    else if (typeof showToast === 'function') showToast(error.message || 'Не получилось добавить цель.', 'error');
   });
+}
+
+function addNewGoal() {
+  const input = document.getElementById('new-goal-input');
+  if (!input || !input.value.trim()) return;
+  submitNewWeeklyGoal(input.value.trim(), 'new-goal-event', 'new-goal-target');
 }
 
 // Real-time smooth study time display ticker

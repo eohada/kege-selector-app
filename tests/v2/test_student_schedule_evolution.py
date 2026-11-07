@@ -2,8 +2,15 @@ import json
 from datetime import datetime, timedelta, timezone as dt_timezone
 import pytest
 from app import create_app, db
+from app.schedule.routes import moscow_now
 from core.db_models import User, Student, Lesson, Assignment, Submission
 from werkzeug.security import generate_password_hash
+
+
+def _current_week_tue_date():
+    now_msk = moscow_now()
+    cur_monday = now_msk.date() - timedelta(days=now_msk.weekday())
+    return cur_monday + timedelta(days=1)
 
 
 @pytest.fixture
@@ -244,12 +251,13 @@ def test_student_schedule_multi_lesson_day(client, app_instance):
         user1 = User.query.filter_by(username='test_evo_student1').first()
         st1 = Student.query.filter_by(user_id=user1.id).first()
 
-        # Фиксируем дневное время, чтобы исключить переход через полночь в локальной таймзоне
-        now = datetime.now(dt_timezone.utc).replace(hour=10, minute=0, second=0)
+        # Фиксируем дневное время во вторник текущей недели
+        tue = _current_week_tue_date()
+        lesson_time_a = datetime(tue.year, tue.month, tue.day, 10, 0, tzinfo=dt_timezone.utc)
         lesson_a = Lesson(
             student_id=st1.student_id,
             topic="Урок A - Первый",
-            lesson_date=now,
+            lesson_date=lesson_time_a,
             duration=45,
             status='completed',
             lesson_type='individual'
@@ -257,7 +265,7 @@ def test_student_schedule_multi_lesson_day(client, app_instance):
         lesson_b = Lesson(
             student_id=st1.student_id,
             topic="Урок B - Второй",
-            lesson_date=now + timedelta(hours=2),
+            lesson_date=lesson_time_a + timedelta(hours=2),
             duration=60,
             status='planned',
             lesson_type='individual'
@@ -335,10 +343,11 @@ def test_student_schedule_homework_statuses_and_deduplication(client, app_instan
         st1 = Student.query.filter_by(user_id=user1.id).first()
 
         now = datetime.now(dt_timezone.utc)
+        tue = _current_week_tue_date()
         asgn = Assignment(
             title="Домашнее задание: Графы и деревья",
             assignment_type='homework',
-            deadline=now + timedelta(hours=12),
+            deadline=datetime(tue.year, tue.month, tue.day, 18, 0, tzinfo=dt_timezone.utc),
             created_by_id=user1.id,
             is_active=True
         )
@@ -393,9 +402,9 @@ def test_student_schedule_midnight_timezone_shift(client, app_instance):
 
         # Создаем урок в 23:30 Moscow time
         # В Tomsk (UTC+7, MSK+4) это будет 03:30 следующего дня
-        now = datetime.now(dt_timezone.utc)
         # Находим текущий вторник 20:30 UTC = 23:30 MSK
-        msk_late = datetime(now.year, now.month, now.day, 20, 30, tzinfo=dt_timezone.utc)
+        tue = _current_week_tue_date()
+        msk_late = datetime(tue.year, tue.month, tue.day, 20, 30, tzinfo=dt_timezone.utc)
         lesson_late = Lesson(
             student_id=st1.student_id,
             topic="Поздний вечерний урок",
@@ -455,10 +464,11 @@ def test_student_schedule_concept_d_peer_lessons_and_compact_tasks(client, app_i
         st = Student.query.filter_by(user_id=user.id).first()
 
         now = datetime.now(dt_timezone.utc)
+        tue = _current_week_tue_date()
         test_lesson = Lesson(
             student_id=st.student_id,
             topic="Интеграционный урок Concept D",
-            lesson_date=now,
+            lesson_date=datetime(tue.year, tue.month, tue.day, 12, 0, tzinfo=dt_timezone.utc),
             duration=60,
             status='planned',
             lesson_type='individual'
@@ -466,7 +476,7 @@ def test_student_schedule_concept_d_peer_lessons_and_compact_tasks(client, app_i
         asgn = Assignment(
             title="Интеграционное ДЗ Concept D",
             assignment_type='homework',
-            deadline=now + timedelta(hours=8),
+            deadline=datetime(tue.year, tue.month, tue.day, 18, 0, tzinfo=dt_timezone.utc),
             created_by_id=user.id,
             is_active=True
         )

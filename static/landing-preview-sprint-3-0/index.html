@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f6ff">
+  <meta name="description" content="Два разных урока в одной живой BooStudy OS: программирование и вероятность на интерактивном холсте.">
+  <title>BooStudy — два урока, одна живая OS</title>
+  <link rel="stylesheet" href="/static/landing-preview-sprint-3-0/experience.css?v=3.0.4">
+  <script defer src="/static/landing-preview-sprint-3-0/experience.js?v=3.0.4"></script>
+</head>
+<body class="s30-page">
+  <a class="s30-skip" href="#s30-next">Перейти к следующей части</a>
+  <main>
+    <div class="s30-story" id="s30-story" data-s30-story>
+      <section class="s30-stage" data-s30-stage data-scene="hero" aria-label="BooStudy OS: два учебных сценария">
+        <div class="s30-atmosphere" aria-hidden="true"></div>
+        <div class="s30-dot-field" aria-hidden="true"></div>
+
+        <header class="s30-header">
+          <a class="s30-brand" href="#s30-hero" id="s30-top" data-s30-goto="top" aria-label="BooStudy — начало">
+            <span class="s30-brand__mark" aria-hidden="true">B</span>
+            <span class="s30-brand__name"><b>boo</b>study</span>
+          </a>
+          <nav class="s30-nav" aria-label="Навигация по демонстрации">
+            <a href="#s30-informatics" data-s30-goto="informatics">Информатика</a>
+            <a href="#s30-math" data-s30-goto="math-empty">Математика</a>
+            <a class="s30-nav__login" href="/login">Войти</a>
+          </nav>
+        </header>
+
+        <div class="s30-copy-stack" aria-live="polite" aria-atomic="true">
+          <section class="s30-copy" data-s30-copy="hero" aria-labelledby="s30-hero-title">
+            <p class="s30-kicker"><span></span>Два урока. Одна живая OS.</p>
+            <h1 id="s30-hero-title">У каждого урока<br><em>своё пространство.</em></h1>
+            <p class="s30-lede">Код раскрывается рядом с заданием. Для вероятности остаются чистая доска и ход решения.</p>
+            <div class="s30-actions">
+              <a class="s30-button s30-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a>
+              <a class="s30-button s30-button--quiet" href="#s30-informatics" data-s30-goto="informatics">Войти в комнату <span aria-hidden="true">↓</span></a>
+            </div>
+            <p class="s30-proof"><span aria-hidden="true">✦</span> Один интерфейс подстраивается под занятие</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="enter" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Ученическая комната</p>
+            <h2>Знакомая OS.<br>Новый урок.</h2>
+            <p class="s30-lede">В основе — подтверждённый экран ученика BooStudy. Дальше покажем два синтетических сценария.</p>
+            <p class="s30-note">Окна и учебный материал в демонстрации собраны визуально.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="task" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Информатика · ЕГЭ №5</p>
+            <h2>Сначала —<br>условие задачи.</h2>
+            <p class="s30-lede">К двоичной записи числа дважды дописывают остаток от деления суммы её цифр на два.</p>
+            <p class="s30-note">Найти минимальное N, для которого R &gt; 253.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="typing" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Решение в Python</p>
+            <h2>Код появляется<br>по ходу решения.</h2>
+            <p class="s30-lede">Строка за строкой, символ за символом. Это визуальное воспроизведение кода в landing demo, не редактирование учеником.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="result" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Локально проверенный пример</p>
+            <h2>64 → 258.</h2>
+            <p class="s30-lede">Программа перебирает N по возрастанию и останавливается на первом результате больше 253.</p>
+            <p class="s30-note">Проверенный ответ: N = 64, R = 258.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="switch" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Новое демонстрационное занятие</p>
+            <h2>Информатика<br><em>→ Математика.</em></h2>
+            <p class="s30-lede">Показываем два самостоятельных синтетических урока — без предположений о мгновенном переключении предмета в платформе.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-empty" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Математика · вероятность</p>
+            <h2>Новая страница.<br>Чистый холст.</h2>
+            <p class="s30-lede">Дважды бросают правильную монету. Найти вероятность хотя бы одного орла.</p>
+            <p class="s30-note">На доске пока нет ни одного штриха.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-write" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Решаем на BooCanvas</p>
+            <h2>Считаем исходы<br>на доске.</h2>
+            <p class="s30-lede">Сначала — короткая запись. Затем ветви двух последовательных бросков.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-tree" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Дерево исходов</p>
+            <h2>Строим дерево<br>исходов.</h2>
+            <p class="s30-lede">Каждый бросок добавляет ветвь: орёл или решка.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-count" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Выделяем событие</p>
+            <h2>Отмечаем<br>исходы.</h2>
+            <p class="s30-lede">Зелёным отмечаются пути, где хотя бы раз выпал орёл.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-formula" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Вероятность события</p>
+            <h2>От дерева<br>к дроби.</h2>
+            <p class="s30-lede">Три благоприятных исхода из четырёх равновозможных.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-done" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Решение на холсте</p>
+            <h2>Ответ: 0,75.</h2>
+            <p class="s30-lede">Доска показывает весь путь: исходы, выделение события и вычисление вероятности.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="outro" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Одна система. Разные инструменты.</p>
+            <h2>У каждого урока<br><em>своё пространство.</em></h2>
+            <p class="s30-lede">Код, задания и интерактивная доска появляются там, где они помогают именно этому занятию.</p>
+            <a class="s30-button s30-button--primary" href="/register">Продолжить в BooStudy <span aria-hidden="true">↗</span></a>
+          </section>
+        </div>
+
+        <div class="s30-room" data-s30-room aria-label="Комната ученика BooStudy OS, демонстрационная реконструкция">
+          <div class="s30-room__bar">
+            <span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="s30-room__title"><span class="s30-os-mark" aria-hidden="true">B</span> BooStudy OS <b>/</b> <span data-s30-room-title>Комната ученика</span></span>
+            <span class="s30-room__state"><i aria-hidden="true"></i><span data-s30-room-state>подтверждённый экран</span></span>
+          </div>
+
+          <div class="s30-workspace" data-s30-workspace>
+            <div class="s30-auth-window" data-s30-auth-window>
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b>Ученическая комната</b><span>реальный экран</span></div>
+              <img src="/static/landing-preview-sprint-3-0/student-room-source.png" alt="Подтверждённый экран BooStudy OS со стороны ученика" width="1920" height="1080" fetchpriority="high" decoding="async">
+              <span class="s30-image-caption">Источник интерфейсного контекста · синтетический урок №2175</span>
+            </div>
+
+            <section class="s30-task-window" data-s30-task-window aria-label="Окно демонстрационного задания">
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b data-s30-task-title>Задание №5</b><span>условие</span></div>
+              <div class="s30-task-body s30-task-body--informatics">
+                <p class="s30-task-tag">ЕГЭ · ИНФОРМАТИКА</p>
+                <p>На вход поступает натуральное число <b>N</b>. Строится его двоичная запись. К ней дважды справа дописывается остаток от деления суммы цифр текущей записи на 2.</p>
+                <p>Полученное двоичное число переводится в десятичную систему.</p>
+                <div class="s30-task-question">Найдите минимальное N, при котором R &gt; 253.</div>
+              </div>
+              <div class="s30-task-body s30-task-body--math">
+                <p class="s30-task-tag">ЕГЭ · ПРОФИЛЬНАЯ МАТЕМАТИКА</p>
+                <p>Правильную монету бросают два раза.</p>
+                <div class="s30-task-question">Найдите вероятность того, что орёл выпадет хотя бы один раз.</div>
+                <p class="s30-task-footnote">Авторский демонстрационный пример.</p>
+              </div>
+            </section>
+
+            <section class="s30-code-window" data-s30-code-window aria-label="Демонстрационный фрагмент решения на Python">
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b>Программирование</b><span class="s30-readonly">ДЕМО · НЕ РЕДАКТОР</span></div>
+              <div class="s30-code-toolbar"><span>solution.py</span><span>Python 3</span><span class="s30-run"><i aria-hidden="true"></i>Проверить пример</span></div>
+              <pre class="s30-code" data-s30-code aria-label="Код Python появляется постепенно"><code></code></pre>
+              <div class="s30-output" data-s30-output aria-live="polite" aria-hidden="true"><span>Вывод проверенного решения</span><strong>N = 64 <i>·</i> R = 258</strong></div>
+              <div class="s30-code-foot"><span>Демонстрационное воспроизведение</span><span>Локально проверено</span></div>
+            </section>
+
+            <section class="s30-canvas-window" data-s30-canvas-window aria-label="Холст BooCanvas, демонстрационная реконструкция">
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b>BooCanvas</b><span data-s30-canvas-state>Страница 1 · чистый холст</span></div>
+              <div class="s30-canvas">
+                <div class="s30-tools" aria-label="Панель инструментов холста"><span class="is-active" aria-hidden="true">↖</span><span aria-hidden="true">✎</span><span aria-hidden="true">◯</span><span aria-hidden="true">T</span><span aria-hidden="true">⌕</span></div>
+                <div class="s30-pad">
+                  <p class="s30-hand-title" data-s30-hand-title aria-hidden="true"></p>
+                  <svg class="s30-tree" viewBox="0 0 800 370" role="img" aria-label="Дерево четырёх исходов двух бросков монеты">
+                    <path class="s30-stroke s30-stroke--ink" data-draw="0.08 0.16" d="M93 180 C150 180 184 107 280 107"></path>
+                    <path class="s30-stroke s30-stroke--ink" data-draw="0.16 0.24" d="M93 180 C150 180 184 253 280 253"></path>
+                    <path class="s30-stroke s30-stroke--good" data-draw="0.24 0.32" d="M280 107 C355 107 380 53 495 53"></path>
+                    <path class="s30-stroke s30-stroke--good" data-draw="0.32 0.4" d="M280 107 C355 107 380 161 495 161"></path>
+                    <path class="s30-stroke s30-stroke--good" data-draw="0.4 0.48" d="M280 253 C355 253 380 218 495 218"></path>
+                    <path class="s30-stroke s30-stroke--ink" data-draw="0.48 0.56" d="M280 253 C355 253 380 310 495 310"></path>
+                    <path class="s30-stroke s30-stroke--guide" data-draw="0.56 0.58" d="M80 180 h26"></path>
+                    <g class="s30-tree-label" data-appear="0.16" transform="translate(45 186)"><text>старт</text></g>
+                    <g class="s30-tree-label" data-appear="0.25" transform="translate(285 101)"><text>О</text></g>
+                    <g class="s30-tree-label" data-appear="0.29" transform="translate(285 272)"><text>Р</text></g>
+                    <g class="s30-tree-label" data-appear="0.38" transform="translate(407 48)"><text>О</text></g>
+                    <g class="s30-tree-label" data-appear="0.42" transform="translate(407 167)"><text>Р</text></g>
+                    <g class="s30-tree-label" data-appear="0.46" transform="translate(407 223)"><text>О</text></g>
+                    <g class="s30-tree-label" data-appear="0.5" transform="translate(407 318)"><text>Р</text></g>
+                    <g class="s30-outcome is-favorable" data-appear="0.52" transform="translate(505 38)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">ОО</text></g>
+                    <g class="s30-outcome is-favorable" data-appear="0.55" transform="translate(505 146)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">ОР</text></g>
+                    <g class="s30-outcome is-favorable" data-appear="0.58" transform="translate(505 203)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">РО</text></g>
+                    <g class="s30-outcome" data-appear="0.61" transform="translate(505 295)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">РР</text></g>
+                    <g class="s30-tree-caption" data-appear="0.63" transform="translate(635 87)"><text>орёл есть</text><text y="19">в трёх исходах</text></g>
+                  </svg>
+                  <div class="s30-formula" aria-label="Расчёт вероятности">
+                    <span class="s30-formula__general" data-formula-at="0.84">P(A) = m / n</span>
+                    <span class="s30-formula__fraction" data-formula-at="0.9">P = 3 / 4</span>
+                    <span class="s30-formula__answer" data-formula-at="0.96">0,75</span>
+                  </div>
+                </div>
+                <div class="s30-canvas-status"><span>Перо · фиолетовый · 3 px</span><span data-s30-canvas-progress>Готово к записи</span><span>100%</span></div>
+              </div>
+            </section>
+
+            <div class="s30-dock" aria-label="Инструменты ученической комнаты"><span>Задание</span><span>Холст</span><span>Инструмент</span></div>
+            <span class="s30-rebuild-label"><i aria-hidden="true"></i><span data-s30-rebuild-label>Источник — экран ученика</span></span>
+          </div>
+          <div class="s30-room__shadow" aria-hidden="true"></div>
+        </div>
+
+        <div class="s30-mascot" aria-hidden="true">
+          <img src="/static/images/landing/boo-peek-clean.png" alt="" width="1322" height="1190" fetchpriority="high" decoding="async">
+          <img src="/static/images/landing/boo-pointing-clean.webp" alt="" width="1312" height="1199" loading="lazy" decoding="async">
+          <img src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async">
+        </div>
+
+        <div class="s30-controls">
+          <span class="s30-progress-count" data-s30-progress-label>01 <i>/ 13</i></span>
+          <span class="s30-progress-track"><i data-s30-progress-bar></i></span>
+          <span class="s30-progress-hint">Прокрути, чтобы увидеть оба урока</span>
+          <a href="#s30-next" data-s30-skip>Пропустить демо <span aria-hidden="true">↓</span></a>
+        </div>
+      </section>
+
+      <div class="s30-track" aria-hidden="true">
+        <section class="s30-step" id="s30-hero" data-s30-step="hero"><span>Два урока. Одна живая OS.</span></section>
+        <section class="s30-step" id="s30-enter" data-s30-step="enter"><span>Подтверждённая ученическая комната BooStudy.</span></section>
+        <section class="s30-step" id="s30-informatics" data-s30-step="task"><span>Условие задачи ЕГЭ №5 по информатике.</span></section>
+        <section class="s30-step" data-s30-step="typing"><span>Код появляется по символам.</span></section>
+        <section class="s30-step" data-s30-step="typing-continue"><span>Код решения допечатывается.</span></section>
+        <section class="s30-step" data-s30-step="result"><span>Подтверждённый результат: 64 и 258.</span></section>
+        <section class="s30-step" data-s30-step="switch"><span>Переход к отдельному демонстрационному уроку математики.</span></section>
+        <section class="s30-step" id="s30-math" data-s30-step="math-empty"><span>Задание о двух бросках монеты и чистый холст.</span></section>
+        <section class="s30-step" data-s30-step="math-write"><span>На холсте появляется запись о двух бросках.</span></section>
+        <section class="s30-step" data-s30-step="math-tree"><span>По ветвям строится дерево исходов.</span></section>
+        <section class="s30-step" data-s30-step="math-count"><span>Три благоприятных исхода выделяются.</span></section>
+        <section class="s30-step" data-s30-step="math-formula"><span>На доске появляется вычисление вероятности.</span></section>
+        <section class="s30-step" data-s30-step="math-done"><span>Готовое решение на доске.</span></section>
+        <section class="s30-step" data-s30-step="outro"><span>У каждого урока — своё пространство.</span></section>
+      </div>
+    </div>
+
+    <section class="s30-next" id="s30-next" aria-labelledby="s30-next-title">
+      <div class="s30-next__orb" aria-hidden="true"></div>
+      <div class="s30-next__content">
+        <p class="s30-kicker"><span></span>Одна среда. Свой ход для каждого урока.</p>
+        <h2 id="s30-next-title">Продолжим знакомство<br>с BooStudy.</h2>
+        <p>Дальше — другие части учебной платформы.</p>
+        <div class="s30-next__actions">
+          <a class="s30-button s30-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a>
+          <a class="s30-button s30-button--quiet" href="#s30-top" data-s30-replay>Повторить демонстрацию <span aria-hidden="true">↻</span></a>
+        </div>
+        <small>Программный и рукописный фрагменты — художественная реконструкция в preview.</small>
+      </div>
+      <img class="s30-next__boo" src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async">
+    </section>
+  </main>
+</body>
+</html>

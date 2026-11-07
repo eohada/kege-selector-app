@@ -1902,7 +1902,7 @@ def register_lesson_socket(socketio, app=None) -> None:
                 return
             kind = str((data or {}).get("kind") or "")
 
-            standard_kinds = {"mode", "window", "window_layout", "window_order", "run", "run_start", "terminal_output", "terminal_tab"}
+            standard_kinds = {"mode", "window", "window_layout", "window_order", "run", "run_start", "terminal_output", "terminal_tab", "focus_suggestion_ack"}
             tracer_kinds = {"tracer_state", "tracer_window", "tracer_run", "tracer_breakpoint", "tracer_step", "tracer_input_submit", "tracer_restart"}
             orbit_kinds = {
                 "orbit_beacon", "orbit_stamp", "orbit_stamp_move", "orbit_stamp_remove",
@@ -1911,7 +1911,8 @@ def register_lesson_socket(socketio, app=None) -> None:
             }
             teacher_master_kinds = {
                 "focus_board", "freeze_student", "free_mode", "freeze", "teacher_stamp", "teacher_hint",
-                "blitz_start", "blitz_update", "blitz_end", "teacher_answer_vis", "task_switch"
+                "blitz_start", "blitz_update", "blitz_end", "teacher_answer_vis", "task_switch",
+                "show_here", "focus_suggestion", "set_focus", "terminal_close"
             }
 
             if kind not in (standard_kinds | orbit_kinds | teacher_master_kinds | tracer_kinds):
@@ -1932,6 +1933,7 @@ def register_lesson_socket(socketio, app=None) -> None:
             is_tracer_action = kind in tracer_kinds
             is_window_action = kind in {"window", "window_layout", "window_order"}
             is_orbit_action = kind in orbit_kinds
+            is_ack_action = kind in {"focus_suggestion_ack"}
             is_teacher_action = kind in teacher_master_kinds
             is_teacher_user = (role == "teacher")
 
@@ -1974,7 +1976,7 @@ def register_lesson_socket(socketio, app=None) -> None:
                     if allowed_ctrl and target_win not in allowed_ctrl and not is_teacher_user:
                         return
 
-            if not (is_window_action or is_student_run or is_student_tracer or is_orbit_action or is_teacher_user):
+            if not (is_window_action or is_student_run or is_student_tracer or is_orbit_action or is_teacher_user or is_ack_action):
                 socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
                 return
 
@@ -2108,7 +2110,8 @@ def register_lesson_socket(socketio, app=None) -> None:
                     "text", "expr", "val", "points", "duration", "started_at",
                     "remaining", "hint", "tier", "visible", "answer", "task_id",
                     "seconds", "isRunning", "isOpen", "mode", "user_name",
-                    "is_frozen", "freeze_student"
+                    "is_frozen", "freeze_student", "target_focus", "target_user_id",
+                    "command_id", "created_at", "page_id", "file_name"
                 ):
                     if field in (data or {}):
                         payload[field] = data[field]
@@ -3517,11 +3520,48 @@ def register_lesson_socket(socketio, app=None) -> None:
                     "world_w": max(10, float(payload.get("world_w") or 100)),
                     "world_h": max(10, float(payload.get("world_h") or 100)),
                 },
+                "is_mobile": bool(payload.get("is_mobile", False)),
+                "device": str(payload.get("device") or "desktop")[:16],
+                "terminal_open": bool(payload.get("terminal_open", False)),
                 "updated_at": int(time() * 1000),
             }
             socketio.emit("whiteboard_viewport", outgoing, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("whiteboard_viewport failed: %s", error)
+
+    @socketio.on("whiteboard_show_here", namespace="/lesson")
+    def _on_whiteboard_show_here(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        try:
+            payload = data or {}
+            lesson_id = int(payload.get("lesson_id"))
+            role = (_lesson_presence.get(lesson_id, {}).get(current_user.id) or {}).get("role")
+            if not role:
+                _lesson, role = _get_lesson_auth(lesson_id)
+            if role != "teacher":
+                socketio.emit("whiteboard_error", {"message": "Показать здесь доступно только преподавателю"}, room=request.sid, namespace="/lesson")
+                return
+
+            outgoing = {
+                "lesson_id": lesson_id,
+                "teacher_id": current_user.id,
+                "target_user_id": payload.get("target_user_id"),
+                "page_id": str(payload.get("page_id") or "")[:96],
+                "world_x": float(payload.get("world_x") or 0),
+                "world_y": float(payload.get("world_y") or 0),
+                "world_w": float(payload.get("world_w") or 0),
+                "world_h": float(payload.get("world_h") or 0),
+                "center_x": float(payload.get("center_x") or 0),
+                "center_y": float(payload.get("center_y") or 0),
+                "scale": float(payload.get("scale") or 1.0),
+                "timestamp": int(time() * 1000),
+            }
+            socketio.emit("whiteboard_show_here", outgoing, room=_room(lesson_id), namespace="/lesson", include_self=False)
+        except Exception as error:
+            logger.warning("whiteboard_show_here failed: %s", error)
+
 
     @socketio.on("whiteboard_reaction", namespace="/lesson")
     def _on_whiteboard_reaction(data):

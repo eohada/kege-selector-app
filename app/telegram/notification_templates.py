@@ -53,8 +53,27 @@ def _get_user_role_and_tz(user_id: int) -> tuple[str, str]:
         return 'student', 'Europe/Moscow'
 
 
-def _make_button(text: str, url: str) -> dict:
-    return {'inline_keyboard': [[{'text': text, 'url': url}]]}
+def _make_button(text: str, url: str | None = None, callback_data: str | None = None) -> dict:
+    btn: dict[str, str] = {'text': text}
+    if callback_data:
+        btn['callback_data'] = callback_data
+    elif url:
+        btn['url'] = url
+    return {'inline_keyboard': [[btn]]}
+
+
+def _add_in_bot_action(button: dict | None, text: str, callback_data: str) -> dict:
+    in_bot_btn = {'text': text, 'callback_data': callback_data}
+    if not button:
+        return {'inline_keyboard': [[in_bot_btn]]}
+    kb = button.get('inline_keyboard', [])
+    for row in kb:
+        for b in row:
+            if b.get('callback_data') == callback_data:
+                return button
+    kb.append([in_bot_btn])
+    return button
+
 
 
 def _is_local_url(url: str | None) -> bool:
@@ -78,6 +97,10 @@ def render_telegram_notification(
     """
     meta = meta or {}
     role, user_tz = _get_user_role_and_tz(user_id)
+    if meta.get('recipient_role'):
+        role = str(meta['recipient_role']).lower().strip()
+    elif meta.get('role'):
+        role = str(meta['role']).lower().strip()
     kind_norm = (kind or 'generic').lower().strip()
 
     card_lines: list[str] = []
@@ -183,12 +206,61 @@ def render_telegram_notification(
             if join_url:
                 button = _make_button('🚀 Войти в класс', join_url)
 
+        elif kind_norm == 'lesson_batch_scheduled':
+            count = meta.get('lessons_count') or len(meta.get('items_preview') or []) or 3
+            if role == 'parent':
+                card_lines.append(f'🗓️ <b>Назначено {count} занятий у ребёнка</b>')
+            else:
+                card_lines.append(f'🗓️ <b>Вам назначили {count} занятий</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if teacher_name:
+                card_lines.append(f'👨‍🏫 <b>Преподаватель:</b> {html.escape(str(teacher_name))}')
+            if subject:
+                card_lines.append(f'📚 <b>Предмет:</b> {html.escape(str(subject))}')
+            card_lines.append('')
+            card_lines.append('<b>Ближайшие уроки:</b>')
+            preview = meta.get('items_preview') or []
+            for itm in preview[:5]:
+                card_lines.append(f'• {html.escape(str(itm))}')
+            if count > 5:
+                card_lines.append(f'<i>... и ещё {count - 5} занятий в расписании</i>')
+            card_lines.append('')
+            card_lines.append('Все занятия уже добавлены в ваш календарь платформы.')
+            button = _make_button('📅 Моё расписание', link_url or 'https://boostudy.ru/schedule')
+
+        elif kind_norm in {'lesson_started', 'lesson_started_student'}:
+            card_lines.append('🎬 <b>Урок начинается</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if student_name and role in {'parent', 'teacher'}:
+                card_lines.append(f'👤 <b>Ученик:</b> {html.escape(str(student_name))}')
+            if teacher_name and role != 'teacher':
+                card_lines.append(f'👨‍🏫 <b>Преподаватель:</b> {html.escape(str(teacher_name))}')
+            if subject:
+                card_lines.append(f'📚 <b>Предмет:</b> {html.escape(str(subject))}')
+            room_url = meta.get('room_url') or link_url
+            if room_url:
+                button = _make_button('🚀 Войти в класс', room_url)
+            lesson_id = meta.get('lesson_id')
+            if lesson_id and role == 'teacher':
+                button = _add_in_bot_action(button, '🔗 Запросить ссылку', f'v3:tch:call_link:{lesson_id}')
+
+        elif kind_norm == 'lesson_finished':
+            card_lines.append('🏁 <b>Урок завершён</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if student_name and role in {'parent', 'teacher'}:
+                card_lines.append(f'👤 <b>Ученик:</b> {html.escape(str(student_name))}')
+            card_lines.append('Не забудьте сохранить заметку или выдать домашнее задание.')
+            lesson_id = meta.get('lesson_id')
+            if lesson_id and role == 'teacher':
+                button = _make_button('📝 Заметка к уроку', callback_data=f'v3:tch:hw_note:{lesson_id}')
+
     # -------------------------------------------------------------------------
     # 2. Homework & Assignments Events
     # -------------------------------------------------------------------------
     elif kind_norm in {'assignment_assigned', 'teacher_homework_submitted', 'homework_submitted',
                        'assignment_submitted', 'homework_checked', 'assignment_graded',
-                       'homework_returned', 'assignment_returned', 'review_queue', 'assignment_deadline'}:
+                       'homework_returned', 'assignment_returned', 'review_queue', 'assignment_deadline',
+                       'teacher_hw_note_reminder', 'lesson_comment'}:
         assignment_title = meta.get('assignment_title') or meta.get('title') or title
         student_name = meta.get('student_name')
         deadline_str = _meta_time('deadline')
@@ -214,6 +286,9 @@ def render_telegram_notification(
             if link_url:
                 btn_txt = '📖 Посмотреть задание' if role == 'parent' else '📖 Перейти к заданию'
                 button = _make_button(btn_txt, link_url)
+            asg_id = meta.get('assignment_id')
+            if asg_id and role == 'student':
+                button = _add_in_bot_action(button, '📱 Открыть в боте', f'v3:stu:hw_item:{asg_id}')
 
         elif kind_norm in {'teacher_homework_submitted', 'homework_submitted', 'assignment_submitted'}:
             if role == 'teacher':
@@ -230,6 +305,9 @@ def render_telegram_notification(
                     card_lines.append(html.escape(str(body)))
                 if link_url:
                     button = _make_button('📝 Проверить работу', link_url)
+                sub_id = meta.get('submission_id')
+                if sub_id:
+                    button = _add_in_bot_action(button, '📱 Проверить в боте', f'v3:tch:q_item:{sub_id}')
             elif role == 'parent':
                 card_lines.append('📤 <b>Ребёнок сдал домашнюю работу</b>')
                 card_lines.append('━━━━━━━━━━━━━━━━━━')
@@ -248,6 +326,9 @@ def render_telegram_notification(
                 card_lines.append('<i>Работа отправлена преподавателю на проверку.</i>')
                 if link_url:
                     button = _make_button('📋 Моя работа', link_url)
+                asg_id = meta.get('assignment_id')
+                if asg_id:
+                    button = _add_in_bot_action(button, '📱 Открыть в боте', f'v3:stu:hw_item:{asg_id}')
 
         elif kind_norm in {'homework_checked', 'assignment_graded'}:
             if role == 'parent':
@@ -269,6 +350,9 @@ def render_telegram_notification(
 
             if link_url:
                 button = _make_button('📊 Посмотреть результат', link_url)
+            asg_id = meta.get('assignment_id')
+            if asg_id and role == 'student':
+                button = _add_in_bot_action(button, '📱 Результат в боте', f'v3:stu:hw_item:{asg_id}')
 
         elif kind_norm in {'homework_returned', 'assignment_returned'}:
             if role == 'parent':
@@ -288,6 +372,9 @@ def render_telegram_notification(
             if link_url:
                 btn_txt = '✏️ Исправить работу' if role != 'parent' else '📖 Посмотреть замечания'
                 button = _make_button(btn_txt, link_url)
+            asg_id = meta.get('assignment_id')
+            if asg_id and role == 'student':
+                button = _add_in_bot_action(button, '📱 Открыть в боте', f'v3:stu:hw_item:{asg_id}')
 
         elif kind_norm == 'review_queue':
             card_lines.append('📥 <b>Очередь проверки домашних заданий</b>')
@@ -298,6 +385,9 @@ def render_telegram_notification(
                 card_lines.append(html.escape(str(body)))
             if link_url:
                 button = _make_button('📝 Перейти к проверке', link_url)
+            if role in {'teacher', 'tutor'}:
+                button = _add_in_bot_action(button, '📱 Очередь в боте', 'v3:tch:queue')
+
 
         elif kind_norm == 'assignment_deadline':
             card_lines.append('⚠️ <b>Скоро истекает срок сдачи задания</b>')
@@ -308,6 +398,28 @@ def render_telegram_notification(
                 card_lines.append(f'⏳ <b>Дедлайн:</b> {deadline_str}')
             if link_url:
                 button = _make_button('📖 Сдать работу', link_url)
+
+        elif kind_norm == 'teacher_hw_note_reminder':
+            card_lines.append('⏰ <b>Напоминание о домашнем задании</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if student_name:
+                card_lines.append(f'👤 <b>Ученик:</b> {html.escape(str(student_name))}')
+            card_lines.append('К прошедшему занятию ещё не прикреплено домашнее задание.')
+            lesson_id = meta.get('lesson_id')
+            if lesson_id and role == 'teacher':
+                button = _make_button('📝 Прикрепить ДЗ', callback_data=f'v3:tch:hw_note:{lesson_id}')
+
+        elif kind_norm == 'lesson_comment':
+            card_lines.append('💬 <b>Новый комментарий к заданию</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if role == 'teacher' and student_name:
+                card_lines.append(f'👤 <b>Ученик:</b> {html.escape(str(student_name))}')
+            if assignment_title:
+                card_lines.append(f'📋 <b>Задание:</b> {html.escape(str(assignment_title))}')
+            if body:
+                card_lines.append(f'💬 <i>«{html.escape(str(body))}»</i>')
+            if link_url:
+                button = _make_button('💬 Открыть комментарии', link_url)
 
     # -------------------------------------------------------------------------
     # 3. Family Ties & Relations
@@ -355,9 +467,89 @@ def render_telegram_notification(
             card_lines.append(f'⚙️ <b>Сервис:</b> {html.escape(str(service))}')
 
     # -------------------------------------------------------------------------
-    # 5. Achievements, Digests & Generic Fallback
+    # 5. Billing & Balances
     # -------------------------------------------------------------------------
-    elif kind_norm == 'achievement':
+    elif kind_norm in {'lesson_balance_changed', 'low_lessons', 'package_exhausted'}:
+        rem = meta.get('lessons_remaining')
+        delta = meta.get('delta')
+        reason = meta.get('reason')
+        if kind_norm == 'lesson_balance_changed':
+            card_lines.append('💳 <b>Баланс занятий обновлён</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if delta:
+                card_lines.append(f'📊 <b>Изменение:</b> {html.escape(str(delta))}')
+            if rem is not None:
+                card_lines.append(f'💰 <b>Остаток уроков:</b> {rem}')
+            if reason:
+                card_lines.append(f'💬 <b>Причина:</b> {html.escape(str(reason))}')
+            button = _make_button('💳 Баланс и абонементы', link_url or 'https://boostudy.ru/billing')
+        elif kind_norm == 'low_lessons':
+            card_lines.append('⚠️ <b>Заканчивается оплаченный пакет</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            if rem is not None:
+                card_lines.append(f'💰 <b>Осталось занятий:</b> {rem}')
+            card_lines.append('Рекомендуем продлить абонемент, чтобы сохранить удобное время в расписании.')
+            button = _make_button('💳 Продлить абонемент', link_url or 'https://boostudy.ru/billing')
+        elif kind_norm == 'package_exhausted':
+            card_lines.append('🛑 <b>Оплаченные уроки закончились</b>')
+            card_lines.append('━━━━━━━━━━━━━━━━━━')
+            card_lines.append('Баланс уроков исчерпан. Для продолжения занятий пополните баланс.')
+            button = _make_button('💳 Выбрать абонемент', link_url or 'https://boostudy.ru/billing')
+
+    # -------------------------------------------------------------------------
+    # 6. Broadcast & Announcements
+    # -------------------------------------------------------------------------
+    elif kind_norm in {'news', 'announcement', 'broadcast'}:
+        sender_name = meta.get('sender_name')
+        if kind_norm == 'news':
+            card_lines.append('📢 <b>Новости BooStudy</b>')
+        elif kind_norm == 'announcement':
+            card_lines.append('🔔 <b>Важное объявление</b>')
+        else:
+            card_lines.append('📢 <b>Сообщение от преподавателя</b>')
+        card_lines.append('━━━━━━━━━━━━━━━━━━')
+        if sender_name:
+            card_lines.append(f'👤 <b>Автор:</b> {html.escape(str(sender_name))}')
+        if title and title not in ('news', 'announcement', 'broadcast'):
+            card_lines.append(f'📌 <b>{html.escape(str(title))}</b>')
+        text_body = body or meta.get('body') or meta.get('text')
+        if text_body:
+            card_lines.append('')
+            card_lines.append(html.escape(str(text_body)))
+        if link_url:
+            button = _make_button('🔗 Подробнее', link_url)
+
+    elif kind_norm == 'lesson_reminder_response':
+        card_lines.append('ℹ️ <b>Отклик на напоминание</b>')
+        card_lines.append('━━━━━━━━━━━━━━━━━━')
+        st_name = meta.get('student_name')
+        resp = meta.get('response')
+        if st_name:
+            card_lines.append(f'👤 <b>Ученик:</b> {html.escape(str(st_name))}')
+        if resp:
+            card_lines.append(f'💬 <b>Ответ:</b> {html.escape(str(resp))}')
+
+    elif kind_norm == 'bug_report_reply':
+        card_lines.append('🛠 <b>Ответ службы поддержки</b>')
+        card_lines.append('━━━━━━━━━━━━━━━━━━')
+        ticket = meta.get('ticket_id')
+        if ticket:
+            card_lines.append(f'🎫 <b>Тикет:</b> #{html.escape(str(ticket))}')
+        reply_txt = body or meta.get('reply_text')
+        if reply_txt:
+            card_lines.append(f'💬 {html.escape(str(reply_txt))}')
+        if link_url:
+            button = _make_button('💬 Перейти к обращению', link_url)
+
+    elif kind_norm in {'new_gradebook_entry', 'subscription_expiring'}:
+        card_lines.append('ℹ️ <b>Уведомление устарело</b>')
+        card_lines.append('━━━━━━━━━━━━━━━━━━')
+        card_lines.append('Этот тип уведомлений выведен из эксплуатации.')
+
+    # -------------------------------------------------------------------------
+    # 7. Achievements, Digests & Generic Fallback
+    # -------------------------------------------------------------------------
+    elif kind_norm in {'achievement', 'achievement_unlocked'}:
         card_lines.append('🏆 <b>Новое достижение разблокировано!</b>')
         card_lines.append('━━━━━━━━━━━━━━━━━━')
         ach_title = meta.get('achievement_title') or title

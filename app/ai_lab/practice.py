@@ -171,29 +171,57 @@ def select_next_practice_exercise(
     platform_no_hint_pair = (
         len(recent) == 2
         and all(item["is_correct"] and item.get("assistance_level") in {"independent", "no_platform_hint"} for item in recent)
+        and all(item.get("exposure_count", 1) == 1 for item in recent)
+        and all(type(item.get("difficulty")) is int and 1 <= item["difficulty"] <= 5 for item in recent)
         and len({item.get("exercise_id") for item in recent}) == 2
     )
     latest = verified[-1] if verified else None
+    selection_pool = fresh
     if platform_no_hint_pair:
         current_rank = _difficulty_rank(recent[-1].get("difficulty"))
         target_rank = min(5, current_rank + 1)
-        action = "increase_difficulty" if any(item["difficulty_rank"] == target_rank for item in fresh) else "transfer_check"
-        reason = "Два разных задания решены верно без подсказки BooStudy. Внешняя помощь не наблюдалась; предлагается только проверка на следующем уровне, без вывода об освоении."
+        next_level = [item for item in fresh if item["difficulty_rank"] == target_rank]
+        same_level = [item for item in fresh if item["difficulty_rank"] == current_rank]
+        if target_rank > current_rank and next_level:
+            action = "increase_difficulty"
+            selection_pool = next_level
+            reason = "Два разных задания решены верно без подсказки BooStudy. Внешняя помощь не наблюдалась; предлагается только проверка на следующем уровне, без вывода об освоении."
+        elif same_level:
+            action = "transfer_check"
+            selection_pool = same_level
+            reason = "Два разных задания решены верно без подсказки BooStudy, но проверенного варианта следующего уровня нет. Предлагается ещё одна новая задача того же уровня; вывод об освоении не делается."
+        else:
+            return {
+                "exercise": None, "action": "pause",
+                "reason": "Нет нового задания текущего или следующего уровня, подходящего для независимой проверки; нужен другой проверенный материал.",
+            }
     elif latest and not latest["is_correct"]:
-        current_rank = _difficulty_rank(latest.get("difficulty"))
+        current_rank = latest.get("difficulty")
+        current_rank = current_rank if type(current_rank) is int and 1 <= current_rank <= 5 else 2
         target_rank = max(1, current_rank - 1) if current_rank > 1 else current_rank
         action = "reinforce" if target_rank < current_rank else "practice_same_level"
         reason = "Последняя проверенная попытка была неверной; следующее упражнение закрепляет тот же навык на сопоставимом или более доступном уровне."
     elif latest:
-        target_rank = _difficulty_rank(latest.get("difficulty"))
+        difficulty = latest.get("difficulty")
+        target_rank = difficulty if type(difficulty) is int and 1 <= difficulty <= 5 else 2
         action = "transfer_check"
-        reason = "Есть один проверенный успех; требуется другое задание для проверки переноса, а данных для повышения сложности пока мало."
+        reason = ("Есть проверенный успех; требуется другое задание для проверки переноса. Уровень задания неизвестен, поэтому выбран нейтральный уровень; данных для повышения сложности мало."
+                  if not (type(difficulty) is int and 1 <= difficulty <= 5)
+                  else "Есть один проверенный успех; требуется другое задание для проверки переноса, а данных для повышения сложности пока мало.")
     else:
         target_rank = 2
         action = "diagnostic_start"
         reason = "Подтверждённых попыток по выбранному навыку нет; начинается ограниченная диагностическая практика."
 
-    selected = min(fresh, key=lambda item: (abs(item["difficulty_rank"] - target_rank), item["exercise_id"]))
+    if not platform_no_hint_pair:
+        selection_pool = [item for item in fresh if abs(item["difficulty_rank"] - target_rank) <= 1]
+        if not selection_pool:
+            return {
+                "exercise": None, "action": "pause",
+                "reason": "Нет неиспользованного задания на близком к обоснованной цели уровне; нужен подходящий проверенный материал.",
+            }
+
+    selected = min(selection_pool, key=lambda item: (abs(item["difficulty_rank"] - target_rank), item["exercise_id"]))
     public_exercise = {key: value for key, value in selected.items() if key not in {"answer_key", "absolute_tolerance", "difficulty_rank"}}
     return {"exercise": public_exercise, "action": action, "reason": reason}
 

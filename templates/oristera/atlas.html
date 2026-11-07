@@ -1,6 +1,6 @@
 {% extends 'oristera/layout_oristera.html' %}
 
-{% block title %}Карта знаний | Oristera{% endblock %}
+{% block title %}Atlas — мир знаний | Oristera{% endblock %}
 
 {% block content %}
 {% set atlas_totals = namespace(topics=0, observations=0, observed_topics=0) %}
@@ -12,148 +12,215 @@
   {% endfor %}
 {% endfor %}
 
-<div class="ori-field-page ori-atlas-field" id="ori-atlas-universe">
-  <header class="ori-field-intro ori-atlas-intro">
-    <div>
-      <p class="ori-field-eyebrow">ОРИСТЕРА / КАРТА ЗНАНИЙ</p>
-      <div class="ori-atlas-heading-line">
-        <button type="button" class="ori-field-back hidden" id="ori-atlas-reset-btn" aria-label="Вернуться ко всем областям">← Все области</button>
-        <span class="ori-field-level" id="ori-atlas-view-level">Обзор предмета</span>
-      </div>
-      <h1 class="ori-field-title" id="ori-atlas-view-title">Связи между темами</h1>
-      <p class="ori-field-lede" id="ori-atlas-view-subtitle">Исследуйте карту информатики. Метки показывают только подтверждённые наблюдения; отсутствие данных не означает отсутствие знаний.</p>
+<div class="ori-field-page ori-atlas-field atlas-world-field" id="ori-atlas-universe"
+     data-area-count="{{ constellations|length }}" data-topic-count="{{ atlas_totals.topics }}">
+  <header class="atlas-command-deck">
+    <div class="atlas-identity">
+      <span class="atlas-coordinate">ATLAS <i aria-hidden="true"></i> 01</span>
+      <h1 class="atlas-space-title" id="ori-atlas-view-title">Мир знаний</h1>
+      <span class="atlas-space-level" id="ori-atlas-view-level">Общий рельеф</span>
     </div>
-    <div class="ori-atlas-total" aria-label="Сводка каталога тем">
-      <strong>{{ atlas_totals.topics }}</strong>
-      <span>тем в каталоге</span>
+
+    <form class="atlas-search" role="search" autocomplete="off">
+      <label for="ori-atlas-search">Исследовать карту</label>
+      <div class="atlas-search-input-wrap">
+        <span class="atlas-search-glyph" aria-hidden="true">⌕</span>
+        <input id="ori-atlas-search" type="search" placeholder="Область или тема"
+               aria-label="Найти область или тему" aria-controls="ori-atlas-search-results"
+               aria-autocomplete="list" aria-expanded="false">
+        <kbd aria-hidden="true">/</kbd>
+      </div>
+      <ul id="ori-atlas-search-results" class="atlas-search-results" role="listbox" hidden></ul>
+    </form>
+
+    <div class="atlas-command-actions">
+      <a class="atlas-nexus-link" href="{{ url_for('oristera.nexus') }}" data-ori-portal="atlas" aria-label="Вернуться в Nexus">
+        <span aria-hidden="true">↖</span><span>Nexus</span>
+      </a>
+      <div class="atlas-camera-tools" role="group" aria-label="Управление масштабом карты">
+        <button type="button" id="ori-atlas-zoom-out" aria-label="Отдалить карту">−</button>
+        <output id="ori-atlas-scale" aria-live="polite">100%</output>
+        <button type="button" id="ori-atlas-zoom-in" aria-label="Приблизить карту">+</button>
+      </div>
+      <button type="button" class="atlas-reset" id="ori-atlas-reset-btn" aria-label="Вернуться к общему виду" hidden>
+        <span aria-hidden="true">↙</span><span>Весь мир</span>
+      </button>
     </div>
   </header>
 
-  <nav class="ori-atlas-nav" aria-label="Навигация по карте знаний">
-    <div class="ori-atlas-tabs">
+  <nav class="atlas-domain-rail ori-atlas-tabs" aria-label="Быстрый переход между образовательными областями">
+    <span class="atlas-rail-caption">СЛОИ ЗНАНИЯ</span>
+    <div class="atlas-rail-items">
       {% for area in constellations %}
-      <button type="button" class="ori-atlas-tab" aria-label="{{ area.name }} — {{ area.stars|length }} тем" aria-pressed="false" data-cid="{{ area.id }}">
-        <span class="ori-tab-index">{{ '%02d'|format(loop.index) }}</span>
-        <span class="ori-tab-title">{{ area.tag or area.name }}</span>
-        <span class="ori-tab-count" aria-hidden="true">{{ area.stars|length }}</span>
+      <button type="button" class="ori-atlas-tab" aria-pressed="false"
+              aria-label="{{ area.tag or area.name }} — {{ area.stars|length }} тем"
+              data-cid="{{ area.id }}">
+        <span class="atlas-rail-index">{{ '%02d'|format(loop.index) }}</span>
+        <span>{{ area.tag or area.name }}</span>
+        <span class="atlas-rail-count">{{ area.stars|length }}</span>
       </button>
       {% endfor %}
     </div>
-    <a href="{{ url_for('oristera.practice') }}" class="ori-field-button ori-field-button-secondary">К практике <span aria-hidden="true">→</span></a>
+    <span class="atlas-rail-total"><b>{{ atlas_totals.topics }}</b> тем</span>
   </nav>
 
   {% if constellations %}
-  <section class="ori-atlas-stage" id="ori-atlas-stage" aria-label="Карта областей знаний">
-    <div class="ori-atlas-map-frame" role="group" aria-label="Интерактивная карта областей и тем">
-      <div class="ori-map-corner-note"><span>КАТАЛОГ ТЕМ</span><span>{{ constellations|length }} ОБЛАСТЕЙ</span></div>
-      <svg id="ori-atlas-svg" class="ori-atlas-svg" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Карта областей знаний. Выберите область или тему для деталей.">
-        <defs>
-          <pattern id="ori-map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" class="ori-map-grid-line" />
-          </pattern>
-        </defs>
-        <rect class="ori-map-ground" width="1000" height="650" />
-        <rect class="ori-map-grid" width="1000" height="650" fill="url(#ori-map-grid)" />
-        <g class="ori-map-topography" aria-hidden="true">
-          <path d="M22 140 C110 76 184 82 243 133 S370 187 432 146 S573 76 636 119 S770 171 852 106 S956 88 1000 124" />
-          <path d="M0 177 C101 116 184 119 246 167 S372 222 439 182 S572 112 642 154 S782 208 860 145 S964 126 1000 158" />
-          <path d="M0 495 C98 444 183 448 250 494 S376 546 443 509 S581 438 649 481 S784 538 865 477 S964 454 1000 490" />
-          <path d="M0 530 C95 478 185 481 252 529 S378 581 447 544 S583 472 653 516 S788 573 869 512 S964 488 1000 524" />
-        </g>
+  <section class="atlas-landscape" id="ori-atlas-stage" aria-label="Пространство карты знаний">
+    <div class="atlas-world-viewport" id="ori-atlas-viewport">
+      <div class="atlas-world" id="ori-atlas-world" data-state="overview">
+        <svg id="ori-atlas-svg" class="atlas-contour-field" viewBox="0 0 1800 860"
+             preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="atlas-current-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#a7dbe6" stop-opacity="0"/>
+              <stop offset=".28" stop-color="#8abfd5" stop-opacity=".48"/>
+              <stop offset=".66" stop-color="#b4a7df" stop-opacity=".48"/>
+              <stop offset="1" stop-color="#e3bb94" stop-opacity="0"/>
+            </linearGradient>
+            <pattern id="atlas-microgrid" width="28" height="28" patternUnits="userSpaceOnUse">
+              <path d="M 28 0 H 0 V 28" class="atlas-microgrid-line"/>
+            </pattern>
+          </defs>
+          <rect width="1800" height="860" fill="url(#atlas-microgrid)"/>
+          <g class="atlas-contours">
+            <path d="M0 220 C190 100 300 365 555 230 S875 96 1090 240 S1470 388 1800 190"/>
+            <path d="M0 249 C190 129 300 394 555 259 S875 125 1090 269 S1470 417 1800 219"/>
+            <path d="M0 278 C190 158 300 423 555 288 S875 154 1090 298 S1470 446 1800 248"/>
+            <path d="M0 618 C190 496 350 724 590 590 S928 475 1144 612 S1500 733 1800 544"/>
+            <path d="M0 646 C190 524 350 752 590 618 S928 503 1144 640 S1500 761 1800 572"/>
+            <path d="M0 674 C190 552 350 780 590 646 S928 531 1144 668 S1500 789 1800 600"/>
+          </g>
+          <path class="atlas-world-current" d="M0 465 C200 466 255 325 478 390 S745 580 930 454 S1190 314 1378 437 S1630 540 1800 360"/>
+          <path class="atlas-world-current atlas-world-current-secondary" d="M0 500 C210 500 312 383 490 426 S742 612 952 488 S1196 351 1390 470 S1650 568 1800 394"/>
+        </svg>
 
         {% for area in constellations %}
-          {% set cx = area.x|int * 10 %}
-          {% set cy = area.y|int * 6.5 %}
-        <g class="ori-constellation-cluster ori-region-{{ loop.index }}" id="cluster-{{ area.id }}" data-cid="{{ area.id }}" data-center-x="{{ cx }}" data-center-y="{{ cy }}" data-title="{{ area.name }}" data-count="{{ area.stars|length }}" role="group">
-          <path class="ori-map-region" tabindex="0" role="button" aria-pressed="false" aria-label="Открыть область {{ area.name }}, {{ area.stars|length }} тем" d="M {{ cx - 138 }} {{ cy - 28 }} C {{ cx - 116 }} {{ cy - 102 }}, {{ cx - 28 }} {{ cy - 124 }}, {{ cx + 39 }} {{ cy - 100 }} C {{ cx + 112 }} {{ cy - 92 }}, {{ cx + 148 }} {{ cy - 26 }}, {{ cx + 127 }} {{ cy + 34 }} C {{ cx + 105 }} {{ cy + 105 }}, {{ cx + 25 }} {{ cy + 124 }}, {{ cx - 48 }} {{ cy + 98 }} C {{ cx - 117 }} {{ cy + 85 }}, {{ cx - 158 }} {{ cy + 29 }}, {{ cx - 138 }} {{ cy - 28 }} Z" />
-          <circle class="ori-map-contour contour-outer" cx="{{ cx }}" cy="{{ cy }}" r="112" />
-          <circle class="ori-map-contour contour-inner" cx="{{ cx }}" cy="{{ cy }}" r="84" />
-          <text class="ori-region-name" x="{{ cx }}" y="{{ cy - 92 }}" text-anchor="middle">{{ area.tag or area.name }}</text>
-          <text class="ori-region-count" x="{{ cx }}" y="{{ cy - 72 }}" text-anchor="middle">{{ area.stars|length }} тем</text>
-          <g class="ori-map-links" aria-hidden="true">
-            {% for topic in area.stars %}
-              {% set nx = cx + ((loop.index0 % 3) - 1) * 58 %}
-              {% set ny = cy + ((loop.index0 // 3) * 56) - 24 %}
-            <path d="M {{ cx }} {{ cy }} L {{ nx }} {{ ny }}" />
-            {% endfor %}
-          </g>
-          {% for topic in area.stars %}
-            {% set nx = cx + ((loop.index0 % 3) - 1) * 58 %}
-            {% set ny = cy + ((loop.index0 // 3) * 56) - 24 %}
-          <g class="ori-star-node" data-num="{{ topic.num }}" data-name="{{ topic.title }}" data-status="{{ topic.status }}" data-evidence-count="{{ topic.evidence_count|int }}" transform="translate({{ nx }} {{ ny }})" tabindex="0" role="button" aria-label="Тема номер {{ topic.num }}: {{ topic.title }}. {{ topic.evidence_count|int }} подтверждённых наблюдений">
-            <circle class="ori-node-hit" r="31" />
-            <circle class="ori-node-mark" r="13" />
-            <text class="ori-node-number" x="0" y="4" text-anchor="middle">{{ topic.num }}</text>
-          </g>
-          {% endfor %}
-          <circle class="ori-region-center" cx="{{ cx }}" cy="{{ cy }}" r="4" aria-hidden="true" />
-        </g>
+          {% set domain_kind = area.id|replace('c-', '') %}
+        <article class="ori-constellation-cluster atlas-domain" id="cluster-{{ area.id }}"
+                 data-cid="{{ area.id }}" data-kind="{{ domain_kind }}"
+                 data-index="{{ loop.index0 }}" data-title="{{ area.tag or area.name }}"
+                 data-count="{{ area.stars|length }}" style="--domain-index: {{ loop.index0 }};">
+          <div class="atlas-domain-plate" aria-hidden="true">
+            {% if domain_kind == 'logic' %}
+            <svg viewBox="0 0 480 330" class="atlas-domain-motif" focusable="false">
+              <path d="M40 205 H135 L184 150 H273 M184 150 L236 220 H340 M273 150 L327 105 H430"/>
+              <path d="M40 237 H120 L180 182 M195 147 L250 92 H345 M250 222 L315 270 H434"/>
+              <path d="M103 120 H163 M303 190 H398"/>
+              <circle cx="184" cy="150" r="8"/><circle cx="273" cy="150" r="8"/><circle cx="340" cy="220" r="8"/>
+            </svg>
+            {% elif domain_kind == 'algo' %}
+            <svg viewBox="0 0 480 330" class="atlas-domain-motif" focusable="false">
+              <path d="M22 225 C94 225 90 124 165 124 S236 226 310 226 S380 112 458 112"/>
+              <path d="M22 258 C105 258 109 158 178 158 S240 258 315 258 S385 146 458 146"/>
+              <path d="M22 191 C82 191 75 92 150 92 S221 192 298 192 S366 78 458 78"/>
+              <path d="M154 124 L169 124 M299 226 L314 226 M368 112 L383 112"/>
+            </svg>
+            {% elif domain_kind == 'python' %}
+            <svg viewBox="0 0 480 330" class="atlas-domain-motif" focusable="false">
+              <path d="M74 72 H240 V124 H326 V178 H404 V258 H254 V220 H154 V170 H74 Z"/>
+              <path d="M108 103 H211 V151 H294 V207 H367"/>
+              <path d="M108 103 V145 H178 V193 H254 V238 H330"/>
+              <path d="M240 72 V124 M326 178 V230"/>
+              <rect x="218" y="108" width="14" height="14"/><rect x="288" y="172" width="14" height="14"/>
+            </svg>
+            {% elif domain_kind == 'data' %}
+            <svg viewBox="0 0 480 330" class="atlas-domain-motif" focusable="false">
+              <path d="M44 250 C112 218 130 206 182 215 S264 257 322 224 S395 158 454 174"/>
+              <path d="M44 222 C112 190 130 178 182 187 S264 229 322 196 S395 130 454 146"/>
+              <path d="M44 194 C112 162 130 150 182 159 S264 201 322 168 S395 102 454 118"/>
+              <path d="M44 166 C112 134 130 122 182 131 S264 173 322 140 S395 74 454 90"/>
+              <path d="M100 90 V265 M182 80 V275 M264 90 V265 M346 75 V250"/>
+            </svg>
+            {% else %}
+            <svg viewBox="0 0 480 330" class="atlas-domain-motif" focusable="false">
+              <path d="M38 176 C97 94 150 92 205 166 S318 247 374 151 S436 92 465 127"/>
+              <path d="M22 230 C95 160 141 165 203 220 S314 275 378 208 S430 157 462 174"/>
+              <path d="M66 75 L155 256 M150 61 L236 270 M246 56 L330 254 M341 70 L414 226"/>
+              <path d="M63 129 H419 M42 199 H440"/>
+            </svg>
+            {% endif %}
+          </div>
+
+          <div class="atlas-domain-content">
+            <div class="atlas-domain-index">
+              <span>ТЕРРИТОРИЯ {{ '%02d'|format(loop.index) }}</span>
+              <span class="atlas-domain-status"><i aria-hidden="true"></i>ОТКРЫТА ДЛЯ ИССЛЕДОВАНИЯ</span>
+            </div>
+            <button type="button" class="atlas-domain-trigger" data-cid="{{ area.id }}"
+                 aria-pressed="false" aria-controls="atlas-topic-field-{{ area.id }}">
+              <span class="atlas-domain-name">{{ area.tag or area.name }}</span>
+              <span class="atlas-domain-count">{{ area.stars|length }} тем <b aria-hidden="true">↗</b></span>
+            </button>
+            <div class="atlas-topic-field" id="atlas-topic-field-{{ area.id }}" hidden>
+              <p class="atlas-topic-field-label">ДОСТУПНЫЕ ТЕМЫ · ВЫБЕРИТЕ ДЛЯ ДЕТАЛЕЙ</p>
+              <ul id="ori-cluster-topics-{{ area.id }}" class="atlas-topic-list" aria-label="Темы области {{ area.tag or area.name }}">
+                {% for topic in area.stars %}
+                <li>
+                  <button type="button" class="ori-star-node atlas-topic-node"
+                          data-num="{{ topic.num }}" data-name="{{ topic.title }}"
+                          data-status="{{ topic.status }}" data-evidence-count="{{ topic.evidence_count|int }}"
+                          aria-label="Тема {{ topic.num }}: {{ topic.title }}. {{ topic.evidence_count|int }} подтверждённых наблюдений">
+                    <span class="atlas-topic-number">№{{ topic.num }}</span>
+                    <span class="atlas-topic-title">{{ topic.title }}</span>
+                    <i class="atlas-topic-evidence" aria-hidden="true"></i>
+                  </button>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </article>
         {% endfor %}
-      </svg>
-      <div class="ori-map-scale" aria-hidden="true"><span>ОБЩИЙ ОБЗОР</span><span class="ori-map-scale-line"></span><span>ТЕМА</span></div>
+      </div>
     </div>
 
-    <aside class="ori-field-inspector" aria-label="Информация о выбранной области или теме">
-      <div id="ori-atlas-overview-card" class="ori-atlas-overview-card">
-        <p class="ori-field-eyebrow">КАК ЧИТАТЬ КАРТУ</p>
-        <h2 class="ori-inspector-heading">Тема за темой</h2>
-        <p class="ori-inspector-copy">Области объединяют темы по разделам информатики. Выберите область, чтобы открыть её состав, затем выберите тему для просмотра данных.</p>
-        <div class="ori-evidence-summary">
-          <div><strong>{{ atlas_totals.observations }}</strong><span>наблюдений записано</span></div>
-          <div><strong>{{ atlas_totals.observed_topics }}</strong><span>тем с данными</span></div>
+    <div class="atlas-scene-coordinate" aria-hidden="true"><span>ORISTERA / LEARNING UNIVERSE</span><span>FIELD 01 — INFORMATICS</span></div>
+    <div id="ori-atlas-overview-card" class="atlas-world-readout">
+      <span class="atlas-readout-mark" aria-hidden="true">⌁</span>
+      <span><b>{{ constellations|length }} территорий</b><small>{{ atlas_totals.topics }} доступных тем · {{ atlas_totals.observations }} подтверждённых наблюдений</small></span>
+    </div>
+    <p class="atlas-world-disclaimer">Рельеф и контуры формируют визуальную карту мира и не обозначают подтверждённые учебные зависимости.</p>
+
+    <aside class="atlas-inspector" id="ori-atlas-inspector" aria-label="Информация об области или теме" hidden>
+      <div id="ori-cluster-inspector" class="atlas-inspector-content" aria-live="polite" hidden>
+        <div class="atlas-inspector-topline"><span>СЛОЙ ЗНАНИЙ</span><span id="ori-cluster-count"></span></div>
+        <h2 id="ori-cluster-title" class="atlas-inspector-title"></h2>
+        <p id="ori-cluster-summary" class="atlas-inspector-copy"></p>
+        <div class="atlas-inspector-observations">
+          <span>Подтверждённые наблюдения</span><b id="ori-cluster-evidence">0</b>
         </div>
-        <p class="ori-data-integrity-note">Уровень освоения здесь не рассчитывается. Если подтверждений нет, карта сообщает об отсутствии данных.</p>
-        <ul class="ori-area-index">
-          {% for area in constellations %}
-          <li>
-            <button type="button" class="ori-area-jump" data-cid="{{ area.id }}">
-              <span class="ori-area-index-number">{{ '%02d'|format(loop.index) }}</span>
-              <span class="ori-area-index-name">{{ area.tag or area.name }}</span>
-              <span class="ori-area-index-count">{{ area.stars|length }}</span>
-            </button>
-          </li>
-          {% endfor %}
-        </ul>
       </div>
 
-      <div id="ori-cluster-inspector" class="ori-cluster-inspector hidden" aria-live="polite">
-        <p class="ori-field-eyebrow">ОБЛАСТЬ КАРТЫ</p>
-        <h2 class="ori-inspector-heading" id="ori-cluster-title"></h2>
-        <p class="ori-inspector-copy" id="ori-cluster-summary"></p>
-        <p class="ori-list-label">ТЕМЫ ЭТОЙ ОБЛАСТИ</p>
-        <ul class="ori-cluster-topic-list" id="ori-cluster-topics"></ul>
-      </div>
-
-      <section id="ori-skill-inspector" class="ori-skill-inspector hidden" aria-live="polite" aria-label="Данные по выбранной теме">
-        <div class="ori-inspector-topline">
-          <span class="ori-inspector-tag" id="ori-insp-badge">Данные темы</span>
-          <button type="button" class="ori-inspector-close" id="ori-insp-close" aria-label="Закрыть сведения о теме">Закрыть</button>
+      <section id="ori-skill-inspector" class="atlas-inspector-content" aria-live="polite"
+               aria-label="Данные выбранной темы" hidden>
+        <div class="atlas-inspector-topline"><span id="ori-insp-badge">НЕТ ДАННЫХ</span>
+          <button type="button" class="ori-inspector-close" id="ori-insp-close" aria-label="Закрыть сведения о теме">×</button>
         </div>
-        <p class="ori-inspector-num" id="ori-insp-num"></p>
-        <h2 class="ori-inspector-heading" id="ori-insp-title"></h2>
-        <p class="ori-inspector-copy" id="ori-insp-desc"></p>
-        <div class="ori-evidence-stat">
-          <span>Подтверждённые наблюдения</span>
-          <strong id="ori-insp-evidence-count">0</strong>
+        <p class="atlas-inspector-number" id="ori-insp-num"></p>
+        <h2 class="atlas-inspector-title" id="ori-insp-title"></h2>
+        <p class="atlas-inspector-copy" id="ori-insp-desc"></p>
+        <div class="atlas-inspector-observations">
+          <span>Подтверждённые наблюдения</span><b id="ori-insp-evidence-count">0</b>
         </div>
-        <p class="ori-data-integrity-note" id="ori-insp-evidence"></p>
-        <a href="{{ url_for('oristera.practice') }}" class="ori-field-button ori-field-button-primary ori-inspect-practice" id="ori-insp-practice-link">Практика по теме <span aria-hidden="true">→</span></a>
+        <p class="atlas-evidence-note" id="ori-insp-evidence"></p>
+        <a href="{{ url_for('oristera.practice') }}" class="ori-field-button ori-field-button-primary atlas-practice-link" id="ori-insp-practice-link">
+          Перейти к практике <span aria-hidden="true">→</span>
+        </a>
       </section>
     </aside>
-  </main>
+  </section>
   {% else %}
-  <section class="ori-atlas-empty" aria-live="polite">
-    <h2>Карта пока недоступна</h2>
-    <p>Каталог тем не получен. Попробуйте открыть страницу позже.</p>
+  <section class="atlas-empty-state" aria-live="polite">
+    <span class="atlas-coordinate">ATLAS / 01</span>
+    <h2>Мир знаний готовится к открытию</h2>
+    <p>Сейчас каталог тем не получен. Повторите попытку позже.</p>
   </section>
   {% endif %}
 
-  <footer class="ori-atlas-legend" aria-label="Обозначения подтверждений">
-    <span><i class="ori-legend-mark is-repeated" aria-hidden="true"></i>Есть повторные подтверждения</span>
-    <span><i class="ori-legend-mark is-observed" aria-hidden="true"></i>Есть отдельные наблюдения</span>
-    <span><i class="ori-legend-mark is-unobserved" aria-hidden="true"></i>Нет данных о подтверждениях</span>
-    <span class="ori-legend-note">Клавиши 1–{{ constellations|length }} — области · Esc — назад</span>
+  <footer class="atlas-world-footer">
+    <span id="ori-atlas-view-subtitle">Информатика · {{ atlas_totals.topics }} тем в каталоге</span>
+    <span><i aria-hidden="true"></i> Доступная тема ≠ подтверждённое освоение</span>
+    <span>Esc — назад · 1–{{ constellations|length }} — быстрый переход</span>
   </footer>
 </div>
 {% endblock %}
-

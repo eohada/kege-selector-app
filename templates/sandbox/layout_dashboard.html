@@ -35,11 +35,7 @@
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/student/') and request.path.endswith('/analytics') %}is-active{% endif %}" href="{{ url_for('students.student_analytics', student_id=student_nav_profile.student_id) if student_nav_profile else url_for('main.dashboard') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Расписание</span></a>
-        {% if student_nav_profile %}
-          <a class="bs-dashboard-nav-link {% if request.path.startswith('/student/') and request.path.endswith('/courses') or request.path.startswith('/courses/') %}is-active{% endif %}" href="{{ url_for('courses.student_courses', student_id=student_nav_profile.student_id) }}"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Мои курсы и уроки</small></span></a>
-        {% else %}
-          <div class="bs-dashboard-nav-link is-coming-soon bs-student-program-soon" aria-disabled="true" aria-label="Программа недоступна"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Недоступна</small></span></div>
-        {% endif %}
+        <div class="bs-dashboard-nav-link is-coming-soon bs-student-program-soon" aria-disabled="true" aria-label="Программа пока недоступна" title="Раздел программы пока недоступен"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Мои курсы и уроки</small></span></div>
       {% elif dashboard_admin_shell %}
         <a class="bs-dashboard-nav-link {% if request.path == '/admin/users' or request.path == '/admin' %}is-active{% endif %}" href="/admin/users"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/ai-lab') %}is-active{% endif %}" href="{{ url_for('admin.admin_ai_lab') }}"><i class="ph ph-flask"></i><span>AI Lab</span></a>
@@ -90,8 +86,9 @@
       <div class="bs-dashboard-topbar-actions">
         {% if oristera_next_switch_enabled %}
         <!-- Oristera Next Entry Switcher Button -->
-        <a href="/oristera/toggle?to=oristera" class="btn-3d px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-900 flex items-center gap-1.5 no-underline shadow-sm transition-all" title="Перейти в новую вселенную Oristera Next">
-          <span>✨ Oristera Next</span>
+        <a href="/oristera/toggle?to=oristera" class="bs-oristera-switch-btn btn-3d" aria-label="Перейти в новую вселенную Oristera Next" title="Перейти в новую вселенную Oristera Next">
+          <span class="bs-oristera-text-full">✨ Oristera Next</span>
+          <span class="bs-oristera-text-compact">✨ Next</span>
         </a>
         {% endif %}
         <div class="bs-dashboard-profile-wrap" data-profile-menu-wrap>
@@ -102,6 +99,12 @@
           </button>
           <div class="bs-dashboard-profile-dropdown" role="menu" hidden data-profile-menu>
             <a href="/workspace/profile" role="menuitem"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
+            {% if session.get('impersonator_id') or session.get('is_impersonating') %}
+            <a href="/sandbox/impersonate/revert" role="menuitem" class="text-rose-600 font-bold"><i class="ph ph-arrow-u-down-left"></i><span>Вернуться к Создателю</span></a>
+            {% endif %}
+            {% if current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin() or session.get('impersonator_id') %}
+            <button type="button" onclick="if(window.toggleDevSwitcher) window.toggleDevSwitcher();" role="menuitem"><i class="ph ph-user-switch"></i><span>Сменить профиль</span></button>
+            {% endif %}
             {% if dashboard_admin_shell %}<a href="/admin/mode/switch?mode=teacher" role="menuitem"><i class="ph ph-chalkboard-teacher"></i><span>Кабинет преподавателя</span></a>{% elif current_user.is_admin() or current_user.is_creator() %}<a href="/admin/users" role="menuitem"><i class="ph ph-shield-check"></i><span>Панель управления</span></a>{% endif %}
             <a href="{{ url_for('auth.logout') }}" role="menuitem"><i class="ph ph-sign-out"></i><span>Выйти</span></a>
           </div>
@@ -111,6 +114,39 @@
 
     <div class="bs-dashboard-content">
       {% block sandbox_content %}{% endblock %}
+    </div>
+  </div>
+
+  <!-- Mobile Profile Popover Backdrop -->
+  <div id="mobile-profile-backdrop" class="bs-mobile-profile-backdrop" hidden></div>
+
+  <!-- Mobile Profile Popover Menu -->
+  <div id="mobile-profile-popover" class="bs-mobile-profile-popover" role="menu" aria-labelledby="mobile-profile-tab-btn" hidden>
+    <div class="bs-mobile-profile-head">
+      <img src="{% if current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" alt="" class="bs-mobile-profile-avatar">
+      <div class="bs-mobile-profile-meta">
+        <div class="bs-mobile-profile-name">{{ dashboard_profile_name }}</div>
+        <div class="bs-mobile-profile-role">{{ dashboard_profile_meta }}</div>
+      </div>
+    </div>
+    <div class="bs-mobile-profile-divider"></div>
+    <div class="bs-mobile-profile-items">
+      <a href="/workspace/profile" class="bs-mobile-profile-item" role="menuitem">
+        <i class="ph ph-user-circle"></i><span>Мой профиль</span>
+      </a>
+      {% if session.get('impersonator_id') or session.get('is_impersonating') %}
+      <a href="/sandbox/impersonate/revert" class="bs-mobile-profile-item is-revert" role="menuitem">
+        <i class="ph ph-arrow-u-down-left"></i><span>Вернуться к Создателю</span>
+      </a>
+      {% endif %}
+      {% if current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin() or session.get('impersonator_id') %}
+      <button type="button" onclick="window.handleMobileDevSwitch()" class="bs-mobile-profile-item" role="menuitem">
+        <i class="ph ph-user-switch"></i><span>Сменить профиль</span>
+      </button>
+      {% endif %}
+      <a href="{{ url_for('auth.logout') }}" class="bs-mobile-profile-item is-logout" role="menuitem">
+        <i class="ph ph-sign-out"></i><span>Выйти из аккаунта</span>
+      </a>
     </div>
   </div>
 
@@ -128,7 +164,9 @@
     <a href="{% if is_student_shell %}/submissions{% else %}/assignments{% endif %}" class="{% if (is_student_shell and (request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes'))) or (not is_student_shell and request.path.startswith('/assignments')) %}is-active{% endif %}"><i class="ph ph-check-square"></i><span>Задания</span></a>
     <a href="{{ url_for('schedule.schedule') }}" class="{% if request.path.startswith('/schedule') %}is-active{% endif %}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
     {% endif %}
-    <a href="/workspace/profile" class="{% if request.path.startswith('/workspace/profile') %}is-active{% endif %}"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
+    <button type="button" id="mobile-profile-tab-btn" class="bs-mobile-nav-tab {% if request.path.startswith('/workspace/profile') %}is-active{% endif %}" aria-haspopup="menu" aria-expanded="false" aria-controls="mobile-profile-popover" data-mobile-profile-trigger>
+      <i class="ph ph-user-circle"></i><span>Профиль</span>
+    </button>
   </nav>
 
   <script src="{{ url_for('static', filename='csrf-helper.js') }}?v=20260822-course-actions"></script>
@@ -291,6 +329,79 @@
         profileTrigger.setAttribute('aria-expanded', String(isOpen));
         profileWrap.classList.toggle('is-open', isOpen);
       });
+
+      // Mobile Profile Popover Controller
+      (function initMobileProfile() {
+        const trigger = document.getElementById('mobile-profile-tab-btn');
+        const popover = document.getElementById('mobile-profile-popover');
+        const backdrop = document.getElementById('mobile-profile-backdrop');
+        if (!trigger || !popover) return;
+
+        function openPopover() {
+          popover.hidden = false;
+          if (backdrop) backdrop.hidden = false;
+          trigger.setAttribute('aria-expanded', 'true');
+          trigger.classList.add('is-open');
+        }
+
+        function closePopover() {
+          popover.hidden = true;
+          if (backdrop) backdrop.hidden = true;
+          trigger.setAttribute('aria-expanded', 'false');
+          trigger.classList.remove('is-open');
+        }
+
+        function togglePopover() {
+          if (popover.hidden) {
+            openPopover();
+          } else {
+            closePopover();
+          }
+        }
+
+        trigger.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          togglePopover();
+        });
+
+        if (backdrop) {
+          backdrop.addEventListener('click', function () {
+            closePopover();
+          });
+        }
+
+        popover.addEventListener('click', function (e) {
+          const link = e.target.closest('a.bs-mobile-profile-item');
+          if (link) {
+            closePopover();
+          }
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!popover.hidden && !popover.contains(e.target) && !trigger.contains(e.target)) {
+            closePopover();
+          }
+        });
+
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !popover.hidden) {
+            closePopover();
+            trigger.focus();
+          }
+        });
+
+        window.closeMobileProfilePopover = closePopover;
+
+        window.handleMobileDevSwitch = function () {
+          closePopover();
+          if (typeof window.toggleDevSwitcher === 'function') {
+            window.toggleDevSwitcher();
+          } else {
+            console.warn('[Dev Switcher] toggleDevSwitcher not found');
+          }
+        };
+      }());
     }());
   </script>
   {% block extra_scripts %}{% endblock %}

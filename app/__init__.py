@@ -1049,6 +1049,13 @@ def create_app(config_name=None):
         return {
             'oristera_next_switch_enabled': is_oristera_next_switch_enabled(app)
         }
+
+    @app.context_processor
+    def inject_pocket_os():
+        from app.utils.pocket_os import is_pocket_os_enabled
+        return {
+            'pocket_os_enabled': is_pocket_os_enabled(app)
+        }
     
     @app.context_processor
     def inject_user_data():

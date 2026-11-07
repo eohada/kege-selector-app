@@ -1,0 +1,1434 @@
+/* ==========================================================================
+   BooStudy Teacher Control Center — Sprint 2.6
+   The Ultimate Teaching Workspace: 3-Zone Adaptive Architecture
+   ========================================================================== */
+
+:root {
+  --tcc-rail-width: 320px;
+  --tcc-rail-expanded-width: 320px;
+  --tcc-inspector-width: 350px;
+  --tcc-hour-height: 64px;
+  --tcc-hour-height-compact: 48px;
+  --tcc-border: #E2E8F0;
+  --tcc-border-subtle: #F1F5F9;
+  --tcc-bg-page: #F8FAFC;
+  --tcc-bg-card: #FFFFFF;
+  --tcc-primary: #4F46E5;
+  --tcc-primary-hover: #4338CA;
+  --tcc-shadow-card: 0 4px 0 #DAE1E9;
+  --tcc-shadow-btn: 0 3px 0 #3730A3;
+}
+
+/* Base Workspace Layout */
+.tcc-workspace {
+  display: flex;
+  height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  background-color: var(--tcc-bg-page);
+  position: relative;
+  font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+/* ==========================================================================
+   ZONE A: Slide-Over Intelligent Tool Drawer (closed by default)
+   ========================================================================== */
+.tcc-tool-rail {
+  position: fixed;
+  left: 0;
+  top: 72px;
+  bottom: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: #FFFFFF;
+  border-right: 2px solid var(--tcc-border);
+  display: none;
+  flex-direction: column;
+  z-index: 50;
+  box-shadow: 8px 0 32px rgba(15, 23, 42, 0.15);
+  padding: 1.25rem 1rem;
+}
+
+@media (min-width: 1025px) {
+  .tcc-tool-rail {
+    left: 72px; /* next to global nav */
+  }
+}
+
+.tcc-tool-rail.is-expanded {
+  display: flex;
+  animation: tccSlideInLeft 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tccSlideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.tcc-rail-drawer {
+  display: flex;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tcc-rail-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1.5px solid #F1F5F9;
+}
+
+/* Backdrops */
+.tcc-drawer-backdrop,
+.tcc-inspector-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(2px);
+  z-index: 44;
+}
+
+.tcc-drawer-backdrop.is-hidden,
+.tcc-inspector-backdrop.is-hidden {
+  display: none !important;
+}
+
+/* Header Integrated Tool Buttons */
+.tcc-header-tool-btn {
+  height: 34px;
+  padding: 0 0.625rem;
+  border-radius: 10px;
+  border: 1.5px solid var(--tcc-border);
+  background: #F8FAFC;
+  color: #475569;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tcc-header-tool-btn:hover {
+  background: #FFFFFF;
+  color: #0F172A;
+  border-color: #CBD5E1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.tcc-header-tool-btn.is-active {
+  background: #EEF2FF;
+  border-color: #C7D2FE;
+  color: var(--tcc-primary);
+}
+
+.tcc-tool-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--tcc-primary);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tcc-tool-badge.is-hidden {
+  display: none !important;
+}
+
+/* ==========================================================================
+   ZONE B: Adaptive Focus Calendar
+   ========================================================================== */
+.tcc-calendar-viewport {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FFFFFF;
+  position: relative;
+}
+
+/* Top Control Bar */
+.tcc-top-header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 2px solid var(--tcc-border);
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+/* Navigation buttons (prev, today, next) */
+.tcc-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tcc-nav-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1.5px solid var(--tcc-border);
+  background: #F8FAFC;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tcc-nav-btn:hover {
+  background: #FFFFFF;
+  color: #0F172A;
+  border-color: #CBD5E1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.tcc-today-btn {
+  padding: 0 0.75rem;
+  height: 34px;
+  border-radius: 10px;
+  border: 1.5px solid var(--tcc-border);
+  background: #F8FAFC;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tcc-today-btn:hover {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+}
+
+.tcc-period-title {
+  font-size: 1.125rem;
+  font-weight: 900;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display, inherit);
+  margin-left: 0.25rem;
+  white-space: nowrap !important;
+  min-width: max-content;
+  flex-shrink: 0;
+}
+
+/* Pill Tabs View Switcher */
+.tcc-view-pills {
+  display: flex;
+  align-items: center;
+  background: #F1F5F9;
+  padding: 3px;
+  border-radius: 14px;
+  border: 1px solid #E2E8F0;
+}
+
+.tcc-pill-tab {
+  padding: 0.375rem 0.75rem;
+  border-radius: 11px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #64748B;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tcc-pill-tab:hover {
+  color: #0F172A;
+}
+
+.tcc-pill-tab.is-active {
+  background: #FFFFFF;
+  color: var(--tcc-primary);
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Action Buttons (Find Time, New Lesson) */
+.tcc-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tcc-btn-finder {
+  padding: 0 0.875rem;
+  height: 36px;
+  border-radius: 12px;
+  background: #EEF2FF;
+  border: 1.5px solid #C7D2FE;
+  color: #4338CA;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 0 #C7D2FE;
+}
+
+.tcc-btn-finder:hover {
+  background: #E0E7FF;
+  transform: translateY(-1px);
+}
+
+.tcc-btn-finder:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.tcc-btn-primary {
+  padding: 0 1rem;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--tcc-primary);
+  border: 1.5px solid #3730A3;
+  border-bottom: 3px solid #312E81;
+  color: #FFFFFF;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+}
+
+.tcc-btn-primary:hover {
+  background: #4338CA;
+  transform: translateY(-1px);
+}
+
+.tcc-btn-primary:active {
+  transform: translateY(2px);
+  border-bottom-width: 1.5px;
+  box-shadow: none;
+}
+
+/* Sub-Bar Filter / Metrics Strip */
+.tcc-sub-bar {
+  padding: 0.5rem 1.25rem;
+  background: #F8FAFC;
+  border-bottom: 1.5px solid var(--tcc-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.tcc-metrics-items {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tcc-metric-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.tcc-metric-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #94A3B8;
+}
+
+/* Active Filter Pill */
+.tcc-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  color: #4338CA;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   WEEK VIEW GRID
+   ========================================================================== */
+.tcc-week-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+/* Day Column Headers */
+.tcc-days-header-row {
+  display: grid;
+  grid-template-columns: 60px repeat(7, minmax(0, 1fr));
+  border-bottom: 2px solid var(--tcc-border);
+  background: #FFFFFF;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.tcc-tz-header-cell {
+  width: 60px;
+  border-right: 1.5px solid var(--tcc-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94A3B8;
+  background: #F8FAFC;
+}
+
+.tcc-day-header-cell {
+  padding: 0.625rem 0.5rem 0.5rem;
+  border-right: 1.5px solid var(--tcc-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  background: #FFFFFF;
+  min-width: 0;
+  transition: background 0.15s ease;
+}
+
+.tcc-day-header-cell:last-child {
+  border-right: none;
+}
+
+.tcc-day-header-cell.is-today {
+  background: #F5F7FF;
+  border-bottom: 2px solid var(--tcc-primary);
+}
+
+.tcc-day-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tcc-day-name {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tcc-day-number {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #0F172A;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tcc-day-header-cell.is-today .tcc-day-number {
+  background: var(--tcc-primary);
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+.tcc-day-stats-pill {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 1px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  align-self: flex-start;
+}
+
+/* Hybrid Homework Layer Strip */
+.tcc-hw-track {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+  min-height: 20px;
+}
+
+.tcc-hw-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tcc-hw-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.tcc-hw-pill.status-review {
+  background: #FFFBEB;
+  border-color: #FCD34D;
+  color: #92400E;
+}
+
+.tcc-hw-pill.status-assigned {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #1E40AF;
+}
+
+.tcc-hw-pill.status-accepted {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+  color: #065F46;
+}
+
+/* Scrollable Calendar Body */
+.tcc-grid-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  background: #FAFAFA;
+}
+
+.tcc-grid-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tcc-grid-scroll::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+.tcc-grid-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px repeat(7, minmax(0, 1fr));
+  width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
+  background: #FFFFFF;
+}
+
+.tcc-time-gutter {
+  display: flex;
+  flex-direction: column;
+  width: 60px;
+  min-width: 60px;
+  border-right: 1.5px solid var(--tcc-border);
+  background: #FFFFFF;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tcc-time-cell {
+  height: var(--tcc-hour-height);
+  box-sizing: border-box;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94A3B8;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  background: #FFFFFF;
+  user-select: none;
+}
+
+.tcc-workspace.is-density-compact .tcc-time-cell {
+  height: var(--tcc-hour-height-compact);
+}
+
+.tcc-day-column {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #F1F5F9;
+  background: #FFFFFF;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.tcc-day-column:last-child {
+  border-right: none;
+}
+
+.tcc-day-column.is-today-col {
+  background-color: rgba(99, 102, 241, 0.015);
+}
+
+.tcc-slot-cell {
+  height: var(--tcc-hour-height);
+  box-sizing: border-box;
+  border-bottom: 1px solid #F1F5F9;
+  position: relative;
+  transition: background 0.1s ease;
+  width: 100%;
+}
+
+.tcc-workspace.is-density-compact .tcc-slot-cell {
+  height: var(--tcc-hour-height-compact);
+}
+
+.tcc-slot-cell:hover {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.tcc-slot-cell.is-non-working {
+  background: repeating-linear-gradient(45deg, #F8FAFC, #F8FAFC 8px, #F1F5F9 8px, #F1F5F9 16px);
+  opacity: 0.7;
+}
+
+.tcc-slot-cell.is-today-col {
+  background-color: rgba(99, 102, 241, 0.02);
+}
+
+/* Live Current Time Line */
+.tcc-current-time-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #EF4444;
+  z-index: 25;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.tcc-current-time-dot {
+  position: absolute;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #EF4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+  animation: tccPulse 2s infinite ease-in-out;
+}
+
+@keyframes tccPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* Drag to select box */
+.tcc-drag-select-box {
+  position: absolute;
+  background: rgba(79, 70, 229, 0.15);
+  border: 2px dashed var(--tcc-primary);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tcc-primary);
+  font-weight: 800;
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   TACTILE LESSON CARDS (ZONE B)
+   ========================================================================== */
+.tcc-lesson-card {
+  position: absolute;
+  left: 3px;
+  width: calc(100% - 6px);
+  border-radius: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+  z-index: 10;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border: 1.5px solid;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  overflow: hidden;
+  user-select: none;
+  background: #FFFFFF;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.06);
+}
+
+.tcc-lesson-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+  z-index: 20;
+}
+
+.tcc-lesson-card.is-selected {
+  outline: 2.5px solid var(--tcc-primary);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25) !important;
+  z-index: 22;
+}
+
+/* Subject & Theme Palettes */
+.tcc-card-indigo {
+  background: linear-gradient(180deg, #FFFFFF 0%, #EEF2FF 100%);
+  border-color: #C7D2FE;
+  border-left: 4px solid #4F46E5;
+  color: #312E81;
+}
+
+.tcc-card-sky {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F0F9FF 100%);
+  border-color: #BAE6FD;
+  border-left: 4px solid #0284C7;
+  color: #0C4A6E;
+}
+
+.tcc-card-emerald {
+  background: linear-gradient(180deg, #FFFFFF 0%, #ECFDF5 100%);
+  border-color: #A7F3D0;
+  border-left: 4px solid #059669;
+  color: #064E3B;
+}
+
+.tcc-card-amber {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFBEB 100%);
+  border-color: #FDE68A;
+  border-left: 4px solid #D97706;
+  color: #78350F;
+}
+
+/* Status overlays */
+.tcc-lesson-card.status-in_progress {
+  border-color: #F59E0B;
+  box-shadow: 0 0 0 2px #F59E0B, 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.tcc-lesson-card.status-cancelled {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.tcc-lesson-card.status-cancelled .tcc-card-topic {
+  text-decoration: line-through;
+}
+
+/* Card internal rows (Hierarchy: Time -> Student -> Topic -> Status) */
+.tcc-card-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.tcc-card-time-badge {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.tcc-card-duration {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.tcc-card-student {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tcc-card-topic {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #475569;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tcc-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+
+.tcc-card-tag {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Resize handle at bottom edge */
+.tcc-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 7px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.tcc-lesson-card:hover .tcc-resize-handle {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+/* Ghost during drag & drop */
+.tcc-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.95;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.28);
+  border-radius: 12px;
+  border: 2px solid var(--tcc-primary);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(4px);
+  box-sizing: border-box;
+  padding: 8px 10px;
+  transform: scale(1.02);
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.tcc-drag-ghost.is-valid {
+  border-color: #10B981 !important;
+  box-shadow: 0 16px 36px rgba(16, 185, 129, 0.3) !important;
+}
+
+.tcc-drag-ghost.is-collision {
+  border-color: #EF4444 !important;
+  box-shadow: 0 16px 36px rgba(239, 68, 68, 0.32) !important;
+  background: #FFF1F2 !important;
+}
+
+.tcc-ghost-badge {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #EEF2FF;
+  color: #4338CA;
+  margin-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tcc-drag-ghost.is-valid .tcc-ghost-badge {
+  background: #ECFDF5;
+  color: #065F46;
+}
+
+.tcc-drag-ghost.is-collision .tcc-ghost-badge {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+/* Collision warning during drag */
+.tcc-drag-conflict {
+  background: #FEF2F2 !important;
+  border-color: #F87171 !important;
+  color: #991B1B !important;
+}
+
+/* ==========================================================================
+   OTHER VIEWS (DAY, MONTH, STREAM, FOCUS)
+   ========================================================================== */
+
+/* Day View */
+.tcc-day-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #FFFFFF;
+}
+
+.tcc-day-timeline-card {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  border: 2px solid var(--tcc-border);
+  background: #FFFFFF;
+  box-shadow: var(--tcc-shadow-card);
+  margin-bottom: 1rem;
+  transition: transform 0.15s ease;
+}
+
+.tcc-day-timeline-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Month View */
+.tcc-month-view {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: #FFFFFF;
+}
+
+.tcc-month-days-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #F8FAFC;
+  border-bottom: 1.5px solid var(--tcc-border);
+  font-weight: 800;
+  font-size: 11px;
+  color: #64748B;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.tcc-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  overflow-y: auto;
+}
+
+.tcc-month-cell {
+  border-right: 1px solid var(--tcc-border-subtle);
+  border-bottom: 1px solid var(--tcc-border-subtle);
+  padding: 0.5rem;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #FFFFFF;
+}
+
+.tcc-month-cell.is-outside-month {
+  background: #FAFAFA;
+  opacity: 0.5;
+}
+
+.tcc-month-cell.is-today {
+  background: #F5F7FF;
+}
+
+.tcc-month-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* Stream View (Agenda) */
+.tcc-stream-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tcc-stream-day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tcc-stream-day-title {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tcc-stream-card {
+  padding: 1rem 1.25rem;
+  border-radius: 1.25rem;
+  border: 2px solid var(--tcc-border);
+  background: #FFFFFF;
+  box-shadow: var(--tcc-shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: transform 0.15s ease;
+}
+
+.tcc-stream-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Day Focus Mode */
+.tcc-focus-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: #F8FAFC;
+}
+
+.tcc-focus-hero-card {
+  background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%);
+  border-radius: 1.75rem;
+  padding: 2rem;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 12px 32px rgba(79, 70, 229, 0.35);
+}
+
+/* ==========================================================================
+   ZONE C: Smart Context Inspector
+   ========================================================================== */
+.tcc-inspector {
+  width: var(--tcc-inspector-width);
+  min-width: var(--tcc-inspector-width);
+  height: 100%;
+  background: #FFFFFF;
+  border-left: 2px solid var(--tcc-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 30;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tcc-inspector.is-collapsed {
+  display: none;
+}
+
+.tcc-inspector-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 2px solid var(--tcc-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.tcc-inspector-title {
+  font-size: 0.9375rem;
+  font-weight: 900;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tcc-inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.tcc-inspector-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tcc-inspector-body::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+/* Inspector Cards & Widgets */
+.tcc-widget-card {
+  background: #F8FAFC;
+  border: 1.5px solid var(--tcc-border);
+  border-radius: 1.25rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 2px 0 #E2E8F0;
+}
+
+.tcc-widget-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Attention Items */
+.tcc-attention-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--tcc-border);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.tcc-attention-item:hover {
+  transform: translateY(-1px);
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.tcc-attention-item.urgency-urgent {
+  border-left: 3.5px solid #EF4444;
+}
+
+.tcc-attention-item.urgency-high {
+  border-left: 3.5px solid #F59E0B;
+}
+
+.tcc-attention-item.urgency-info {
+  border-left: 3.5px solid #3B82F6;
+}
+
+/* Command Palette Modal */
+.tcc-cmd-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+}
+
+.tcc-cmd-modal.is-hidden {
+  display: none;
+}
+
+.tcc-cmd-box {
+  width: 100%;
+  max-width: 580px;
+  background: #FFFFFF;
+  border-radius: 1.5rem;
+  border: 2px solid var(--tcc-border);
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  animation: tccModalIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tccModalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.tcc-cmd-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 2px solid #F1F5F9;
+}
+
+.tcc-cmd-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.tcc-cmd-results {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tcc-cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.tcc-cmd-item:hover,
+.tcc-cmd-item.is-active {
+  background: #EEF2FF;
+  color: var(--tcc-primary);
+}
+
+/* Context Menu */
+.tcc-context-menu {
+  position: fixed;
+  background: #FFFFFF;
+  border: 2px solid var(--tcc-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  padding: 0.375rem;
+  z-index: 600;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tcc-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.tcc-menu-item:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.tcc-menu-item.danger {
+  color: #DC2626;
+}
+
+.tcc-menu-item.danger:hover {
+  background: #FEF2F2;
+  color: #991B1B;
+}
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE ADAPTATIONS
+   ========================================================================== */
+@media (max-width: 1440px) {
+  .tcc-inspector {
+    position: fixed;
+    top: 72px;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    min-width: 360px;
+    max-width: 90vw;
+    transform: translateX(100%);
+    box-shadow: -8px 0 32px rgba(15, 23, 42, 0.18);
+    z-index: 45;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tcc-inspector.is-mobile-open,
+  .tcc-inspector.is-drawer-open {
+    transform: translateX(0);
+    display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .tcc-workspace {
+    height: calc(100dvh - 120px);
+  }
+
+  .tcc-tool-rail {
+    display: none;
+  }
+
+  .tcc-top-header {
+    padding: 0.5rem 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .tcc-view-pills {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    overflow-x: auto;
+  }
+
+  #tcc-view-container {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #tcc-grid-body {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .tcc-sub-bar {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.6875rem;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  /* Week Ribbon Strip on Mobile */
+  .tcc-mobile-week-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: #FFFFFF;
+    border-bottom: 1.5px solid var(--tcc-border);
+    overflow-x: auto;
+  }
+
+  .tcc-mobile-day-pill {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.375rem 0.25rem;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+
+  .tcc-mobile-day-pill.is-active {
+    background: #EEF2FF;
+    border-color: #C7D2FE;
+    color: var(--tcc-primary);
+  }
+
+  /* Bottom Sheet Inspector on Mobile */
+  .tcc-inspector {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: 100%;
+    height: 75vh;
+    border-radius: 1.75rem 1.75rem 0 0;
+    border-left: none;
+    border-top: 2px solid var(--tcc-border);
+    transform: translateY(100%);
+    box-shadow: 0 -12px 36px rgba(15, 23, 42, 0.2);
+  }
+
+  .tcc-inspector.is-mobile-open {
+    transform: translateY(0);
+  }
+
+  .tcc-bottom-sheet-handle {
+    width: 40px;
+    height: 5px;
+    background: #CBD5E1;
+    border-radius: 999px;
+    margin: 0.5rem auto;
+    cursor: grab;
+  }
+
+  /* Floating Action Button (FAB) */
+  .tcc-fab-btn {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 5.5rem;
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    background: var(--tcc-primary);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  /* Mobile Agenda Card */
+  .tcc-mobile-agenda-card {
+    position: relative;
+    width: 100%;
+    background: #FFFFFF;
+    border: 1.5px solid var(--tcc-border);
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: transform 0.15s ease;
+  }
+  .tcc-mobile-agenda-card:active {
+    transform: scale(0.98);
+  }
+}
+

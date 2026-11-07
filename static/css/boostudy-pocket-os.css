@@ -1,0 +1,1700 @@
+/* =============================================================================
+   BOOSTUDY POCKET OS — SPRINT 1.1
+   Light Experience Rebuild & Mobile Interaction Quality
+   Fully aligned with authentic BooStudy Light Design System
+   Scoped strictly to body.pocket-os-active
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   0. DESIGN TOKENS & SYSTEM VARIABLES
+   ----------------------------------------------------------------------------- */
+:root {
+  --pocket-safe-top: env(safe-area-inset-top, 0px);
+  --pocket-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --pocket-header-height: calc(48px + var(--pocket-safe-top));
+  --pocket-nav-height: calc(56px + var(--pocket-safe-bottom));
+
+  /* BooStudy Light Design Palette */
+  --pocket-primary: #5b35f5;
+  --pocket-primary-hover: #4f46e5;
+  --pocket-primary-soft: #f3efff;
+  --pocket-primary-border: #ddd5ff;
+  --pocket-primary-glow: rgba(91, 53, 245, 0.15);
+
+  --pocket-bg: #f8fafc;
+  --pocket-surface: #ffffff;
+  --pocket-surface-subtle: #f1f5f9;
+  --pocket-border: #e2e8f0;
+  --pocket-border-subtle: #ebe7ed;
+
+  --pocket-text-primary: #0f172a;
+  --pocket-text-secondary: #475569;
+  --pocket-text-muted: #94a3b8;
+
+  --pocket-success: #10b981;
+  --pocket-success-soft: #ecfdf5;
+  --pocket-danger: #ef4444;
+  --pocket-warning: #f59e0b;
+
+  --pocket-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
+  --pocket-shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --pocket-shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.10);
+  --pocket-shadow-purple: 0 8px 24px rgba(91, 53, 245, 0.14);
+}
+
+/* Base lock when Pocket OS is active */
+html.pocket-os-active,
+body.pocket-os-active {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  background-color: var(--pocket-bg) !important;
+  color: var(--pocket-text-primary) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Arena View Container */
+body.pocket-os-active #trainer-arena-view {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--pocket-bg) !important;
+  z-index: 100 !important;
+  overflow: hidden !important;
+}
+
+/* -----------------------------------------------------------------------------
+   HIDE CONFLICTING DESKTOP CHROME & DUPLICATE BUTTONS
+   ----------------------------------------------------------------------------- */
+body.pocket-os-active header.lesson-os-system-bar,
+body.pocket-os-active #board-dock,
+body.pocket-os-active #board-dock-shelf,
+body.pocket-os-active .board-dock-container,
+body.pocket-os-active .board-dock-bar,
+body.pocket-os-active #board-toolbar,
+body.pocket-os-active .boo-canvas-toolbar,
+body.pocket-os-active .boo-canvas-toolbar.is-embedded,
+body.pocket-os-active .boo-canvas-toolbar.tw-canvas-toolbar-polished,
+body.pocket-os-active.room-lesson-os .boo-canvas-toolbar,
+body.pocket-os-active.room-lesson-os .boo-canvas-toolbar.is-embedded,
+body.pocket-os-active .boo-canvas-fab,
+body.pocket-os-active .boo-wheel-trigger-orb,
+body.pocket-os-active .boo-radial-wheel-overlay,
+body.pocket-os-active #lesson-os-radial-trigger,
+body.pocket-os-active #lesson-os-teacher-orbit,
+body.pocket-os-active #board-inspector,
+body.pocket-os-active #board-statusbar,
+body.pocket-os-active .boo-canvas-pages-bar,
+body.pocket-os-active .boo-canvas-minimap,
+body.pocket-os-active .boo-canvas-zoom-island,
+body.pocket-os-active #boo-canvas-zoom-island,
+body.pocket-os-active .canvas-zoom-controls,
+body.pocket-os-active #boo-tb-student-viewport-btn,
+body.pocket-os-active .tb-zoom-btn,
+body.pocket-os-active .tb-zoom-badge,
+body.pocket-os-active .window-resize-handle,
+body.pocket-os-active .lesson-os-window-controls,
+body.pocket-os-active #terminal-window,
+body.pocket-os-active #sidebar-drawer-panel,
+body.pocket-os-active #reference-window,
+body.pocket-os-active #code-window #code-window-header,
+body.pocket-os-active #code-window #editor-tabs-bar,
+body.pocket-os-active #code-window #editor-status-bar,
+body.pocket-os-active #editor-status-bar,
+body.pocket-os-active #task-window #task-window-header,
+body.pocket-os-active #task-authoring-toolbar,
+body.pocket-os-active #task-authoring-panel {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* -----------------------------------------------------------------------------
+   1. POCKET OS ROOT SHELL
+   ----------------------------------------------------------------------------- */
+#pocket-os-shell {
+  display: none;
+}
+
+body.pocket-os-active #pocket-os-shell {
+  display: flex !important;
+  flex-direction: column;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 150;
+  pointer-events: none !important;
+  overflow: hidden;
+}
+
+/* -----------------------------------------------------------------------------
+   2. LIGHT COMPACT HEADER
+   ----------------------------------------------------------------------------- */
+.pocket-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--pocket-header-height);
+  padding-top: var(--pocket-safe-top);
+  padding-left: 14px;
+  padding-right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--pocket-border-subtle);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+  z-index: 180;
+  pointer-events: auto !important;
+}
+
+.pocket-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pocket-header-exit-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pocket-surface);
+  color: var(--pocket-text-secondary);
+  border: 1px solid var(--pocket-border);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  box-shadow: var(--pocket-shadow-sm);
+}
+
+.pocket-header-exit-btn:active {
+  background: var(--pocket-surface-subtle);
+  color: var(--pocket-text-primary);
+  transform: scale(0.95);
+}
+
+.pocket-header-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pocket-header-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--pocket-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.015em;
+}
+
+.pocket-header-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pocket-text-muted);
+}
+
+.pocket-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pocket-success);
+  display: inline-block;
+}
+
+.pocket-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pocket-av-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pocket-surface);
+  color: var(--pocket-text-secondary);
+  border: 1px solid var(--pocket-border);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--pocket-shadow-sm);
+}
+
+.pocket-av-toggle:active {
+  transform: scale(0.92);
+}
+
+.pocket-av-toggle.is-active {
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  border-color: var(--pocket-primary-border);
+}
+
+.pocket-av-toggle.is-muted {
+  background: #fef2f2;
+  color: var(--pocket-danger);
+  border-color: #fecaca;
+}
+
+.pocket-btn-join-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.pocket-btn-join-call:active {
+  transform: scale(0.95);
+}
+
+.pocket-btn-join-call:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pocket-btn-join-call.is-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+}
+
+.pocket-call-leave-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fef2f2;
+  color: var(--pocket-danger);
+  border: 1px solid #fecaca;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--pocket-shadow-sm);
+}
+
+.pocket-call-leave-btn:active {
+  background: #fee2e2;
+  transform: scale(0.92);
+}
+
+/* -----------------------------------------------------------------------------
+   3. FOCUS SURFACE (MAIN WORKSPACE CONTAINER)
+   ----------------------------------------------------------------------------- */
+.pocket-focus-surface {
+  position: absolute;
+  top: var(--pocket-header-height);
+  bottom: var(--pocket-nav-height);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: none !important;
+  background: transparent !important;
+}
+
+/* -----------------------------------------------------------------------------
+   4. WINDOW CONTAINERS POSITIONING IN FOCUS MODES
+   ----------------------------------------------------------------------------- */
+body.pocket-os-active .room-lesson-os #canvas-window.lesson-os-desktop,
+body.pocket-os-active .room-lesson-os #code-window.lesson-os-code-window,
+body.pocket-os-active .room-lesson-os #task-window,
+body.pocket-os-active .room-lesson-os #canvas-window,
+body.pocket-os-active .room-lesson-os #code-window,
+body.pocket-os-active #canvas-window,
+body.pocket-os-active #code-window,
+body.pocket-os-active #task-window {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: calc(100dvh - var(--pocket-header-height) - var(--pocket-nav-height)) !important;
+  max-height: calc(100dvh - var(--pocket-header-height) - var(--pocket-nav-height)) !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  top: var(--pocket-header-height) !important;
+  bottom: var(--pocket-nav-height) !important;
+  left: 0 !important;
+  right: 0 !important;
+  pointer-events: auto !important;
+  overflow: hidden !important;
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 600px) {
+  :root {
+    --pocket-header-height: calc(40px + var(--pocket-safe-top));
+    --pocket-nav-height: calc(46px + var(--pocket-safe-bottom));
+  }
+}
+
+/* Virtual keyboard visible adjustments */
+body.pocket-os-active.pocket-keyboard-open #pocket-nav-bar {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.pocket-os-active.pocket-keyboard-open {
+  --pocket-nav-height: 0px !important;
+}
+body.pocket-os-active.pocket-keyboard-open #code-window {
+  bottom: 0 !important;
+  height: calc(100dvh - var(--pocket-header-height)) !important;
+  max-height: calc(100dvh - var(--pocket-header-height)) !important;
+}
+
+/* BOARD FOCUS MODE */
+body.pocket-os-active[data-pocket-focus="board"] #canvas-window {
+  display: flex !important;
+  z-index: 50 !important;
+  background: #ffffff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+body.pocket-os-active[data-pocket-focus="board"] #code-window,
+body.pocket-os-active[data-pocket-focus="board"] #task-window {
+  display: none !important;
+}
+
+/* CODE FOCUS MODE */
+body.pocket-os-active[data-pocket-focus="code"] #code-window {
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 50 !important;
+  background: #ffffff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+body.pocket-os-active[data-pocket-focus="code"] #canvas-window,
+body.pocket-os-active[data-pocket-focus="code"] #task-window {
+  display: none !important;
+}
+
+/* TASK FOCUS MODE */
+body.pocket-os-active[data-pocket-focus="task"] #task-window {
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 50 !important;
+  background: #ffffff !important;
+  overflow-y: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+body.pocket-os-active[data-pocket-focus="task"] #canvas-window,
+body.pocket-os-active[data-pocket-focus="task"] #code-window {
+  display: none !important;
+}
+
+/* -----------------------------------------------------------------------------
+   5. BOARD FOCUS: VIEW-ONLY ERGONOMICS & LIGHT CONTROLS
+   ----------------------------------------------------------------------------- */
+body.pocket-os-active #canvas-window-header {
+  display: none !important;
+}
+
+body.pocket-os-active #board-app-layout,
+body.pocket-os-active #board-workspace-shell {
+  display: flex !important;
+  flex: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #ffffff !important;
+}
+
+body.pocket-os-active #board-pages-panel,
+body.pocket-os-active #board-tool-rail,
+body.pocket-os-active #board-command-bar {
+  display: none !important;
+}
+
+body.pocket-os-active #whiteboard-canvas-viewport {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  background: #ffffff !important;
+}
+
+.pocket-board-controls,
+.pocket-board-controls * {
+  pointer-events: auto !important;
+}
+
+.pocket-board-controls {
+  position: absolute;
+  right: 14px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 40;
+}
+
+.pocket-board-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pocket-surface);
+  border: 1px solid var(--pocket-border);
+  color: var(--pocket-text-secondary);
+  font-size: 18px;
+  box-shadow: var(--pocket-shadow-md);
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.pocket-board-btn:active {
+  transform: scale(0.92);
+  background: var(--pocket-surface-subtle);
+  color: var(--pocket-primary);
+}
+
+.pocket-board-btn.is-rejoin {
+  background: var(--pocket-primary);
+  color: #ffffff;
+  border-color: var(--pocket-primary-hover);
+  box-shadow: var(--pocket-shadow-purple);
+}
+
+.pocket-board-btn.is-rejoin:active {
+  background: var(--pocket-primary-hover);
+}
+
+.pocket-read-only-pill {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--pocket-border);
+  color: var(--pocket-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--pocket-shadow-sm);
+  pointer-events: none;
+  z-index: 30;
+}
+
+.pocket-read-only-pill i {
+  color: var(--pocket-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   6. CODE FOCUS: REBUILT CLEAN LIGHT PYTHON WORKSPACE
+   ----------------------------------------------------------------------------- */
+body.pocket-os-active #code-window {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff !important;
+}
+
+/* Single compact light header */
+.pocket-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--pocket-surface);
+  border-bottom: 1px solid var(--pocket-border);
+  flex-shrink: 0;
+  z-index: 20;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0;
+  gap: 8px;
+}
+
+.pocket-code-filename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--pocket-text-primary);
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+#pocket-code-filename-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.pocket-code-filename i {
+  color: var(--pocket-primary);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.pocket-code-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pocket-text-muted);
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.pocket-code-save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pocket-success);
+  flex-shrink: 0;
+}
+
+.pocket-code-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0 !important;
+}
+
+.pocket-btn-console-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--pocket-surface-subtle);
+  color: var(--pocket-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--pocket-border);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.pocket-btn-console-toggle.is-open {
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  border-color: var(--pocket-primary-border);
+}
+
+.pocket-btn-run {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 44px;
+  min-height: 38px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  cursor: pointer;
+  flex-shrink: 0 !important;
+  white-space: nowrap;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+.pocket-btn-run:active {
+  transform: scale(0.95);
+}
+
+.pocket-btn-run:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 390px) {
+  .pocket-code-header {
+    padding: 6px 8px;
+    gap: 4px;
+    box-sizing: border-box !important;
+  }
+  .pocket-code-filename {
+    max-width: calc(100% - 130px) !important;
+  }
+  .pocket-code-save-status {
+    display: none !important;
+  }
+  .pocket-code-perm-badge {
+    padding: 2px 5px;
+    font-size: 10px;
+    max-width: 85px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pocket-btn-console-toggle .pocket-btn-label {
+    display: none !important;
+  }
+  .pocket-btn-console-toggle {
+    padding: 6px 8px;
+    box-sizing: border-box !important;
+  }
+  .pocket-btn-run {
+    padding: 6px 10px;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Editor main textarea & gutter */
+body.pocket-os-active #code-window .flex-1.flex.flex-col {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+
+body.pocket-os-active #editor-canvas-container {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+}
+
+body.pocket-os-active #editor-status-bar {
+  display: none !important;
+}
+
+body.pocket-os-active #line-numbers-gutter {
+  width: 38px !important;
+  padding: 16px 6px 16px 2px !important;
+  font-size: 13px !important;
+  line-height: 24px !important;
+  background: #f8fafc !important;
+  border-right: 1px solid var(--pocket-border) !important;
+  color: var(--pocket-text-muted) !important;
+  flex-shrink: 0 !important;
+}
+
+body.pocket-os-active #line-numbers-gutter > div,
+body.pocket-os-active #line-numbers-gutter .gutter-line {
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  line-height: 24px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+body.pocket-os-active #code-editor-highlight,
+body.pocket-os-active #code-editor-textarea {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 16px 14px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 16px !important;
+  line-height: 24px !important;
+  tab-size: 4 !important;
+  -moz-tab-size: 4 !important;
+  white-space: pre !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+}
+
+body.pocket-os-active #code-editor-highlight {
+  pointer-events: none !important;
+  color: var(--pocket-text-primary) !important;
+  background: #ffffff !important;
+  z-index: 1 !important;
+}
+
+body.pocket-os-active #code-editor-textarea {
+  background: transparent !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  caret-color: var(--pocket-primary) !important;
+  border: none !important;
+  outline: none !important;
+  resize: none !important;
+  z-index: 2 !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+body.pocket-os-active #code-editor-textarea:read-only {
+  caret-color: transparent !important;
+  cursor: default !important;
+}
+
+/* Pocket Code Actions Bar & Permission Badge */
+.pocket-code-perm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.pocket-code-perm-badge.is-readonly {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.pocket-code-perm-badge.is-editable {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.pocket-code-perm-badge.is-frozen {
+  background: #ffe4e6;
+  color: #e11d48;
+  border-color: #fecdd3;
+}
+
+/* Light Python Syntax Highlighting Tokens */
+body.pocket-os-active .syn-keyword { color: #7c3aed !important; font-weight: 700 !important; }
+body.pocket-os-active .syn-builtin { color: #0284c7 !important; font-weight: 700 !important; }
+body.pocket-os-active .syn-function { color: #2563eb !important; font-weight: 700 !important; }
+body.pocket-os-active .syn-string { color: #059669 !important; }
+body.pocket-os-active .syn-number { color: #d97706 !important; font-weight: 600 !important; }
+body.pocket-os-active .syn-comment { color: #94a3b8 !important; font-style: italic !important; }
+body.pocket-os-active .syn-operator { color: #dc2626 !important; font-weight: 600 !important; }
+body.pocket-os-active .syn-decorator { color: #ec4899 !important; font-weight: 700 !important; }
+
+/* Virtual Symbol Strip */
+.pocket-virtual-symbols {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: var(--pocket-surface-subtle);
+  border-top: 1px solid var(--pocket-border);
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.pocket-virtual-symbols::-webkit-scrollbar {
+  display: none;
+}
+
+.pocket-symbol-key {
+  height: 34px;
+  min-width: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pocket-surface);
+  color: var(--pocket-text-primary);
+  border: 1px solid var(--pocket-border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: var(--pocket-shadow-sm);
+  transition: all 0.1s ease;
+}
+
+.pocket-symbol-key.is-wide {
+  min-width: 48px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.pocket-symbol-key:active {
+  transform: scale(0.92);
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  border-color: var(--pocket-primary-border);
+}
+
+/* Terminal Drawer */
+.pocket-terminal-drawer {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 45%;
+  max-height: 50vh;
+  background: var(--pocket-surface);
+  border-top: 2px solid var(--pocket-border);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+  z-index: 30;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pocket-terminal-drawer.is-collapsed {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.pocket-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--pocket-surface-subtle);
+  border-bottom: 1px solid var(--pocket-border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pocket-text-secondary);
+  flex-shrink: 0;
+}
+
+.pocket-terminal-header i {
+  color: var(--pocket-primary);
+}
+
+.pocket-terminal-stale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 1px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .pocket-terminal-drawer {
+    height: 50%;
+    max-height: 55vh;
+  }
+}
+
+.pocket-terminal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pocket-terminal-clear-btn {
+  background: var(--pocket-surface);
+  border: 1px solid var(--pocket-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--pocket-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pocket-terminal-body {
+  flex: 1;
+  padding: 12px 14px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--pocket-text-primary);
+  background: #ffffff;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* -----------------------------------------------------------------------------
+   7. TASK FOCUS: CLEAR PROBLEM STATEMENT & POLITE EMPTY STATE
+   ----------------------------------------------------------------------------- */
+body.pocket-os-active #task-window {
+  background: #ffffff !important;
+}
+
+body.pocket-os-active #task-window .task-window-body {
+  padding: 16px 18px !important;
+  background: #ffffff !important;
+  color: var(--pocket-text-primary) !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+}
+
+body.pocket-os-active #task-window #task-current-title {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: var(--pocket-text-primary) !important;
+  line-height: 1.35 !important;
+  margin-bottom: 10px !important;
+}
+
+body.pocket-os-active #task-window #task-current-content {
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  color: var(--pocket-text-secondary) !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* Hide static guidance block from mobile task */
+body.pocket-os-active #task-window .lesson-os-task-guidance,
+body.pocket-os-active #task-window .pocket-os-hide-guidance,
+body.pocket-os-active #task-window div:has(> .lesson-os-task-guidance) {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+/* Responsive Table & Matrix Styling */
+body.pocket-os-active #task-window .pocket-table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 14px 0;
+  border: 1px solid var(--pocket-border);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: var(--pocket-shadow-sm);
+}
+
+body.pocket-os-active #task-current-content table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  min-width: 300px;
+  margin: 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12px !important;
+  background: #ffffff !important;
+}
+
+body.pocket-os-active #task-current-content th,
+body.pocket-os-active #task-current-content td {
+  border: 1px solid #cbd5e1 !important;
+  padding: 6px 10px !important;
+  text-align: center !important;
+  min-width: 32px !important;
+}
+
+body.pocket-os-active #task-current-content th {
+  background-color: #f1f5f9 !important;
+  font-weight: 800 !important;
+  color: #334155 !important;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+body.pocket-os-active #task-current-content tr th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background-color: #f1f5f9 !important;
+}
+
+body.pocket-os-active #task-current-content pre {
+  background: #f8fafc !important;
+  border: 1px solid var(--pocket-border) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  overflow-x: auto !important;
+  color: #0f172a !important;
+  margin: 10px 0 !important;
+}
+
+/* Empty State Container */
+.pocket-task-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 20px;
+  gap: 12px;
+}
+
+.pocket-task-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  font-size: 26px;
+  margin-bottom: 4px;
+}
+
+.pocket-task-empty-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--pocket-text-primary);
+}
+
+.pocket-task-empty-desc {
+  font-size: 13px;
+  color: var(--pocket-text-muted);
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.pocket-task-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 260px;
+  margin-top: 8px;
+}
+
+.pocket-task-empty-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--pocket-border);
+  background: var(--pocket-surface);
+  color: var(--pocket-text-primary);
+  cursor: pointer;
+  box-shadow: var(--pocket-shadow-sm);
+}
+
+.pocket-task-empty-btn.is-primary {
+  background: var(--pocket-primary);
+  color: #ffffff;
+  border-color: var(--pocket-primary-hover);
+  box-shadow: var(--pocket-shadow-purple);
+}
+
+/* Task Submit Form */
+body.pocket-os-active #student-classwork-submit-form:not(.hidden) {
+  display: block !important;
+  margin-top: 18px !important;
+  border-radius: 16px !important;
+  background: var(--pocket-surface-subtle) !important;
+  border: 1px solid var(--pocket-border) !important;
+  padding: 14px !important;
+}
+
+body.pocket-os-active #student-classwork-submit-form.hidden {
+  display: none !important;
+}
+
+body.pocket-os-active #student-classwork-answer {
+  font-size: 16px !important;
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: var(--pocket-text-primary) !important;
+  outline: none !important;
+}
+
+body.pocket-os-active #student-classwork-answer:focus {
+  border-color: var(--pocket-primary) !important;
+  box-shadow: 0 0 0 3px var(--pocket-primary-soft) !important;
+}
+
+body.pocket-os-active #student-classwork-submit-button {
+  width: 100% !important;
+  padding: 12px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  margin-top: 8px !important;
+  background: var(--pocket-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: var(--pocket-shadow-purple) !important;
+}
+
+/* -----------------------------------------------------------------------------
+   8. BOTTOM NAVIGATION BAR
+   ----------------------------------------------------------------------------- */
+.pocket-nav-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--pocket-nav-height);
+  padding-bottom: var(--pocket-safe-bottom);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--pocket-border-subtle);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+  z-index: 500 !important;
+  pointer-events: auto !important;
+}
+
+.pocket-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--pocket-text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 48px;
+}
+
+.pocket-nav-item i {
+  font-size: 20px;
+  transition: transform 0.15s ease;
+}
+
+.pocket-nav-item span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pocket-nav-item:active i {
+  transform: scale(0.9);
+}
+
+.pocket-nav-item.is-active {
+  color: var(--pocket-primary);
+}
+
+.pocket-nav-item.is-active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--pocket-primary);
+  box-shadow: 0 2px 8px var(--pocket-primary-glow);
+}
+
+/* -----------------------------------------------------------------------------
+   9. LIVEKIT VIDEO PILL (COMPACT & INFORMATIVE)
+   ----------------------------------------------------------------------------- */
+.pocket-video-pill,
+.pocket-video-pill * {
+  pointer-events: auto !important;
+}
+
+.pocket-video-pill {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 96px;
+  height: 72px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--pocket-surface);
+  border: 1px solid var(--pocket-border);
+  box-shadow: var(--pocket-shadow-lg);
+  z-index: 160;
+  cursor: pointer;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.15s ease;
+}
+
+/* Docking per focus mode to prevent overlap */
+body.pocket-os-active[data-pocket-focus="board"] .pocket-video-pill {
+  top: 14px !important;
+  right: 14px !important;
+  bottom: auto !important;
+}
+
+body.pocket-os-active[data-pocket-focus="code"] .pocket-video-pill {
+  bottom: 56px !important;
+  right: 14px !important;
+  top: auto !important;
+}
+
+body.pocket-os-active[data-pocket-focus="task"] .pocket-video-pill {
+  top: 14px !important;
+  right: 14px !important;
+  bottom: auto !important;
+}
+
+/* In Task focus: when there is NO real video stream (compact indicator),
+   never float over tables, formulas, or answer submission actions */
+body.pocket-os-active[data-pocket-focus="task"] .pocket-video-pill.is-compact-indicator {
+  display: none !important;
+}
+
+/* Ensure task body always has generous bottom clearance */
+body.pocket-os-active #task-window .task-window-body,
+body.pocket-os-active #task-window .lesson-os-task-body,
+body.pocket-os-active #task-window .lesson-os-window-content {
+  padding-bottom: 96px !important;
+}
+
+.pocket-video-pill.is-compact-indicator {
+  width: auto;
+  min-width: 96px;
+  height: 32px;
+  border-radius: 9999px;
+  background: var(--pocket-surface);
+  border: 1px solid var(--pocket-border);
+  box-shadow: var(--pocket-shadow-sm);
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pocket-video-pill.is-expanded {
+  width: 180px;
+  height: 135px;
+}
+
+.pocket-video-pill video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.pocket-video-pill-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--pocket-surface);
+  color: var(--pocket-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pocket-video-pill-avatar i {
+  font-size: 16px;
+  color: var(--pocket-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   10. TEACHER FOCUS SUGGESTION (LIGHT COMPACT CARD)
+   ----------------------------------------------------------------------------- */
+.pocket-toast {
+  position: fixed;
+  top: calc(var(--pocket-header-height) + 12px);
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--pocket-primary-border);
+  box-shadow: 0 10px 30px rgba(91, 53, 245, 0.14);
+  z-index: 600 !important;
+  transform: translateY(-40px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.25s ease;
+}
+
+.pocket-toast.is-visible,
+.pocket-toast.is-visible * {
+  pointer-events: auto !important;
+}
+
+.pocket-toast.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  z-index: 600 !important;
+}
+
+.pocket-toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pocket-toast-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.pocket-toast-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pocket-toast-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--pocket-text-primary);
+  line-height: 1.25;
+}
+
+.pocket-toast-subtitle {
+  font-size: 11px;
+  color: var(--pocket-text-muted);
+  font-weight: 500;
+}
+
+.pocket-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pocket-toast-btn-action,
+.pocket-toast-btn {
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: var(--pocket-primary);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  box-shadow: var(--pocket-shadow-purple);
+}
+
+.pocket-toast-btn-action:active,
+.pocket-toast-btn:active {
+  transform: scale(0.94);
+}
+
+.pocket-toast-btn-dismiss {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--pocket-text-muted);
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.pocket-toast-btn-dismiss:active {
+  color: var(--pocket-text-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   11. TEACHER CANVAS CONTOUR EXTENSIONS (DESKTOP TEACHER VIEW)
+   ----------------------------------------------------------------------------- */
+.board-student-viewport-box.is-mobile-contour {
+  border-width: 2px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 0 14px rgba(91, 53, 245, 0.25);
+  pointer-events: none;
+  transition: border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.board-student-viewport-box.is-mobile-contour.is-code-mode,
+.board-student-viewport-box.is-mobile-contour.is-task-mode {
+  border-style: dashed !important;
+  opacity: 0.65;
+}
+
+.board-student-viewport-badge {
+  pointer-events: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  padding: 6px 8px !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--pocket-border) !important;
+  box-shadow: var(--pocket-shadow-md) !important;
+}
+
+.board-student-viewport-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.board-student-viewport-badge .pocket-contour-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 1px solid var(--pocket-primary-border);
+}
+
+.board-student-viewport-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.board-student-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--pocket-surface-subtle);
+  color: var(--pocket-text-secondary);
+  border: 1px solid var(--pocket-border);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.board-student-action-btn:hover {
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+  border-color: var(--pocket-primary-border);
+}
+
+.board-student-action-btn.is-primary {
+  background: var(--pocket-primary);
+  color: #ffffff;
+  border-color: var(--pocket-primary-hover);
+}
+
+.board-student-suggest-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.board-student-suggest-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid var(--pocket-border);
+  border-radius: 8px;
+  box-shadow: var(--pocket-shadow-md);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 1000;
+  min-width: 90px;
+}
+
+.board-student-suggest-menu.hidden {
+  display: none !important;
+}
+
+.board-student-suggest-menu button {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--pocket-text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.board-student-suggest-menu button:hover {
+  background: var(--pocket-primary-soft);
+  color: var(--pocket-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   12. RESPONSIVE / LANDSCAPE ADAPTATIONS
+   ----------------------------------------------------------------------------- */
+@media (max-height: 450px) and (orientation: landscape) {
+  :root {
+    --pocket-header-height: calc(38px + var(--pocket-safe-top));
+    --pocket-nav-height: calc(44px + var(--pocket-safe-bottom));
+  }
+
+  .pocket-header {
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
+  }
+
+  .pocket-nav-bar {
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
+  }
+
+  .pocket-video-pill {
+    width: 72px;
+    height: 54px;
+  }
+
+  .pocket-terminal-drawer {
+    height: 60%;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   13. IMMUTABILITY & FORCED FOCUS ENFORCEMENTS
+   ----------------------------------------------------------------------------- */
+body.pocket-os-active .window-edge-resizer,
+body.pocket-os-active .window-resize-handle,
+body.pocket-os-active [class*="resizer-"],
+body.pocket-os-active .window-header-drag,
+body.pocket-os-active [data-drag-handle] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+body.pocket-os-active .window,
+body.pocket-os-active .window-header {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* Teacher Forced Focus Indicator Pill */
+#pocket-teacher-focus-pill {
+  position: fixed;
+  top: calc(56px + var(--pocket-safe-top));
+  left: 50%;
+  transform: translateX(-50%) translateY(-24px);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+#pocket-teacher-focus-pill.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#pocket-teacher-focus-pill i {
+  color: #38bdf8;
+  font-size: 14px;
+}
+

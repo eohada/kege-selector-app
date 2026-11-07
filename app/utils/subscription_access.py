@@ -139,6 +139,75 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
     return _load_effective_access_for_user(user_id)
 
 
+def get_course_lesson_balance_summary(user_id: int) -> dict:
+    """Return active lesson balances grouped by exam, subject and level."""
+    now = _now_utc_naive()
+    subscriptions = (
+        UserSubscription.query
+        .options(joinedload(UserSubscription.plan))
+        .filter_by(user_id=user_id, status='active')
+        .order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc())
+        .all()
+    )
+
+    grouped = {}
+    for subscription in subscriptions:
+        if subscription.ends_at and subscription.ends_at < now:
+            continue
+
+        plan = subscription.plan if subscription.plan_id else None
+        exam = (subscription.exam or (plan.exam if plan else '') or '').strip().lower()
+        subject = (subscription.subject or (plan.subject if plan else '') or '').strip().lower()
+        level = (subscription.level or (plan.level if plan else '') or '').strip().lower()
+        key = (exam, subject, level)
+        course = grouped.setdefault(key, {
+            'exam': exam,
+            'subject': subject,
+            'level': level,
+            'lessons_remaining': 0,
+            'is_unlimited': False,
+            'ends_at': None,
+        })
+
+        if subscription.lessons_remaining is None:
+            course['is_unlimited'] = True
+        else:
+            course['lessons_remaining'] += max(0, int(subscription.lessons_remaining))
+
+        if subscription.ends_at and (course['ends_at'] is None or subscription.ends_at > course['ends_at']):
+            course['ends_at'] = subscription.ends_at
+
+    exam_labels = {'ege': 'ЕГЭ', 'oge': 'ОГЭ'}
+    subject_labels = {'inf': 'Информатика', 'math': 'Математика'}
+    level_labels = {'prof': 'Профиль', 'base': 'База'}
+    courses = []
+    for course in grouped.values():
+        course['key'] = '|'.join((course['exam'], course['subject'], course['level']))
+        parts = []
+        if course['exam']:
+            parts.append(exam_labels.get(course['exam'], course['exam'].upper()))
+        if course['subject']:
+            parts.append(subject_labels.get(course['subject'], course['subject'].capitalize()))
+        if course['level']:
+            parts.append(level_labels.get(course['level'], course['level'].capitalize()))
+        course['label'] = ' · '.join(parts) or 'Общий баланс без предмета'
+        courses.append(course)
+
+    courses.sort(key=lambda course: (
+        {'math': 0, 'inf': 1}.get(course['subject'], 2),
+        course['exam'],
+        course['level'],
+    ))
+    total_lessons = None if any(course['is_unlimited'] for course in courses) else sum(
+        course['lessons_remaining'] for course in courses
+    )
+    return {
+        'courses': courses,
+        'total_lessons': total_lessons,
+        'has_active_subscriptions': bool(courses),
+    }
+
+
 def mark_subscription_expired_if_needed(sub: UserSubscription) -> None:
     """
     Best-effort helper: if ends_at passed, mark subscription as expired.

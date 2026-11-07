@@ -46,6 +46,13 @@ from app.telegram.v3.ui import build_mini_app_button
 TEST_BOT_TOKEN = "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz1234567"
 
 
+@pytest.fixture(autouse=True)
+def enable_mini_app_for_suite(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_MINI_APP_ENABLED", "1")
+    monkeypatch.delenv("TELEGRAM_MINI_APP_PILOT_ONLY", raising=False)
+
+
+
 def generate_init_data(
     bot_token: str = TEST_BOT_TOKEN,
     user_id: int = 77701,

@@ -62,26 +62,24 @@ def test_build_pagination_row():
     # Only 1 page: no pagination buttons needed
     assert build_pagination_row("stu", "hw", 1, 1) == []
 
-    # Page 1 of 3: [·, 1 / 3, ▶]
+    # Page 1 of 3: [1 / 3, Вперёд ▶] (no dummy dot placeholder)
     row = build_pagination_row("stu", "hw", 1, 3)
-    assert len(row) == 3
-    assert row[0].text == "·"
-    assert row[1].text == "1 / 3"
-    assert row[2].callback_data == f"{CB_PREFIX}:stu:hw:2"
+    assert len(row) == 2
+    assert row[0].text == "1 / 3"
+    assert row[1].callback_data == f"{CB_PREFIX}:stu:hw:2"
 
-    # Page 2 of 3: [◀, 2 / 3, ▶]
+    # Page 2 of 3: [◀ Назад, 2 / 3, Вперёд ▶]
     row2 = build_pagination_row("stu", "hw", 2, 3)
     assert len(row2) == 3
     assert row2[0].callback_data == f"{CB_PREFIX}:stu:hw:1"
     assert row2[1].text == "2 / 3"
     assert row2[2].callback_data == f"{CB_PREFIX}:stu:hw:3"
 
-    # Page 3 of 3 with extra parameter: [◀, 3 / 3, ·]
+    # Page 3 of 3 with extra parameter: [◀ Назад, 3 / 3] (no dummy dot placeholder)
     row3 = build_pagination_row("adm", "u", 3, 3, extra="all")
-    assert len(row3) == 3
+    assert len(row3) == 2
     assert row3[0].callback_data == f"{CB_PREFIX}:adm:u:2:all"
     assert row3[1].text == "3 / 3"
-    assert row3[2].text == "·"
 
 
 

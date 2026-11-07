@@ -997,6 +997,31 @@ def grant_achievement(student, achievement_key, award_xp=True, *, commit=True):
         if award_xp and xp > 0:
             add_xp_to_student(student, xp, commit=commit)
 
+        user_id = getattr(student, 'user_id', None)
+        if user_id:
+            try:
+                from app.notifications.service import notify_user
+                ach_title = meta.get('title') or canonical_key
+                ach_desc = meta.get('description') or ''
+                ach_icon = meta.get('icon') or '🏆'
+                notify_user(
+                    int(user_id),
+                    kind='achievement',
+                    title=f"{ach_icon} Достижение разблокировано!",
+                    body=f"«{ach_title}» — {ach_desc} (+{xp} XP)",
+                    link_url="/profile",
+                    meta={
+                        'achievement_key': canonical_key,
+                        'achievement_title': ach_title,
+                        'title': ach_title,
+                        'xp_reward': xp,
+                        'icon': ach_icon,
+                        'recipient_role': 'student',
+                    },
+                )
+            except Exception as notif_err:
+                logger.warning("Failed to notify user about achievement: %s", notif_err)
+
         if commit:
             db.session.commit()
         logger.info("Granted achievement '%s' to student_id=%s (+%s XP)", canonical_key, student.student_id, xp)

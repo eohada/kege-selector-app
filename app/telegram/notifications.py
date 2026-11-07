@@ -49,7 +49,13 @@ def _tg_post(method: str, payload: dict, timeout: int = 10) -> Optional[dict]:
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
         logger.error('Telegram %s HTTP %s for payload chat=%s: %s', method, e.code, payload.get('chat_id'), body[:300])
-        return None
+        try:
+            parsed = json.loads(body)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+        return {'ok': False, 'error_code': e.code, 'description': body[:300]}
     except Exception as e:
         logger.error('Telegram %s failed: %s', method, e)
         return None
@@ -278,18 +284,9 @@ def notify_student_graded(submission_id: int) -> bool:
 def notify_new_gradebook_entry(
     *, student_user_id: int, student_id: int, entry_title: str, score_text: str,
 ) -> bool:
-    """Новая запись в журнале оценок — уведомление ученику."""
-    from app.telegram.user_notify import notify_user_by_id
-
-    base = (APP_URL or '').rstrip('/')
-    gb_url = f'{base}/student/{student_id}/gradebook' if base else ''
-    msg = f'📒 <b>Новая запись в журнале</b>\n\n{_esc(entry_title or "Оценка")}\n{_esc(score_text or "")}\n'
-    if gb_url:
-        msg += f'\n🔗 {gb_url}'
-    markup = None
-    if gb_url:
-        markup = {'inline_keyboard': [[{'text': '📒 Журнал', 'url': gb_url}]]}
-    return notify_user_by_id(int(student_user_id), msg, kind='homework_checked', reply_markup=markup)
+    """Retired in Telegram Next 2.1: gradebook merged with homework/assignments."""
+    logger.info("notify_new_gradebook_entry called but retired; student_user_id=%s", student_user_id)
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -297,9 +294,11 @@ def notify_new_gradebook_entry(
 # ---------------------------------------------------------------------------
 
 def notify_lesson_started_for_lesson(lesson_id: int, *, actor_user_id: int | None = None) -> None:
-    """Уведомить ученика и, если есть, преподавателя о старте урока."""
+    """Уведомить преподавателя о старте урока через канонический шаблон."""
     try:
         from app.models import Lesson, UserProfile
+        from app.telegram.notification_templates import render_telegram_notification
+        from app.telegram.user_notify import notify_user_by_chat_id
         lesson = Lesson.query.get(lesson_id)
         if not lesson:
             return
@@ -307,23 +306,26 @@ def notify_lesson_started_for_lesson(lesson_id: int, *, actor_user_id: int | Non
         if actor_user_id:
             prof = UserProfile.query.filter_by(user_id=int(actor_user_id)).first()
             if prof and prof.telegram_chat_id:
-                teacher_name = ' '.join(part for part in [
+                st_name = ' '.join(part for part in [
                     getattr(st.user, 'first_name', None) if getattr(st, 'user', None) else None,
                     getattr(st.user, 'last_name', None) if getattr(st, 'user', None) else None,
                 ] if part).strip() or getattr(st, 'name', None) or 'Ученик'
                 lesson_topic = lesson.topic or 'Занятие'
-                duration = f'{int(lesson.duration or 60)} мин'
-                msg = (
-                    '▶️ <b>Урок начался</b>\n\n'
-                    f'👤 Ученик: {_esc(teacher_name)}\n'
-                    f'📚 Тема: {_esc(lesson_topic)}\n'
-                    f'⏱ Длительность: {duration}\n\n'
-                    'Пришли ссылку на видеосозвон одним сообщением.\n'
-                    'После этого я отправлю её ученику вместе с сообщением о начале урока.'
+                meta = {
+                    'student_name': st_name,
+                    'subject': lesson_topic,
+                    'lesson_id': lesson.lesson_id,
+                    'recipient_role': 'teacher',
+                }
+                text, markup = render_telegram_notification(
+                    user_id=int(actor_user_id),
+                    kind='lesson_started',
+                    title='Урок начинается',
+                    meta=meta,
                 )
-                markup = {'inline_keyboard': [[{'text': '📎 Отправить ссылку', 'callback_data': f'lesson_call_link:{lesson.lesson_id}'}]]}
-                from app.telegram.user_notify import notify_user_by_chat_id
-                notify_user_by_chat_id(int(prof.telegram_chat_id), msg, kind='lesson_scheduled', reply_markup=markup)
+                notify_user_by_chat_id(int(prof.telegram_chat_id), text, kind='lesson_started', reply_markup=markup)
+                from app.models import db
+                db.session.commit()
     except Exception as e:
         logger.warning('notify_lesson_started_for_lesson %s: %s', lesson_id, e, exc_info=True)
 
@@ -341,7 +343,14 @@ def notify_lesson_started_to_student(*, student_user_id: int, lesson_id: int, to
     markup = None
     if room_url:
         markup = {'inline_keyboard': [[{'text': '🚪 В классную комнату', 'url': room_url}]]}
-    return notify_user_by_id(int(student_user_id), msg, kind=None, reply_markup=markup)
+    queued = notify_user_by_id(int(student_user_id), msg, kind='lesson_started_student', reply_markup=markup)
+    if queued:
+        try:
+            from app.models import db
+            db.session.commit()
+        except Exception:
+            pass
+    return queued
 
 
 def notify_lesson_finished_for_teacher(
@@ -416,28 +425,9 @@ def notify_lesson_finished_for_teacher(
 def notify_subscription_expiring(
     *, student_user_id: int, days_left: int, subscription_end: str,
 ) -> bool:
-    """Подписка истекает — предупреждение ученику."""
-    from app.telegram.user_notify import notify_user_by_id
-
-    base = (APP_URL or '').rstrip('/')
-    billing_url = f'{base}/billing' if base else ''
-
-    if days_left == 0:
-        head = '⚠️ <b>Подписка истекает сегодня!</b>'
-    elif days_left == 1:
-        head = '⚠️ <b>Подписка истекает завтра</b>'
-    else:
-        head = f'ℹ️ <b>Подписка истекает через {days_left} дн.</b>'
-
-    msg = f'{head}\n\nДата окончания: {subscription_end}\n'
-    if billing_url:
-        msg += f'\n🔗 {billing_url}'
-    markup = None
-    if billing_url:
-        markup = {'inline_keyboard': [[{'text': '💳 Продлить подписку', 'url': billing_url}]]}
-    return notify_user_by_id(
-        int(student_user_id), msg, kind='subscription_expiring', reply_markup=markup,
-    )
+    """Retired in Telegram Next 2.1: replaced by lesson balance accounting."""
+    logger.info("notify_subscription_expiring called but retired; student_user_id=%s", student_user_id)
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -569,7 +559,7 @@ def notify_lesson_balance_changed(
       - lesson: списание после урока
       - tariff: назначение/продление тарифа
     """
-    from app.telegram.user_notify import notify_user_by_id
+    from app.notifications.service import notify_user
 
     if after is None:
         return False
@@ -578,47 +568,65 @@ def notify_lesson_balance_changed(
     after_val = int(after)
     reason_text = (reason or '').strip()
 
-    lines = ['📚 <b>Изменение количества уроков</b>', '']
-    if before_val is None:
-        lines.append(f'Было: <b>—</b>')
-    else:
-        lines.append(f'Было: <b>{before_val}</b>')
-    lines.append(f'Стало: <b>{after_val}</b>')
-    if reason_text:
-        lines.append(f'Причина: {_esc(reason_text)}')
-    if source == 'manual':
-        lines.append('')
-        lines.append('Это ручное изменение баланса.')
-
-    extra_kind: str | None = None
-    extra_text: str | None = None
-    if after_val == 5:
-        extra_kind = 'low_lessons'
-        extra_text = '⚠️ <b>Внимание, на балансе осталось пять уроков.</b>'
-    elif after_val == 1:
-        extra_kind = 'low_lessons'
-        extra_text = '⚠️ <b>На балансе остался один урок.</b>'
-    elif after_val == 0:
-        extra_kind = 'low_lessons'
-        extra_text = '🚫 <b>Уроки на балансе закончились.</b>'
-    elif before_val is not None and before_val >= 3 and after_val < 3:
-        extra_kind = 'low_lessons'
-        extra_text = '⚠️ <b>На балансе осталось меньше трех уроков.</b>'
-
-    msg = '\n'.join(lines)
-    ok = notify_user_by_id(int(student_user_id), msg, kind=None)
-    if not ok:
+    diff = after_val - (before_val if before_val is not None else after_val)
+    if diff == 0:
         return False
 
-    if extra_text:
-        return notify_user_by_id(int(student_user_id), extra_text, kind=extra_kind)
+    delta_str = f"+{diff}" if diff > 0 else str(diff)
+    meta = {
+        'delta': delta_str,
+        'lessons_remaining': after_val,
+        'reason': reason_text,
+        'recipient_role': 'student',
+    }
+
+    # 1. Notify balance change (creates in-app UserNotification, mirrors to Telegram if enabled)
+    notify_user(
+        int(student_user_id),
+        kind='lesson_balance_changed',
+        title='Баланс занятий обновлён',
+        body=f'Изменение: {delta_str}. Остаток уроков: {after_val}.' + (f' {reason_text}' if reason_text else ''),
+        link_url='/billing',
+        meta=meta,
+    )
+
+    # 2. Critical threshold warnings (only on deduction, diff < 0)
+    if diff < 0:
+        crossed_to_zero = (before_val is not None and before_val > 0) and after_val <= 0
+        crossed_to_low = (before_val is None or before_val > 2) and (0 < after_val <= 2)
+
+        if crossed_to_zero:
+            notify_user(
+                int(student_user_id),
+                kind='package_exhausted',
+                title='Оплаченные уроки закончились',
+                body='Баланс уроков исчерпан. Для продолжения занятий пополните баланс.',
+                link_url='/billing',
+                meta=meta,
+            )
+        elif crossed_to_low:
+            notify_user(
+                int(student_user_id),
+                kind='low_lessons',
+                title='Заканчивается оплаченный пакет',
+                body=f'Осталось занятий: {after_val}. Рекомендуем продлить абонемент.',
+                link_url='/billing',
+                meta=meta,
+            )
+
+    try:
+        from app.models import db
+        db.session.commit()
+    except Exception:
+        pass
     return True
 
 
 def notify_teacher_homework_note_reminder(note_id: int) -> bool:
-    """Напоминание преподавателю о сохраненной заметке по ДЗ."""
+    """Напоминание преподавателю о сохраненной заметке по ДЗ через канонический шаблон."""
     from app.models import LessonTeacherHomeworkNote, UserProfile
     from app.telegram.user_notify import user_allows_telegram_notification
+    from app.telegram.notification_templates import render_telegram_notification
 
     note = LessonTeacherHomeworkNote.query.get(int(note_id))
     if not note or note.is_sent:
@@ -630,26 +638,22 @@ def notify_teacher_homework_note_reminder(note_id: int) -> bool:
 
     lesson = note.lesson
     student_name = getattr(lesson.student, 'name', None) if lesson and lesson.student else 'Ученик'
-    msg = (
-        '⏰ <b>Напоминание по ДЗ после урока</b>\n\n'
-        f'👤 Ученик: <b>{_esc(student_name or "Ученик")}</b>\n'
-        f'📚 Урок: <b>{_esc(lesson.topic or "Занятие" if lesson else "Занятие")}</b>\n\n'
-        '<b>Что нужно скинуть:</b>\n'
-        f'<pre>{html.escape((note.homework_text or "").strip())}</pre>'
+    meta = {
+        'student_name': student_name,
+        'lesson_id': lesson.lesson_id if lesson else None,
+        'recipient_role': 'teacher',
+        'body': (note.homework_text or '').strip(),
+    }
+    msg, markup = render_telegram_notification(
+        user_id=int(note.teacher_user_id),
+        kind='teacher_hw_note_reminder',
+        title='Напоминание о домашнем задании',
+        body=(note.homework_text or '').strip(),
+        meta=meta,
     )
-    if lesson:
-        try:
-            from app.utils.lesson_time import lesson_storage_to_local
-            from app.utils.datetime_utc import effective_timezone_name
-            tz_name = effective_timezone_name(getattr(lesson.student, 'user', None)) if getattr(lesson.student, 'user', None) else 'Europe/Moscow'
-            dt_local = lesson_storage_to_local(lesson.lesson_date, tz_name)
-            if dt_local:
-                msg += f'\n🕐 Урок: {dt_local.strftime("%d.%m.%Y %H:%M")}'
-        except Exception:
-            pass
 
     from app.telegram.user_notify import notify_user_by_chat_id
-    if notify_user_by_chat_id(int(profile.telegram_chat_id), msg, kind='homework_submitted'):
+    if notify_user_by_chat_id(int(profile.telegram_chat_id), msg, kind='homework_submitted', reply_markup=markup):
         note.is_sent = True
         from core.db_models import moscow_now
         note.reminder_sent_at = moscow_now()

@@ -1,0 +1,752 @@
+@media (min-width: 721px) {
+  .s39-profile.s40-profile-story .s39-layout {
+    grid-template-columns: minmax(260px, .64fr) minmax(0, 1.76fr);
+    gap: clamp(28px, 3.4vw, 62px);
+  }
+
+  .s40-profile-app {
+    gap: 12px;
+    padding: clamp(16px, 1.35vw, 23px);
+  }
+
+  .s40-profile-header {
+    gap: 14px;
+    padding-bottom: 12px;
+  }
+
+  .s40-avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  .s40-identity > small,
+  .s40-card-heading small,
+  .s40-intro-card small {
+    color: #716a82;
+    font-size: 12px;
+    letter-spacing: .1em;
+  }
+
+  .s39-profile.s40-profile-story .s39-frame-head {
+    min-height: 46px;
+    padding: 8px 16px;
+  }
+
+  .s39-profile.s40-profile-story .s39-frame-head strong {
+    font-size: 13px;
+  }
+
+  .s39-profile.s40-profile-story .s39-frame-head .s39-demo {
+    font-size: 12px;
+  }
+
+  .s40-identity h3 {
+    font-size: clamp(22px, 1.55vw, 27px);
+  }
+
+  .s40-identity p,
+  .s40-identity-tags span {
+    font-size: 14px;
+  }
+
+  .s40-identity p,
+  .s40-profile-card p,
+  .s40-awards-intro,
+  .s40-profile-note,
+  .s40-award-copy small {
+    color: #625d73;
+  }
+
+  .s40-identity-tags span {
+    padding: 5px 10px;
+  }
+
+  .s40-profile-grid {
+    gap: 10px;
+  }
+
+  .s40-profile-card {
+    padding: 14px 16px;
+    border-radius: 17px;
+  }
+
+  .s40-profile-card[data-profile-region="identity"] {
+    min-height: 84px;
+    padding: 12px 17px;
+  }
+
+  .s40-profile-meter,
+  .s40-profile-meter small,
+  .s40-profile-meter span,
+  .s40-profile-footer small {
+    font-size: 12px;
+  }
+
+  .s40-profile-card h4,
+  .s40-card-heading h4 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .s40-profile-card p,
+  .s40-xp-ledger,
+  .s40-awards-intro,
+  .s40-streak-card > p,
+  .s40-time-card > p,
+  .s40-referral-card > p,
+  .s40-telegram-card > p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .s40-xp-total {
+    margin: 10px 0 7px;
+  }
+
+  .s40-xp-total strong {
+    font-size: clamp(30px, 2.2vw, 38px);
+  }
+
+  .s40-xp-ledger {
+    gap: 7px 12px;
+    margin-top: 9px;
+    padding-top: 9px;
+  }
+
+  .s40-awards-count b {
+    font-size: 24px;
+  }
+
+  .s40-awards-intro {
+    margin: 8px 0 10px;
+  }
+
+  .s40-awards-grid {
+    gap: 8px;
+  }
+
+  .s40-award {
+    min-height: 58px;
+    gap: 8px;
+    padding: 7px 9px;
+  }
+
+  .s40-award-medallion {
+    width: 34px;
+    height: 34px;
+  }
+
+  .s40-award-copy b {
+    display: block;
+    overflow: visible;
+    font-size: 16px;
+    line-height: 1.25;
+    text-overflow: initial;
+    white-space: normal;
+  }
+
+  .s40-award-copy small {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .s40-award-copy em {
+    font-size: 13px;
+  }
+
+  .s40-award-spotlight,
+  .s40-profile-note {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .s40-streak-badge {
+    min-width: 50px;
+    height: 50px;
+  }
+
+  .s40-streak-badge b {
+    font-size: 24px;
+  }
+
+  .s40-streak-badge small,
+  .s40-time-split small,
+  .s40-code-row small,
+  .s40-tg-preview small {
+    color: #625d73;
+    font-size: 12px;
+  }
+
+  .s40-streak-days {
+    gap: 5px;
+    margin-top: 10px;
+  }
+
+  .s40-streak-days i {
+    font-size: 12px;
+  }
+
+  .s40-time-split b {
+    font-size: 22px;
+  }
+
+  .s40-code-row {
+    gap: 8px;
+    padding: 9px 11px;
+  }
+
+  .s40-code-row code,
+  .s40-code-row button,
+  .s40-tg-preview-button,
+  .s40-profile-cta {
+    font-size: 14px;
+  }
+
+  .s40-code-row button,
+  .s40-tg-preview-button,
+  .s40-profile-cta {
+    min-height: 42px;
+  }
+
+  .s40-profile-footer {
+    display: flex;
+    gap: 10px;
+    padding-top: 4px;
+  }
+
+  .s40-profile-footer small {
+    font-size: 12px;
+  }
+
+  .s40-profile-app[data-focus="achievements"] .s40-profile-grid,
+  .s40-profile-app[data-focus="complete"] .s40-profile-grid {
+    gap: 10px;
+  }
+
+  .s40-profile-app[data-focus="achievements"] .s40-profile-card[data-profile-region="achievements"] {
+    padding: 16px 18px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .s40-profile-app[data-focus="complete"] .s40-profile-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "identity identity identity identity"
+      "xp xp awards awards"
+      "streak time referral telegram";
+    gap: 9px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="streak"],
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="time"],
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="referral"],
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="telegram"] {
+    padding: 11px 12px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-streak-days {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-time-split {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-time-split b {
+    font-size: 18px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-code-row {
+    flex-wrap: wrap;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-code-row code,
+  .s40-profile-app[data-focus="complete"] .s40-code-row button,
+  .s40-profile-app[data-focus="complete"] .s40-tg-preview-button {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 721px) {
+  .s39-profile.s40-profile-story[data-stage="complete"] .s39-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .s39-profile.s40-profile-story[data-stage="complete"] .s39-copy {
+    display: none;
+  }
+
+  .s39-profile.s40-profile-story[data-stage="complete"] .s39-profile-frame {
+    width: 100%;
+  }
+}
+
+@media (min-width: 721px) and (max-height: 960px) {
+  .s39-profile.s40-profile-story[data-stage="complete"] .s39-pin {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+
+  .s39-profile.s40-profile-story[data-stage="complete"] .s39-bridge {
+    margin-bottom: 4px;
+  }
+
+  .s40-profile-app[data-focus="complete"] {
+    gap: 5px;
+    padding: 6px 12px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-header {
+    gap: 9px;
+    padding-bottom: 4px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-grid {
+    gap: 4px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-card {
+    padding: 8px 10px;
+    border-radius: 13px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="identity"] {
+    min-height: 56px;
+    padding: 5px 9px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-identity-tags {
+    gap: 4px;
+    margin-top: 3px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-identity-tags span {
+    padding: 3px 7px;
+    font-size: 12px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-award {
+    min-height: 45px;
+    gap: 5px;
+    padding: 4px 5px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-award-medallion {
+    width: 26px;
+    height: 26px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-award-copy b {
+    font-size: 14px;
+    line-height: 1.2;
+    -webkit-line-clamp: 1;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-award-copy small {
+    font-size: 12px;
+    -webkit-line-clamp: 1;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-award-spotlight,
+  .s40-profile-app[data-focus="complete"] .s40-profile-note,
+  .s40-profile-app[data-focus="complete"] .s40-profile-footer,
+  .s40-profile-app[data-focus="complete"] .s40-xp-ledger,
+  .s40-profile-app[data-focus="complete"] .s40-award-copy small,
+  .s40-profile-app[data-focus="complete"] .s40-awards-intro {
+    display: none;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-card p {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-streak-card > p,
+  .s40-profile-app[data-focus="complete"] .s40-time-card > p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-referral-card > p,
+  .s40-profile-app[data-focus="complete"] .s40-telegram-card > p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-streak-days {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 3px;
+    margin-top: 5px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-streak-days i {
+    font-size: 12px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-time-split b {
+    font-size: 17px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-code-row {
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-code-row button,
+  .s40-profile-app[data-focus="complete"] .s40-tg-preview-button {
+    min-height: 36px;
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1199px) and (max-height: 960px) {
+  .s40-profile-app[data-focus="complete"] .s40-profile-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "identity identity identity identity"
+      "xp xp awards awards"
+      "streak time referral telegram";
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="streak"],
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="time"],
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="referral"],
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="telegram"] {
+    padding: 8px;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-card[data-profile-region="xp"] {
+    min-width: 0;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-xp-ledger {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 721px) and (max-width: 900px) {
+  .s39-profile.s40-profile-story .s39-track {
+    display: none;
+  }
+
+  .s39-profile.s40-profile-story .s39-pin {
+    position: sticky;
+    inset: 0 auto auto;
+    height: 100vh;
+    min-height: 760px;
+    padding: 0 12px;
+    overflow: visible;
+  }
+
+  .s39-profile.s40-profile-story .s39-layout {
+    display: flex;
+    width: 100%;
+    max-width: 860px;
+    height: 100%;
+    margin: 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .s39-profile.s40-profile-story .s39-copy {
+    max-width: none;
+  }
+
+  .s39-profile.s40-profile-story .s39-profile-frame {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .s40-profile-app[data-focus="complete"] .s40-profile-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "identity identity identity identity"
+      "xp xp awards awards"
+      "streak time referral telegram";
+    gap: 4px;
+  }
+}
+
+@media (min-width: 721px) and (max-height: 680px) {
+  .s39-profile.s40-profile-story {
+    min-height: max(100vh, 1180px);
+    padding: 38px 0 44px;
+  }
+
+  .s39-profile.s40-profile-story .s39-track {
+    display: none;
+  }
+
+  .s39-profile.s40-profile-story .s39-pin {
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: 0;
+    padding: 0 16px;
+    overflow: visible;
+  }
+
+  .s39-profile.s40-profile-story .s39-layout {
+    display: flex;
+    width: 100%;
+    max-width: 1240px;
+    height: auto;
+    margin: 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .s39-profile.s40-profile-story .s39-copy,
+  .s39-profile.s40-profile-story[data-stage="complete"] .s39-copy {
+    display: block;
+    max-width: none;
+  }
+
+  .s39-profile.s40-profile-story .s39-profile-frame {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.s39-theory-view pre {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: pre;
+  tab-size: 4;
+  font-size: clamp(13px, .95vw, 16px);
+  line-height: 1.7;
+  -webkit-overflow-scrolling: touch;
+}
+
+.s39-theory-view pre code {
+  display: block;
+  min-width: max-content;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.s39-theory-view[data-s39-theory-view="reading"] .s39-reading-head span {
+  color: #6b6380;
+  font-size: 12px;
+}
+
+.s39-theory-view[data-s39-theory-view="reading"] .s39-reading-head small {
+  color: #716b82;
+  font-size: 12px;
+}
+
+.s39-theory-view[data-s39-theory-view="reading"] > p {
+  color: #625d73;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.s39-theory-view[data-s39-theory-view="reading"] .s39-reading-callout {
+  color: #625d73;
+  font-size: 14px;
+}
+
+.s39-theory-view[data-s39-theory-view="reading"] .s39-reading-bottom {
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.s39-theory-view[data-s39-theory-view="reading"] .s39-reading-bottom button {
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.s39-theory-view pre .py-keyword { color: #c6a6ff; font-weight: 800; }
+.s39-theory-view pre .py-function { color: #8ce5d1; }
+.s39-theory-view pre .py-string { color: #f3ce86; }
+.s39-theory-view pre .py-number { color: #ffad91; }
+.s39-theory-view pre .py-comment { color: #aaa3bd; font-style: italic; }
+.s39-theory-view pre .py-operator { color: #9fb9ff; }
+.s39-theory-view pre .py-identifier { color: #f4f0ff; }
+
+.s39-check-invite,
+.s39-check-question {
+  color: #393354;
+}
+
+.s39-check-invite > span,
+.s39-check-question > span {
+  color: #705bd9;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.s39-check-invite h4,
+.s39-check-question h4 {
+  max-width: 620px;
+  font-size: clamp(23px, 2vw, 32px);
+  line-height: 1.2;
+}
+
+.s39-check-invite p,
+.s39-check-question p {
+  max-width: 620px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.s39-check-question [role="group"] {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.s39-check-question [data-s39-answer] {
+  min-height: 50px;
+  border: 1px solid #e2def0;
+  border-radius: 13px;
+  background: #fff;
+  color: #443c67;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.s39-check-question [data-s39-answer][aria-pressed="true"] {
+  border-color: #8069e8;
+  background: #f3f0ff;
+  box-shadow: 0 0 0 2px #e4ddff;
+}
+
+.s39-check-question [data-s39-answer][data-correct="true"] {
+  border-color: #75c9a5;
+  background: #eefbf5;
+}
+
+.s39-check-question [data-s39-check-feedback][data-result="correct"] {
+  color: #287a58;
+  font-weight: 750;
+}
+
+.s39-check-question [data-s39-check-feedback][data-result="wrong"] {
+  color: #8d543d;
+}
+
+.s40-profile-app[data-focus="identity"] .s40-profile-grid,
+.s40-profile-app[data-focus="xp"] .s40-profile-grid,
+.s40-profile-app[data-focus="achievements"] .s40-profile-grid,
+.s40-profile-app[data-focus="streak"] .s40-profile-grid,
+.s40-profile-app[data-focus="time"] .s40-profile-grid,
+.s40-profile-app[data-focus="referral"] .s40-profile-grid,
+.s40-profile-app[data-focus="telegram"] .s40-profile-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.s40-profile-app[data-focus="identity"] .s40-profile-grid { grid-template-areas: "identity"; }
+.s40-profile-app[data-focus="xp"] .s40-profile-grid { grid-template-areas: "identity" "xp"; }
+.s40-profile-app[data-focus="achievements"] .s40-profile-grid { grid-template-areas: "identity" "awards"; }
+.s40-profile-app[data-focus="streak"] .s40-profile-grid { grid-template-areas: "identity" "streak"; }
+.s40-profile-app[data-focus="time"] .s40-profile-grid { grid-template-areas: "identity" "time"; }
+.s40-profile-app[data-focus="referral"] .s40-profile-grid { grid-template-areas: "identity" "referral"; }
+.s40-profile-app[data-focus="telegram"] .s40-profile-grid { grid-template-areas: "identity" "telegram"; }
+
+.s40-profile-app[data-focus="identity"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]),
+.s40-profile-app[data-focus="xp"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]):not([data-profile-region="xp"]),
+.s40-profile-app[data-focus="achievements"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]):not([data-profile-region="achievements"]),
+.s40-profile-app[data-focus="streak"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]):not([data-profile-region="streak"]),
+.s40-profile-app[data-focus="time"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]):not([data-profile-region="time"]),
+.s40-profile-app[data-focus="referral"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]):not([data-profile-region="referral"]),
+.s40-profile-app[data-focus="telegram"] .s40-profile-card[data-profile-region]:not([data-profile-region="identity"]):not([data-profile-region="telegram"]) {
+  display: none !important;
+}
+
+.s40-profile-app[data-focus="xp"] .s40-profile-card[data-profile-region="xp"],
+.s40-profile-app[data-focus="achievements"] .s40-profile-card[data-profile-region="achievements"],
+.s40-profile-app[data-focus="streak"] .s40-profile-card[data-profile-region="streak"],
+.s40-profile-app[data-focus="time"] .s40-profile-card[data-profile-region="time"],
+.s40-profile-app[data-focus="referral"] .s40-profile-card[data-profile-region="referral"],
+.s40-profile-app[data-focus="telegram"] .s40-profile-card[data-profile-region="telegram"] {
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .s40-profile-app {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .s40-profile-card {
+    padding: 11px 12px;
+  }
+
+  .s40-identity > small,
+  .s40-card-heading small,
+  .s40-intro-card small,
+  .s40-award-spotlight,
+  .s40-profile-note,
+  .s40-profile-footer small {
+    font-size: 11px;
+  }
+
+  .s40-identity p,
+  .s40-identity-tags span,
+  .s40-profile-card p,
+  .s40-xp-ledger,
+  .s40-awards-intro,
+  .s40-award-copy small,
+  .s40-award-copy em,
+  .s40-streak-card > p,
+  .s40-time-card > p,
+  .s40-referral-card > p,
+  .s40-telegram-card > p {
+    font-size: 13px;
+  }
+
+  .s40-award-copy b {
+    font-size: 15px;
+  }
+
+  .s39-theory-view pre {
+    font-size: 13px;
+  }
+
+  .s39-check-invite,
+  .s39-check-question {
+    padding: 20px 16px;
+  }
+
+  .s39-check-invite h4,
+  .s39-check-question h4 {
+    font-size: 24px;
+  }
+
+  .s39-check-invite p,
+  .s39-check-question p {
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s39-profile.s40-profile-story .s39-copy [data-s39-profile-copy-step],
+  .s40-award {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}

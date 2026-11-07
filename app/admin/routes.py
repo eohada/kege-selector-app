@@ -4036,8 +4036,8 @@ def admin_tariffs_list():
     # Active students for tariff assignment
     students = (
         User.query
-        .filter_by(is_active=True)
-        .order_by(User.role.asc(), User.username.asc())
+        .filter(User.role == 'student', User.is_active.is_(True))
+        .order_by(User.username.asc())
         .all()
     )
 
@@ -4231,15 +4231,34 @@ def admin_tariffs_assign_student():
 
     user = User.query.get_or_404(int(user_id_val))
     plan_id_val = request.form.get('plan_id')
-    plan = TariffPlan.query.get(int(plan_id_val)) if plan_id_val and plan_id_val.isdigit() else None
+    if plan_id_val and not plan_id_val.isdigit():
+        flash('Выбран некорректный тариф.', 'danger')
+        return redirect(url_for('admin.admin_tariffs_list'))
+    plan = TariffPlan.query.get(int(plan_id_val)) if plan_id_val else None
+    if plan_id_val and not plan:
+        flash('Выбранный тариф не найден.', 'danger')
+        return redirect(url_for('admin.admin_tariffs_list'))
 
     try:
         lessons_count = int(request.form.get('lessons_count') or (plan.lessons_count if plan else 0))
-        period_days = int(request.form.get('period_days') or (plan.period_days if plan else 30))
+        if not 0 <= lessons_count <= 72:
+            raise ValueError('Количество уроков должно быть от 0 до 72.')
+        plan_exam = (plan.exam or '').strip().lower() if plan else ''
+        plan_subject = (plan.subject or '').strip().lower() if plan else ''
+        plan_level = (plan.level or '').strip().lower() if plan else ''
+        exam = (plan_exam if plan_exam in {'ege', 'oge'} else request.form.get('exam') or '').strip().lower() or None
+        subject = (plan_subject if plan_subject in {'inf', 'math'} else request.form.get('subject') or '').strip().lower() or None
+        level = (plan_level if plan_level in {'prof', 'base'} else request.form.get('level') or '').strip().lower() or None
+        if exam not in {'ege', 'oge'}:
+            raise ValueError('Выберите экзамен для назначения занятий.')
+        if subject not in {'inf', 'math'}:
+            raise ValueError('Выберите предмет для назначения занятий.')
+        if level not in {None, '', 'prof', 'base'}:
+            raise ValueError('Выберите корректный уровень курса.')
         note = (request.form.get('note') or '').strip() or None
 
         now = moscow_now().replace(tzinfo=None)
-        ends_at = now + timedelta(days=period_days) if period_days > 0 else None
+        ends_at = None
 
         sub = UserSubscription(
             user_id=user.id,
@@ -4248,12 +4267,15 @@ def admin_tariffs_assign_student():
             started_at=now,
             ends_at=ends_at,
             lessons_remaining=lessons_count,
+            exam=exam,
+            subject=subject,
+            level=level,
             note=note,
         )
         db.session.add(sub)
         db.session.commit()
-        plan_name = plan.title if plan else 'Индивидуальный'
-        flash(f'Тариф «{plan_name}» успешно назначен ученику {user.username} ({lessons_count} уроков до {ends_at.strftime("%d.%m.%Y") if ends_at else "бессрочно"}).', 'success')
+        plan_name = plan.title if plan else f"Индивидуальный · {exam.upper()} · {'Информатика' if subject == 'inf' else 'Математика'}"
+        flash(f'Тариф «{plan_name}» успешно назначен ученику {user.username} ({lessons_count} уроков, без срока).', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Ошибка при назначении тарифа: {e}', 'danger')

@@ -423,27 +423,241 @@ def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, ac
         meta = {
             'lesson_id': lesson.lesson_id,
             'topic': topic,
+            'subject': getattr(lesson, 'subject', 'Информатика') or 'Информатика',
             'start_time': lesson.lesson_date,
             'teacher_name': tutor_name,
             'student_name': student_name,
             'student_id': getattr(student, 'student_id', None),
+            'student_user_id': getattr(student, 'user_id', None),
+            'actor_user_id': actor_user_id,
+            'actor_role': getattr(tutor_user, 'role', 'teacher') if tutor_user else 'teacher',
         }
         if old_dt:
             meta['old_start_time'] = old_dt
 
-        # Notify tutor
-        if actor_user_id:
-            notify_user(actor_user_id, kind=kind, title=headline, link_url=lesson_url, meta=meta)
+        lesson_teacher_id = lesson.teacher_id or (actor_user_id if tutor_user and tutor_user.is_tutor() else None)
+
+        # Notify tutor (suppressed if tutor is actor)
+        if lesson_teacher_id:
+            teacher_meta = dict(meta)
+            teacher_meta['recipient_role'] = 'teacher'
+            notify_user(int(lesson_teacher_id), kind=kind, title=headline, link_url=lesson_url, meta=teacher_meta)
+
         # Notify student
         if student and getattr(student, 'user_id', None):
-            notify_user(int(student.user_id), kind=kind, title=headline, link_url=lesson_url, meta=meta)
+            student_meta = dict(meta)
+            student_meta['recipient_role'] = 'student'
+            notify_user(int(student.user_id), kind=kind, title=headline, link_url=lesson_url, meta=student_meta)
+
         # Notify parents
         for parent_id in _student_parent_user_ids(student.student_id if student else None):
             parent_meta = dict(meta)
             parent_meta['parent_id'] = int(parent_id)
+            parent_meta['recipient_role'] = 'parent'
             notify_user(int(parent_id), kind=kind, title=headline, link_url=lesson_url, meta=parent_meta)
+
+        try:
+            db.session.commit()
+        except Exception as commit_err:
+            db.session.rollback()
+            logger.warning('Could not commit lesson_scheduled notifications: %s', commit_err)
     except Exception as e:
         logger.warning('Direct lesson_scheduled notify failed: %s', e)
+
+
+def _notify_lesson_cancelled(lesson: Lesson, student: Student, reason: str = 'Урок отменён', actor_user_id: int | None = None) -> None:
+    """Notify student, teacher, and parents about a cancelled lesson, invalidating stale reminders."""
+    try:
+        from app.telegram.delivery import invalidate_pending_lesson_deliveries
+        invalidate_pending_lesson_deliveries(lesson.lesson_id, reason='lesson_cancelled')
+
+        topic = (lesson.topic or '').strip() or 'Занятие по расписанию'
+        from app.models import User
+        actor_user = User.query.get(actor_user_id) if actor_user_id else None
+        teacher_name = 'Преподаватель'
+        if lesson.teacher_id:
+            tch = User.query.get(lesson.teacher_id)
+            if tch:
+                teacher_name = tch.username or 'Преподаватель'
+
+        student_name = getattr(student, 'name', None) or 'Ученик'
+        meta = {
+            'lesson_id': lesson.lesson_id,
+            'topic': topic,
+            'subject': getattr(lesson, 'subject', 'Информатика') or 'Информатика',
+            'start_time': lesson.lesson_date,
+            'teacher_name': teacher_name,
+            'student_name': student_name,
+            'reason': reason,
+            'student_id': getattr(student, 'student_id', None),
+            'student_user_id': getattr(student, 'user_id', None),
+            'actor_user_id': actor_user_id,
+            'actor_role': getattr(actor_user, 'role', 'teacher') if actor_user else 'teacher',
+        }
+
+        from app.notifications.service import notify_user
+        headline = 'Урок отменён'
+
+        # Notify teacher
+        if lesson.teacher_id:
+            teacher_meta = dict(meta)
+            teacher_meta['recipient_role'] = 'teacher'
+            notify_user(int(lesson.teacher_id), kind='lesson_cancelled', title=headline, meta=teacher_meta)
+
+        # Notify student
+        if student and getattr(student, 'user_id', None):
+            student_meta = dict(meta)
+            student_meta['recipient_role'] = 'student'
+            notify_user(int(student.user_id), kind='lesson_cancelled', title=headline, meta=student_meta)
+
+        # Notify parents
+        for parent_id in _student_parent_user_ids(student.student_id if student else None):
+            parent_meta = dict(meta)
+            parent_meta['parent_id'] = int(parent_id)
+            parent_meta['recipient_role'] = 'parent'
+            notify_user(int(parent_id), kind='lesson_cancelled', title=headline, meta=parent_meta)
+
+        try:
+            db.session.commit()
+        except Exception as commit_err:
+            db.session.rollback()
+            logger.warning('Could not commit lesson_cancelled notifications: %s', commit_err)
+    except Exception as e:
+        logger.warning('Direct lesson_cancelled notify failed: %s', e)
+
+
+def notify_scheduled_lessons_batch(
+    lessons: list[Lesson],
+    student: Student,
+    actor_user_id: int | None = None,
+    headline: str = 'Новый урок запланирован',
+) -> None:
+    """Grouped notification dispatch for batch lesson creation.
+    
+    If >= 3 planned lessons are scheduled at once, emits a single grouped
+    card (lesson_batch_scheduled) and suppresses individual cards.
+    If < 3 lessons, emits individual cards.
+    In-app UserNotification is preserved for both.
+    """
+    if not lessons or not student:
+        return
+
+    planned = [l for l in lessons if getattr(l, 'status', None) == 'planned']
+    if not planned:
+        return
+
+    from app.telegram.batching import BATCH_THRESHOLD, process_scheduled_lessons_batch
+    from app.telegram.delivery import enqueue_delivery
+    from app.telegram.user_notify import is_notification_enabled_for_user
+    from app.models import UserNotification
+    import uuid
+
+    if len(planned) < BATCH_THRESHOLD:
+        for l in planned:
+            _notify_lesson_scheduled(l, student, headline, actor_user_id=actor_user_id)
+        return
+
+    batch_id = f"batch_{uuid.uuid4().hex[:12]}"
+    from app.models import User
+    actor_user = User.query.get(actor_user_id) if actor_user_id else None
+    teacher_name = 'Преподаватель'
+    if planned[0].teacher_id:
+        tch = User.query.get(planned[0].teacher_id)
+        if tch:
+            teacher_name = tch.username or 'Преподаватель'
+    elif actor_user:
+        teacher_name = actor_user.username or 'Преподаватель'
+
+    schedule_url = _absolute_app_url(url_for('schedule.schedule'))
+    lessons_data = [
+        {
+            'lesson_id': l.lesson_id,
+            'topic': l.topic or l.subject or 'Занятие',
+            'start_time': l.lesson_date,
+            'lesson_date': l.lesson_date,
+        }
+        for l in planned
+    ]
+
+    # 1. Student Delivery
+    if getattr(student, 'user_id', None):
+        st_uid = int(student.user_id)
+        st_notif = UserNotification(
+            user_id=st_uid,
+            kind='lesson_batch_scheduled',
+            title=f'Запланировано {len(planned)} занятий',
+            body=f'Преподаватель {teacher_name} запланировал {len(planned)} уроков в расписании.',
+            link_url=schedule_url,
+            meta={'batch_id': batch_id, 'lessons_count': len(planned), 'teacher_name': teacher_name},
+        )
+        db.session.add(st_notif)
+        db.session.flush()
+
+        if st_uid != actor_user_id:
+            if is_notification_enabled_for_user(st_uid, role='student', kind='lesson_batch_scheduled'):
+                cards = process_scheduled_lessons_batch(
+                    recipient_user_id=st_uid,
+                    teacher_name=teacher_name,
+                    lessons_data=lessons_data,
+                    batch_id=batch_id,
+                    recipient_role='student',
+                    schedule_url=schedule_url,
+                )
+                for item in cards:
+                    enqueue_delivery(
+                        st_uid,
+                        item['text'],
+                        kind='lesson_batch_scheduled',
+                        notification_id=st_notif.notification_id,
+                        reply_markup=item['reply_markup'],
+                        meta=item.get('meta'),
+                        dedupe_key=item.get('dedupe_key'),
+                        priority='normal',
+                    )
+
+    # 2. Parent Delivery
+    for parent_id in _student_parent_user_ids(student.student_id if student else None):
+        p_uid = int(parent_id)
+        p_notif = UserNotification(
+            user_id=p_uid,
+            kind='lesson_batch_scheduled',
+            title=f'Назначено {len(planned)} занятий у ребёнка',
+            body=f'Преподаватель {teacher_name} запланировал {len(planned)} уроков.',
+            link_url=schedule_url,
+            meta={'batch_id': batch_id, 'lessons_count': len(planned), 'teacher_name': teacher_name, 'student_id': student.student_id},
+        )
+        db.session.add(p_notif)
+        db.session.flush()
+
+        if p_uid != actor_user_id:
+            if is_notification_enabled_for_user(p_uid, role='parent', kind='lesson_batch_scheduled'):
+                p_cards = process_scheduled_lessons_batch(
+                    recipient_user_id=p_uid,
+                    teacher_name=teacher_name,
+                    lessons_data=lessons_data,
+                    batch_id=batch_id,
+                    recipient_role='parent',
+                    schedule_url=schedule_url,
+                    student_name=student.name if student else None,
+                )
+                for item in p_cards:
+                    enqueue_delivery(
+                        p_uid,
+                        item['text'],
+                        kind='lesson_batch_scheduled',
+                        notification_id=p_notif.notification_id,
+                        reply_markup=item['reply_markup'],
+                        meta=item.get('meta'),
+                        dedupe_key=item.get('dedupe_key'),
+                        priority='normal',
+                    )
+
+    try:
+        db.session.commit()
+    except Exception as commit_err:
+        db.session.rollback()
+        logger.warning('Could not commit batch lesson notifications: %s', commit_err)
+
 
 
 def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
@@ -454,9 +668,56 @@ def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int
     from app.schedule.ownership_service import check_tutor_conflict_isolated
     return check_tutor_conflict_isolated(tutor_user_id, start_dt, duration_min, exclude_lesson_id)
 
+
+def _is_technical_teacher_login(name: str) -> bool:
+    if not name:
+        return True
+    lower = name.strip().lower()
+    if any(prefix in lower for prefix in ['qa_pool', 'pool_teacher', 'test_evo', 'synth_', 'mock_']):
+        return True
+    if lower.startswith(('user_', 'student_', 'teacher_')) and any(c.isdigit() for c in lower):
+        return True
+    if '_' in name and ' ' not in name:
+        return True
+    return False
+
+
+def _resolve_human_teacher_name(user_obj) -> str:
+    if not user_obj:
+        return 'Преподаватель курса'
+    if hasattr(user_obj, 'id'):
+        from core.db_models import UserProfile
+        prof = UserProfile.query.filter_by(user_id=user_obj.id).first()
+        if prof:
+            first = (prof.first_name or '').strip()
+            last = (prof.last_name or '').strip()
+            cand_full = f"{first} {last}".strip()
+            if cand_full and not _is_technical_teacher_login(cand_full):
+                return cand_full
+            if first and not _is_technical_teacher_login(first):
+                return first
+            disp = (getattr(prof, 'display_name', None) or '').strip()
+            if disp and not _is_technical_teacher_login(disp):
+                return disp
+    fn = (getattr(user_obj, 'full_name', None) or '').strip()
+    if fn and not _is_technical_teacher_login(fn):
+        return fn
+    uname = (getattr(user_obj, 'username', None) or '').strip()
+    if uname and not _is_technical_teacher_login(uname):
+        return uname
+    return 'Преподаватель курса'
+
+
+@schedule_bp.route('/schedule/preview/temporal-canvas')
+@login_required
+def schedule_preview_temporal_canvas():
+    """Sprint 2.7 Temporal Canvas Preview (Zero production risk, read-only isolated preview)"""
+    return schedule(preview_template='sandbox/teacher_schedule_temporal_canvas.html')
+
+
 @schedule_bp.route('/schedule')
 @login_required
-def schedule():
+def schedule(preview_template=None):
     """Расписание уроков"""
     user_role = (getattr(current_user, 'role', '') or '').lower()
     sb_role = (session.get('sandbox_role', '') or '').lower()
@@ -761,7 +1022,12 @@ def schedule():
 
     today_display_date = moscow_now().astimezone(display_tz).date()
 
-    tpl_name = 'sandbox/student_schedule.html' if current_user.is_student() else 'sandbox/teacher_schedule.html'
+    if preview_template:
+        tpl_name = preview_template
+    elif request.args.get('legacy') == '1':
+        tpl_name = 'sandbox/student_schedule.html' if current_user.is_student() else 'sandbox/teacher_schedule.html'
+    else:
+        tpl_name = 'sandbox/student_schedule.html' if current_user.is_student() else 'sandbox/teacher_schedule_temporal_canvas.html'
     
     raw_lessons_payload = []
     for l in lessons:
@@ -839,7 +1105,7 @@ def schedule():
 
             if len(student_tutors_map) == 1:
                 sole_teacher = next(iter(student_tutors_map.values()))
-                teacher_name = getattr(sole_teacher, 'full_name', None) or sole_teacher.username
+                teacher_name = _resolve_human_teacher_name(sole_teacher)
                 teacher_avatar = getattr(sole_teacher, 'avatar_url', None) or '/static/images/default-avatar.svg'
             elif len(student_tutors_map) > 1:
                 # Multi-teacher scenario: prevent false attribution of an arbitrary teacher
@@ -955,6 +1221,163 @@ def schedule():
                         'pages': 'Конспект • Типовые задачи ЕГЭ'
                     }
                 ]
+
+    teacher_homework_items = []
+    teacher_attention_items = []
+    recurring_series_payload = []
+    avail_intervals_payload = []
+    avail_exceptions_payload = []
+
+    if current_user.is_authenticated and not current_user.is_student():
+        from app.models import Submission, Assignment, TeacherScheduleException, RecurringLessonSlot
+        from app.schedule.recurrence_service import get_teacher_weekly_availability
+
+        # 1. Homework deadlines & submissions
+        try:
+            if accessible_sids:
+                subs_q = (
+                    Submission.query.join(Assignment, Submission.assignment_id == Assignment.assignment_id)
+                    .filter(
+                        Submission.student_id.in_(accessible_sids),
+                        Assignment.is_active == True,
+                    )
+                    .options(db.contains_eager(Submission.assignment))
+                    .order_by(Assignment.deadline.asc().nullslast())
+                    .limit(50)
+                    .all()
+                )
+                seen_assign = set()
+                for sub in subs_q:
+                    if not sub.assignment:
+                        continue
+                    deadline_iso = None
+                    deadline_date_str = None
+                    deadline_time_str = '23:59'
+                    if sub.assignment.deadline:
+                        dl = sub.assignment.deadline
+                        if dl.tzinfo is None:
+                            dl = dl.replace(tzinfo=dt_timezone.utc)
+                        dl_local = dl.astimezone(display_tz)
+                        deadline_iso = dl_local.isoformat()
+                        deadline_date_str = dl_local.date().isoformat()
+                        deadline_time_str = dl_local.strftime('%H:%M')
+                    st_name = sub.student.name if sub.student else f'Ученик #{sub.student_id}'
+                    h_item = {
+                        'id': sub.assignment_id,
+                        'submission_id': sub.submission_id,
+                        'student_id': sub.student_id,
+                        'student_name': st_name,
+                        'title': sub.assignment.title,
+                        'deadline': deadline_iso,
+                        'deadline_date': deadline_date_str,
+                        'deadline_time': deadline_time_str,
+                        'url': url_for('assignments.submission_view', submission_id=sub.submission_id) if sub.submission_id else url_for('assignments.assignment_view', assignment_id=sub.assignment_id),
+                        'status': sub.status,
+                        'tasks_count': len(sub.assignment.tasks) if sub.assignment.tasks else 0,
+                    }
+                    teacher_homework_items.append(h_item)
+
+                    if sub.status in ('SUBMITTED', 'NEEDS_MANUAL_REVIEW'):
+                        teacher_attention_items.append({
+                            'id': f'attn_sub_{sub.submission_id}',
+                            'type': 'homework_review',
+                            'severity': 'high',
+                            'title': f'Проверить ДЗ: {st_name}',
+                            'subtitle': sub.assignment.title,
+                            'url': url_for('assignments.submission_view', submission_id=sub.submission_id),
+                            'badge': 'На проверке',
+                            'color': 'amber',
+                            'icon': 'ph-pencil-simple-line'
+                        })
+        except Exception as e:
+            logger.warning(f"Error fetching teacher homework items: {e}")
+
+        # 2. Upcoming / Live lessons for attention
+        try:
+            now_local = datetime.now(dt_timezone.utc).astimezone(display_tz)
+            for l_item in raw_lessons_payload:
+                st_code = l_item.get('status')
+                if st_code == 'in_progress':
+                    teacher_attention_items.insert(0, {
+                        'id': f'attn_live_{l_item["lesson_id"]}',
+                        'type': 'lesson_live',
+                        'severity': 'urgent',
+                        'title': f'Идёт урок: {l_item.get("student_name")}',
+                        'subtitle': f'{l_item.get("subject")} • {l_item.get("topic")}',
+                        'url': l_item.get('room_url'),
+                        'badge': 'Прямо сейчас',
+                        'color': 'rose',
+                        'icon': 'ph-broadcast',
+                        'lesson_id': l_item['lesson_id']
+                    })
+                elif st_code == 'planned' and l_item.get('start_date') == today_display_date.isoformat():
+                    try:
+                        l_hour, l_min = map(int, l_item.get('start_time', '00:00').split(':'))
+                        l_dt = now_local.replace(hour=l_hour, minute=l_min, second=0, microsecond=0)
+                        diff_sec = (l_dt - now_local).total_seconds()
+                        if 0 <= diff_sec <= 7200:
+                            mins_left = int(diff_sec // 60)
+                            badge_txt = f'Через {mins_left} мин' if mins_left > 0 else 'Менее минуты'
+                            teacher_attention_items.append({
+                                'id': f'attn_up_{l_item["lesson_id"]}',
+                                'type': 'lesson_upcoming',
+                                'severity': 'high' if mins_left <= 30 else 'medium',
+                                'title': f'Урок: {l_item.get("student_name")}',
+                                'subtitle': f'{l_item.get("start_time")} • {l_item.get("subject")}',
+                                'url': l_item.get('room_url'),
+                                'badge': badge_txt,
+                                'color': 'indigo',
+                                'icon': 'ph-clock-countdown',
+                                'lesson_id': l_item['lesson_id']
+                            })
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"Error building teacher attention items: {e}")
+
+        # 3. Recurring series
+        try:
+            r_query = RecurringLessonSlot.query.filter_by(is_active=True)
+            if current_user.is_tutor():
+                r_query = r_query.filter_by(owner_user_id=current_user.id)
+            r_slots = r_query.order_by(RecurringLessonSlot.weekday.asc(), RecurringLessonSlot.time_hhmm.asc()).all()
+            for rs in r_slots:
+                st_name = rs.student.name if rs.student else f"Ученик #{rs.student_id}"
+                recurring_series_payload.append({
+                    'slot_id': rs.slot_id,
+                    'teacher_id': rs.owner_user_id,
+                    'student_id': rs.student_id,
+                    'student_name': st_name,
+                    'subject': rs.subject or 'Информатика',
+                    'weekday': rs.weekday,
+                    'time_hhmm': rs.time_hhmm,
+                    'duration': rs.duration,
+                    'timezone': rs.timezone,
+                    'start_date': rs.start_date.isoformat() if rs.start_date else None,
+                    'end_date': rs.end_date.isoformat() if rs.end_date else None,
+                    'is_active': rs.is_active,
+                    'topic': rs.topic,
+                })
+        except Exception as e:
+            logger.warning(f"Error fetching recurring series: {e}")
+
+        # 4. Teacher availability
+        try:
+            avail_intervals_payload = get_teacher_weekly_availability(current_user.id)
+            excs = TeacherScheduleException.query.filter_by(teacher_id=current_user.id).order_by(TeacherScheduleException.exception_date.asc()).all()
+            avail_exceptions_payload = [
+                {
+                    'id': e.id,
+                    'exception_date': e.exception_date.isoformat(),
+                    'exception_type': e.exception_type,
+                    'start_time': e.start_time,
+                    'end_time': e.end_time,
+                    'reason': e.reason,
+                }
+                for e in excs
+            ]
+        except Exception as e:
+            logger.warning(f"Error fetching availability for schedule data: {e}")
 
     # Calculate weekly metrics for student view
     week_start_date = week_days[0] if week_days else period_start
@@ -1097,22 +1520,15 @@ def schedule():
             if explicit_tutor_id:
                 t_obj = student_tutors_map.get(explicit_tutor_id) or User.query.get(explicit_tutor_id)
                 if t_obj:
-                    t_name = getattr(t_obj, 'full_name', None)
-                    if (not t_name or t_name == getattr(t_obj, 'username', '')) and hasattr(t_obj, 'id'):
-                        from core.db_models import UserProfile
-                        prof = UserProfile.query.filter_by(user_id=t_obj.id).first()
-                        if prof:
-                            cand_name = f"{prof.first_name or ''} {prof.last_name or ''}".strip()
-                            if cand_name:
-                                t_name = cand_name
-                    lesson_tutor_name = t_name or getattr(t_obj, 'username', 'Преподаватель курса')
+                    lesson_tutor_name = _resolve_human_teacher_name(t_obj)
                     lesson_tutor_avatar = getattr(t_obj, 'avatar_url', None) or '/static/images/default-avatar.svg'
-            elif len(student_tutors_map) == 1:
-                lesson_tutor_name = teacher_name
-                lesson_tutor_avatar = teacher_avatar
-            else:
-                lesson_tutor_name = 'Преподаватель курса'
-                lesson_tutor_avatar = '/static/images/default-avatar.svg'
+            if not lesson_tutor_name or lesson_tutor_name == 'Преподаватель курса':
+                if teacher_name and teacher_name != 'Преподаватель курса':
+                    lesson_tutor_name = teacher_name
+                    lesson_tutor_avatar = teacher_avatar or lesson_tutor_avatar or '/static/images/default-avatar.svg'
+                else:
+                    lesson_tutor_name = lesson_tutor_name or 'Преподаватель курса'
+                    lesson_tutor_avatar = lesson_tutor_avatar or teacher_avatar or '/static/images/default-avatar.svg'
 
             # Extract materials strictly belonging to THIS lesson (no cross-lesson leakage!)
             raw_lesson_materials = l.get('materials') if isinstance(l, dict) else getattr(l, 'materials', None)
@@ -1313,6 +1729,12 @@ def schedule():
             'base_url': url_for('schedule.schedule'),
             'can_manage': _can_manage_schedule(),
             'accessible_students': accessible_students_data,
+            'teacher_homework_items': teacher_homework_items,
+            'attention_items': teacher_attention_items,
+            'recurring_series': recurring_series_payload,
+            'availability_intervals': avail_intervals_payload,
+            'availability_exceptions': avail_exceptions_payload,
+            'is_temporal_canvas_preview': bool(preview_template),
         },
         week_days=week_days,
         week_label=week_label,
@@ -1477,17 +1899,15 @@ def schedule_create_lesson():
             raise
 
         # 2. НЕЗАВИСИМЫЙ БЛОК ОТПРАВКИ УВЕДОМЛЕНИЙ (Ошибки отправки НЕ отменяют уроки!)
-        for created_lesson in created_lessons:
-            if created_lesson.status == 'planned':
-                try:
-                    _notify_lesson_scheduled(
-                        created_lesson,
-                        student,
-                        'Новый урок запланирован',
-                        actor_user_id=current_user.id,
-                    )
-                except Exception as notify_err:
-                    print(f"[CREATE_LESSON NOTIFY WARNING] TG notification failed for lesson #{created_lesson.lesson_id}: {notify_err}")
+        try:
+            notify_scheduled_lessons_batch(
+                created_lessons,
+                student,
+                actor_user_id=current_user.id,
+                headline='Новый урок запланирован',
+            )
+        except Exception as notify_err:
+            print(f"[CREATE_LESSON NOTIFY WARNING] TG notification failed: {notify_err}")
         
         for created_lesson in created_lessons:
             audit_logger.log(
@@ -1762,6 +2182,17 @@ def create_schedule_lesson_api():
                 topic=topic,
                 skip_conflicts=bool(data.get('skip_conflicts', True)),
             )
+            if gen_res:
+                try:
+                    notify_scheduled_lessons_batch(
+                        list(gen_res),
+                        student,
+                        actor_user_id=current_user.id,
+                        headline='Новая серия уроков запланирована',
+                    )
+                except Exception as batch_err:
+                    logger.warning("Failed to notify recurring batch: %s", batch_err)
+
             return jsonify({
                 'status': 'success',
                 'success': True,
@@ -1818,11 +2249,13 @@ def create_schedule_lesson_api():
 
         # 📲 ОТДЕЛЬНЫЙ ИЗОЛИРОВАННЫЙ БЛОК ТЕЛЕГРАМ-УВЕДОМЛЕНИЙ (Ошибки сети НЕ отменяют урок!)
         try:
-            if student.user and getattr(student.user, 'telegram_id', None):
-                from app.telegram.user_notify import notify_user_by_id
-                local_time_display = lesson_display_time(clean_date, req_tz)
-                msg = f"📅 <b>НОВЫЙ УРОК В РАСПИСАНИИ!</b>\n\n📌 <b>Тема:</b> {topic}\n⏰ <b>Время:</b> {local_time_display}"
-                notify_user_by_id(student.user.id, msg, kind='lesson_scheduled')
+            if new_lesson.status == 'planned':
+                _notify_lesson_scheduled(
+                    new_lesson,
+                    student,
+                    'Новый урок запланирован',
+                    actor_user_id=current_user.id,
+                )
         except Exception:
             logger.exception('Schedule API: lesson %s was created, but notification failed', new_lesson.lesson_id)
 
@@ -2092,7 +2525,6 @@ def schedule_set_status(lesson_id: int):
 
         try:
             if status == 'planned' and old_status != 'planned' and lesson.student:
-                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
                 _notify_lesson_scheduled(
                     lesson,
                     lesson.student,
@@ -2104,8 +2536,20 @@ def schedule_set_status(lesson_id: int):
                 except Exception as e:
                     db.session.rollback()
                     logger.warning(f"Could not commit lesson_scheduled notification (set_status): {e}")
+            elif status == 'cancelled' and old_status != 'cancelled' and lesson.student:
+                _notify_lesson_cancelled(
+                    lesson,
+                    lesson.student,
+                    reason='Урок отменён в расписании',
+                    actor_user_id=current_user.id,
+                )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit lesson_cancelled notification (set_status): {e}")
         except Exception as e:
-            logger.warning(f"Failed to notify about lesson status planned: {e}")
+            logger.warning(f"Failed to notify about lesson status change: {e}")
 
         audit_logger.log(
             action='set_lesson_status',
@@ -2195,6 +2639,7 @@ def schedule_update_lesson(lesson_id: int):
         lesson.subject = str(data['subject']).strip()
 
     try:
+        old_dt = lesson.lesson_date
         old = {
             'duration': lesson.duration,
             'lesson_type': lesson.lesson_type,
@@ -2215,12 +2660,14 @@ def schedule_update_lesson(lesson_id: int):
 
         try:
             if new_lesson_date is not None and lesson.status == 'planned' and lesson.student:
-                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                from app.telegram.delivery import invalidate_pending_lesson_deliveries
+                invalidate_pending_lesson_deliveries(lesson.lesson_id, reason='lesson_rescheduled')
                 _notify_lesson_scheduled(
                     lesson,
                     lesson.student,
                     'Урок перенесён',
                     actor_user_id=current_user.id,
+                    old_dt=old_dt,
                 )
                 try:
                     db.session.commit()
@@ -2361,6 +2808,17 @@ def schedule_delete_lesson(lesson_id: int):
             'lesson_type': lesson.lesson_type,
             'status': lesson.status,
         }
+        if lesson.status == 'planned' and lesson.student:
+            try:
+                _notify_lesson_cancelled(
+                    lesson,
+                    lesson.student,
+                    reason='Урок отменён и удалён из расписания',
+                    actor_user_id=current_user.id,
+                )
+            except Exception as notify_err:
+                logger.warning("Could not dispatch lesson cancellation on delete: %s", notify_err)
+
         from app.telegram.delivery import invalidate_pending_lesson_deliveries
         invalidate_pending_lesson_deliveries(lesson_id, reason='lesson_deleted')
         _purge_lessons_dependencies([lesson_id])
@@ -2898,15 +3356,17 @@ def schedule_templates_apply_week():
         return jsonify({'success': False, 'error': str(e)}), 500
 
     try:
+        lessons_by_student = {}
         for lesson, st in created_pairs:
             if lesson.status == 'planned':
-                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
-                _notify_lesson_scheduled(
-                    lesson,
-                    st,
-                    'Новый урок запланирован',
-                    actor_user_id=current_user.id,
-                )
+                lessons_by_student.setdefault(st, []).append(lesson)
+        for st, st_lessons in lessons_by_student.items():
+            notify_scheduled_lessons_batch(
+                st_lessons,
+                st,
+                actor_user_id=current_user.id,
+                headline='Новый урок запланирован',
+            )
         try:
             db.session.commit()
         except Exception as e:
@@ -3380,4 +3840,135 @@ def api_schedule_availability_exceptions_delete(exception_id: int):
     from app.schedule.recurrence_service import delete_teacher_schedule_exception
     success = delete_teacher_schedule_exception(exception_id, current_user.id)
     return jsonify({'success': success}), 200 if success else 404
+
+
+@schedule_bp.route('/api/schedule/find-free-slots', methods=['GET', 'POST'])
+@login_required
+def api_schedule_find_free_slots():
+    """Smart time finder: recommend non-conflicting slots within teacher working hours."""
+    if not _can_manage_schedule():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from app.schedule.recurrence_service import get_teacher_weekly_availability
+    from app.models import TeacherScheduleException, Lesson
+
+    req_data = request.get_json(silent=True) or request.args
+    duration = int(req_data.get('duration') or 60)
+    student_id = req_data.get('student_id', type=int) if hasattr(req_data, 'get') else None
+    days_ahead = int(req_data.get('days_ahead') or 7)
+
+    teacher_id = current_user.id
+    tz_str = (getattr(current_user, 'timezone', None) or 'Europe/Moscow').strip()
+    tz = timezone_from_name(tz_str)
+
+    today = datetime.now(dt_timezone.utc).astimezone(tz).date()
+
+    # 1. Weekly availability map
+    weekly = get_teacher_weekly_availability(teacher_id)
+    avail_map = {item['weekday']: item for item in weekly}
+
+    # 2. Exceptions
+    exceptions = TeacherScheduleException.query.filter_by(teacher_id=teacher_id).filter(
+        TeacherScheduleException.exception_date >= today,
+        TeacherScheduleException.exception_date <= today + timedelta(days=days_ahead)
+    ).all()
+    exc_map = {e.exception_date.isoformat(): e for e in exceptions}
+
+    # 3. Existing lessons
+    window_start = datetime.combine(today, datetime.min.time(), tzinfo=tz).astimezone(dt_timezone.utc)
+    window_end = datetime.combine(today + timedelta(days=days_ahead), datetime.max.time(), tzinfo=tz).astimezone(dt_timezone.utc)
+
+    teacher_lessons = Lesson.query.filter(
+        Lesson.teacher_id == teacher_id,
+        Lesson.status.in_(['planned', 'in_progress']),
+        Lesson.lesson_date >= window_start.replace(tzinfo=None),
+        Lesson.lesson_date <= window_end.replace(tzinfo=None)
+    ).all()
+
+    student_lessons = []
+    if student_id:
+        student_lessons = Lesson.query.filter(
+            Lesson.student_id == student_id,
+            Lesson.status.in_(['planned', 'in_progress']),
+            Lesson.lesson_date >= window_start.replace(tzinfo=None),
+            Lesson.lesson_date <= window_end.replace(tzinfo=None)
+        ).all()
+
+    busy_intervals = []
+    for l in teacher_lessons + student_lessons:
+        if not l.lesson_date:
+            continue
+        l_utc = l.lesson_date.replace(tzinfo=dt_timezone.utc)
+        l_loc = l_utc.astimezone(tz)
+        dur = int(l.duration or 60)
+        busy_intervals.append((l_loc, l_loc + timedelta(minutes=dur)))
+
+    recommended_slots = []
+    RU_WD_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+    for day_idx in range(days_ahead):
+        cur_date = today + timedelta(days=day_idx)
+        wd = cur_date.weekday()
+        iso_date = cur_date.isoformat()
+
+        inv = avail_map.get(wd)
+        is_active = inv.get('is_active', True) if inv else True
+        start_str = inv.get('start_time', '09:00') if inv else '09:00'
+        end_str = inv.get('end_time', '21:00') if inv else '21:00'
+
+        exc = exc_map.get(iso_date)
+        if exc:
+            if exc.exception_type == 'unavailable':
+                continue
+            elif exc.exception_type == 'custom_hours' and exc.start_time and exc.end_time:
+                start_str = exc.start_time
+                end_str = exc.end_time
+            elif exc.exception_type == 'extra_available':
+                is_active = True
+
+        if not is_active:
+            continue
+
+        try:
+            sh, sm = map(int, start_str.split(':'))
+            eh, em = map(int, end_str.split(':'))
+        except Exception:
+            sh, sm = 9, 0
+            eh, em = 21, 0
+
+        day_start_dt = datetime.combine(cur_date, datetime.min.time(), tzinfo=tz) + timedelta(hours=sh, minutes=sm)
+        day_end_dt = datetime.combine(cur_date, datetime.min.time(), tzinfo=tz) + timedelta(hours=eh, minutes=em)
+
+        cand_start = day_start_dt
+        now_dt = datetime.now(dt_timezone.utc).astimezone(tz)
+
+        while cand_start + timedelta(minutes=duration) <= day_end_dt:
+            cand_end = cand_start + timedelta(minutes=duration)
+
+            if cand_start > now_dt:
+                has_collision = False
+                for b_start, b_end in busy_intervals:
+                    if max(cand_start, b_start) < min(cand_end, b_end):
+                        has_collision = True
+                        break
+
+                if not has_collision:
+                    recommended_slots.append({
+                        'date': iso_date,
+                        'weekday': wd,
+                        'weekday_name': RU_WD_NAMES[wd],
+                        'date_label': f"{RU_WD_NAMES[wd]}, {cur_date.day} {RU_MONTHS_GEN[cur_date.month - 1]}",
+                        'start_time': cand_start.strftime('%H:%M'),
+                        'end_time': cand_end.strftime('%H:%M'),
+                        'duration': duration,
+                        'is_today': cur_date == today,
+                    })
+                    if len(recommended_slots) >= 12:
+                        break
+            cand_start += timedelta(minutes=30)
+        if len(recommended_slots) >= 12:
+            break
+
+    return jsonify({'success': True, 'slots': recommended_slots}), 200
+
 

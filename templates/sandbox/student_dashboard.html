@@ -35,9 +35,9 @@
         <p>Продолжай подготовку — ты на правильном пути. Сегодня можно сделать ещё один шаг к цели! 💜</p>
         <div class="student-dashboard-actions">
           {% if active_lesson %}
-            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}">Войти на урок <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}"><span>Войти на урок</span> <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
           {% elif course_next_lesson %}
-            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=course_next_lesson.lesson_id) }}">Продолжить обучение <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=course_next_lesson.lesson_id) }}"><span>Продолжить обучение</span> <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
           {% else %}
             <button type="button" class="bs-button bs-button-primary is-disabled bs-soon-target" disabled aria-disabled="true" title="Раздел курсов обновляется">Продолжить обучение <span class="bs-badge-soon">Скоро...</span></button>
           {% endif %}

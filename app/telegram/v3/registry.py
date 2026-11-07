@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import logging
+from telegram import Update
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
     CommandHandler,
+    ContextTypes,
     MessageHandler,
     filters,
 )

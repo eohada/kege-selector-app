@@ -128,6 +128,39 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
     try:
         from app.telegram.delivery import enqueue_delivery
         from app.telegram.notification_templates import render_telegram_notification
+        from app.telegram.event_policy import EventContext, should_suppress_notification
+
+        actor_id = meta.get('actor_user_id') if meta else None
+        event_ctx = EventContext(
+            event_kind=kind,
+            actor_user_id=int(actor_id) if actor_id is not None else None,
+            actor_role=meta.get('actor_role') if meta else None,
+            subject_user_id=meta.get('student_id') or meta.get('student_user_id') if meta else None,
+            entity_type=meta.get('entity_type') if meta else None,
+            entity_id=meta.get('entity_id') or meta.get('lesson_id') or meta.get('assignment_id') if meta else None,
+            batch_id=meta.get('batch_id') if meta else None,
+            source=meta.get('source', 'web') if meta else 'web',
+        )
+        suppress, reason = should_suppress_notification(
+            event_ctx,
+            int(user_id),
+            recipient_role=meta.get('recipient_role') if meta else None,
+        )
+        if suppress:
+            logger.info(
+                "telegram_notification_mirror_suppressed user_id=%s kind=%s reason=%s",
+                user_id, kind, reason,
+            )
+            return
+
+        from app.telegram.user_notify import is_notification_enabled_for_user
+        recipient_role = meta.get('recipient_role') if meta else None
+        if not is_notification_enabled_for_user(int(user_id), role=recipient_role, kind=kind):
+            logger.info(
+                "telegram_notification_mirror_suppressed_by_preference user_id=%s kind=%s role=%s",
+                user_id, kind, recipient_role,
+            )
+            return
 
         telegram_text, reply_markup = render_telegram_notification(
             user_id=int(user_id),
@@ -241,12 +274,15 @@ def notify_student_and_parents(student: Student, *, kind: str, title: str, body:
     student_name = getattr(student, 'name', None) or getattr(st_user, 'username', None)
     student_meta = dict(meta or {})
     student_meta.setdefault('student_name', student_name)
-    student_meta.setdefault('student_id', st_user.id)
+    student_meta.setdefault('student_id', getattr(student, 'student_id', None))
+    student_meta.setdefault('student_user_id', st_user.id)
+    student_meta.setdefault('recipient_role', 'student')
 
     notify_user(st_user.id, kind=kind, title=title, body=body, link_url=link_url, meta=student_meta)
     for parent_id in _get_parent_user_ids_for_student_user(st_user.id):
         parent_meta = dict(student_meta)
         parent_meta['parent_id'] = parent_id
+        parent_meta['recipient_role'] = 'parent'
         notify_user(parent_id, kind=kind, title=title, body=body, link_url=link_url, meta=parent_meta)
 
 

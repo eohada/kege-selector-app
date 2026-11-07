@@ -13,6 +13,8 @@ DOMAIN_PARENT = "par"
 DOMAIN_ADMIN = "adm"
 DOMAIN_CREATOR = "cre"
 DOMAIN_SETTINGS = "set"
+DOMAIN_PREVIEW = "preview"
+DOMAIN_BROADCAST = "bc"
 
 # Pagination defaults
 PAGE_SIZE_HW = 4

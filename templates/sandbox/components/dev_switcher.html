@@ -1,37 +1,37 @@
-{% if current_user is defined and current_user and current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or current_user.is_chief_admin()) %}
+{% if current_user is defined and current_user and current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or current_user.is_chief_admin() or session.get('impersonator_id') or session.get('is_impersonating')) %}
 <!-- DEV ROLE SWITCHER FLOATING WIDGET (Tactile 3D Bento, Alt + I restricted to admin/creator) -->
-<div id="dev-role-switcher-modal" onclick="if(event.target === this) window.toggleDevSwitcher()" style="position: fixed; inset: 0; z-index: 1000000; pointer-events: auto;" class="hidden bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 select-none">
-  <div class="bg-slate-900/95 backdrop-blur-xl text-white rounded-[2rem] p-4 sm:p-5 border-2 border-slate-700/80 shadow-[0_16px_48px_rgba(0,0,0,0.7)] w-full max-w-sm sm:max-w-md max-h-[88vh] my-auto flex flex-col gap-3 relative overflow-hidden">
+<div id="dev-role-switcher-modal" onclick="if(event.target === this) window.toggleDevSwitcher()" style="position: fixed; inset: 0; z-index: 1000000; pointer-events: auto; padding: max(10px, env(safe-area-inset-top, 10px)) max(10px, env(safe-area-inset-right, 10px)) max(10px, env(safe-area-inset-bottom, 10px)) max(10px, env(safe-area-inset-left, 10px));" class="hidden bg-slate-900/80 backdrop-blur-md flex items-center justify-center select-none">
+  <div class="bg-slate-900/95 backdrop-blur-xl text-white rounded-3xl p-3.5 sm:p-5 border-2 border-slate-700/80 shadow-[0_16px_48px_rgba(0,0,0,0.7)] w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-20px)] my-auto flex flex-col gap-2.5 relative overflow-hidden">
     
     <!-- Decorative Glow -->
     <div class="absolute -right-12 -top-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
     <!-- Header: Title + Close Button -->
-    <div class="shrink-0 flex items-center justify-between pb-2.5 border-b border-slate-800 relative z-10">
+    <div class="shrink-0 flex items-center justify-between pb-2 border-b border-slate-800 relative z-10">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-400 flex items-center justify-center font-bold">
-          <i class="ph-fill ph-user-switch text-lg"></i>
+        <div class="w-7 h-7 rounded-lg bg-amber-400/10 border border-amber-400/30 text-amber-400 flex items-center justify-center font-bold">
+          <i class="ph-fill ph-user-switch text-base"></i>
         </div>
         <div>
           <h4 class="text-sm font-black text-white leading-tight mb-0">Dev Role Switcher</h4>
           <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0">Песочница • Alt + I</p>
         </div>
       </div>
-      <button id="dev-role-switcher-close" type="button" onclick="window.toggleDevSwitcher()" class="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer border border-slate-700">
+      <button id="dev-role-switcher-close" type="button" onclick="window.toggleDevSwitcher()" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer border border-slate-700">
         <i class="ph-bold ph-x text-sm"></i>
       </button>
     </div>
 
     <!-- Active Status Card & Revert Button -->
-    <div id="dev-switcher-current-box" class="shrink-0 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80 space-y-2 relative z-10">
+    <div id="dev-switcher-current-box" class="shrink-0 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/80 space-y-1.5 relative z-10">
       <div class="flex items-center justify-between text-xs font-bold">
         <span class="text-slate-400 text-[10px] uppercase tracking-wider">Текущая сессия:</span>
-        <span id="dev-switcher-role-badge" class="px-2.5 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 rounded-lg text-[10px] uppercase font-black tracking-wider">
+        <span id="dev-switcher-role-badge" class="px-2 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 rounded-md text-[9px] uppercase font-black tracking-wider">
           {{ current_user.role if (current_user is defined and current_user and current_user.is_authenticated) else 'Гость' }}
         </span>
       </div>
-      <div class="flex items-center gap-2.5">
-        <img id="dev-switcher-user-avatar" src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-9 h-9 rounded-xl object-cover bg-slate-700 border border-slate-600 shrink-0" alt="Аватар пользователя">
+      <div class="flex items-center gap-2">
+        <img id="dev-switcher-user-avatar" src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-7 h-7 rounded-lg object-cover bg-slate-700 border border-slate-600 shrink-0" alt="Аватар пользователя">
         <div class="overflow-hidden min-w-0">
           <h5 id="dev-switcher-user-name" class="text-xs font-bold text-white truncate mb-0">{{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Не авторизован' }}</h5>
           <p id="dev-switcher-user-email" class="text-[10px] text-slate-400 truncate mb-0">{{ current_user.email if (current_user is defined and current_user and current_user.is_authenticated) else '' }}</p>
@@ -39,39 +39,51 @@
       </div>
 
       <!-- Mentor Selection Block for Student Session -->
-      <div id="dev-switcher-mentor-block" class="pt-2 border-t border-slate-700/60 space-y-1 {% if not (current_user is defined and current_user and current_user.role == 'student') %}hidden{% endif %}">
-        <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+      <div id="dev-switcher-mentor-block" class="pt-1.5 border-t border-slate-700/60 space-y-1 {% if not (current_user is defined and current_user and current_user.role == 'student') %}hidden{% endif %}">
+        <div class="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
           <span>Назначить наставника:</span>
         </div>
-        <select id="dev-switcher-mentor-select" onchange="setDevMentor(this.value)" class="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
+        <select id="dev-switcher-mentor-select" onchange="setDevMentor(this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
           <option value="">[Без наставника]</option>
         </select>
       </div>
 
       {% if oristera_next_switch_enabled %}
       <!-- Oristera Next Switcher Button -->
-      <a href="/oristera/toggle?to=oristera" id="dev-switcher-oristera-btn" class="w-full py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:to-pink-400 text-white font-black text-xs rounded-xl border-b-4 border-indigo-900 shadow-md flex items-center justify-center gap-2 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider">
+      <a href="/oristera/toggle?to=oristera" id="dev-switcher-oristera-btn" class="w-full py-1.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:to-pink-400 text-white font-black text-xs rounded-lg border-b-2 border-indigo-900 flex items-center justify-center gap-1.5 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider">
         <span>✨ Войти в Oristera Next</span>
       </a>
       {% endif %}
 
       <!-- Bright Red Revert Button if Impersonating -->
-      <a href="/sandbox/impersonate/revert" id="dev-switcher-revert-btn" class="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-4 border-rose-800 shadow-md flex items-center justify-center gap-2 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider {% if not session.get('impersonator_id') %}hidden{% endif %}">
-        <i class="ph-bold ph-arrow-u-down-left text-base"></i> Выйти из имперсонации
+      <a href="/sandbox/impersonate/revert" id="dev-switcher-revert-btn" class="w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-lg border-b-2 border-rose-800 flex items-center justify-center gap-1.5 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider {% if not session.get('impersonator_id') %}hidden{% endif %}">
+        <i class="ph-bold ph-arrow-u-down-left text-sm"></i> Выйти из имперсонации
       </a>
     </div>
 
-    <!-- Role Filter Tabs -->
-    <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 relative z-10 scrollbar-none">
-      <button type="button" class="dev-role-filter active px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-bold border border-indigo-500 cursor-pointer uppercase tracking-wider shrink-0" data-filter="all">Все</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="student">Ученики</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="tutor">Учителя</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="parent">Родители</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="admin">Админы</button>
+    <!-- Real-time User Search Bar -->
+    <div class="shrink-0 relative z-10">
+      <div class="relative flex items-center">
+        <i class="ph ph-magnifying-glass absolute left-2.5 text-slate-400 text-sm pointer-events-none"></i>
+        <input type="search" id="dev-switcher-search" placeholder="Поиск пользователя..." autocomplete="off" class="w-full pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors">
+      </div>
+    </div>
+
+    <!-- Role Filter Tabs with Horizontal Scroll & Visual Indicators -->
+    <div class="shrink-0 relative z-10">
+      <div id="dev-role-tabs-wrap" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pr-8 select-none" style="-webkit-overflow-scrolling: touch; scroll-behavior: smooth;">
+        <button type="button" class="dev-role-filter active shrink-0 whitespace-nowrap px-3 py-1 bg-indigo-600 text-white rounded-lg text-[11px] font-bold border border-indigo-500 cursor-pointer uppercase tracking-wider transition-colors" data-filter="all">Все</button>
+        <button type="button" class="dev-role-filter shrink-0 whitespace-nowrap px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider transition-colors" data-filter="student">Ученики</button>
+        <button type="button" class="dev-role-filter shrink-0 whitespace-nowrap px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider transition-colors" data-filter="tutor">Учителя</button>
+        <button type="button" class="dev-role-filter shrink-0 whitespace-nowrap px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider transition-colors" data-filter="parent">Родители</button>
+        <button type="button" class="dev-role-filter shrink-0 whitespace-nowrap px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider transition-colors" data-filter="admin">Администраторы</button>
+      </div>
+      <div id="dev-role-tabs-fade-right" class="pointer-events-none absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-slate-900 to-transparent transition-opacity duration-200"></div>
+      <div id="dev-role-tabs-fade-left" class="pointer-events-none absolute left-0 top-0 bottom-1 w-8 bg-gradient-to-r from-slate-900 to-transparent transition-opacity duration-200 opacity-0"></div>
     </div>
 
     <!-- User List Scroll Container -->
-    <div id="dev-switcher-user-list" class="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 relative z-10 max-h-56 sm:max-h-64">
+    <div id="dev-switcher-user-list" class="flex-1 min-h-[140px] overflow-y-auto space-y-1.5 pr-1 relative z-10">
       <div class="text-center py-4 text-xs font-bold text-slate-400 animate-pulse">Загрузка пула пользователей...</div>
     </div>
 
@@ -174,7 +186,7 @@
           }
         }
         
-        renderUsers('all');
+        renderUsers(currentRoleFilter, currentSearchQuery);
       })
       .catch(err => {
         console.error('Failed to load dev test users:', err);
@@ -202,7 +214,13 @@
     });
   };
 
-  function renderUsers(roleFilter) {
+  let currentRoleFilter = 'all';
+  let currentSearchQuery = '';
+
+  function renderUsers(roleFilter, searchQuery) {
+    if (roleFilter !== undefined) currentRoleFilter = roleFilter;
+    if (searchQuery !== undefined) currentSearchQuery = String(searchQuery).trim().toLowerCase();
+
     const userListContainer = document.getElementById('dev-switcher-user-list');
     if (!userListContainer) return;
     if (!cachedUsers.length) {
@@ -211,11 +229,33 @@
     }
 
     const filtered = cachedUsers.filter(u => {
-      if (roleFilter === 'all') return true;
-      if (roleFilter === 'tutor') return u.role === 'tutor' || u.role === 'teacher';
-      if (roleFilter === 'admin') return u.role === 'admin' || u.role === 'creator' || u.role === 'chief_admin' || u.role === 'chief_tester' || u.role === 'tester';
-      return u.role === roleFilter;
+      let matchRole = false;
+      if (currentRoleFilter === 'all') matchRole = true;
+      else if (currentRoleFilter === 'student') matchRole = (u.role === 'student');
+      else if (currentRoleFilter === 'tutor') matchRole = (u.role === 'tutor' || u.role === 'teacher');
+      else if (currentRoleFilter === 'parent') matchRole = (u.role === 'parent');
+      else if (currentRoleFilter === 'admin') matchRole = (u.role === 'admin' || u.role === 'creator' || u.role === 'chief_admin' || u.role === 'chief_tester' || u.role === 'tester');
+      else matchRole = (u.role === currentRoleFilter);
+
+      if (!matchRole) return false;
+
+      if (currentSearchQuery) {
+        const q = currentSearchQuery;
+        const uname = String(u.username || '').toLowerCase();
+        const name = String(u.name || '').toLowerCase();
+        const email = String(u.email || '').toLowerCase();
+        const role = String(u.role || '').toLowerCase();
+        if (!uname.includes(q) && !name.includes(q) && !email.includes(q) && !role.includes(q)) {
+          return false;
+        }
+      }
+      return true;
     });
+
+    if (!filtered.length) {
+      userListContainer.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400">Ничего не найдено.</div>';
+      return;
+    }
 
     userListContainer.innerHTML = filtered.map(u => {
       let roleBadgeColor = 'bg-slate-700 text-slate-300';
@@ -247,6 +287,23 @@
     }).join('');
   }
 
+  // Dynamic scroll fade indicator update
+  const tabsWrap = document.getElementById('dev-role-tabs-wrap');
+  const fadeRight = document.getElementById('dev-role-tabs-fade-right');
+  const fadeLeft = document.getElementById('dev-role-tabs-fade-left');
+  function updateTabsFade() {
+    if (!tabsWrap) return;
+    const maxScroll = tabsWrap.scrollWidth - tabsWrap.clientWidth;
+    if (fadeLeft) fadeLeft.style.opacity = tabsWrap.scrollLeft > 6 ? '1' : '0';
+    if (fadeRight) fadeRight.style.opacity = (maxScroll - tabsWrap.scrollLeft) > 6 ? '1' : '0';
+  }
+  if (tabsWrap) {
+    tabsWrap.addEventListener('scroll', updateTabsFade, { passive: true });
+    // Run initial check
+    setTimeout(updateTabsFade, 50);
+  }
+
+  // Bind role filter tabs
   document.querySelectorAll('.dev-role-filter').forEach(btn => {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.dev-role-filter').forEach(b => {
@@ -256,10 +313,36 @@
       this.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
       this.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
       
+      this.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      setTimeout(updateTabsFade, 250);
+
       const role = this.getAttribute('data-filter');
-      renderUsers(role);
+      renderUsers(role, currentSearchQuery);
     });
   });
+
+  // Bind search input
+  const searchInput = document.getElementById('dev-switcher-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      renderUsers(currentRoleFilter, this.value);
+    });
+  }
+
+  // Close modal when user link is clicked
+  const userListContainer = document.getElementById('dev-switcher-user-list');
+  if (userListContainer) {
+    userListContainer.addEventListener('click', function(e) {
+      const link = e.target.closest('a[href^="/sandbox/impersonate/"]');
+      if (link) {
+        const modal = getModal();
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.style.display = 'none';
+        }
+      }
+    });
+  }
 
 })();
 </script>

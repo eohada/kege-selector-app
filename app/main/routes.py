@@ -3828,25 +3828,49 @@ def universal_profile_view(user_id=None):
             ).limit(12).all()
 
         formatted_goals = []
+        goal_event_labels = {
+            'manual': 'Без автоматического отслеживания',
+            'streak': 'Дни серии активности',
+            'tasks': 'Решённые задания',
+            'theory': 'Изученные темы',
+            'lessons': 'Пройденные уроки',
+        }
         for goal in weekly_goals:
             curr = 0
             target = 1
+            parsed_notes = {}
             if goal.notes:
                 try:
                     parsed = json.loads(goal.notes)
                     if isinstance(parsed, dict):
+                        parsed_notes = parsed
                         curr = int(parsed.get('current', 0))
                         target = max(1, int(parsed.get('target', 1)))
                 except Exception:
                     pass
 
-            goal_title_lower = (goal.title or '').lower()
-            if 'стрик' in goal_title_lower or 'streak' in goal_title_lower:
-                curr = min(target, real_streak)
-            elif 'тем' in goal_title_lower or 'теории' in goal_title_lower:
-                curr = min(target, max(curr, read_theory_count))
-            elif 'задач' in goal_title_lower:
-                curr = min(target, max(curr, len(completed_submissions)))
+            goal_event = parsed_notes.get('event')
+            if isinstance(goal_event, str):
+                goal_event = goal_event.strip().lower()
+            else:
+                goal_event = None
+            if goal_event in goal_event_labels and goal_event != 'manual':
+                if goal_event == 'streak':
+                    curr = min(target, real_streak)
+                elif goal_event == 'tasks':
+                    curr = min(target, len(completed_submissions))
+                elif goal_event == 'theory':
+                    curr = min(target, read_theory_count)
+                elif goal_event == 'lessons':
+                    curr = min(target, lesson_completed)
+            elif goal_event not in goal_event_labels:
+                goal_title_lower = (goal.title or '').lower()
+                if 'стрик' in goal_title_lower or 'streak' in goal_title_lower:
+                    curr = min(target, real_streak)
+                elif 'тем' in goal_title_lower or 'теории' in goal_title_lower:
+                    curr = min(target, max(curr, read_theory_count))
+                elif 'задач' in goal_title_lower:
+                    curr = min(target, max(curr, len(completed_submissions)))
 
             if goal.status == 'done' or curr >= target:
                 pct = 100
@@ -3860,7 +3884,9 @@ def universal_profile_view(user_id=None):
                 'current_count': curr,
                 'target_count': target,
                 'count_display': f"{curr} / {target}",
-                'progress_pct': pct
+                'progress_pct': pct,
+                'event': goal_event if goal_event in goal_event_labels else 'manual',
+                'event_label': goal_event_labels.get(goal_event, goal_event_labels['manual']),
             })
 
         # Real activities & timeline (strictly real events, no fake 2024 dates)
@@ -4243,6 +4269,19 @@ def universal_profile_view(user_id=None):
             except Exception:
                 logger.exception('Unable to build synthetic adaptive learning profile summary')
 
+    can_view_course_balance = role == 'student' and (is_owner or can_manage_student)
+    context['can_view_course_balance'] = can_view_course_balance
+    if can_view_course_balance:
+        try:
+            from app.utils.subscription_access import get_course_lesson_balance_summary
+            context['course_balance_summary'] = get_course_lesson_balance_summary(target_user.id)
+        except Exception:
+            db.session.rollback()
+            logger.exception('Unable to load course lesson balances for student profile %s', target_user.id)
+            context['course_balance_summary'] = {
+                'courses': [], 'total_lessons': 0, 'has_active_subscriptions': False, 'load_error': True,
+            }
+
     return render_template('sandbox/profile.html', **context)
 
 
@@ -4495,11 +4534,14 @@ def _safe_synthetic_student_user(user):
 
 
 _CANONICAL_DEV_IMPERSONATION_USERS = {
-    'creator', 'chief_admin', 'demo_admin_1',
-    'qa_pool_teacher_1', 'demo_teacher_2', 'demo_tutor_1',
+    'creator', 'chief_admin', 'chief_admin_2', 'chief_admin_3',
+    'demo_admin_1', 'demo_admin_2', 'demo_auditor',
+    'qa_pool_teacher_1', 'demo_teacher_2', 'demo_teacher_3',
+    'demo_tutor_1', 'demo_tutor_2', 'demo_tutor_3',
     'demo_student_1', 'demo_student_2', 'demo_student_3',
     'demo_parent_1', 'demo_parent_2', 'demo_parent_3',
-    'qa_pool_admin_2', 'qa_pool_student_4', 'demo_auditor',
+    'qa_pool_admin_2', 'qa_pool_chief_tester_2', 'qa_pool_chief_tester_3',
+    'qa_pool_student_4', 'qa_pool_tester_2', 'qa_pool_tester_3',
 }
 
 
@@ -4528,7 +4570,7 @@ def _require_dev_tools(*, administrator_only=False):
 @main_bp.route('/sandbox/api/impersonate/users', methods=['GET'])
 @main_bp.route('/api/impersonate/users', methods=['GET'])
 def dev_get_users_api():
-    """API отдачи 15 сбалансированных пользователей (по 3 на каждую роль) для виджета Dev Role Switcher (Alt + I)."""
+    """Отдаёт каноничный пул: по 3 профиля каждой роли и один creator."""
     _require_dev_tools()
 
     # В изолированном pytest схема создаётся уже после app bootstrap, поэтому
@@ -4539,30 +4581,31 @@ def dev_get_users_api():
         ensure_reserved_creator()
 
     target_pool = [
-        # 👑 Админы / Создатель (3)
-        {'username': 'creator', 'role': 'creator', 'custom_status': '👑 Создатель Платформы', 'email': 'creator@boostudy.ru'},
-        {'username': 'chief_admin', 'role': 'chief_admin', 'custom_status': '🛡️ Главный Администратор', 'email': 'chief_admin@boostudy.ru'},
-        {'username': 'demo_admin_1', 'role': 'admin', 'custom_status': '🛡️ Системный Администратор', 'email': 'demo_admin_1@boostudy.ru'},
-
-        # 👨‍🏫 Преподаватели / Тьюторы (3)
-        {'username': 'qa_pool_teacher_1', 'role': 'teacher', 'custom_status': '👨‍🏫 Преподаватель Информатики', 'email': 'teacher1@boostudy.ru'},
-        {'username': 'demo_teacher_2', 'role': 'teacher', 'custom_status': '👨‍🏫 Преподаватель Математики', 'email': 'teacher2@boostudy.ru'},
-        {'username': 'demo_tutor_1', 'role': 'tutor', 'custom_status': '🧑‍🏫 Тьютор / Проверяющий', 'email': 'tutor1@boostudy.ru'},
-
-        # 🎓 Ученики (3)
-        {'username': 'demo_student_1', 'role': 'student', 'custom_status': '🎓 Ученик (11 класс)', 'email': 'student1@boostudy.ru'},
-        {'username': 'demo_student_2', 'role': 'student', 'custom_status': '🎓 Ученик (10 класс)', 'email': 'student2@boostudy.ru'},
-        {'username': 'demo_student_3', 'role': 'student', 'custom_status': '🎓 Ученик (9 класс)', 'email': 'student3@boostudy.ru'},
-
-        # 👨‍👩‍👧 Родители (3)
-        {'username': 'demo_parent_1', 'role': 'parent', 'custom_status': '👨‍👩‍👧 Родитель (Семья 1)', 'email': 'parent1@boostudy.ru'},
-        {'username': 'demo_parent_2', 'role': 'parent', 'custom_status': '👨‍👩‍👧 Родитель (Семья 2)', 'email': 'parent2@boostudy.ru'},
-        {'username': 'demo_parent_3', 'role': 'parent', 'custom_status': '👨‍👩‍👧 Родитель (Семья 3)', 'email': 'parent3@boostudy.ru'},
-
-        # 🧪 QA / Тестировщики / Аудитор (3)
-        {'username': 'qa_pool_admin_2', 'role': 'chief_tester', 'custom_status': '🧪 Главный Тестировщик', 'email': 'chief_tester@boostudy.ru'},
-        {'username': 'qa_pool_student_4', 'role': 'tester', 'custom_status': '🎓 Тестовый Ученик', 'email': 'tester4@boostudy.ru'},
-        {'username': 'demo_auditor', 'role': 'admin', 'custom_status': '👁️ Внешний Аудитор', 'email': 'auditor@boostudy.ru'},
+        {'username': 'creator', 'role': 'creator', 'custom_status': 'Создатель платформы', 'email': 'creator@boostudy.ru'},
+        {'username': 'chief_admin', 'role': 'chief_admin', 'custom_status': 'Главный администратор', 'email': 'chief_admin@boostudy.ru'},
+        {'username': 'chief_admin_2', 'role': 'chief_admin', 'custom_status': 'Главный администратор 2', 'email': 'chief_admin2@boostudy.ru'},
+        {'username': 'chief_admin_3', 'role': 'chief_admin', 'custom_status': 'Главный администратор 3', 'email': 'chief_admin3@boostudy.ru'},
+        {'username': 'demo_admin_1', 'role': 'admin', 'custom_status': 'Администратор 1', 'email': 'demo_admin_1@boostudy.ru'},
+        {'username': 'demo_admin_2', 'role': 'admin', 'custom_status': 'Администратор 2', 'email': 'demo_admin_2@boostudy.ru'},
+        {'username': 'demo_auditor', 'role': 'admin', 'custom_status': 'Администратор аудита', 'email': 'auditor@boostudy.ru'},
+        {'username': 'qa_pool_teacher_1', 'role': 'teacher', 'custom_status': 'Преподаватель информатики', 'email': 'teacher1@boostudy.ru'},
+        {'username': 'demo_teacher_2', 'role': 'teacher', 'custom_status': 'Преподаватель математики', 'email': 'teacher2@boostudy.ru'},
+        {'username': 'demo_teacher_3', 'role': 'teacher', 'custom_status': 'Преподаватель 3', 'email': 'teacher3@boostudy.ru'},
+        {'username': 'demo_tutor_1', 'role': 'tutor', 'custom_status': 'Тьютор 1', 'email': 'tutor1@boostudy.ru'},
+        {'username': 'demo_tutor_2', 'role': 'tutor', 'custom_status': 'Тьютор 2', 'email': 'tutor2@boostudy.ru'},
+        {'username': 'demo_tutor_3', 'role': 'tutor', 'custom_status': 'Тьютор 3', 'email': 'tutor3@boostudy.ru'},
+        {'username': 'demo_student_1', 'role': 'student', 'custom_status': 'Ученик · 11 класс', 'email': 'student1@boostudy.ru'},
+        {'username': 'demo_student_2', 'role': 'student', 'custom_status': 'Ученик · 10 класс', 'email': 'student2@boostudy.ru'},
+        {'username': 'demo_student_3', 'role': 'student', 'custom_status': 'Ученик · 9 класс', 'email': 'student3@boostudy.ru'},
+        {'username': 'demo_parent_1', 'role': 'parent', 'custom_status': 'Родитель ученика 1', 'email': 'parent1@boostudy.ru'},
+        {'username': 'demo_parent_2', 'role': 'parent', 'custom_status': 'Родитель ученика 2', 'email': 'parent2@boostudy.ru'},
+        {'username': 'demo_parent_3', 'role': 'parent', 'custom_status': 'Родитель ученика 3', 'email': 'parent3@boostudy.ru'},
+        {'username': 'qa_pool_admin_2', 'role': 'chief_tester', 'custom_status': 'Главный тестировщик 1', 'email': 'chief_tester@boostudy.ru'},
+        {'username': 'qa_pool_chief_tester_2', 'role': 'chief_tester', 'custom_status': 'Главный тестировщик 2', 'email': 'chief_tester2@boostudy.ru'},
+        {'username': 'qa_pool_chief_tester_3', 'role': 'chief_tester', 'custom_status': 'Главный тестировщик 3', 'email': 'chief_tester3@boostudy.ru'},
+        {'username': 'qa_pool_student_4', 'role': 'tester', 'custom_status': 'Тестировщик 1', 'email': 'tester4@boostudy.ru'},
+        {'username': 'qa_pool_tester_2', 'role': 'tester', 'custom_status': 'Тестировщик 2', 'email': 'tester2@boostudy.ru'},
+        {'username': 'qa_pool_tester_3', 'role': 'tester', 'custom_status': 'Тестировщик 3', 'email': 'tester3@boostudy.ru'},
     ]
 
     # Pytest создаёт собственные изолированные роли. В остальных окружениях
@@ -4578,23 +4621,6 @@ def dev_get_users_api():
             }
             for user in User.query.filter(User.is_active.is_(True)).order_by(User.id.asc()).limit(200).all()
         ]
-    elif _synthetic_role_switch_enabled():
-        allowed_ids = _synthetic_student_user_ids()
-        if allowed_ids:
-            existing_names = {item['username'] for item in target_pool}
-            synthetic_students = User.query.filter(
-                User.id.in_(allowed_ids), User.is_active.is_(True), User.role == 'student'
-            ).order_by(User.id.asc()).all()
-            for user in synthetic_students:
-                if user.username in existing_names or not _safe_synthetic_student_user(user):
-                    continue
-                target_pool.append({
-                    'username': user.username,
-                    'role': user.role,
-                    'custom_status': getattr(user, 'custom_status', None) or '🧪 Синтетический ученик',
-                    'email': user.email,
-                })
-                existing_names.add(user.username)
     target_usernames = [t['username'] for t in target_pool]
 
     # Загружаем только реальные активные аккаунты в заданном порядке.
@@ -5257,10 +5283,23 @@ def api_profile_goal_add():
     title = (data.get('title') or '').strip()
     if not title or len(title) > 300:
         return jsonify({'status': 'error', 'message': 'Введите цель длиной до 300 символов.'}), 400
+    try:
+        target = max(1, min(100000, int(data.get('target') or 1)))
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'message': 'Укажите целое плановое количество.'}), 400
+    event = (data.get('event') or 'manual').strip().lower()
+    if event not in {'manual', 'streak', 'tasks', 'theory', 'lessons'}:
+        return jsonify({'status': 'error', 'message': 'Выберите доступное событие для отслеживания.'}), 400
     target_sid = data.get('student_id')
     target_uid = data.get('user_id')
     student = _current_student_profile_or_404(explicit_student_id=target_sid, explicit_user_id=target_uid)
-    item = StudentLearningPlanItem(student_id=student.student_id, title=title, status='planned', created_by_user_id=current_user.id)
+    item = StudentLearningPlanItem(
+        student_id=student.student_id,
+        title=title,
+        notes=json.dumps({'current': 0, 'target': target, 'event': event}, ensure_ascii=False),
+        status='planned',
+        created_by_user_id=current_user.id,
+    )
     db.session.add(item)
     db.session.commit()
     return jsonify({'status': 'ok', 'item_id': item.item_id}), 201
@@ -5315,7 +5354,16 @@ def api_profile_goal_edit(item_id):
         try:
             c = max(0, int(current_val))
             t = max(1, int(target_val))
-            item.notes = json.dumps({'current': c, 'target': t}, ensure_ascii=False)
+            goal_notes = {}
+            if item.notes:
+                try:
+                    saved_notes = json.loads(item.notes)
+                    if isinstance(saved_notes, dict):
+                        goal_notes = saved_notes
+                except (TypeError, ValueError):
+                    pass
+            goal_notes.update({'current': c, 'target': t})
+            item.notes = json.dumps(goal_notes, ensure_ascii=False)
             if c >= t:
                 item.status = 'done'
             else:

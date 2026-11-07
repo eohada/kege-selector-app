@@ -2430,6 +2430,7 @@ class UserProfile(db.Model):
     telegram_link_token_expires = db.Column(db.DateTime, nullable=True)
     telegram_last_interaction_at = db.Column(db.DateTime, nullable=True, index=True)  # Последняя активность в боте (webhook)
     telegram_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)  # Включены ли уведомления
+    telegram_blocked_at = db.Column(db.DateTime, nullable=True, index=True)  # Метка временной блокировки бота пользователем (403)
     
     tg_notify_lesson_reminder = db.Column(db.Boolean, default=True, nullable=False)  # Напоминания об уроках
     tg_notify_homework_checked = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ проверено
@@ -2487,14 +2488,18 @@ class TelegramStartLead(db.Model):
 
 
 class TelegramBroadcast(db.Model):
-    """Массовая рассылка в Telegram (инициатор — creator/chief_admin через Mini App)."""
+    """Массовая рассылка в Telegram (инициатор — creator/chief_admin/teacher)."""
     __tablename__ = 'TelegramBroadcasts'
     broadcast_id = db.Column(db.Integer, primary_key=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=True)  # Название кампании рассылки
+    category = db.Column(db.String(50), default='announcement', nullable=False)  # news|announcement|org
+    sender_role = db.Column(db.String(50), nullable=True)  # creator|admin|teacher
     message_text = db.Column(db.Text, nullable=False)
     photo_url = db.Column(db.String(2000), nullable=True)  # Опционально URL для sendPhoto
     status = db.Column(db.String(32), default='pending', nullable=False)  # pending|running|completed|failed|cancelled
     recipient_scope = db.Column(db.String(64), default='all_linked_students', nullable=False)
+    is_dry_run = db.Column(db.Boolean, default=False, nullable=False)  # Флаг симуляции
     total_planned = db.Column(db.Integer, default=0, nullable=False)
     sent_ok = db.Column(db.Integer, default=0, nullable=False)
     sent_failed = db.Column(db.Integer, default=0, nullable=False)
@@ -2509,6 +2514,29 @@ class TelegramBroadcast(db.Model):
 
     def __repr__(self):
         return f'<TelegramBroadcast {self.broadcast_id} status={self.status}>'
+
+
+class UserNotificationPreference(db.Model):
+    """Гранулярная настройка уведомления для конкретной роли пользователя."""
+    __tablename__ = 'UserNotificationPreferences'
+
+    pref_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    role = db.Column(db.String(32), nullable=False, index=True)
+    event_kind = db.Column(db.String(64), nullable=False, index=True)
+    is_enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notification_preferences', lazy=True, cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'role', 'event_kind', name='uq_user_role_event_pref'),
+        db.Index('ix_user_role_event_pref', 'user_id', 'role', 'event_kind'),
+    )
+
+    def __repr__(self):
+        return f'<UserNotificationPreference user={self.user_id} role={self.role} kind={self.event_kind} enabled={self.is_enabled}>'
 
 
 class SubmissionTelegramDeadlineSent(db.Model):
@@ -2740,6 +2768,9 @@ class UserSubscription(db.Model):
     started_at = db.Column(db.DateTime, nullable=True)
     ends_at = db.Column(db.DateTime, nullable=True)
     lessons_remaining = db.Column(db.Integer, nullable=True)  # оставшееся количество уроков
+    exam = db.Column(db.String(50), nullable=True)  # снимок направления тарифа: ege|oge
+    subject = db.Column(db.String(50), nullable=True)  # снимок предмета тарифа: inf|math
+    level = db.Column(db.String(50), nullable=True)  # уровень предмета, например prof|base
     note = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=moscow_now)

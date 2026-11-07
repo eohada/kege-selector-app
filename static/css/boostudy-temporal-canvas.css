@@ -1,0 +1,1321 @@
+/* ==========================================================================
+   BooStudy — Teacher Control Center: Sprint 2.7 TEMPORAL CANVAS
+   Unified Living Temporal Workspace for Educators
+   ========================================================================== */
+
+:root {
+  --tc-hour-height: 64px;
+  --tc-hour-height-compact: 48px;
+  --tc-hour-height-focus: 80px;
+  --tc-gutter-width: 60px;
+  --tc-primary: #4F46E5;
+  --tc-primary-hover: #4338CA;
+  --tc-primary-light: #EEF2FF;
+  --tc-surface: #FFFFFF;
+  --tc-canvas-bg: #F8FAFC;
+  --tc-border-subtle: #E2E8F0;
+  --tc-border-strong: #CBD5E1;
+  --tc-text-main: #0F172A;
+  --tc-text-muted: #64748B;
+  --tc-dock-width: 360px;
+}
+
+/* Universal box-sizing inside temporal canvas */
+.tc-workspace,
+.tc-workspace *,
+.tc-workspace *::before,
+.tc-workspace *::after {
+  box-sizing: border-box;
+}
+
+/* Base Workspace Layout */
+.tc-workspace {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  color: var(--tc-text-main);
+}
+
+/* --------------------------------------------------------------------------
+   1. Calendar Command Bar
+   -------------------------------------------------------------------------- */
+.tc-command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: #FFFFFF;
+  border: 1px solid var(--tc-border-subtle);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.tc-command-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tc-btn-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-bottom: 2px solid #CBD5E1;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.tc-btn-nav:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+}
+.tc-btn-nav:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
+.tc-date-range {
+  font-size: 1.125rem;
+  font-weight: 900;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  min-width: max-content;
+}
+
+/* Segmented View Switcher Pills */
+.tc-view-pills {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.875rem;
+  gap: 0.25rem;
+}
+
+.tc-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748B;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.tc-view-btn:hover {
+  color: #1E293B;
+}
+.tc-view-btn.is-active {
+  background: #FFFFFF;
+  color: var(--tc-primary);
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Tool buttons (Layers, Filters, Density) */
+.tc-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-bottom: 2px solid #CBD5E1;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  position: relative;
+}
+.tc-tool-btn:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  color: #0F172A;
+}
+.tc-tool-btn.is-active {
+  background: var(--tc-primary-light);
+  border-color: #C7D2FE;
+  color: var(--tc-primary);
+}
+.tc-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  background: #EEF2FF;
+  border: 1px solid #C7D2FE;
+  color: #4F46E5;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+/* Primary 3D Action Button */
+.tc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 1rem;
+  background: var(--tc-primary);
+  color: #FFFFFF;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  border: 1px solid #4338CA;
+  border-bottom: 3px solid #3730A3;
+  border-radius: 0.75rem;
+  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.25);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.tc-btn-primary:hover {
+  background: #4338CA;
+}
+.tc-btn-primary:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Main Workstation Area: Temporal Canvas + Context Dock
+   -------------------------------------------------------------------------- */
+.tc-workstation {
+  display: flex;
+  gap: 1.25rem;
+  width: 100%;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* Canvas Surface Container */
+.tc-canvas-card {
+  flex: 1 1 0%;
+  min-width: 0;
+  background: #FFFFFF;
+  border: 1px solid var(--tc-border-subtle);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Days Header */
+.tc-days-header-strip {
+  display: flex;
+  border-bottom: 1px solid #E2E8F0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.tc-gutter-header {
+  width: var(--tc-gutter-width);
+  flex-shrink: 0;
+  border-right: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 0.25rem;
+}
+.tc-tz-label {
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: #94A3B8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tc-day-header-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.tc-day-header-cell {
+  padding: 0.75rem 0.5rem;
+  border-right: 1px solid #F1F5F9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+}
+.tc-day-header-cell:last-child {
+  border-right: none;
+}
+.tc-day-header-cell:hover {
+  background: #F8FAFC;
+}
+.tc-day-header-cell.is-today {
+  background: #F5F7FF;
+}
+
+.tc-day-name {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tc-day-number {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #0F172A;
+  line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition: all 0.15s ease;
+}
+.tc-day-header-cell.is-today .tc-day-number {
+  background: var(--tc-primary);
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+}
+
+.tc-day-load-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+.tc-day-header-cell.is-today .tc-day-load-badge {
+  background: #E0E7FF;
+  color: #4338CA;
+}
+
+/* --------------------------------------------------------------------------
+   3. Temporal Canvas Body & Exact Pixel Geometry
+   -------------------------------------------------------------------------- */
+.tc-canvas-body {
+  display: flex;
+  flex: 1;
+  min-height: 580px;
+  max-height: calc(100vh - 230px);
+  overflow-y: auto;
+  position: relative;
+  scrollbar-gutter: stable;
+}
+
+/* Time Gutter */
+.tc-time-gutter {
+  width: var(--tc-gutter-width);
+  flex-shrink: 0;
+  border-right: 1px solid #E2E8F0;
+  background: #FAFAFA;
+  display: flex;
+  flex-direction: column;
+}
+
+.tc-time-cell {
+  height: var(--tc-hour-height, 64px);
+  min-height: var(--tc-hour-height, 64px);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 8px 0 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #94A3B8;
+  transform: translateY(-7px);
+  user-select: none;
+  line-height: 1;
+}
+
+/* Day Columns Grid */
+.tc-columns-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  position: relative;
+}
+
+.tc-day-column {
+  position: relative;
+  border-right: 1px solid #F1F5F9;
+  background: #FFFFFF;
+}
+.tc-day-column:last-child {
+  border-right: none;
+}
+.tc-day-column.is-today {
+  background: rgba(245, 247, 255, 0.4);
+}
+
+/* Background Slot Cells */
+.tc-slot-cell {
+  height: var(--tc-hour-height, 64px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid #F1F5F9;
+  position: relative;
+  transition: background 0.1s ease;
+}
+.tc-slot-cell:hover {
+  background: rgba(241, 245, 249, 0.5);
+}
+
+/* Half-hour delicate divider */
+.tc-slot-cell::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-bottom: 1px dashed rgba(226, 232, 240, 0.6);
+  pointer-events: none;
+}
+
+/* Non-working Hours Hatching Layer */
+.tc-slot-cell.is-non-working {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(248, 250, 252, 0.8),
+    rgba(248, 250, 252, 0.8) 6px,
+    rgba(241, 245, 249, 0.6) 6px,
+    rgba(241, 245, 249, 0.6) 12px
+  );
+}
+
+/* Free Recommended Window Slot Layer */
+.tc-slot-cell.is-free-window {
+  background: rgba(236, 253, 245, 0.65);
+}
+.tc-slot-cell.is-free-window::before {
+  content: "+ Свободное окно";
+  position: absolute;
+  top: 0.375rem;
+  left: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  color: #059669;
+  pointer-events: none;
+}
+
+/* Live Current Time Indicator */
+.tc-now-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #EF4444;
+  z-index: 15;
+  pointer-events: none;
+}
+.tc-now-marker::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #EF4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+}
+
+/* --------------------------------------------------------------------------
+   4. Lesson Objects Anatomy (Tactile 3D Living Cards)
+   -------------------------------------------------------------------------- */
+.tc-lesson-card {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 0.875rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  padding: 0.375rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  z-index: 10;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tc-lesson-card:hover {
+  transform: translateY(-1.5px);
+  border-color: #94A3B8;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  z-index: 12;
+}
+
+.tc-lesson-card.is-selected {
+  border-color: var(--tc-primary);
+  box-shadow: 0 0 0 2px var(--tc-primary), 0 8px 20px rgba(79, 70, 229, 0.18);
+  z-index: 14;
+}
+
+/* Subject Accent Left Stripe */
+.tc-lesson-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-top-left-radius: 0.875rem;
+  border-bottom-left-radius: 0.875rem;
+}
+.tc-lesson-card.subj-indigo { border-color: #C7D2FE; }
+.tc-lesson-card.subj-indigo::before { background: #4F46E5; }
+
+.tc-lesson-card.subj-sky { border-color: #BAE6FD; }
+.tc-lesson-card.subj-sky::before { background: #0284C7; }
+
+.tc-lesson-card.subj-emerald { border-color: #A7F3D0; }
+.tc-lesson-card.subj-emerald::before { background: #059669; }
+
+.tc-lesson-card.subj-amber { border-color: #FDE68A; }
+.tc-lesson-card.subj-amber::before { background: #D97706; }
+
+/* Status Live (In Progress) Special Treatment */
+.tc-lesson-card.status-in_progress {
+  background: #FFFDF5;
+  border: 2px solid #F59E0B;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+}
+.tc-lesson-card.status-in_progress::before {
+  background: #F59E0B;
+  width: 5px;
+}
+
+/* Card Internal Typography & Layout */
+.tc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.tc-card-time {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: #1E293B;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1;
+}
+
+.tc-card-duration {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 0.25rem;
+  line-height: 1;
+}
+
+.tc-card-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #F59E0B;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  animation: tcPulse 1.8s infinite;
+  flex-shrink: 0;
+}
+@keyframes tcPulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.tc-card-student {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.tc-card-topic {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.tc-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.tc-badge-hw {
+  font-size: 0.5625rem;
+  font-weight: 800;
+  color: #059669;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tc-badge-series {
+  font-size: 0.625rem;
+  color: #6366F1;
+}
+
+/* Resize handle at bottom */
+.tc-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 15;
+}
+.tc-resize-handle:hover {
+  background: rgba(79, 70, 229, 0.2);
+}
+
+/* Overlapping Sub-column layouts */
+.tc-lesson-card.subcol-0 {
+  left: 3px;
+  right: calc(50% + 2px);
+}
+.tc-lesson-card.subcol-1 {
+  left: calc(50% + 2px);
+  right: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   5. Direct Manipulation (Drag Ghost & Collision Signals)
+   -------------------------------------------------------------------------- */
+.tc-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: #FFFFFF;
+  border: 2px solid var(--tc-primary);
+  border-radius: 0.875rem;
+  box-shadow: 0 16px 32px rgba(79, 70, 229, 0.25);
+  opacity: 0.95;
+  transform: rotate(1.5deg) scale(1.02);
+  transition: transform 0.08s ease, border-color 0.12s ease;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.tc-drag-ghost.is-valid {
+  border-color: #10B981;
+  box-shadow: 0 16px 32px rgba(16, 185, 129, 0.25);
+}
+.tc-drag-ghost.is-collision {
+  border-color: #EF4444;
+  box-shadow: 0 16px 32px rgba(239, 68, 68, 0.25);
+}
+
+.tc-drag-pill {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  background: var(--tc-primary);
+  color: #FFFFFF;
+}
+.tc-drag-ghost.is-valid .tc-drag-pill {
+  background: #10B981;
+}
+.tc-drag-ghost.is-collision .tc-drag-pill {
+  background: #EF4444;
+}
+
+/* --------------------------------------------------------------------------
+   6. Spatial Focus Mode
+   -------------------------------------------------------------------------- */
+.tc-focus-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  animation: tcZoomIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tcZoomIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Top Week Ribbon for Spatial Focus */
+.tc-focus-week-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.tc-focus-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-bottom: 2px solid #CBD5E1;
+  border-radius: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.tc-focus-back-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.tc-focus-ribbon-days {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tc-focus-day-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.tc-focus-day-chip:hover {
+  border-color: #CBD5E1;
+  color: #1E293B;
+}
+.tc-focus-day-chip.is-active {
+  background: var(--tc-primary);
+  border-color: #4338CA;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+/* Focused Day Expanded Timeline */
+.tc-focus-timeline {
+  display: flex;
+  width: 100%;
+  max-height: calc(100vh - 270px);
+  overflow-y: auto;
+  position: relative;
+}
+
+.tc-focus-column {
+  flex: 1;
+  position: relative;
+  background: #FFFFFF;
+}
+
+.tc-focus-slot-cell {
+  height: var(--tc-hour-height-focus);
+  box-sizing: border-box;
+  border-bottom: 1px solid #F1F5F9;
+  position: relative;
+}
+
+.tc-focus-lesson-card {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.05);
+  padding: 0.875rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  z-index: 10;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.tc-focus-lesson-card:hover {
+  border-color: #94A3B8;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+}
+.tc-focus-lesson-card.is-selected {
+  border-color: var(--tc-primary);
+  box-shadow: 0 0 0 2px var(--tc-primary), 0 8px 24px rgba(79, 70, 229, 0.18);
+}
+
+/* --------------------------------------------------------------------------
+   7. Smart Inspector (Context Dock)
+   -------------------------------------------------------------------------- */
+.tc-context-dock {
+  width: var(--tc-dock-width);
+  flex-shrink: 0;
+  background: #FFFFFF;
+  border: 1px solid var(--tc-border-subtle);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.tc-dock-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tc-dock-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 900;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+}
+
+.tc-dock-close-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  background: #F1F5F9;
+  border: none;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.tc-dock-close-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+.tc-dock-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 230px);
+}
+
+/* Dock Hero Card for Upcoming/Live Lesson */
+.tc-hero-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 1rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tc-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  background: #EEF2FF;
+  color: var(--tc-primary);
+  width: max-content;
+}
+
+.tc-hero-student {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #0F172A;
+}
+
+.tc-hero-topic {
+  font-size: 0.8125rem;
+  color: #64748B;
+  line-height: 1.4;
+}
+
+/* --------------------------------------------------------------------------
+   8. Unified Popovers (Fitted & Non-blocking)
+   -------------------------------------------------------------------------- */
+.tc-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: auto;
+  margin-top: 0.5rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  padding: 1rem;
+  z-index: 100;
+  min-width: 240px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: tcPopIn 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tcPopIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tc-popover.is-hidden {
+  display: none !important;
+}
+
+.tc-popover-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94A3B8;
+  margin-bottom: 0.25rem;
+}
+
+.tc-layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.tc-layer-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+/* Custom compact switch */
+.tc-switch {
+  position: relative;
+  display: inline-block;
+  width: 2.25rem;
+  height: 1.25rem;
+}
+.tc-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.tc-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #CBD5E1;
+  transition: 0.2s;
+  border-radius: 9999px;
+}
+.tc-slider:before {
+  position: absolute;
+  content: "";
+  height: 0.95rem;
+  width: 0.95rem;
+  left: 0.15rem;
+  bottom: 0.15rem;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+input:checked + .tc-slider {
+  background-color: var(--tc-primary);
+}
+input:checked + .tc-slider:before {
+  transform: translateX(1rem);
+}
+
+/* --------------------------------------------------------------------------
+   9. Responsive Adaptations (1440px / 1366px / Mobile)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1440px) {
+  .tc-context-dock {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    height: 100vh;
+    border-radius: 0;
+    border-left: 1px solid #E2E8F0;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    transform: translateX(100%);
+  }
+  .tc-context-dock.is-open {
+    transform: translateX(0);
+  }
+  .tc-dock-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.25);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    display: none;
+  }
+  .tc-dock-backdrop.is-open {
+    display: block;
+  }
+}
+
+@media (max-width: 1024px) {
+  .tc-command-bar {
+    flex-wrap: wrap;
+  }
+  .tc-canvas-body {
+    min-height: 480px;
+  }
+}
+
+/* Floating Mobile Action Button: STRICTLY HIDDEN ON DESKTOP */
+.tc-fab {
+  display: none;
+}
+@media (max-width: 768px) {
+  .tc-fab {
+    display: flex;
+    position: fixed;
+    bottom: 5.5rem;
+    right: 1.25rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 9999px;
+    background: var(--tc-primary);
+    color: #FFFFFF;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35);
+    border: none;
+    cursor: pointer;
+    z-index: 90;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   10. Modals & Dialogs (Unified Overlays)
+   -------------------------------------------------------------------------- */
+.tc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+.tc-modal-backdrop.is-hidden {
+  display: none !important;
+}
+
+.tc-modal-dialog {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.06);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: tcModalScale 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tcModalScale {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.tc-modal-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FAFAFA;
+}
+
+.tc-modal-title {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #0F172A;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tc-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tc-modal-footer {
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  background: #FAFAFA;
+}
+
+/* Form Controls inside Modals */
+.tc-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.tc-form-label {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748B;
+}
+
+.tc-form-input,
+.tc-form-select,
+.tc-form-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0F172A;
+  outline: none;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+
+.tc-form-input:focus,
+.tc-form-select:focus,
+.tc-form-textarea:focus {
+  background: #FFFFFF;
+  border-color: var(--tc-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+/* Command Palette */
+.tc-cmd-panel {
+  max-width: 580px;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+}
+
+.tc-cmd-header {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tc-cmd-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.tc-cmd-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tc-cmd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+.tc-cmd-item:hover,
+.tc-cmd-item.is-active {
+  background: #EEF2FF;
+  color: var(--tc-primary);
+}
+
+/* Day View and Stream View layout */
+.tc-day-view {
+  display: flex;
+  flex: 1;
+  min-height: 580px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.tc-stream-list {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 230px);
+}
+
+.tc-stream-day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.tc-stream-day-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.tc-stream-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.875rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.12s ease;
+  cursor: pointer;
+}
+.tc-stream-card:hover {
+  transform: translateY(-1px);
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Empty State */
+.tc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  gap: 0.75rem;
+}
+.tc-empty-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  background: #EEF2FF;
+  color: var(--tc-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+}

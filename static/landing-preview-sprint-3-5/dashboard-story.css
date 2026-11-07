@@ -1,0 +1,181 @@
+.s33-story { min-height: 600vh; }
+.s35-skip { position: fixed; top: 10px; left: -1000px; z-index: 1000; padding: 11px 15px; border-radius: 12px; color: #fff; background: #5d49d4; font-weight: 850; text-decoration: none; }
+.s35-skip:focus { left: 12px; outline: 3px solid #b2a7ff; outline-offset: 3px; }
+
+.s35-dashboard-story {
+  --s35-ink: #302b4e;
+  --s35-muted: #77738f;
+  --s35-purple: #6550e8;
+  position: relative;
+  min-height: 990vh;
+  color: var(--s35-ink);
+  background:
+    radial-gradient(ellipse at 78% 36%, rgba(224, 216, 255, .58), transparent 42%),
+    linear-gradient(165deg, #fbfaff 0%, #f5f2ff 52%, #faf8ff 100%);
+}
+.s35-pin { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; min-height: 640px; overflow: hidden; padding: 18px clamp(18px, 3vw, 58px) 14px; }
+.s35-bridge { display: flex; flex: 0 0 34px; align-items: center; gap: 10px; color: #8b85a2; font-size: 9px; font-weight: 850; letter-spacing: .11em; }
+.s35-bridge > span, .s35-bridge > strong { display: inline-flex; align-items: center; min-height: 26px; padding: 0 11px; border: 1px solid #e4def2; border-radius: 99px; background: rgba(255,255,255,.72); box-shadow: 0 2px 0 rgba(221,217,239,.58); }
+.s35-bridge > strong { color: #624ede; border-color: #ded8fb; }
+.s35-bridge > i { color: #9b93c2; font-size: 17px; font-style: normal; }
+.s35-story-layout { position: relative; flex: 1; min-width: 0; min-height: 0; }
+.s35-copy { position: absolute; z-index: 4; top: 50%; left: var(--s35-copy-left, 76%); width: var(--s35-copy-width, 22%); transform: translateY(-50%); padding: 12px 0; opacity: var(--s35-copy-opacity, 1); transition: opacity .16s linear; }
+.s35-eyebrow { display: flex; align-items: center; gap: 9px; margin: 0; color: #8179a5; font-size: 9px; font-weight: 900; letter-spacing: .15em; }
+.s35-eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: #8b74f4; box-shadow: 0 0 0 4px rgba(139,116,244,.12); }
+.s35-copy h2 { max-width: 390px; margin: 18px 0 12px; color: #332d53; font-size: clamp(28px, 3.1vw, 58px); font-weight: 900; letter-spacing: -.055em; line-height: .99; }
+.s35-copy-body { max-width: 430px; margin: 0; color: #85829b; font-size: clamp(13px, 1.05vw, 18px); font-weight: 650; line-height: 1.5; }
+.s35-copy-progress { display: grid; gap: 8px; margin-top: 23px; color: #77738f; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.s35-copy-track { display: block; width: min(100%, 350px); height: 5px; overflow: hidden; border-radius: 999px; background: #e6e1f1; }
+.s35-copy-track i { display: block; width: 0; height: 100%; border-radius: inherit; background: #7357ed; transition: width .08s linear; }
+.s35-mascot { display: flex; align-items: center; gap: 10px; margin-top: 21px; color: #908aa5; font-size: 12px; font-weight: 750; }
+.s35-mascot img { width: 44px; height: 44px; object-fit: contain; }
+.s35-cta { display: inline-flex; align-items: center; gap: 9px; margin-top: 18px; }
+.s35-product-frame { position: absolute; z-index: 2; top: 50%; left: var(--s35-product-left, 0%); width: var(--s35-product-width, 72%); height: min(88vh, 940px); min-height: 500px; transform: translateY(-50%); transform-origin: center; overflow: hidden; border: 1px solid rgba(222,219,238,.95); border-radius: 24px; background: #fff; box-shadow: 0 24px 72px rgba(69,53,136,.16), 0 5px 0 rgba(219,214,237,.72); }
+.s35-product-head { display: flex; flex: 0 0 42px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px; border-bottom: 1px solid #f0eef7; background: linear-gradient(90deg,#fff,#fdfcff); }
+.s35-product-brand { display: inline-flex; align-items: center; gap: 8px; color: #302b4e; font-size: 12px; letter-spacing: -.03em; }
+.s35-product-brand i { display: grid; width: 23px; height: 23px; place-items: center; border-radius: 8px; color: #fff; background: #7059ec; box-shadow: 0 2px 0 #5540c7; font-size: 11px; font-style: normal; font-weight: 950; }
+.s35-product-context { color: #8a849c; font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.s35-demo-tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid #e6e1f3; border-radius: 99px; color: #77718e; background: #fff; font-size: 7px; font-weight: 800; }
+.s35-demo-tag i, .s34-demo-tag i { width: 6px; height: 6px; border-radius: 50%; background: #8b79e8; }
+.s35-dashboard-viewport { position: relative; width: 100%; height: calc(100% - 42px); overflow: hidden; overscroll-behavior: auto; touch-action: auto; background: #faf9fc; }
+.s35-dashboard-surface.s34-command-center { display: flex; flex-direction: column; gap: 10px; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: clamp(12px, 1.25vw, 18px); border: 0; border-radius: 0; background: #faf9fc; transform-origin: 0 0; will-change: transform; }
+.s35-dashboard-heading { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.s35-dashboard-heading p { margin: 0; color: #8b8798; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.s35-dashboard-heading h3 { margin: 3px 0 2px; color: #11143d; font-size: clamp(17px, 1.35vw, 23px); font-weight: 900; letter-spacing: -.045em; line-height: 1.08; }
+.s35-dashboard-heading > div > span { color: #5d6275; font-size: 8px; font-weight: 600; }
+.s35-dashboard-grid { display: grid; flex: 1 1 auto; grid-template-columns: repeat(12,minmax(0,1fr)); grid-template-rows: minmax(132px,.8fr) minmax(166px,1.15fr) minmax(140px,1fr) minmax(236px,1.45fr); gap: 8px; min-width: 0; min-height: 0; }
+.s35-dashboard-grid > .s34-card { min-height: 0; padding: clamp(9px,.8vw,13px); transition: opacity .24s ease, filter .24s ease, border-color .24s ease, box-shadow .24s ease; }
+.s35-dashboard-grid > .s34-welcome { grid-column: span 8; }
+.s35-dashboard-grid > .s34-goal { grid-column: span 4; }
+.s35-dashboard-grid > .s34-next-lesson, .s35-dashboard-grid > .s34-schedule { grid-column: span 6; }
+.s35-dashboard-grid > .s34-path, .s35-dashboard-grid > .s34-performance { grid-column: span 6; }
+.s35-resource-row { display: grid; grid-column: span 12; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 0; min-height: 0; }
+.s35-resource-row > .s34-card { grid-column: auto; grid-row: auto; min-width: 0; min-height: 0; padding: clamp(9px,.8vw,13px); }
+.s35-dashboard-surface[data-focus="intro"] .s35-region:not([data-dashboard-region="welcome"]):not([data-dashboard-region="goal"]) { opacity: .28; }
+.s35-dashboard-surface[data-focus="continue"] .s35-region:not([data-dashboard-region="continue"]),
+.s35-dashboard-surface[data-focus="schedule"] .s35-region:not([data-dashboard-region="schedule"]),
+.s35-dashboard-surface[data-focus="curriculum"] .s35-region:not([data-dashboard-region="curriculum"]),
+.s35-dashboard-surface[data-focus="materials"] .s35-region:not([data-dashboard-region="materials"]),
+.s35-dashboard-surface[data-focus="progress"] .s35-region:not([data-dashboard-region="progress"]) { opacity: .19; filter: saturate(.45); }
+.s35-dashboard-surface[data-focus="continue"] [data-dashboard-region="continue"],
+.s35-dashboard-surface[data-focus="schedule"] [data-dashboard-region="schedule"],
+.s35-dashboard-surface[data-focus="curriculum"] [data-dashboard-region="curriculum"],
+.s35-dashboard-surface[data-focus="materials"] [data-dashboard-region="materials"],
+.s35-dashboard-surface[data-focus="progress"] [data-dashboard-region="progress"] { z-index: 1; border-color: #b5a7ec; box-shadow: 0 0 0 3px rgba(91,53,245,.1),0 12px 25px rgba(61,45,118,.1); }
+.s35-dashboard-surface[data-focus="overview"] .s35-region { opacity: 1; filter: none; }
+.s35-dashboard-surface .s35-region { transition: opacity .24s ease, filter .24s ease, border-color .24s ease, box-shadow .24s ease; }
+.s35-progress-stats { display: grid; grid-template-columns: .7fr 1.2fr 1.2fr; gap: 10px; margin: 12px 0 0; }
+.s35-progress-stats > div { display: grid; align-content: start; gap: 5px; min-width: 0; }
+.s35-progress-stats small, .s35-progress-stats span { color: #5d6275; font-size: 7px; font-weight: 700; }
+.s35-progress-stats strong { color: #11143d; font-size: clamp(15px,1.3vw,22px); font-weight: 950; letter-spacing: -.04em; white-space: nowrap; }
+.s35-progress-stats i { display: block; height: 5px; overflow: hidden; border-radius: 99px; background: #efedf4; }
+.s35-progress-stats i b { display: block; height: 100%; border-radius: inherit; background: #5b35f5; }
+.s35-progress-caption { margin: auto 0 0; color: #8b8798; font-size: 7px; line-height: 1.4; }
+.s35-checklist-card .s34-card-heading { flex: 0 0 auto; }
+.s35-checklist-card .s34-checklist-progress { margin: 9px 0; }
+.s35-checklist-card .s34-checklist-progress > span { min-width: 92px; }
+.s35-checklist-items { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; min-height: 0; }
+.s35-checklist-items label { align-items: center; min-width: 0; min-height: 27px; padding: 4px 6px; }
+.s35-checklist-items label:last-child { grid-column: 1 / -1; }
+.s35-checklist-items label > span { min-width: 0; }
+.s35-checklist-items strong { font-size: 7px; line-height: 1.2; }
+.s35-checklist-items input { width: 14px; height: 14px; }
+.s35-board-note { flex: 0 0 auto; margin: 0; color: #9995aa; font-size: 7px; font-weight: 650; line-height: 1.3; }
+.s35-static-guides { display: none; }
+.s35-next-seam { position: relative; display: grid; min-height: 32vh; place-items: center; overflow: hidden; border-top: 1px solid rgba(230,224,243,.72); background: linear-gradient(180deg,#f8f6fc,#f2eff9); color: #6c6680; }
+.s35-next-seam p { position: relative; z-index: 1; margin: 0; font-size: clamp(16px,2.2vw,25px); font-weight: 800; letter-spacing: -.04em; }
+
+@media (max-height: 820px) and (min-width: 901px) {
+  .s35-pin { padding-block: 12px 9px; }
+  .s35-product-frame { height: calc(100vh - 78px); min-height: 520px; }
+  .s35-dashboard-grid { grid-template-rows: auto; grid-auto-rows: max-content; }
+  .s35-dashboard-grid > .s34-card { min-height: 132px; }
+  .s35-dashboard-grid > .s34-welcome { min-height: 120px; }
+  .s35-dashboard-grid > .s34-goal { min-height: 132px; }
+  .s35-dashboard-grid > .s34-next-lesson, .s35-dashboard-grid > .s34-schedule { min-height: 166px; }
+  .s35-dashboard-grid > .s34-path, .s35-dashboard-grid > .s34-performance { min-height: 140px; }
+  .s35-resource-row { min-height: 200px; }
+  .s35-copy h2 { font-size: clamp(27px,2.8vw,42px); }
+}
+
+@media (max-width: 900px) {
+  .s35-dashboard-story { min-height: 1050vh; }
+  .s35-pin { min-height: 620px; padding: 12px 12px 10px; }
+  .s35-bridge { flex-basis: 26px; gap: 6px; font-size: 7px; }
+  .s35-bridge > span, .s35-bridge > strong { min-height: 22px; padding-inline: 8px; }
+  .s35-bridge > i { font-size: 14px; }
+  .s35-story-layout { flex: 1; }
+  .s35-copy { top: 0; left: 0 !important; width: 100% !important; padding: 7px 2px 0; transform: none; }
+  .s35-eyebrow { font-size: 7px; }
+  .s35-copy h2 { max-width: 640px; margin: 8px 0 5px; font-size: clamp(24px,4.7vw,39px); line-height: 1.02; }
+  .s35-copy-body { max-width: 650px; font-size: clamp(11px,2vw,15px); line-height: 1.35; }
+  .s35-copy-progress { grid-template-columns: auto minmax(70px,1fr); align-items: center; gap: 9px; max-width: 480px; margin-top: 8px; font-size: 7px; }
+  .s35-copy-track { width: 100%; height: 4px; }
+  .s35-mascot { display: none; }
+  .s35-cta { margin-top: 8px; padding: 9px 12px; font-size: 11px; }
+  .s35-product-frame { top: 31%; left: 0 !important; width: 100% !important; height: 67%; min-height: 0; transform: none !important; border-radius: 17px; }
+  .s35-product-head { flex-basis: 32px; padding-inline: 10px; }
+  .s35-product-brand { font-size: 10px; }
+  .s35-product-brand i { width: 20px; height: 20px; }
+  .s35-product-context { font-size: 6px; }
+  .s35-demo-tag { padding: 4px 6px; font-size: 6px; }
+  .s35-dashboard-viewport { height: calc(100% - 32px); }
+  .s35-dashboard-surface.s34-command-center { width: 100%; height: max-content; min-height: 100%; gap: 7px; overflow: visible; padding: 9px; }
+  .s35-dashboard-heading h3 { font-size: 16px; }
+  .s35-dashboard-heading p { font-size: 6px; }
+  .s35-dashboard-heading > div > span { font-size: 7px; }
+  .s35-dashboard-grid { flex: none; grid-template-columns: minmax(0,1fr); grid-template-rows: auto; grid-auto-rows: max-content; gap: 7px; }
+  .s35-dashboard-grid > .s34-card, .s35-dashboard-grid > .s34-welcome, .s35-dashboard-grid > .s34-goal, .s35-dashboard-grid > .s34-next-lesson, .s35-dashboard-grid > .s34-schedule, .s35-dashboard-grid > .s34-path, .s35-dashboard-grid > .s34-performance { grid-column: auto; min-height: 132px; padding: 10px; }
+  .s35-dashboard-grid > .s34-welcome { min-height: 154px; }
+  .s35-dashboard-grid > .s34-goal { min-height: 132px; }
+  .s35-dashboard-grid > .s34-next-lesson, .s35-dashboard-grid > .s34-schedule { min-height: 170px; }
+  .s35-dashboard-grid > .s34-path, .s35-dashboard-grid > .s34-performance { min-height: 144px; }
+  .s35-resource-row { grid-column: auto; grid-template-columns: minmax(0,1fr); gap: 7px; }
+  .s35-resource-row > .s34-card { min-height: 150px; padding: 10px; }
+  .s35-resource-row > .s35-checklist-card { min-height: 250px; }
+  .s35-checklist-items { grid-template-columns: minmax(0,1fr); gap: 4px; }
+  .s35-checklist-items label, .s35-checklist-items label:last-child { grid-column: auto; min-height: 30px; }
+  .s35-checklist-items strong { font-size: 8px; }
+  .s35-progress-stats { gap: 6px; margin-top: 9px; }
+  .s35-progress-stats small, .s35-progress-stats span { font-size: 6px; }
+  .s35-progress-stats strong { font-size: 16px; }
+  .s35-progress-caption, .s35-board-note { font-size: 6px; }
+  .s35-static-guides { display: none; }
+  .s35-next-seam { min-height: 24vh; }
+}
+
+@media (max-width: 600px) {
+  .s35-pin { padding-inline: 10px; }
+  .s35-product-frame { top: 34%; height: 64%; }
+  .s35-copy h2 { font-size: clamp(23px,6.6vw,30px); }
+  .s35-copy-body { max-width: 100%; font-size: 11px; }
+  .s35-dashboard-heading { align-items: flex-start; }
+  .s35-dashboard-heading .s34-demo-tag { white-space: nowrap; }
+  .s35-dashboard-grid > .s34-card, .s35-resource-row > .s34-card { padding: 9px; }
+  .s35-checklist-card .s34-checklist-progress { margin: 7px 0; }
+  .s35-checklist-items label, .s35-checklist-items label:last-child { min-height: 28px; padding: 3px 5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s35-dashboard-story { min-height: 0; }
+  .s35-pin { position: relative; top: auto; height: auto; min-height: 0; overflow: visible; padding: 18px clamp(14px,3vw,40px); }
+  .s35-story-layout { display: flex; flex-direction: column; gap: 18px; overflow: visible; }
+  .s35-copy { position: relative; top: auto; left: auto !important; width: auto !important; transform: none; opacity: 1 !important; }
+  .s35-copy h2 { font-size: clamp(28px,4vw,46px); }
+  .s35-product-frame { position: relative; top: auto; left: auto !important; width: 100% !important; height: auto; min-height: 0; transform: none !important; overflow: visible; }
+  .s35-dashboard-viewport { height: auto; overflow: visible; }
+  .s35-dashboard-surface.s34-command-center { width: 100%; height: auto; min-height: 0; overflow: visible; transform: none !important; }
+  .s35-dashboard-grid { flex: none; grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto; grid-auto-rows: minmax(150px,auto); }
+  .s35-dashboard-grid > .s34-card, .s35-dashboard-grid > .s34-welcome, .s35-dashboard-grid > .s34-goal, .s35-dashboard-grid > .s34-next-lesson, .s35-dashboard-grid > .s34-schedule, .s35-dashboard-grid > .s34-path, .s35-dashboard-grid > .s34-performance { grid-column: auto; min-height: 170px; opacity: 1 !important; filter: none !important; }
+  .s35-dashboard-grid > .s34-welcome, .s35-dashboard-grid > .s34-goal { grid-column: span 2; }
+  .s35-resource-row { grid-column: span 2; grid-template-columns: 1fr 1fr; min-height: 250px; }
+  .s35-resource-row > .s34-card { min-height: 230px; opacity: 1 !important; filter: none !important; }
+  .s35-checklist-items { grid-template-columns: minmax(0,1fr); }
+  .s35-checklist-items label:last-child { grid-column: auto; }
+  .s35-static-guides { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .s35-static-guides li { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid #e9e4f2; border-radius: 12px; background: rgba(255,255,255,.82); }
+  .s35-static-guides strong { color: #403963; font-size: 13px; }
+  .s35-static-guides span { color: #77738f; font-size: 12px; line-height: 1.45; }
+  .s35-next-seam { min-height: 22vh; }
+  .s35-dashboard-story *, .s35-next-seam * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}

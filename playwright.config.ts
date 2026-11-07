@@ -27,11 +27,22 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-chromium',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 1000 },
+        video: process.env.PLAYWRIGHT_VIDEO === 'on'
+          ? { mode: 'on', size: { width: 1920, height: 1080 } }
+          : 'retain-on-failure',
+      },
     },
     {
       name: 'mobile-chromium',
-      use: { ...devices['Pixel 7'] },
+      use: {
+        ...devices['Pixel 7'],
+        video: process.env.PLAYWRIGHT_VIDEO === 'on'
+          ? { mode: 'on', size: { width: 390, height: 844 } }
+          : 'retain-on-failure',
+      },
     },
   ],
   webServer: process.env.BOOSTUDY_E2E_SKIP_SERVER

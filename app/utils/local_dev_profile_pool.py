@@ -11,10 +11,17 @@ from app.models import FamilyTie, Lesson, Student, TeacherStudent, User, UserPro
 LOCAL_PROFILE_POOL = (
     ('creator', 'creator', 'creator@boostudy.ru', 'Создатель'),
     ('chief_admin', 'chief_admin', 'chief_admin@boostudy.ru', 'Главный администратор'),
+    ('chief_admin_2', 'chief_admin', 'chief_admin2@boostudy.ru', 'Главный администратор 2'),
+    ('chief_admin_3', 'chief_admin', 'chief_admin3@boostudy.ru', 'Главный администратор 3'),
     ('demo_admin_1', 'admin', 'demo_admin_1@boostudy.ru', 'Администратор демо'),
+    ('demo_admin_2', 'admin', 'demo_admin_2@boostudy.ru', 'Администратор демо 2'),
+    ('demo_auditor', 'admin', 'auditor@boostudy.ru', 'Администратор аудита'),
     ('qa_pool_teacher_1', 'teacher', 'teacher1@boostudy.ru', 'Преподаватель QA'),
     ('demo_teacher_2', 'teacher', 'teacher2@boostudy.ru', 'Преподаватель демо'),
+    ('demo_teacher_3', 'teacher', 'teacher3@boostudy.ru', 'Преподаватель демо 3'),
     ('demo_tutor_1', 'tutor', 'tutor1@boostudy.ru', 'Тьютор демо'),
+    ('demo_tutor_2', 'tutor', 'tutor2@boostudy.ru', 'Тьютор демо 2'),
+    ('demo_tutor_3', 'tutor', 'tutor3@boostudy.ru', 'Тьютор демо 3'),
     ('demo_student_1', 'student', 'student1@boostudy.ru', 'Ученик 11 класса'),
     ('demo_student_2', 'student', 'student2@boostudy.ru', 'Ученик 10 класса'),
     ('demo_student_3', 'student', 'student3@boostudy.ru', 'Ученик 9 класса'),
@@ -22,8 +29,11 @@ LOCAL_PROFILE_POOL = (
     ('demo_parent_2', 'parent', 'parent2@boostudy.ru', 'Родитель ученика 2'),
     ('demo_parent_3', 'parent', 'parent3@boostudy.ru', 'Родитель ученика 3'),
     ('qa_pool_admin_2', 'chief_tester', 'chief_tester@boostudy.ru', 'Главный тестировщик'),
+    ('qa_pool_chief_tester_2', 'chief_tester', 'chief_tester2@boostudy.ru', 'Главный тестировщик 2'),
+    ('qa_pool_chief_tester_3', 'chief_tester', 'chief_tester3@boostudy.ru', 'Главный тестировщик 3'),
     ('qa_pool_student_4', 'tester', 'tester4@boostudy.ru', 'Тестировщик QA'),
-    ('demo_auditor', 'admin', 'auditor@boostudy.ru', 'Аудитор демо'),
+    ('qa_pool_tester_2', 'tester', 'tester2@boostudy.ru', 'Тестировщик QA 2'),
+    ('qa_pool_tester_3', 'tester', 'tester3@boostudy.ru', 'Тестировщик QA 3'),
 )
 
 LOCAL_TEACHER_STUDENT_PAIRS = (

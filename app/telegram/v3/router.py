@@ -27,10 +27,12 @@ from app.telegram.v3.constants import (
     CMD_START,
     CMD_UNLINK,
     DOMAIN_ADMIN,
+    DOMAIN_BROADCAST,
     DOMAIN_CONTEXT,
     DOMAIN_CREATOR,
     DOMAIN_NAV,
     DOMAIN_PARENT,
+    DOMAIN_PREVIEW,
     DOMAIN_SETTINGS,
     DOMAIN_STUDENT,
     DOMAIN_TEACHER,
@@ -48,27 +50,66 @@ from app.telegram.v3.identity import (
     touch_interaction,
 )
 from app.telegram.v3.screens.admin import (
+    retry_admin_delivery,
+    show_admin_failed_deliveries,
     show_admin_home,
     show_admin_metrics,
     show_admin_problems,
     show_admin_user_card,
     show_admin_users_list,
 )
+from app.telegram.v3.screens.admin_notifications import (
+    show_admin_notifications_hub,
+    show_admin_role_policy_detail,
+    show_admin_roles_overview,
+    show_admin_user_inspection_details,
+    show_admin_user_inspection_list,
+)
+from app.telegram.v3.screens.broadcast import (
+    clear_draft,
+    execute_broadcast_send,
+    handle_broadcast_text_input,
+    prompt_broadcast_button_label,
+    prompt_broadcast_custom_text,
+    prompt_broadcast_custom_title,
+    set_broadcast_audience,
+    set_broadcast_category,
+    set_broadcast_template,
+    show_broadcast_campaign_details,
+    show_broadcast_center_start,
+    show_broadcast_history,
+    show_broadcast_preview,
+    show_broadcast_step_button,
+    show_broadcast_step_text,
+)
 from app.telegram.v3.screens.creator import show_creator_home
 from app.telegram.v3.screens.parent import (
     show_parent_child_digest,
+    show_parent_child_hw_item,
+    show_parent_child_hw_list,
     show_parent_child_schedule,
     show_parent_child_view,
     show_parent_home,
 )
+from app.telegram.v3.screens.preview import show_notification_preview
 from app.telegram.v3.screens.settings import (
+    execute_reset_preferences,
     execute_unlink,
+    show_category_events_menu,
+    show_event_detail_card,
     show_help_screen,
-    show_notifications_menu,
+    show_notifications_role_selector,
+    show_reset_preferences_dialog,
+    show_role_categories_menu,
     show_role_switcher_menu,
     show_settings_home,
     show_unlink_confirmation,
-    toggle_notification_setting,
+    toggle_event_preference,
+)
+from app.telegram.v3.screens.teacher_student_notifications import (
+    show_delivery_comparison_mode,
+    show_student_notification_details,
+    show_teacher_students_list as show_teacher_students_list_notif,
 )
 from app.telegram.v3.screens.student import (
     show_student_hw_item,
@@ -82,6 +123,8 @@ from app.telegram.v3.screens.teacher import (
     show_teacher_review_queue,
     show_teacher_schedule,
     show_teacher_student_card,
+    show_teacher_student_hw_list,
+    show_teacher_student_schedule,
     show_teacher_students_list,
     show_teacher_submission_item,
 )
@@ -106,6 +149,10 @@ def check_domain_access(user: User, domain: str) -> bool:
         return "admin" in allowed or "chief_admin" in allowed or bool(actual_roles & {"admin", "chief_admin", "creator"})
     if domain == DOMAIN_CREATOR:
         return "creator" in actual_roles
+    if domain == DOMAIN_PREVIEW:
+        return True
+    if domain == DOMAIN_BROADCAST:
+        return bool(actual_roles & {"creator", "chief_admin", "admin", "teacher", "tutor"}) or bool(set(allowed) & {"teacher", "tutor", "admin", "chief_admin", "creator"})
     return True
 
 
@@ -420,6 +467,11 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
         await show_unlinked_screen(update)
         return
 
+    # Check if user is actively entering text/title/URL in Broadcast Wizard
+    handled_broadcast = await handle_broadcast_text_input(update, user, text)
+    if handled_broadcast:
+        return
+
     # User is linked and sent general text: offer quick jump to /menu
     prompt_text = (
         "💡 Используйте встроенные кнопки и меню для навигации по платформе."
@@ -509,7 +561,7 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             page = int(params[0]) if params else 1
             await show_student_hw_list(update, user, page=page)
             return
-        elif action == "hw_item" and params:
+        elif action in ("hw_item", "hw_view") and params:
             assignment_id = int(params[0])
             page = int(params[1]) if len(params) > 1 else 1
             await show_student_hw_item(update, user, assignment_id=assignment_id, return_page=page)
@@ -530,7 +582,7 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             page = int(params[0]) if params else 1
             await show_teacher_review_queue(update, user, page=page)
             return
-        elif action == "q_item" and params:
+        elif action in ("q_item", "q") and params:
             submission_id = int(params[0])
             page = int(params[1]) if len(params) > 1 else 1
             await show_teacher_submission_item(update, user, submission_id=submission_id, return_page=page)
@@ -543,6 +595,38 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             student_id = int(params[0])
             page = int(params[1]) if len(params) > 1 else 1
             await show_teacher_student_card(update, user, student_id=student_id, return_page=page)
+            return
+        elif action == "st_hw" and params:
+            student_id = int(params[0])
+            page = int(params[1]) if len(params) > 1 else 1
+            await show_teacher_student_hw_list(update, user, student_id=student_id, page=page)
+            return
+        elif action == "st_sch" and params:
+            student_id = int(params[0])
+            await show_teacher_student_schedule(update, user, student_id=student_id)
+            return
+
+
+        elif action == "st_notif":
+            sub = params[0] if params else "list"
+            if sub == "list":
+                page = int(params[1]) if len(params) > 1 and params[1].isdigit() else 1
+                await show_teacher_students_list_notif(update, user, page=page)
+                return
+            elif sub == "view" and len(params) > 1:
+                await show_student_notification_details(update, user, student_user_id=int(params[1]))
+                return
+            elif sub == "cmp" and len(params) > 1:
+                event_kind = params[2] if len(params) > 2 else None
+                await show_delivery_comparison_mode(update, user, student_user_id=int(params[1]), event_kind=event_kind)
+                return
+        elif action in ("call_link", "call") and params:
+            lesson_id = int(params[0])
+            await query.answer(f"Урок #{lesson_id}: ссылка на видеокомнату LiveKit", show_alert=False)
+            return
+        elif action == "hw_note" and params:
+            lesson_id = int(params[0])
+            await query.answer(f"Урок #{lesson_id}: отправьте текст ДЗ сообщением", show_alert=True)
             return
 
     # ------------------ DOMAIN: PARENT ------------------
@@ -562,6 +646,17 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             student_id = int(params[0])
             await show_parent_child_digest(update, user, student_id=student_id)
             return
+        elif action == "hw" and params:
+            student_id = int(params[0])
+            page = int(params[1]) if len(params) > 1 else 1
+            await show_parent_child_hw_list(update, user, student_id=student_id, page=page)
+            return
+        elif action == "hw_item" and len(params) >= 2:
+            student_id = int(params[0])
+            assignment_id = int(params[1])
+            return_page = int(params[2]) if len(params) > 2 else 1
+            await show_parent_child_hw_item(update, user, student_id=student_id, assignment_id=assignment_id, return_page=return_page)
+            return
 
     # ------------------ DOMAIN: ADMIN ------------------
     elif domain == DOMAIN_ADMIN:
@@ -574,6 +669,32 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         elif action == "probs":
             await show_admin_problems(update, user)
             return
+        elif action == "deliveries":
+            page = int(params[0]) if params else 1
+            await show_admin_failed_deliveries(update, user, page=page)
+            return
+        elif action == "retry_dl" and params:
+            delivery_id = int(params[0])
+            page = int(params[1]) if len(params) > 1 else 1
+            await retry_admin_delivery(update, user, delivery_id=delivery_id, return_page=page)
+            return
+        elif action == "notif":
+            sub = params[0] if params else "hub"
+            if sub == "hub":
+                await show_admin_notifications_hub(update, user)
+                return
+            elif sub == "roles":
+                await show_admin_roles_overview(update, user)
+                return
+            elif sub == "role_view" and len(params) > 1:
+                await show_admin_role_policy_detail(update, user, role=params[1])
+                return
+            elif sub == "users":
+                await show_admin_user_inspection_list(update, user)
+                return
+            elif sub == "u_inspect" and len(params) > 1:
+                await show_admin_user_inspection_details(update, user, target_user_id=int(params[1]))
+                return
         elif action == "u":
             page = int(params[0]) if params else 1
             role_filter = params[1] if len(params) > 1 else "all"
@@ -606,12 +727,34 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await show_help_screen(update, user)
             return
         elif action == "notif":
-            if params and params[0] == "toggle" and len(params) > 1:
-                category = params[1]
-                await toggle_notification_setting(update, user, category=category)
+            sub = params[0] if params else "roles"
+            active_ctx = get_active_context(user, context.user_data)
+            if sub == "roles":
+                await show_notifications_role_selector(update, user, active_context=active_ctx)
+                return
+            elif sub == "role" and len(params) > 1:
+                await show_role_categories_menu(update, user, role=params[1])
+                return
+            elif sub == "cat" and len(params) > 2:
+                await show_category_events_menu(update, user, role=params[1], category=params[2])
+                return
+            elif sub == "ev" and len(params) > 3:
+                await show_event_detail_card(update, user, role=params[1], category=params[2], kind=params[3])
+                return
+            elif sub == "toggle" and len(params) > 3:
+                await toggle_event_preference(update, user, role=params[1], category=params[2], kind=params[3])
+                return
+            elif sub == "reset_ask" and len(params) > 1:
+                await show_reset_preferences_dialog(update, user, role=params[1])
+                return
+            elif sub == "reset_do" and len(params) > 1:
+                await execute_reset_preferences(update, user, role=params[1])
+                return
+            elif sub == "locked":
+                await query.answer("🔒 Обязательное системное оповещение (отключение недоступно)", show_alert=True)
                 return
             else:
-                await show_notifications_menu(update, user)
+                await show_notifications_role_selector(update, user, active_context=active_ctx)
                 return
         elif action == "unlink":
             if params and params[0] == "do":
@@ -620,6 +763,62 @@ async def handle_v3_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             else:
                 await show_unlink_confirmation(update, user)
                 return
+
+    # ------------------ DOMAIN: PREVIEW ------------------
+    elif domain == DOMAIN_PREVIEW:
+        if action == "noop":
+            await query.answer("ℹ️ Это пример кнопки в режиме предпросмотра. В реальном уведомлении она ведёт к материалам платформы.", show_alert=False)
+            return
+        role = action
+        kind = params[0] if params else "generic"
+        await show_notification_preview(update, role=role, kind=kind)
+        return
+
+    # ------------------ DOMAIN: BROADCAST ------------------
+    elif domain == DOMAIN_BROADCAST:
+        if action == "start":
+            await show_broadcast_center_start(update, user)
+            return
+        elif action == "aud" and params:
+            await set_broadcast_audience(update, user, audience=params[0])
+            return
+        elif action == "cat" and params:
+            await set_broadcast_category(update, user, category=params[0])
+            return
+        elif action == "tpl" and params:
+            await set_broadcast_template(update, user, tpl_id=params[0])
+            return
+        elif action == "prompt_title":
+            await prompt_broadcast_custom_title(update, user)
+            return
+        elif action == "prompt_text":
+            await prompt_broadcast_custom_text(update, user)
+            return
+        elif action == "text_step":
+            await show_broadcast_step_text(update, user)
+            return
+        elif action == "btn_step":
+            await show_broadcast_step_button(update, user)
+            return
+        elif action == "prompt_btn_lbl":
+            await prompt_broadcast_button_label(update, user)
+            return
+        elif action == "preview":
+            await show_broadcast_preview(update, user)
+            return
+        elif action == "send":
+            await execute_broadcast_send(update, user)
+            return
+        elif action == "hist":
+            await show_broadcast_history(update, user)
+            return
+        elif action == "detail" and params:
+            await show_broadcast_campaign_details(update, user, broadcast_id=int(params[0]))
+            return
+        elif action == "cancel":
+            clear_draft(user.id)
+            await show_broadcast_center_start(update, user)
+            return
 
     # Fallback for unhandled action
     logger.warning("Unhandled V3 callback action: domain=%s, action=%s, params=%s", domain, action, params)

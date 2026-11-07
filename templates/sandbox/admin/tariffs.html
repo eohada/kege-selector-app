@@ -360,7 +360,7 @@
                     <tbody id="subs-table-body" class="divide-y divide-slate-100 text-sm">
                         {% for sub in subscriptions %}
                         <tr class="sub-row hover:bg-slate-50/80 transition"
-                            data-search="{{ ((sub.user.username if sub.user else '') ~ ' ' ~ (sub.user.email if sub.user else '') ~ ' ' ~ (sub.plan.title if sub.plan else 'Индивидуальный'))|lower }}"
+                            data-search="{{ ((sub.user.username if sub.user else '') ~ ' ' ~ (sub.user.email if sub.user else '') ~ ' ' ~ (sub.plan.title if sub.plan else 'Индивидуальный') ~ ' ' ~ (sub.subject or (sub.plan.subject if sub.plan else '') or '') ~ ' ' ~ (sub.exam or (sub.plan.exam if sub.plan else '') or ''))|lower }}"
                             data-status="{{ sub.status }}">
 
                             <td class="py-4 pl-2">
@@ -380,6 +380,9 @@
                             </td>
 
                             <td class="py-4">
+                                {% set subscription_subject = sub.subject or (sub.plan.subject if sub.plan else '') %}
+                                {% set subscription_exam = sub.exam or (sub.plan.exam if sub.plan else '') %}
+                                {% set subscription_level = sub.level or (sub.plan.level if sub.plan else '') %}
                                 {% if sub.plan %}
                                     <div class="font-bold text-slate-800">{{ sub.plan.title }}</div>
                                     <div class="text-[11px] font-medium text-slate-400">
@@ -387,6 +390,13 @@
                                     </div>
                                 {% else %}
                                     <span class="font-bold text-slate-500 italic">Индивидуальный доступ</span>
+                                {% endif %}
+                                {% if subscription_subject or subscription_exam %}
+                                <div class="text-[11px] font-bold text-indigo-600 mt-1">
+                                    {% if subscription_exam %}{{ 'ЕГЭ' if subscription_exam == 'ege' else ('ОГЭ' if subscription_exam == 'oge' else subscription_exam|upper) }}{% endif %}
+                                    {% if subscription_subject %} · {{ 'Информатика' if subscription_subject == 'inf' else ('Математика' if subscription_subject == 'math' else subscription_subject) }}{% endif %}
+                                    {% if subscription_level == 'prof' %} · Профиль{% elif subscription_level == 'base' %} · База{% endif %}
+                                </div>
                                 {% endif %}
                             </td>
 
@@ -821,73 +831,137 @@
 <!-- ============================================================================== -->
 <!-- МОДАЛЬНОЕ ОКНО: НАЗНАЧЕНИЕ ТАРИФА УЧЕНИКУ -->
 <!-- ============================================================================== -->
-<div id="assign-tariff-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+<style>
+#assign-tariff-modal .assign-picker-option[aria-selected="true"] { background: #eef2ff; color: #3730a3; }
+#assign-tariff-modal .assign-picker-option:focus-visible { outline: 3px solid #a5b4fc; outline-offset: -3px; }
+#assign-tariff-modal [hidden] { display: none !important; }
+</style>
+<div id="assign-tariff-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center overflow-y-auto bg-slate-950/55 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="assign-tariff-title" onkeydown="if(event.key === 'Escape') closeAssignModal()" onclick="if(event.target === this) closeAssignModal()">
+    <div style="max-height: calc(100dvh - 3rem);" class="my-auto flex min-h-0 w-full max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border-2 border-slate-200 bg-white shadow-[0_8px_0_#DAE1E9] animate-in fade-in zoom-in-95 duration-150 sm:rounded-[2rem]">
+        <div class="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 sm:px-7">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center text-xl">
+                <div class="w-11 h-11 rounded-2xl bg-indigo-100 border-2 border-indigo-200 text-indigo-700 flex items-center justify-center text-xl shadow-[0_3px_0_#C7D2FE]">
                     <i class="ph-bold ph-user-plus"></i>
                 </div>
                 <div>
-                    <h2 class="text-lg font-black text-slate-900 mb-0">Назначить тариф ученику</h2>
-                    <p class="text-xs font-medium text-slate-400 mb-0">Выдача доступа, баланс уроков и срок</p>
+                    <p class="mb-0 text-[10px] font-black uppercase tracking-[.16em] text-indigo-600">Доступ ученика</p>
+                    <h2 id="assign-tariff-title" class="mb-0 text-lg font-black text-slate-900 sm:text-xl">Назначить тариф</h2>
                 </div>
             </div>
-            <button type="button" onclick="closeAssignModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-lg flex items-center justify-center transition cursor-pointer">&times;</button>
+            <button type="button" onclick="closeAssignModal()" aria-label="Закрыть окно" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-200 bg-white text-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-800">&times;</button>
         </div>
 
-        <form action="{{ url_for('admin.admin_tariffs_assign_student') }}" method="POST" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <form id="assign-tariff-form" action="{{ url_for('admin.admin_tariffs_assign_student') }}" method="POST" class="min-h-0 flex-1 overflow-y-auto overscroll-contain" onsubmit="return validateAssignForm()">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="grid grid-cols-1 gap-5 p-5 sm:p-6 xl:grid-cols-2">
+                <section class="relative rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] p-4 sm:p-5 xl:col-span-2">
+                    <label for="assign-student-search" class="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">1. Ученик</label>
+                    <input type="hidden" id="assign-student-id" name="user_id">
+                    <button type="button" id="assign-student-toggle" aria-haspopup="listbox" aria-expanded="false" onclick="toggleAssignStudentPicker()" class="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 text-left text-sm font-black text-slate-800 shadow-[0_3px_0_#E2E8F0] transition hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100">
+                        <span class="flex min-w-0 items-center gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"><i class="ph-bold ph-user text-lg"></i></span><span id="assign-student-selected-label" class="truncate">Найдите и выберите ученика</span></span>
+                        <i class="ph-bold ph-caret-down shrink-0 text-slate-400"></i>
+                    </button>
+                    <div id="assign-student-picker" class="absolute left-4 right-4 top-[calc(100%-0.5rem)] z-30 hidden overflow-hidden rounded-2xl border-2 border-indigo-100 bg-white shadow-[0_12px_32px_rgba(30,41,59,.18)] sm:left-5 sm:right-5">
+                        <div class="border-b border-slate-100 p-3">
+                            <div class="relative">
+                                <i class="ph-bold ph-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400"></i>
+                                <input id="assign-student-search" type="search" autocomplete="off" oninput="filterAssignStudents()" placeholder="Имя, роль или ID" class="min-h-11 w-full rounded-xl border-2 border-slate-200 bg-slate-50 pl-10 pr-3 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100">
+                            </div>
+                            <p id="assign-student-results" class="mb-0 mt-2 text-[11px] font-bold text-slate-500" aria-live="polite"></p>
+                        </div>
+                        <div id="assign-student-list" role="listbox" aria-label="Ученики" class="max-h-56 overflow-y-auto p-2">
+                            {% for st in students %}
+                            <button type="button" role="option" aria-selected="false" data-user-id="{{ st.id }}" data-label="{{ st.username }} · {{ st.role }} · ID {{ st.id }}" data-search="{{ (st.username ~ ' ' ~ st.role ~ ' ' ~ st.id)|lower }}" onclick="selectAssignStudent(this)" class="assign-picker-option flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 transition hover:bg-indigo-50">
+                                <span class="min-w-0"><span class="block truncate font-black text-slate-800">{{ st.username }}</span><span class="block text-[11px] font-semibold text-slate-500">{{ st.role }} · ID {{ st.id }}</span></span>
+                                <i class="ph-bold ph-check text-lg text-indigo-600"></i>
+                            </button>
+                            {% endfor %}
+                            <p id="assign-student-empty" class="hidden px-3 py-5 text-center text-sm font-semibold text-slate-500">Никого не нашли. Проверьте логин или ID.</p>
+                        </div>
+                    </div>
+                </section>
 
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Выберите ученика *</label>
-                <select name="user_id" required class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-amber-500 focus:outline-none transition">
-                    <option value="">-- Выберите пользователя --</option>
-                    {% for st in students %}
-                    <option value="{{ st.id }}">{{ st.username }} ({{ st.role }}, ID: {{ st.id }})</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="min-w-0 space-y-5">
+                    <section class="rounded-2xl border-2 border-slate-200 bg-white p-4 sm:p-5">
+                        <label for="assign-plan-search" class="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">2. Тарифный план</label>
+                        <select id="assign-plan-select" name="plan_id" class="sr-only" tabindex="-1" aria-hidden="true">
+                            <option value="" data-lessons="0" data-exam="" data-subject="" data-level="">Индивидуальное назначение</option>
+                            {% for p in plans %}
+                            <option value="{{ p.plan_id }}" data-lessons="{{ p.lessons_count or 0 }}" data-exam="{{ p.exam or '' }}" data-subject="{{ p.subject or '' }}" data-level="{{ p.level or '' }}">{{ p.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" id="assign-plan-toggle" aria-haspopup="listbox" aria-expanded="false" onclick="toggleAssignPlanPicker()" class="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 text-left text-sm font-black text-slate-800 transition hover:border-indigo-300 focus:outline-none focus:ring-4 focus:ring-indigo-100">
+                            <span id="assign-plan-selected-label" class="truncate">Индивидуальное назначение</span><i class="ph-bold ph-caret-down shrink-0 text-slate-400"></i>
+                        </button>
+                        <div id="assign-plan-picker" class="mt-2 hidden overflow-hidden rounded-xl border-2 border-slate-200 bg-white">
+                            <div class="border-b border-slate-100 p-2">
+                                <input id="assign-plan-search" type="search" autocomplete="off" oninput="filterAssignPlans()" placeholder="Поиск тарифа, предмета или экзамена" class="min-h-10 w-full rounded-lg border-2 border-slate-200 px-3 text-xs font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                            </div>
+                            <div id="assign-plan-list" role="listbox" aria-label="Тарифные планы" class="max-h-48 overflow-y-auto p-1.5">
+                                <button type="button" role="option" aria-selected="true" data-plan-id="" data-label="Индивидуальное назначение" data-search="индивидуальное назначение без тарифа" onclick="selectAssignPlan(this)" class="assign-picker-option w-full rounded-lg px-3 py-2.5 text-left text-sm font-black text-slate-800 transition hover:bg-indigo-50">Индивидуальное назначение <span class="block text-[11px] font-semibold text-slate-500">Без тарифного плана</span></button>
+                                {% for p in plans %}
+                                <button type="button" role="option" aria-selected="false" data-plan-id="{{ p.plan_id }}" data-label="{{ p.title }}" data-search="{{ (p.title ~ ' ' ~ (p.exam or '') ~ ' ' ~ (p.subject or '') ~ ' ' ~ (p.level or ''))|lower }}" onclick="selectAssignPlan(this)" class="assign-picker-option w-full rounded-lg px-3 py-2.5 text-left transition hover:bg-indigo-50">
+                                    <span class="block truncate text-sm font-black text-slate-800">{{ p.title }}</span>
+                                    <span class="mt-0.5 flex flex-wrap gap-x-2 text-[11px] font-semibold text-slate-500"><span>{% if p.exam == 'ege' %}ЕГЭ{% elif p.exam == 'oge' %}ОГЭ{% endif %}{% if p.subject == 'inf' %} · Информатика{% elif p.subject == 'math' %} · Математика{% endif %}{% if p.level == 'prof' %} · Профиль{% elif p.level == 'base' %} · База{% endif %}</span><span>{{ p.lessons_count or 0 }} ур.</span><span>{{ p.price_rub or 0 }} ₽</span></span>
+                                </button>
+                                {% endfor %}
+                                <p id="assign-plan-empty" class="hidden px-3 py-4 text-center text-xs font-semibold text-slate-500">Тарифы не найдены.</p>
+                            </div>
+                        </div>
+                    </section>
 
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Тарифный план</label>
-                <select id="assign-plan-select" name="plan_id" onchange="onAssignPlanChange()" class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-amber-500 focus:outline-none transition">
-                    <option value="" data-lessons="0" data-period="30">-- Без тарифа (Индивидуальный) --</option>
-                    {% for p in plans %}
-                    <option value="{{ p.plan_id }}" data-lessons="{{ p.lessons_count or 0 }}" data-period="{{ p.period_days or 30 }}">{{ p.title }} ({{ p.price_rub or 0 }} ₽)</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Количество уроков</label>
-                    <input type="number" id="assign-lessons" name="lessons_count" min="0" value="0"
-                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold focus:border-amber-500 focus:outline-none transition">
+                    <section id="assign-course-fields" class="rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] p-4 sm:p-5">
+                        <p class="mb-3 text-xs font-black uppercase tracking-wider text-slate-500">Направление курса</p>
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div>
+                                <label for="assign-exam" class="mb-1 block text-[11px] font-black text-slate-600">Экзамен *</label>
+                                <select id="assign-exam" name="exam" required class="min-h-11 w-full rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"><option value="ege" selected>ЕГЭ</option><option value="oge">ОГЭ</option></select>
+                            </div>
+                            <div>
+                                <label for="assign-subject" class="mb-1 block text-[11px] font-black text-slate-600">Предмет *</label>
+                                <select id="assign-subject" name="subject" required class="min-h-11 w-full rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"><option value="inf" selected>Информатика</option><option value="math">Математика</option></select>
+                            </div>
+                            <div>
+                                <label for="assign-level" class="mb-1 block text-[11px] font-black text-slate-600">Уровень</label>
+                                <select id="assign-level" name="level" class="min-h-11 w-full rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"><option value="">Общий</option><option value="prof">Профиль</option><option value="base">База</option></select>
+                            </div>
+                        </div>
+                        <p class="mb-0 mt-3 text-[11px] leading-5 text-slate-500">Предмет сохраняется в остатке занятий и показывается отдельной строкой в профиле ученика.</p>
+                    </section>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Срок (дней)</label>
-                    <input type="number" id="assign-period" name="period_days" min="1" value="30"
-                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold focus:border-amber-500 focus:outline-none transition">
+
+                <div class="min-w-0 space-y-5">
+                    <section class="space-y-4 rounded-2xl border-2 border-indigo-100 bg-indigo-50/70 p-4 sm:p-5">
+                        <div class="flex items-center justify-between gap-3">
+                            <div><p class="mb-1 text-xs font-black uppercase tracking-wider text-indigo-700">3. Количество занятий</p><p class="mb-0 text-[11px] text-slate-500">От 0 до 72; срок не устанавливается.</p></div>
+                            <div class="flex shrink-0 items-baseline gap-2">
+                                <input type="number" id="assign-lessons" name="lessons_count" min="0" max="72" step="1" value="0" required oninput="syncAssignLessons(this.value)" aria-describedby="assign-lessons-label" class="min-h-12 w-20 rounded-xl border-2 border-indigo-200 bg-white px-2 text-center text-2xl font-black text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                                <span id="assign-lessons-label" class="text-xs font-bold text-slate-500">уроков</span>
+                            </div>
+                        </div>
+                        <input type="range" id="assign-lessons-range" min="0" max="72" step="1" value="0" oninput="syncAssignLessons(this.value)" aria-label="Количество занятий от 0 до 72" class="h-2 w-full cursor-pointer accent-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500">
+                        <div id="assign-lessons-presets" class="grid grid-cols-5 gap-2" aria-label="Быстрый выбор количества занятий">
+                            <button type="button" data-lessons="0" onclick="syncAssignLessons(0)" aria-pressed="true" class="assign-lessons-preset min-h-10 rounded-xl border-2 border-indigo-500 bg-indigo-50 text-xs font-black text-indigo-800 transition hover:bg-indigo-100">0</button>
+                            {% for count in [8, 16, 24, 32, 40, 48, 56, 64, 72] %}
+                            <button type="button" data-lessons="{{ count }}" onclick="syncAssignLessons({{ count }})" aria-pressed="false" class="assign-lessons-preset min-h-10 rounded-xl border-2 border-slate-200 bg-white text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50">{{ count }}</button>
+                            {% endfor %}
+                        </div>
+                    </section>
+                    <section class="rounded-2xl border-2 border-slate-200 bg-white p-4 sm:p-5">
+                        <label for="assign-note" class="mb-2 block text-xs font-black uppercase tracking-wider text-slate-500">Комментарий <span class="font-semibold normal-case tracking-normal text-slate-400">· необязательно</span></label>
+                        <textarea id="assign-note" name="note" rows="3" placeholder="Например: согласовано на консультации" class="w-full resize-y rounded-xl border-2 border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"></textarea>
+                    </section>
                 </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Примечание / Комментарий</label>
-                <input type="text" name="note" placeholder="например Выдан бонус за победу в турнире"
-                       class="w-full px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 focus:outline-none transition">
-            </div>
-
-            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
-                <button type="button" onclick="closeAssignModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer">
-                    Отмена
-                </button>
-                <button type="submit" class="py-2.5 px-6 bg-amber-500 hover:bg-amber-600 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-amber-700 shadow-md transition cursor-pointer uppercase tracking-wider">
-                    Выдать доступ
-                </button>
             </div>
         </form>
+
+        <div class="flex shrink-0 items-center justify-between gap-3 border-t-2 border-slate-100 bg-white px-5 py-4 sm:px-7">
+            <p class="mb-0 hidden text-xs font-semibold text-slate-500 sm:block">Проверьте ученика, курс и остаток перед выдачей.</p>
+            <div class="ml-auto flex items-center gap-3">
+                <button type="button" onclick="closeAssignModal()" class="min-h-11 rounded-xl border-2 border-slate-200 border-b-[4px] bg-white px-5 text-sm font-black text-slate-700 transition hover:bg-slate-50 active:translate-y-[2px] active:border-b">Отмена</button>
+                <button type="submit" form="assign-tariff-form" class="min-h-11 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-6 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,.2)] transition hover:bg-indigo-500 active:translate-y-[2px] active:border-b">Выдать доступ</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1138,27 +1212,165 @@ function closeEditModal() {
     document.getElementById('edit-tariff-modal').classList.add('hidden');
 }
 
+function filterAssignStudents() {
+    const search = document.getElementById('assign-student-search');
+    const options = Array.from(document.querySelectorAll('#assign-student-list [role="option"]'));
+    const query = (search.value || '').trim().toLocaleLowerCase('ru');
+    let matches = 0;
+
+    options.forEach((option) => {
+        const visible = !query || option.dataset.search.toLocaleLowerCase('ru').includes(query);
+        option.hidden = !visible;
+        if (visible) matches += 1;
+    });
+
+    document.getElementById('assign-student-empty').classList.toggle('hidden', matches > 0);
+    document.getElementById('assign-student-results').textContent = query
+        ? (matches ? `Найдено: ${matches}` : 'Ничего не найдено')
+        : `Всего учеников: ${matches}`;
+}
+
+function toggleAssignStudentPicker(forceOpen) {
+    const picker = document.getElementById('assign-student-picker');
+    const toggle = document.getElementById('assign-student-toggle');
+    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : picker.classList.contains('hidden');
+    picker.classList.toggle('hidden', !shouldOpen);
+    toggle.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) document.getElementById('assign-student-search').focus({ preventScroll: true });
+}
+
+function selectAssignStudent(option) {
+    const selectedId = document.getElementById('assign-student-id');
+    selectedId.value = option.dataset.userId;
+    document.getElementById('assign-student-selected-label').textContent = option.dataset.label;
+    document.querySelectorAll('#assign-student-list [role="option"]').forEach((item) => {
+        item.setAttribute('aria-selected', String(item === option));
+    });
+    document.getElementById('assign-student-results').textContent = `Выбран ученик: ${option.dataset.label}`;
+    toggleAssignStudentPicker(false);
+}
+
+function toggleAssignPlanPicker(forceOpen) {
+    const picker = document.getElementById('assign-plan-picker');
+    const toggle = document.getElementById('assign-plan-toggle');
+    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : picker.classList.contains('hidden');
+    picker.classList.toggle('hidden', !shouldOpen);
+    toggle.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) document.getElementById('assign-plan-search').focus({ preventScroll: true });
+}
+
+function filterAssignPlans() {
+    const query = (document.getElementById('assign-plan-search').value || '').trim().toLocaleLowerCase('ru');
+    let matches = 0;
+    document.querySelectorAll('#assign-plan-list [role="option"]').forEach((option) => {
+        const visible = !query || option.dataset.search.toLocaleLowerCase('ru').includes(query);
+        option.hidden = !visible;
+        if (visible) matches += 1;
+    });
+    document.getElementById('assign-plan-empty').classList.toggle('hidden', matches > 0);
+}
+
+function selectAssignPlan(option) {
+    const select = document.getElementById('assign-plan-select');
+    select.value = option.dataset.planId;
+    document.getElementById('assign-plan-selected-label').textContent = option.dataset.label;
+    document.querySelectorAll('#assign-plan-list [role="option"]').forEach((item) => {
+        item.setAttribute('aria-selected', String(item === option));
+    });
+    document.getElementById('assign-plan-search').value = '';
+    filterAssignPlans();
+    toggleAssignPlanPicker(false);
+    onAssignPlanChange();
+}
+
+function validateAssignForm() {
+    if (document.getElementById('assign-student-id').value) return true;
+    toggleAssignStudentPicker(true);
+    if (typeof showToast === 'function') showToast('Сначала выберите ученика.', 'warning');
+    return false;
+}
+
 function openAssignModal(planId = null) {
     const modal = document.getElementById('assign-tariff-modal');
     const select = document.getElementById('assign-plan-select');
-    if (planId) {
-        select.value = planId;
-        onAssignPlanChange();
-    }
+    document.getElementById('assign-tariff-form').reset();
+    document.getElementById('assign-student-id').value = '';
+    document.getElementById('assign-student-selected-label').textContent = 'Найдите и выберите ученика';
+    document.getElementById('assign-student-search').value = '';
+    filterAssignStudents();
+    toggleAssignStudentPicker(false);
+    document.getElementById('assign-plan-search').value = '';
+    filterAssignPlans();
+    select.value = planId ? String(planId) : '';
+    const selectedPlan = Array.from(select.options).find((option) => option.value === select.value);
+    const planLabel = selectedPlan ? selectedPlan.textContent.trim() : 'Индивидуальное назначение';
+    document.getElementById('assign-plan-selected-label').textContent = planLabel;
+    document.querySelectorAll('#assign-plan-list [role="option"]').forEach((option) => {
+        option.setAttribute('aria-selected', String(option.dataset.planId === select.value));
+    });
+    toggleAssignPlanPicker(false);
+    onAssignPlanChange();
     modal.classList.remove('hidden');
 }
 function closeAssignModal() {
-    document.getElementById('assign-tariff-modal').classList.add('hidden');
+    const modal = document.getElementById('assign-tariff-modal');
+    modal.classList.add('hidden');
+    toggleAssignStudentPicker(false);
+    toggleAssignPlanPicker(false);
+}
+
+function getLessonWord(count) {
+    const remainder10 = count % 10;
+    const remainder100 = count % 100;
+    if (remainder100 >= 11 && remainder100 <= 14) return 'уроков';
+    if (remainder10 === 1) return 'урок';
+    if (remainder10 >= 2 && remainder10 <= 4) return 'урока';
+    return 'уроков';
+}
+
+function syncAssignLessons(value) {
+    const count = Number.parseInt(value, 10);
+    if (!Number.isInteger(count)) return;
+
+    const safeCount = Math.max(0, Math.min(72, count));
+    const numberInput = document.getElementById('assign-lessons');
+    const rangeInput = document.getElementById('assign-lessons-range');
+    numberInput.value = safeCount;
+    rangeInput.value = safeCount;
+    document.getElementById('assign-lessons-label').textContent = getLessonWord(safeCount);
+
+    document.querySelectorAll('#assign-lessons-presets [data-lessons]').forEach((button) => {
+        const active = Number(button.dataset.lessons) === safeCount;
+        button.setAttribute('aria-pressed', String(active));
+        button.classList.toggle('border-indigo-500', active);
+        button.classList.toggle('bg-indigo-50', active);
+        button.classList.toggle('text-indigo-800', active);
+        button.classList.toggle('font-black', active);
+        button.classList.toggle('border-slate-200', !active);
+        button.classList.toggle('bg-white', !active);
+        button.classList.toggle('text-slate-600', !active);
+        button.classList.toggle('font-bold', !active);
+    });
 }
 
 function onAssignPlanChange() {
     const select = document.getElementById('assign-plan-select');
     const opt = select.options[select.selectedIndex];
+    const courseFields = document.getElementById('assign-course-fields');
+    const hasPlanCourse = !!(opt && ['ege', 'oge'].includes(opt.dataset.exam) && ['inf', 'math'].includes(opt.dataset.subject));
+    const courseIsCustom = !select.value || !hasPlanCourse;
+    courseFields.classList.toggle('hidden', !courseIsCustom);
+    ['assign-exam', 'assign-subject', 'assign-level'].forEach((id) => {
+        document.getElementById(id).disabled = !courseIsCustom;
+    });
     if (opt) {
         const lessons = opt.getAttribute('data-lessons') || 0;
-        const period = opt.getAttribute('data-period') || 30;
-        document.getElementById('assign-lessons').value = lessons;
-        document.getElementById('assign-period').value = period;
+        syncAssignLessons(lessons);
+        if (select.value) {
+            if (opt.dataset.exam) document.getElementById('assign-exam').value = opt.dataset.exam;
+            if (opt.dataset.subject) document.getElementById('assign-subject').value = opt.dataset.subject;
+            document.getElementById('assign-level').value = opt.dataset.level || '';
+        }
     }
 }
 

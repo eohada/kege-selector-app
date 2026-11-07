@@ -8,6 +8,7 @@ from app.telegram.application import build_operational_summary
 from app.telegram.v3.constants import (
     CB_PREFIX,
     DOMAIN_ADMIN,
+    DOMAIN_BROADCAST,
     DOMAIN_CREATOR,
     DOMAIN_NAV,
     DOMAIN_SETTINGS,
@@ -32,41 +33,49 @@ async def show_creator_home(update: Update, user: User) -> None:
         return
 
     name = escape(get_display_name(user))
+    uname = escape(user.username or f"user_{user.id}")
     mode = str(getattr(user, "creator_bot_mode", "ADMIN")).upper()
     is_teacher_mode = mode == "TEACHER"
 
     summary = build_operational_summary(user)
 
-    text = f"{card_header(f'👑 Кабинет Создателя · {name}', 'Управление платформой BooStudy')}\n"
+    mode_title = "👨‍🏫 Преподаватель" if is_teacher_mode else "👑 Создатель"
+    text = (
+        f"{card_header('👑 Кабинет Создателя платформы', f'Пользователь: {uname}')}\n"
+        f"🎯 <b>Текущий рабочий режим:</b> <b>{mode_title}</b> (по умолчанию при /start)\n"
+        f"<i>(При вызове /start бот сразу открывает {mode_title.lower()})</i>\n\n"
+    )
 
-    if is_teacher_mode:
-        text += (
-            "🎯 <b>Текущий рабочий режим:</b> 👨‍🏫 <b>Преподаватель</b>\n"
-            "<i>Бот оптимизирован под ведение уроков и проверку заданий.</i>\n\n"
-        )
-    else:
-        text += (
-            "🎯 <b>Текущий рабочий режим:</b> 👑 <b>Создатель платформы</b>\n"
-            "<i>Полный доступ ко всем подсистемам, администрированию и метрикам.</i>\n\n"
-        )
-
+    quick_alert_buttons: list[InlineKeyboardButton] = []
     if summary:
         text += (
-            f"📊 <b>Живые показатели BooStudy:</b>\n"
-            f"• Всего пользователей: <b>{summary.users}</b>\n"
-            f"• Учеников: <b>{summary.active_students}</b> | Учителей: <b>{summary.active_teachers}</b>\n"
-            f"• Заданий на проверке: <b>{summary.pending_reviews}</b>\n"
-            f"• Открытых обращений: <b>{summary.open_bug_reports}</b>\n"
+            f"📊 <b>Общеплатформенная сводка BooStudy (все пользователи):</b>\n"
+            f"• Пользователей: <b>{summary.users}</b> (учеников: {summary.active_students}, учителей: {summary.active_teachers})\n"
+            f"• Заданий на проверке у учителей: <b>{summary.pending_reviews}</b>"
         )
-        if summary.failed_deliveries:
-            text += f"• ⚠️ Ошибок очереди сообщений: <b>{summary.failed_deliveries}</b>\n"
-        text += "\n"
+        if summary.oldest_review_wait_days > 0:
+            text += f" (макс. задержка: <b>{summary.oldest_review_wait_days} дн.</b>)"
+        text += f"\n• Открытых обращений и багов: <b>{summary.open_bug_reports}</b>"
+        if summary.critical_bugs_count > 0:
+            text += f" (⚠️ критичных: <b>{summary.critical_bugs_count}</b>)"
+        text += f"\n• Доставок Outbox: отправлено <b>{summary.sent_deliveries}</b>"
+        if summary.failed_deliveries > 0:
+            text += f" | ⚠️ <b>сбоев: {summary.failed_deliveries}</b>"
+        text += "\n\n"
+
+        if summary.failed_deliveries > 0:
+            quick_alert_buttons.append(InlineKeyboardButton(f"⚠️ Сбои Outbox ({summary.failed_deliveries})", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:deliveries:1"))
+        if summary.critical_bugs_count > 0:
+            quick_alert_buttons.append(InlineKeyboardButton(f"🐞 Критичные баги ({summary.critical_bugs_count})", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:probs"))
 
     toggle_btn_title = (
-        "🔄 Переключить в режим Создателя" if is_teacher_mode else "🔄 Переключить в режим Преподавателя"
+        "🔄 Сменить дефолт /start на Создатель" if is_teacher_mode else "🔄 Сменить дефолт /start на Преподаватель"
     )
 
     keyboard: list[list[InlineKeyboardButton]] = []
+    if quick_alert_buttons:
+        keyboard.append(quick_alert_buttons)
+
     mini_app_btn = build_mini_app_button("📱 Открыть Mini App")
     if mini_app_btn:
         keyboard.append([mini_app_btn])
@@ -80,6 +89,10 @@ async def show_creator_home(update: Update, user: User) -> None:
         [
             InlineKeyboardButton("⚙️ Админ-панель", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:home"),
             InlineKeyboardButton("👥 Пользователи", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:u:1:all"),
+        ],
+        [
+            InlineKeyboardButton("🛡️ Аудит уведомлений", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:notif:hub"),
+            InlineKeyboardButton("📢 Центр рассылок", callback_data=f"{CB_PREFIX}:{DOMAIN_BROADCAST}:start"),
         ],
         [
             InlineKeyboardButton("⚙️ Настройки", callback_data=f"{CB_PREFIX}:{DOMAIN_SETTINGS}:home"),

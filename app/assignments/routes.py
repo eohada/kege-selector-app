@@ -1098,7 +1098,13 @@ def assignment_review_bulk_update(assignment_id: int):
                         title='Работа возвращена на доработку',
                         body=None,
                         link_url=url_for('assignments.submission_view', submission_id=sub.submission_id),
-                        meta={'assignment_id': assignment.assignment_id, 'submission_id': sub.submission_id, 'status': 'RETURNED'},
+                        meta={
+                            'assignment_id': assignment.assignment_id,
+                            'submission_id': sub.submission_id,
+                            'status': 'RETURNED',
+                            'actor_user_id': current_user.id,
+                            'actor_role': 'teacher',
+                        },
                     )
                 else:
                     notify_student_and_parents(
@@ -1107,7 +1113,13 @@ def assignment_review_bulk_update(assignment_id: int):
                         title='Работа проверена',
                         body=(sub.teacher_feedback or '').strip() or None,
                         link_url=url_for('assignments.submission_view', submission_id=sub.submission_id),
-                        meta={'assignment_id': assignment.assignment_id, 'submission_id': sub.submission_id, 'status': 'GRADED'},
+                        meta={
+                            'assignment_id': assignment.assignment_id,
+                            'submission_id': sub.submission_id,
+                            'status': 'GRADED',
+                            'actor_user_id': current_user.id,
+                            'actor_role': 'teacher',
+                        },
                     )
         except Exception:
             pass
@@ -1197,7 +1209,13 @@ def submission_quick_return(submission_id: int):
                 title='Работа возвращена на доработку',
                 body=None,
                 link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
-                meta={'assignment_id': assignment.assignment_id, 'submission_id': submission.submission_id, 'status': 'RETURNED'},
+                meta={
+                    'assignment_id': assignment.assignment_id,
+                    'submission_id': submission.submission_id,
+                    'status': 'RETURNED',
+                    'actor_user_id': current_user.id,
+                    'actor_role': 'teacher',
+                },
             )
     except Exception:
         pass
@@ -2867,7 +2885,15 @@ def distribute_assignment():
                     title=f"Новые задания — {label}",
                     body=body,
                     link_url=student_link,
-                    meta={'assignment_id': assignment.assignment_id, 'assignment_type': (assignment_type or 'homework').strip().lower(), 'tasks_count': len(task_ids), 'task_numbers': task_numbers},
+                    meta={
+                        'assignment_id': assignment.assignment_id,
+                        'assignment_type': (assignment_type or 'homework').strip().lower(),
+                        'tasks_count': len(task_ids),
+                        'task_numbers': task_numbers,
+                        'actor_user_id': current_user.id,
+                        'actor_role': 'teacher',
+                        'recipient_role': 'student',
+                    },
                 )
         try:
             db.session.commit()
@@ -6415,6 +6441,7 @@ def submission_submit(submission_id):
         # Collect notification info before commit to avoid DetachedInstanceError after commit
         student_name = getattr(submission.student, 'name', None) or 'Ученик'
         student_id = submission.student_id
+        student_user_id = getattr(submission.student, 'user_id', None)
         assignment_id = assignment.assignment_id
         assignment_title = assignment.title
         creator_id = getattr(assignment, 'created_by_id', None) or (assignment.created_by.id if getattr(assignment, 'created_by', None) else None)
@@ -6468,13 +6495,18 @@ def submission_submit(submission_id):
                         'submission_id': submission_id,
                         'assignment_id': assignment_id,
                         'student_id': student_id,
+                        'student_user_id': student_user_id,
                         'student_name': student_name,
                         'assignment_title': assignment_title,
                         'submitted_at': now,
+                        'actor_user_id': current_user.id,
+                        'actor_role': 'student',
+                        'recipient_role': 'teacher',
                     }
                 )
             from app.notifications.service import _get_parent_user_ids_for_student_user
-            for pid in _get_parent_user_ids_for_student_user(student_id):
+            pids = _get_parent_user_ids_for_student_user(int(student_user_id)) if student_user_id else []
+            for pid in pids:
                 notify_user(
                     pid,
                     kind='homework_submitted',
@@ -6485,9 +6517,14 @@ def submission_submit(submission_id):
                         'submission_id': submission_id,
                         'assignment_id': assignment_id,
                         'student_id': student_id,
+                        'student_user_id': student_user_id,
+                        'parent_id': pid,
                         'student_name': student_name,
                         'assignment_title': assignment_title,
                         'submitted_at': now,
+                        'actor_user_id': current_user.id,
+                        'actor_role': 'student',
+                        'recipient_role': 'parent',
                     }
                 )
             db.session.commit()
@@ -7521,6 +7558,8 @@ def submission_grade_save(submission_id):
                         'score': submission.total_score,
                         'teacher_comment': (teacher_feedback or '').strip() or None,
                         'status': status,
+                        'actor_user_id': cur_user_id,
+                        'actor_role': 'teacher',
                     }
                     if status == 'GRADED':
                         notify_student_and_parents(
@@ -7696,33 +7735,44 @@ def submission_comment_create(submission_id):
         try:
             author = current_user
             is_teacher = not getattr(current_user, 'is_student', lambda: False)()
+            sub_url = url_for("assignments.submission_view", submission_id=submission.submission_id)
             if is_teacher and submission.student and submission.student.user_id:
-                notify_user_by_id(
+                notify_user(
                     int(submission.student.user_id),
-                    (
-                        f'💬 <b>Новый комментарий к работе</b>\n\n'
-                        f'{text}\n'
-                        f'\n🔗 {url_for("assignments.submission_view", submission_id=submission.submission_id)}'
-                    ),
                     kind='lesson_comment',
-                    reply_markup={'inline_keyboard': [[{'text': 'Открыть работу', 'url': url_for("assignments.submission_view", submission_id=submission.submission_id)}]]},
+                    title='Новый комментарий к работе',
+                    body=text,
+                    link_url=sub_url,
+                    meta={
+                        'submission_id': submission.submission_id,
+                        'assignment_id': submission.assignment_id,
+                        'actor_user_id': current_user.id,
+                        'actor_role': 'teacher',
+                        'recipient_role': 'student',
+                    },
                 )
-            elif not is_teacher and submission.assignment.created_by_id:
-                teacher = User.query.get(submission.assignment.created_by_id)
-                teacher_profile = getattr(teacher, 'profile', None) if teacher else None
-                if teacher_profile and teacher_profile.telegram_chat_id:
-                    notify_user_by_id(
-                        int(teacher.id),
-                        (
-                            f'💬 <b>Новый комментарий от ученика</b>\n\n'
-                            f'{text}\n'
-                            f'\n🔗 {url_for("assignments.submission_view", submission_id=submission.submission_id)}'
-                        ),
-                        kind='lesson_comment',
-                        reply_markup={'inline_keyboard': [[{'text': 'Открыть работу', 'url': url_for("assignments.submission_view", submission_id=submission.submission_id)}]]},
-                    )
+            elif not is_teacher and submission.assignment and submission.assignment.created_by_id:
+                notify_user(
+                    int(submission.assignment.created_by_id),
+                    kind='lesson_comment',
+                    title='Новый комментарий от ученика',
+                    body=text,
+                    link_url=sub_url,
+                    meta={
+                        'submission_id': submission.submission_id,
+                        'assignment_id': submission.assignment_id,
+                        'actor_user_id': current_user.id,
+                        'actor_role': 'student',
+                        'recipient_role': 'teacher',
+                    },
+                )
         except Exception as notify_err:
             logger.warning('submission_comment_create notify failed: %s', notify_err)
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         
         author_name = current_user.username
         if current_user.profile:

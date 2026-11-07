@@ -129,9 +129,34 @@ def deduct_lesson_balance(
     if student.user_id:
         from app.models import UserSubscription
 
-        active_subscription = UserSubscription.query.filter_by(
+        active_subscriptions = UserSubscription.query.filter_by(
             user_id=student.user_id, status="active"
-        ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+        ).order_by(
+            UserSubscription.ends_at.desc().nullslast(),
+            UserSubscription.subscription_id.desc(),
+        ).all()
+
+        def course_key(value):
+            normalized = (value or '').strip().lower().replace('ё', 'е')
+            if normalized in {'inf', 'informatics'} or 'информат' in normalized:
+                return 'inf'
+            if normalized in {'math', 'mathematics'} or 'математ' in normalized:
+                return 'math'
+            return None
+
+        lesson_course = course_key(lesson.subject) or 'inf'
+        matching_subscription = None
+        general_subscription = None
+        for candidate in active_subscriptions:
+            subscription_course = course_key(
+                candidate.subject or (candidate.plan.subject if candidate.plan else None)
+            )
+            if subscription_course == lesson_course:
+                matching_subscription = candidate
+                break
+            if subscription_course is None and general_subscription is None:
+                general_subscription = candidate
+        active_subscription = matching_subscription or general_subscription
         if active_subscription and active_subscription.lessons_remaining is not None:
             subscription_before = int(active_subscription.lessons_remaining)
             subscription_after = max(0, subscription_before - units)

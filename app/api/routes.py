@@ -411,7 +411,24 @@ def api_update_lessons_remaining(user_id):
             )
         except Exception:
             logger.warning('Failed to notify lesson balance change for user %s', user_id, exc_info=True)
-        return jsonify({'success': True, 'new_count': sub.lessons_remaining})
+        from app.utils.subscription_access import get_course_lesson_balance_summary
+        balance_summary = get_course_lesson_balance_summary(user_id)
+        return jsonify({
+            'success': True,
+            'new_count': sub.lessons_remaining,
+            'course_balance_summary': {
+                'courses': [
+                    {
+                        'key': course['key'],
+                        'lessons_remaining': course['lessons_remaining'],
+                        'is_unlimited': course['is_unlimited'],
+                    }
+                    for course in balance_summary['courses']
+                ],
+                'total_lessons': balance_summary['total_lessons'],
+                'has_active_subscriptions': balance_summary['has_active_subscriptions'],
+            },
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500

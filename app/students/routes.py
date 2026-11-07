@@ -58,7 +58,7 @@ from core.audit_logger import audit_logger
 from flask_login import current_user
 from app.utils.db_migrations import ensure_schema_columns
 from app.auth.rbac_utils import get_user_scope, has_permission
-from app.utils.subscription_access import get_effective_access_for_user
+from app.utils.subscription_access import get_course_lesson_balance_summary, get_effective_access_for_user
 from app.utils.achievement_service import build_student_achievement_catalog
 
 logger = logging.getLogger(__name__)
@@ -871,6 +871,17 @@ def teacher_student_dashboard(student_id: int):
     """Дашборд ученика со стороны преподавателя/создателя."""
     student = _guard_student_access(student_id)
     student_user = _get_student_user_for_scope(student)
+    course_balance_summary = {
+        'courses': [], 'total_lessons': 0, 'has_active_subscriptions': False,
+    }
+    if student_user:
+        try:
+            course_balance_summary = get_course_lesson_balance_summary(student_user.id)
+        except Exception:
+            db.session.rollback()
+            from flask import current_app
+            current_app.logger.exception('Unable to load course lesson balances for student %s', student_user.id)
+            course_balance_summary['load_error'] = True
     
     now = moscow_now()
     active_lesson = Lesson.query.filter_by(student_id=student.student_id, status='in_progress').order_by(Lesson.lesson_date.desc()).first()
@@ -894,6 +905,7 @@ def teacher_student_dashboard(student_id: int):
         'sandbox/teacher_dashboard.html',
         student=student,
         user=student_user,
+        course_balance_summary=course_balance_summary,
         student_profile=student_profile_obj,
         active_lesson=active_lesson,
         upcoming_lesson=upcoming_lesson,
@@ -1366,11 +1378,19 @@ def student_info(student_id: int):
     student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
     student_profile_obj = UserProfile.query.filter_by(user_id=student_user_obj.id).first() if student_user_obj else None
     student_subscription = None
+    course_balance_summary = {
+        'courses': [], 'total_lessons': 0, 'has_active_subscriptions': False,
+    }
     try:
         if student_user_obj:
             student_subscription = get_effective_access_for_user(student_user_obj.id)
+            course_balance_summary = get_course_lesson_balance_summary(student_user_obj.id)
     except Exception:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception('Unable to load subscription balance for student profile %s', student.student_id)
         student_subscription = None
+        course_balance_summary['load_error'] = True
     parents_info = []
     try:
         can_see_parents = (
@@ -1434,6 +1454,7 @@ def student_info(student_id: int):
         student_user=student_user_obj,
         student_profile=student_profile_obj,
         student_subscription=student_subscription,
+        course_balance_summary=course_balance_summary,
         tutors_list=tutors_list,
         parents_info=parents_info,
         activity_summary=activity_summary,

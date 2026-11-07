@@ -10,6 +10,7 @@ const VIEWPORTS = [
   { width: 1600, height: 900, label: '1600x900' },
   { width: 1366, height: 768, label: '1366x768' },
   { width: 1024, height: 768, label: '1024x768' },
+  { width: 768, height: 1024, label: '768x1024' },
   { width: 390, height: 844, label: '390x844' },
 ];
 
@@ -34,7 +35,7 @@ async function capture(page: Page, name: string, fullPage = false) {
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, name), fullPage });
 }
 
-async function measureNexusFrames(page: Page, label: string, requestedDurationMs = 1800) {
+async function measureAnimationFrames(page: Page, label: string, requestedDurationMs = 1800) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Performance.enable');
   const before = await cdp.send('Performance.getMetrics');
@@ -102,6 +103,20 @@ async function measureNexusFrames(page: Page, label: string, requestedDurationMs
   return completeMetrics;
 }
 
+async function settleAtlasCamera(page: Page) {
+  await page.waitForTimeout(900);
+  await page.evaluate(async () => {
+    const world = document.getElementById('ori-atlas-world');
+    if (!world) return;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const transitions = world.getAnimations().filter((animation) => {
+      const timing = animation.effect?.getComputedTiming();
+      return animation.playState === 'running' && timing?.iterations !== Infinity;
+    });
+    await Promise.all(transitions.map((animation) => animation.finished.catch(() => undefined)));
+  });
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   const geometry = await page.evaluate(() => ({
     viewport: window.innerWidth,
@@ -126,6 +141,10 @@ async function expectNoHorizontalOverflow(page: Page) {
 async function expectGeometryAudit(page: Page, route: string) {
   await page.evaluate(() => window.scrollTo(0, 0));
   const report = await runGeometryAudit(page, route);
+  if (route === '/oristera/atlas' && report.viewport.width === 1600 && report.viewport.height === 900) {
+    const warnings = report.findings.filter((finding) => finding.severity === 'WARN');
+    console.log(`ATLAS VISUAL WARNINGS — ${JSON.stringify(warnings)}`);
+  }
   const failures = report.findings.filter((finding) => finding.severity === 'FAIL');
   expect(failures, JSON.stringify(failures)).toEqual([]);
 }
@@ -153,7 +172,7 @@ test.describe('ORISTERA learning studio and knowledge map', () => {
     }
 
     await page.setViewportSize({ width: 1600, height: 900 });
-    const idleFrames = await measureNexusFrames(page, 'idle-1600x900');
+    const idleFrames = await measureAnimationFrames(page, 'idle-1600x900');
     expect(idleFrames.animationCount).toBe(1);
     expect(idleFrames.frameIntervalMs.p50).toBeLessThanOrEqual(33.4);
 
@@ -178,7 +197,7 @@ test.describe('ORISTERA learning studio and knowledge map', () => {
       return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     });
     await page.mouse.move(atlasOrb.x, atlasOrb.y);
-    const hoverFrames = await measureNexusFrames(page, 'atlas-hover-1600x900');
+    const hoverFrames = await measureAnimationFrames(page, 'nexus-atlas-hover-1600x900');
     console.log(`NEXUS FRAME QA — idle p50/p95/p99 ${idleFrames.frameIntervalMs.p50}/${idleFrames.frameIntervalMs.p95}/${idleFrames.frameIntervalMs.p99} ms; Atlas hover ${hoverFrames.frameIntervalMs.p50}/${hoverFrames.frameIntervalMs.p95}/${hoverFrames.frameIntervalMs.p99} ms`);
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -194,12 +213,12 @@ test.describe('ORISTERA learning studio and knowledge map', () => {
     expect(reducedMotion.matches).toBe(true);
     expect(reducedMotion.ambientAnimationDurationMs).toBeLessThanOrEqual(0.02);
     expect(reducedMotion.ambientAnimationIterations).toBe('1');
-    const reducedFrames = await measureNexusFrames(page, 'reduced-motion-1600x900');
+    const reducedFrames = await measureAnimationFrames(page, 'reduced-motion-1600x900');
     console.log(`NEXUS FRAME QA — reduced motion p50/p95/p99 ${reducedFrames.frameIntervalMs.p50}/${reducedFrames.frameIntervalMs.p95}/${reducedFrames.frameIntervalMs.p99} ms`);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.mouse.move(5, 5);
 
-    const longOpenFrames = await measureNexusFrames(page, 'long-open-32000-1600x900', 32_000);
+    const longOpenFrames = await measureAnimationFrames(page, 'long-open-32000-1600x900', 32_000);
     expect(longOpenFrames.animationCount).toBe(1);
     expect(longOpenFrames.frameIntervalMs.p50).toBeLessThanOrEqual(33.4);
     console.log(`NEXUS LONG OPEN — ${longOpenFrames.durationMs} ms; p50/p95/p99 ${longOpenFrames.frameIntervalMs.p50}/${longOpenFrames.frameIntervalMs.p95}/${longOpenFrames.frameIntervalMs.p99} ms; long tasks ${longOpenFrames.longTaskCount}`);
@@ -213,12 +232,9 @@ test.describe('ORISTERA learning studio and knowledge map', () => {
     });
     const navigationStartedAt = Date.now();
     await page.locator('.ori-genesis-orb.orb-atlas').click();
-    if (await page.evaluate(() => innerWidth <= 600)) {
-      await expect(page.locator('.ori-atlas-tabs')).toBeVisible();
-      await expect(page.locator('#ori-atlas-svg')).toBeHidden();
-    } else {
-      await expect(page.locator('#ori-atlas-svg')).toBeVisible();
-    }
+    await expect(page.locator('.ori-atlas-tabs')).toBeVisible();
+    await expect(page.locator('#ori-atlas-world')).toBeVisible();
+    await expect(page.locator('#ori-atlas-svg')).toBeVisible();
     await page.waitForFunction(() => {
       const controller = (window as Window & {
         OristeraMotion?: { getMetrics: () => { transitionCount: number } };
@@ -262,26 +278,53 @@ test.describe('ORISTERA learning studio and knowledge map', () => {
       path.join(SCREENSHOT_DIR, 'navigation-nexus-to-atlas-1600x900.json'),
       JSON.stringify(navigationMetrics, null, 2),
     );
+    const atlasBackgroundMotion = await page.evaluate(() => {
+      const originalHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      const root = document.getElementById('ori-atlas-universe');
+      const paused = root?.dataset.motionPaused === 'true';
+      const animationState = getComputedStyle(document.querySelector('.atlas-domain-plate')!).animationPlayState;
+      if (originalHidden) Object.defineProperty(document, 'hidden', originalHidden);
+      else delete (document as Document & { hidden?: boolean }).hidden;
+      document.dispatchEvent(new Event('visibilitychange'));
+      return { paused, animationState, resumed: root?.dataset.motionPaused !== 'true' };
+    });
+    expect(atlasBackgroundMotion.paused).toBe(true);
+    expect(atlasBackgroundMotion.animationState).toBe('paused');
+    expect(atlasBackgroundMotion.resumed).toBe(true);
+    const atlasIdleFrames = await measureAnimationFrames(page, 'atlas-idle-1600x900');
+    await page.locator('.atlas-domain-trigger').first().hover();
+    const atlasHoverFrames = await measureAnimationFrames(page, 'atlas-hover-1600x900');
+    console.log(`ATLAS FRAME QA — idle p50/p95/p99 ${atlasIdleFrames.frameIntervalMs.p50}/${atlasIdleFrames.frameIntervalMs.p95}/${atlasIdleFrames.frameIntervalMs.p99} ms; hover ${atlasHoverFrames.frameIntervalMs.p50}/${atlasHoverFrames.frameIntervalMs.p95}/${atlasHoverFrames.frameIntervalMs.p99} ms; long tasks ${atlasIdleFrames.longTaskCount}/${atlasHoverFrames.longTaskCount}`);
+    await page.mouse.move(5, 5);
     const areaCount = await page.locator('.ori-constellation-cluster').count();
     const tabCount = await page.locator('.ori-atlas-tab').count();
     expect(areaCount).toBeGreaterThan(0);
     expect(tabCount).toBe(areaCount);
-    await expect(page.locator('.ori-atlas-field')).not.toContainText(/\b\d+%/);
+    await expect(page.locator('#ori-atlas-scale')).toHaveText('100%');
     await expect(page.locator('.ori-atlas-field')).not.toContainText(/Verified Mastery/i);
 
     for (const viewport of VIEWPORTS) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await settleAtlasCamera(page);
       await expectNoHorizontalOverflow(page);
       await expectGeometryAudit(page, '/oristera/atlas');
-      await capture(page, `atlas-${viewport.label}.png`, viewport.width === 390);
+      await capture(page, `atlas-${viewport.label}.png`, viewport.width <= 768);
     }
 
     await page.setViewportSize({ width: 1600, height: 900 });
+    await settleAtlasCamera(page);
     const firstArea = page.locator('.ori-atlas-tab').first();
     await firstArea.click();
+    await settleAtlasCamera(page);
     await expect(page.locator('#ori-cluster-inspector')).toBeVisible();
     await expect(page.locator('#ori-atlas-reset-btn')).toBeVisible();
-    const firstTopic = page.locator('#ori-cluster-topics button').first();
+    await expect(page.locator('.atlas-domain.is-active')).toBeVisible();
+    const immersionFrames = await measureAnimationFrames(page, 'atlas-immersion-1600x900');
+    console.log(`ATLAS IMMERSION CAMERA — p50/p95/p99 ${immersionFrames.frameIntervalMs.p50}/${immersionFrames.frameIntervalMs.p95}/${immersionFrames.frameIntervalMs.p99} ms; long tasks ${immersionFrames.longTaskCount}`);
+    await capture(page, 'atlas-domain-immersion-1600x900.png');
+    const firstTopic = page.locator('.atlas-domain.is-active .ori-star-node').first();
     await firstTopic.click();
     await expect(page.locator('#ori-skill-inspector')).toBeVisible();
     await expect(page.locator('#ori-insp-title')).not.toBeEmpty();
@@ -289,20 +332,67 @@ test.describe('ORISTERA learning studio and knowledge map', () => {
     await expect(page.locator('#ori-skill-inspector')).not.toContainText(/\b\d+%|Verified Mastery/i);
     await capture(page, 'atlas-topic-detail-1600x900.png');
 
+    const restoredTopic = await page.locator('#ori-insp-title').innerText();
+    await expect(page).toHaveURL(/atlas_area=.*atlas_topic=/);
+    await page.reload();
+    await expect(page.locator('#ori-skill-inspector')).toBeVisible();
+    await expect(page.locator('#ori-insp-title')).toHaveText(restoredTopic);
+    await page.locator('#ori-insp-practice-link').click();
+    await page.waitForURL(/\/oristera\/practice\?/);
+    await page.goBack();
+    await page.waitForURL(/\/oristera\/atlas\?atlas_area=.*atlas_topic=/);
+    await expect(page.locator('#ori-skill-inspector')).toBeVisible();
+    await expect(page.locator('#ori-insp-title')).toHaveText(restoredTopic);
+
     await page.keyboard.press('Escape');
     await expect(page.locator('#ori-cluster-inspector')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('#ori-atlas-overview-card')).toBeVisible();
     await expect(page.locator('#ori-atlas-reset-btn')).toBeHidden();
 
+    await page.keyboard.press('/');
+    await expect(page.locator('#ori-atlas-search')).toBeFocused();
+    await page.locator('#ori-atlas-search').fill('Рекурсивные функции');
+    const searchResult = page.locator('.atlas-search-result').first();
+    await expect(searchResult).toBeVisible();
+    await searchResult.click();
+    await expect(page.locator('#ori-skill-inspector')).toBeVisible();
+    await expect(page.locator('#ori-insp-title')).toHaveText('Рекурсивные функции');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+
+    await page.keyboard.press('=');
+    await expect(page.locator('#ori-atlas-scale')).not.toHaveText('100%');
+    await page.keyboard.press('-');
+    await expect(page.locator('#ori-atlas-scale')).toHaveText('100%');
+    await page.keyboard.press('5');
+    await expect(page.locator('.atlas-domain.is-active')).toHaveAttribute('data-cid', 'c-olympiad');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#ori-atlas-overview-card')).toBeVisible();
+
+    const panStart = await page.locator('#ori-atlas-viewport').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width * 0.05, y: rect.top + rect.height * 0.08 };
+    });
+    const transformBeforePan = await page.locator('#ori-atlas-world').evaluate((element) => getComputedStyle(element).transform);
+    await page.mouse.move(panStart.x, panStart.y);
+    await page.mouse.down();
+    await page.mouse.move(panStart.x + 70, panStart.y + 24, { steps: 5 });
+    await page.mouse.up();
+    await settleAtlasCamera(page);
+    const transformAfterPan = await page.locator('#ori-atlas-world').evaluate((element) => getComputedStyle(element).transform);
+    expect(transformAfterPan).not.toBe(transformBeforePan);
+    await page.keyboard.press('0');
+    await expect(page.locator('#ori-atlas-scale')).toHaveText('100%');
+
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('.ori-atlas-tab').nth(1).click();
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
     await expect(page.locator('#ori-cluster-inspector')).toBeVisible();
-    await expect(page.locator('#ori-atlas-svg')).toBeHidden();
+    await expect(page.locator('#ori-atlas-svg')).toBeVisible();
     await capture(page, 'atlas-reduced-motion-390x844.png', true);
-    await page.locator('#ori-cluster-topics button').first().click();
+    await page.locator('.atlas-domain.is-active .ori-star-node').first().click();
     await expect(page.locator('#ori-skill-inspector')).toBeVisible();
     await expect(page.locator('#ori-insp-title')).toBeVisible();
     await expect(page.locator('#ori-insp-evidence-count')).toHaveText(/^\d+$/);

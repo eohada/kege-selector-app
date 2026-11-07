@@ -163,18 +163,56 @@
                         </div>
                     </div>
 
+                    <!-- Course-specific lesson balances -->
+                    <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-6 rounded-[2rem]">
+                        {% set additional_lesson_balance = student.lessons_balance or 0 %}
+                        {% set course_lesson_balance = course_balance_summary.total_lessons %}
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Тарифы ученика</p>
+                                <h3 class="font-display font-black text-slate-800 text-lg mb-0">Остаток занятий</h3>
+                            </div>
+                            <span class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700" aria-label="Общее количество доступных занятий">
+                                {% if course_lesson_balance is none %}Итого доступно: без лимита{% else %}Итого доступно: {{ course_lesson_balance + additional_lesson_balance }} ур.{% endif %}
+                            </span>
+                        </div>
+                        {% if course_balance_summary.load_error %}
+                        <p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800 mb-0">
+                            Не удалось загрузить курсовые остатки. Общий счётчик карточки ученика: <b>{{ student.lessons_balance or 0 }} уроков</b>.
+                        </p>
+                        {% elif course_balance_summary.courses %}
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            {% for course in course_balance_summary.courses %}
+                            <article class="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-[0_3px_0_#E2E8F0]">
+                                <p class="text-xs font-black uppercase tracking-wider text-slate-500">{{ course.label }}</p>
+                                <p class="mt-2 text-2xl font-black {% if course.is_unlimited %}text-emerald-600{% elif course.lessons_remaining <= 2 %}text-rose-600{% else %}text-slate-900{% endif %}">
+                                    {% if course.is_unlimited %}Без лимита{% else %}{{ course.lessons_remaining }} ур.{% endif %}
+                                </p>
+                            </article>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-500 mb-0">
+                            Активных подписок с разбивкой по курсам пока нет. Общий счётчик карточки ученика: <b class="text-slate-800">{{ student.lessons_balance or 0 }} уроков</b>.
+                        </p>
+                        {% endif %}
+                    </section>
+
                     <!-- Balance Action Hub -->
                     <form action="/student/{{ student.student_id }}/balance" method="POST" class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-6 rounded-[2rem] flex flex-col relative">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
                         
                         <div class="flex items-center gap-3 mb-5">
                             <div class="w-10 h-10 bg-white border-2 border-slate-200 shadow-sm rounded-xl flex items-center justify-center text-indigo-500 shrink-0"><i class="ph-bold ph-coins text-xl"></i></div>
-                            <h3 class="font-display font-black text-slate-800 text-lg">Управление балансом</h3>
+                            <div>
+                                <h3 class="font-display font-black text-slate-800 text-lg mb-0">Дополнительные занятия</h3>
+                                <p class="mt-1 text-xs leading-5 text-slate-500 mb-0">Ручной баланс вне курсов. Он входит в итоговый остаток выше.</p>
+                            </div>
                         </div>
                         
                         <div class="flex items-center gap-4 mb-6 relative z-10 w-full pl-2">
                             <input type="number" name="lessons_balance" value="{{ student.lessons_balance or 0 }}" class="w-24 h-14 bg-white border-2 border-slate-200 rounded-xl outline-none focus:border-indigo-400 text-2xl font-black text-center text-slate-800 shadow-inner">
-                            <span class="text-slate-500 font-bold text-xs uppercase tracking-widest leading-snug">оплаченных<br>уроков</span>
+                            <span class="text-slate-500 font-bold text-xs uppercase tracking-widest leading-snug">вне<br>курсов</span>
                         </div>
                         
                         <div class="flex gap-3 relative z-10">

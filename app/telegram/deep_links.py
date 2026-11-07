@@ -6,10 +6,35 @@ from werkzeug.routing import BuildError
 
 
 def _build(endpoint: str, **values) -> str | None:
+    from app.telegram.config import APP_URL
+    base = (APP_URL or "").rstrip("/")
+
     try:
-        return url_for(endpoint, _external=True, **values)
+        url = url_for(endpoint, _external=True, **values)
+        if url:
+            return url
     except (BuildError, RuntimeError, Exception):
-        return None
+        pass
+
+    endpoint_paths = {
+        "lessons.lesson_interactive_room": "/lessons/{lesson_id}/room",
+        "assignments.assignment_view": "/assignments/{assignment_id}",
+        "assignments.submission_view": "/assignments/submission/{submission_id}",
+        "students.student_profile": "/students/{student_id}",
+        "admin.user_detail": "/admin/users/{user_id}",
+        "admin.bug_report_detail": "/admin/bug-reports/{report_id}",
+        "schedule.schedule": "/schedule",
+        "main.schedule": "/schedule",
+    }
+    template = endpoint_paths.get(endpoint)
+    if template:
+        try:
+            path = template.format(**values)
+            return f"{base}{path}" if base else path
+        except Exception:
+            pass
+
+    return None
 
 
 def lesson(lesson_id: int) -> str | None:

@@ -1,0 +1,422 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block title %}BooStudy | Расписание преподавателя{% endblock %}
+
+{% block sandbox_content %}
+{# ============================================================
+   Sprint 2.8: TEACHER CONTROL CENTER — OPERATIONAL WORKSTATION
+   Living Temporal Workspace for Educators
+   ============================================================ #}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<script type="application/json" id="schedule-data">{{ schedule_page_data | tojson }}</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-temporal-canvas.css') }}?v=2.8.0">
+
+<div class="tc-workspace" id="tc-workspace">
+  <!-- 1. CALENDAR COMMAND BAR -->
+  <header class="tc-command-bar">
+    <!-- Left Cluster: Period Nav & Date Title -->
+    <div class="tc-command-cluster">
+      <div class="flex items-center gap-1.5">
+        <button type="button" class="tc-btn-nav px-2.5" id="tc-nav-prev" onclick="window.TC.navigatePeriod(-1)" title="Предыдущий период">
+          <i class="ph-bold ph-caret-left text-sm"></i>
+        </button>
+        <button type="button" class="tc-btn-nav" id="tc-nav-today" onclick="window.TC.navigateToday()" title="Перейти к текущему дню">
+          Сегодня
+        </button>
+        <button type="button" class="tc-btn-nav px-2.5" id="tc-nav-next" onclick="window.TC.navigatePeriod(1)" title="Следующий период">
+          <i class="ph-bold ph-caret-right text-sm"></i>
+        </button>
+      </div>
+
+      <div class="tc-date-range" id="tc-date-range">{{ schedule_page_data.week_label or '2 — 8 ноября 2026' }}</div>
+    </div>
+
+    <!-- Center Cluster: Segmented View Switcher (5 Views) -->
+    <div class="tc-view-pills" id="tc-view-pills">
+      <button type="button" class="tc-view-btn is-active" id="tc-btn-view-week" data-view="week" onclick="window.TC.switchView('week')">
+        <i class="ph-bold ph-calendar"></i>
+        <span>Неделя</span>
+      </button>
+      <button type="button" class="tc-view-btn" id="tc-btn-view-day" data-view="day" onclick="window.TC.switchView('day')">
+        <i class="ph-bold ph-calendar-check"></i>
+        <span>День</span>
+      </button>
+      <button type="button" class="tc-view-btn" id="tc-btn-view-focus" data-view="focus" onclick="window.TC.switchView('focus')">
+        <i class="ph-bold ph-lightning"></i>
+        <span>Фокус</span>
+      </button>
+      <button type="button" class="tc-view-btn" id="tc-btn-view-month" data-view="month" onclick="window.TC.switchView('month')">
+        <i class="ph-bold ph-calendar-blank"></i>
+        <span>Месяц</span>
+      </button>
+      <button type="button" class="tc-view-btn" id="tc-btn-view-stream" data-view="stream" onclick="window.TC.switchView('stream')">
+        <i class="ph-bold ph-list-dashes"></i>
+        <span>Лента</span>
+      </button>
+    </div>
+
+    <!-- Right Cluster: Contextual Tools & Actions -->
+    <div class="tc-command-cluster">
+      <!-- Layers Popover Trigger & Popover -->
+      <div class="relative">
+        <button type="button" class="tc-tool-btn" id="tc-btn-layers" onclick="window.TC.togglePopover('tc-popover-layers', this)" title="Слои временной поверхности">
+          <i class="ph-bold ph-stack text-indigo-600"></i>
+          <span>Слои</span>
+          <span class="tc-badge-count" id="tc-layers-badge">3</span>
+        </button>
+
+        <!-- Layers Popover (Compact, non-blocking) -->
+        <div class="tc-popover is-hidden" id="tc-popover-layers" style="right: 0; left: auto;">
+          <div class="tc-popover-title">Слои отображения</div>
+          
+          <label class="tc-layer-row">
+            <span class="tc-layer-label">Домашние задания</span>
+            <div class="tc-switch">
+              <input type="checkbox" id="tc-layer-hw" checked onchange="window.TC.toggleLayer('homework', this.checked)">
+              <span class="tc-slider"></span>
+            </div>
+          </label>
+
+          <label class="tc-layer-row">
+            <span class="tc-layer-label">Свободные окна</span>
+            <div class="tc-switch">
+              <input type="checkbox" id="tc-layer-free" checked onchange="window.TC.toggleLayer('freeSlots', this.checked)">
+              <span class="tc-slider"></span>
+            </div>
+          </label>
+
+          <label class="tc-layer-row">
+            <span class="tc-layer-label">Нерабочие часы</span>
+            <div class="tc-switch">
+              <input type="checkbox" id="tc-layer-nw" checked onchange="window.TC.toggleLayer('nonWorking', this.checked)">
+              <span class="tc-slider"></span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Filters Popover Trigger & Popover -->
+      <div class="relative">
+        <button type="button" class="tc-tool-btn" id="tc-btn-filters" onclick="window.TC.togglePopover('tc-popover-filters', this)" title="Фильтры учеников, предметов и статусов">
+          <i class="ph-bold ph-funnel text-slate-500"></i>
+          <span>Фильтры</span>
+          <span class="tc-badge-count is-hidden" id="tc-filter-badge">0</span>
+        </button>
+
+        <!-- Filters Popover (Unified & Dynamic) -->
+        <div class="tc-popover is-hidden" id="tc-popover-filters" style="right: 0; left: auto; min-width: 280px;">
+          <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+            <div class="tc-popover-title" style="margin-bottom: 0;">Фильтры расписания</div>
+            <button type="button" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer" onclick="window.TC.resetFilters()">
+              Сбросить
+            </button>
+          </div>
+
+          <!-- Text Search Input -->
+          <div class="tc-form-group">
+            <div class="relative">
+              <input type="text" id="tc-filter-search" placeholder="Поиск по теме или ученику..." 
+                     class="tc-form-input text-xs"
+                     oninput="window.TC.setFilter('searchQuery', this.value)">
+            </div>
+          </div>
+
+          <!-- Student Filter -->
+          <div class="tc-form-group">
+            <label class="tc-form-label">Ученик</label>
+            <select id="tc-filter-student" class="tc-form-select text-xs" onchange="window.TC.setFilter('studentId', this.value ? Number(this.value) : null)">
+              <option value="">Все ученики</option>
+              {% for s in schedule_page_data.accessible_students or [] %}
+                <option value="{{ s.student_id or s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Subject Filter -->
+          <div class="tc-form-group">
+            <label class="tc-form-label">Предмет</label>
+            <select id="tc-filter-subject" class="tc-form-select text-xs" onchange="window.TC.setFilter('subject', this.value || null)">
+              <option value="">Все предметы</option>
+              <option value="Информатика">Информатика</option>
+              <option value="Математика">Математика</option>
+              <option value="Программирование">Программирование</option>
+              <option value="Физика">Физика</option>
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div class="tc-form-group">
+            <label class="tc-form-label">Статус урока</label>
+            <select id="tc-filter-status" class="tc-form-select text-xs" onchange="window.TC.setFilter('status', this.value || null)">
+              <option value="">Все статусы</option>
+              <option value="planned">Запланирован</option>
+              <option value="in_progress">Идёт сейчас</option>
+              <option value="completed">Проведён</option>
+              <option value="cancelled">Отменён</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Density Toggle Button -->
+      <button type="button" class="tc-tool-btn px-2.5" id="tc-btn-density" onclick="window.TC.toggleDensity()" title="Переключить плотность сетки (Стандартная 64px / Компактная 48px)">
+        <i class="ph-bold ph-rows text-slate-600"></i>
+      </button>
+
+      <!-- Primary Action: New Lesson -->
+      <button type="button" class="tc-btn-primary" id="tc-btn-new-lesson" onclick="window.TC.openCreateLessonModal()">
+        <i class="ph-bold ph-plus-circle text-base"></i>
+        <span>Новый урок</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. MAIN WORKSTATION (Temporal Canvas + Context Dock) -->
+  <main class="tc-workstation">
+    <!-- Main Living Surface -->
+    <div id="tc-canvas-main" class="tc-canvas-card">
+      <!-- Dynamically rendered by JS (Week / Day / Focus / Month / Stream) -->
+    </div>
+
+    <!-- Smart Inspector (Context Dock) -->
+    <aside class="tc-context-dock" id="tc-context-dock">
+      <!-- Dynamically rendered by JS (Overview mode / Lesson Inspector mode) -->
+    </aside>
+
+    <!-- Overlay backdrop for <= 1440px / Mobile Drawer -->
+    <div class="tc-dock-backdrop" id="tc-dock-backdrop" onclick="window.TC.toggleInspector(false)"></div>
+  </main>
+
+  <!-- Floating Mobile Action Button -->
+  <button type="button" class="tc-fab md:hidden" id="tc-btn-fab-new" onclick="window.TC.openCreateLessonModal()" title="Новый урок">
+    <i class="ph-bold ph-plus"></i>
+  </button>
+</div>
+
+<!-- ============================================================
+     3. UNIFIED MODALS & OVERLAYS
+     ============================================================ -->
+
+<!-- Modal: New Lesson Form -->
+<div class="tc-modal-backdrop is-hidden" id="tc-modal-new-lesson">
+  <div class="tc-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="tc-modal-title-new">
+    <div class="tc-modal-header">
+      <div class="tc-modal-title" id="tc-modal-title-new">
+        <i class="ph-bold ph-calendar-plus text-indigo-600 text-lg"></i>
+        <span>Запланировать занятие</span>
+      </div>
+      <button type="button" class="tc-dock-close-btn" onclick="window.TC.closeModal('tc-modal-new-lesson')" title="Закрыть">✕</button>
+    </div>
+
+    <form id="tc-form-new-lesson" onsubmit="window.TC.handleCreateLessonSubmit(event)" class="tc-modal-body">
+      <!-- Error Banner -->
+      <div id="tc-create-error" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 flex items-center gap-2">
+        <i class="ph-bold ph-warning-circle text-base text-rose-600"></i>
+        <span id="tc-create-error-msg">Ошибка сохранения</span>
+      </div>
+
+      <!-- Student & Subject -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-input-student">Ученик *</label>
+          <select id="tc-input-student" name="student_id" required class="tc-form-select">
+            <option value="">-- Выберите ученика --</option>
+            {% for s in schedule_page_data.accessible_students or [] %}
+              <option value="{{ s.student_id or s.id }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-input-subject">Предмет *</label>
+          <select id="tc-input-subject" name="subject" required class="tc-form-select">
+            <option value="Информатика" selected>Информатика</option>
+            <option value="Математика">Математика</option>
+            <option value="Программирование">Программирование</option>
+            <option value="Физика">Физика</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Date, Time, Duration -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-input-date">Дата *</label>
+          <input type="date" id="tc-input-date" name="lesson_date" required class="tc-form-input">
+        </div>
+
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-input-time">Начало *</label>
+          <input type="time" id="tc-input-time" name="lesson_time" step="900" required value="14:00" class="tc-form-input">
+        </div>
+
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-input-duration">Длительность</label>
+          <select id="tc-input-duration" name="duration" class="tc-form-select">
+            <option value="45">45 минут</option>
+            <option value="60" selected>60 минут</option>
+            <option value="90">90 минут</option>
+            <option value="120">120 минут</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Topic -->
+      <div class="tc-form-group">
+        <label class="tc-form-label" for="tc-input-topic">Тема занятия *</label>
+        <input type="text" id="tc-input-topic" name="topic" required placeholder="Например: Python • Обработка строк (КЕГЭ №24)" class="tc-form-input">
+      </div>
+
+      <!-- Notes / Plan -->
+      <div class="tc-form-group">
+        <label class="tc-form-label" for="tc-input-notes">Заметки и план урока (для преподавателя)</label>
+        <textarea id="tc-input-notes" name="notes" rows="2" placeholder="Фокусные задачи, методический план..." class="tc-form-textarea resize-none"></textarea>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="tc-modal-footer" style="padding-left: 0; padding-right: 0; margin-top: 0.5rem;">
+        <button type="button" class="tc-btn-nav" onclick="window.TC.closeModal('tc-modal-new-lesson')">Отмена</button>
+        <button type="submit" class="tc-btn-primary" id="tc-btn-submit-lesson">
+          <i class="ph-bold ph-check text-base"></i>
+          <span>Создать занятие</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Reschedule Lesson -->
+<div class="tc-modal-backdrop is-hidden" id="tc-modal-reschedule">
+  <div class="tc-modal-dialog" role="dialog" aria-modal="true">
+    <div class="tc-modal-header">
+      <div class="tc-modal-title">
+        <i class="ph-bold ph-calendar-blank text-indigo-600 text-lg"></i>
+        <span>Перенос занятия</span>
+      </div>
+      <button type="button" class="tc-dock-close-btn" onclick="window.TC.closeModal('tc-modal-reschedule')">✕</button>
+    </div>
+
+    <form id="tc-form-reschedule" onsubmit="window.TC.handleRescheduleSubmit(event)" class="tc-modal-body">
+      <input type="hidden" id="tc-reschedule-lesson-id">
+      
+      <div id="tc-reschedule-error" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700"></div>
+
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1">
+        <div class="text-xs font-bold text-slate-900" id="tc-reschedule-student-label">Ученик: demo_student_1</div>
+        <div class="text-[11px] text-slate-500" id="tc-reschedule-current-label">Текущее время: 2026-11-02 10:30</div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-reschedule-date">Новая дата *</label>
+          <input type="date" id="tc-reschedule-date" required class="tc-form-input">
+        </div>
+        <div class="tc-form-group">
+          <label class="tc-form-label" for="tc-reschedule-time">Новое время начала *</label>
+          <input type="time" id="tc-reschedule-time" step="900" required class="tc-form-input">
+        </div>
+      </div>
+
+      <div class="tc-modal-footer" style="padding-left: 0; padding-right: 0;">
+        <button type="button" class="tc-btn-nav" onclick="window.TC.closeModal('tc-modal-reschedule')">Отмена</button>
+        <button type="submit" class="tc-btn-primary" id="tc-btn-submit-reschedule">
+          <span>Подтвердить перенос</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Confirm Cancel / Delete -->
+<div class="tc-modal-backdrop is-hidden" id="tc-modal-confirm-delete">
+  <div class="tc-modal-dialog" style="max-width: 420px;" role="dialog" aria-modal="true">
+    <div class="tc-modal-header">
+      <div class="tc-modal-title text-rose-600">
+        <i class="ph-bold ph-warning text-lg text-rose-600"></i>
+        <span>Отмена урока</span>
+      </div>
+      <button type="button" class="tc-dock-close-btn" onclick="window.TC.closeModal('tc-modal-confirm-delete')">✕</button>
+    </div>
+
+    <div class="tc-modal-body">
+      <input type="hidden" id="tc-delete-lesson-id">
+      <p class="text-xs text-slate-700 leading-relaxed" id="tc-delete-confirm-text">
+        Вы действительно хотите отменить занятие? Это действие удалит урок из расписания.
+      </p>
+    </div>
+
+    <div class="tc-modal-footer">
+      <button type="button" class="tc-btn-nav" onclick="window.TC.closeModal('tc-modal-confirm-delete')">Назад</button>
+      <button type="button" class="p-2.5 px-4 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition cursor-pointer" id="tc-btn-confirm-delete" onclick="window.TC.executeCancelLesson()">
+        Отменить урок
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Find a Time (Smart Availability Finder) -->
+<div class="tc-modal-backdrop is-hidden" id="tc-modal-find-time">
+  <div class="tc-modal-dialog" style="max-width: 560px;" role="dialog" aria-modal="true">
+    <div class="tc-modal-header">
+      <div class="tc-modal-title">
+        <i class="ph-bold ph-sparkle text-indigo-600 text-lg"></i>
+        <span>Умный подбор времени</span>
+      </div>
+      <button type="button" class="tc-dock-close-btn" onclick="window.TC.closeModal('tc-modal-find-time')">✕</button>
+    </div>
+
+    <div class="tc-modal-body">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="tc-form-group">
+          <label class="tc-form-label">Ученик (для сверки занятости)</label>
+          <select id="tc-find-student" class="tc-form-select text-xs" onchange="window.TC.searchFreeSlots()">
+            <option value="">Любой ученик</option>
+            {% for s in schedule_page_data.accessible_students or [] %}
+              <option value="{{ s.student_id or s.id }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="tc-form-group">
+          <label class="tc-form-label">Длительность</label>
+          <select id="tc-find-duration" class="tc-form-select text-xs" onchange="window.TC.searchFreeSlots()">
+            <option value="45">45 мин</option>
+            <option value="60" selected>60 мин</option>
+            <option value="90">90 мин</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tc-form-label mt-2">Рекомендованные слоты в рабочие часы</div>
+      <div id="tc-find-slots-list" class="flex flex-col gap-2 max-h-60 overflow-y-auto">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <div class="tc-modal-footer">
+      <button type="button" class="tc-btn-nav" onclick="window.TC.closeModal('tc-modal-find-time')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Command Palette (Ctrl+K) -->
+<div class="tc-modal-backdrop is-hidden" id="tc-modal-cmd" onclick="if (event.target === this) window.TC.closeModal('tc-modal-cmd')">
+  <div class="tc-cmd-panel w-full">
+    <div class="tc-cmd-header">
+      <i class="ph-bold ph-magnifying-glass text-slate-400 text-base"></i>
+      <input type="text" id="tc-cmd-input" class="tc-cmd-input" placeholder="Введите команду, имя ученика или вид (Неделя, Месяц)..." oninput="window.TC.handleCommandInput(this.value)">
+      <span class="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded">ESC</span>
+    </div>
+    <div class="tc-cmd-list" id="tc-cmd-list">
+      <!-- Dynamically filled -->
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="tc-toast-container" class="fixed bottom-5 right-5 z-[300] flex flex-col gap-2 pointer-events-none"></div>
+
+<script>
+  window.SCHEDULE_PAGE_DATA = JSON.parse(document.getElementById('schedule-data').textContent || '{}');
+</script>
+<script src="{{ url_for('static', filename='js/teacher_temporal_canvas.js') }}?v=2.8.0"></script>
+{% endblock %}

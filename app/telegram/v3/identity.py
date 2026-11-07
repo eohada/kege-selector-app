@@ -50,6 +50,9 @@ def touch_interaction(chat_id: int) -> None:
         if profile:
             now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
             profile.telegram_last_interaction_at = now_utc
+            if getattr(profile, "telegram_blocked_at", None) is not None:
+                profile.telegram_blocked_at = None
+                logger.info("telegram_user_unblocked_bot chat_id=%s: cleared block status", chat_id)
             db.session.commit()
     except Exception as e:
         db.session.rollback()

@@ -284,11 +284,34 @@ def billing_subscription_assign():
         return redirect(url_for('billing.billing_subscriptions'))
 
     now = datetime.utcnow()
+    plan = TariffPlan.query.get(plan_id) if plan_id else None
+    if plan_id and not plan:
+        flash('Выбранный тариф не найден.', 'danger')
+        return redirect(url_for('billing.billing_subscriptions'))
 
-    active = UserSubscription.query.filter_by(user_id=user_id, status='active').order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc()).all()
-    sub = active[0] if active else None
-    for extra in active[1:]:
-        extra.status = 'cancelled'
+    active = (
+        UserSubscription.query
+        .filter_by(user_id=user_id, status='active')
+        .order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc())
+        .all()
+    )
+
+    def subscription_course(subscription):
+        linked_plan = subscription.plan
+        return (
+            subscription.exam or (linked_plan.exam if linked_plan else None),
+            subscription.subject or (linked_plan.subject if linked_plan else None),
+            subscription.level or (linked_plan.level if linked_plan else None),
+        )
+
+    if plan:
+        target_course = (plan.exam, plan.subject, plan.level)
+        if any(target_course):
+            sub = next((item for item in active if subscription_course(item) == target_course), None)
+        else:
+            sub = next((item for item in active if item.plan_id == plan.plan_id), None)
+    else:
+        sub = next((item for item in active if not any(subscription_course(item))), None)
 
     before_lessons = sub.lessons_remaining if sub else None
     if sub:
@@ -301,6 +324,10 @@ def billing_subscription_assign():
             current_lessons = sub.lessons_remaining or 0
             sub.lessons_remaining = current_lessons + int(lessons)
         sub.plan_id = plan_id or sub.plan_id
+        if plan:
+            sub.exam = plan.exam
+            sub.subject = plan.subject
+            sub.level = plan.level
         sub.started_at = sub.started_at or now
         if note:
             sub.note = note
@@ -312,6 +339,9 @@ def billing_subscription_assign():
             started_at=now,
             ends_at=(now + timedelta(days=int(days))) if days else None,
             lessons_remaining=lessons,
+            exam=plan.exam if plan else None,
+            subject=plan.subject if plan else None,
+            level=plan.level if plan else None,
             note=note,
         )
         db.session.add(sub)

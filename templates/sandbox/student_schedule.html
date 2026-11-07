@@ -191,7 +191,7 @@
 {% set progress_pct = stats.percent|default(0, true) %}
 {% set cur_day = weekdays_list[default_sel] if weekdays_list|length > default_sel else none %}
 
-<div class="w-full max-w-[1600px] mx-auto px-3.5 sm:px-6 lg:px-8 pb-24 sm:pb-12 space-y-4 sm:space-y-5 overflow-x-clip">
+<div class="w-full pb-24 sm:pb-12 space-y-4 sm:space-y-5 overflow-x-clip">
 
   {# ===== 1. MASTHEAD: CONTEXT & TIME STEPPER ===== #}
   <div class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-3.5 sm:space-y-4">
@@ -201,8 +201,8 @@
       
       <!-- Brand & Schedule Context -->
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-xl sm:text-2xl font-bold shrink-0 shadow-md shadow-indigo-500/20">
-          <i class="ph-bold ph-calendar-check"></i>
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-bold shrink-0" style="background-color: #EEF2FF !important; border: 1px solid #C7D2FE !important; box-shadow: none !important;">
+          <i class="ph-bold ph-calendar-check" style="color: #4F46E5 !important; font-size: 22px;"></i>
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
@@ -347,7 +347,7 @@
           {% if lessons|length == 1 %}
             <!-- SINGLE LESSON: Full-Width Natural Composition -->
             {% set ev = lessons[0] %}
-            <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs flex flex-col justify-between space-y-4 {% if ev.status == 'in_progress' %}ring-2 ring-indigo-500/30 border-indigo-500{% endif %}">
+            <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs flex flex-col space-y-5 {% if ev.status == 'in_progress' %}ring-2 ring-indigo-500/30 border-indigo-500{% endif %}">
               <div class="space-y-4">
                 <!-- Badges Bar -->
                 <div class="flex items-center justify-between flex-wrap gap-2">
@@ -384,40 +384,60 @@
                   </div>
                 </div>
 
-                <!-- Topic (max-w-4xl for comfortable readability) -->
-                <h3 class="text-lg sm:text-2xl font-black text-slate-900 font-display leading-snug hyphens-auto break-words max-w-4xl">
+                <!-- Topic -->
+                <h3 class="text-lg sm:text-2xl font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
                   {{ ev.title|default('Индивидуальное занятие') }}
                 </h3>
 
-                <!-- Teacher Row (max-w-xl) -->
-                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-200/70 max-w-xl">
-                  <img src="{{ ev.teacher.avatar if ev.teacher is defined and ev.teacher.avatar else sp_data.teacher_avatar|default('/static/images/schedule/mock_teacher_avatar.png') }}"
-                       alt="" class="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-                       onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
-                  <div class="min-w-0">
-                    <div class="text-xs font-black text-slate-900 truncate">
-                      {{ ev.teacher.full_name if ev.teacher is defined and ev.teacher.full_name else sp_data.teacher_name|default('Преподаватель курса') }}
+                <!-- Information Zone: Teacher & Recommendation -->
+                {% if ev.notes or ev.student_notes %}
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch" style="margin-top: 16px !important;">
+                  <!-- Teacher Box (~40%) -->
+                  <div class="lg:col-span-5 flex items-center gap-3.5 p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80">
+                    <img src="{{ ev.teacher.avatar if ev.teacher is defined and ev.teacher.avatar else sp_data.teacher_avatar|default('/static/images/schedule/mock_teacher_avatar.png') }}"
+                         alt="" class="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                         onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
+                    <div class="min-w-0">
+                      <div class="text-xs sm:text-sm font-black text-slate-900 truncate">
+                        {{ ev.teacher.full_name if ev.teacher is defined and ev.teacher.full_name else sp_data.teacher_name|default('Преподаватель курса') }}
+                      </div>
+                      <div class="text-[11px] text-slate-500 font-medium truncate">
+                        {{ ev.teacher.role if ev.teacher is defined and ev.teacher.role else 'Преподаватель курса' }}
+                      </div>
                     </div>
-                    <div class="text-[11px] text-slate-500 font-medium truncate">
-                      {{ ev.teacher.role if ev.teacher is defined and ev.teacher.role else 'Преподаватель курса' }}
+                  </div>
+
+                  <!-- Recommendation Box (~60%) -->
+                  <div class="lg:col-span-7 p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs sm:text-sm text-amber-950 leading-relaxed font-medium flex flex-col justify-center">
+                    <strong class="text-amber-800 uppercase text-[10px] sm:text-[11px] block font-black mb-1 flex items-center gap-1.5">
+                      <i class="ph-bold ph-chat-teardrop-text text-base text-amber-600"></i> Рекомендация преподавателя:
+                    </strong>
+                    <span>{{ ev.notes|default(ev.student_notes) }}</span>
+                  </div>
+                </div>
+                {% else %}
+                <!-- Compact Teacher Box (No notes) -->
+                <div class="max-w-md w-full" style="margin-top: 16px !important;">
+                  <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80">
+                    <img src="{{ ev.teacher.avatar if ev.teacher is defined and ev.teacher.avatar else sp_data.teacher_avatar|default('/static/images/schedule/mock_teacher_avatar.png') }}"
+                         alt="" class="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                         onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
+                    <div class="min-w-0">
+                      <div class="text-xs sm:text-sm font-black text-slate-900 truncate">
+                        {{ ev.teacher.full_name if ev.teacher is defined and ev.teacher.full_name else sp_data.teacher_name|default('Преподаватель курса') }}
+                      </div>
+                      <div class="text-[11px] text-slate-500 font-medium truncate">
+                        {{ ev.teacher.role if ev.teacher is defined and ev.teacher.role else 'Преподаватель курса' }}
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                <!-- Notes with explicit 14-16px margin-top -->
-                {% if ev.notes or ev.student_notes %}
-                <div class="p-3.5 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium mt-3.5 sm:mt-4 max-w-4xl">
-                  <strong class="text-amber-800 uppercase text-[10px] block font-black mb-1 flex items-center gap-1">
-                    <i class="ph-bold ph-chat-teardrop-text text-sm"></i> Рекомендация преподавателя:
-                  </strong>
-                  {{ ev.notes|default(ev.student_notes) }}
-                </div>
                 {% endif %}
 
-                <!-- Materials with explicit 14-16px margin-top -->
+                <!-- Materials -->
                 {% if ev.materials and ev.materials|length > 0 %}
-                <div class="space-y-2 mt-3.5 sm:mt-4 max-w-4xl">
-                  <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Материалы к уроку:</div>
+                <div class="w-full" style="margin-top: 16px !important;">
+                  <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Материалы к уроку:</div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {% for m in ev.materials %}
                     <a href="{{ m.url|default('#') }}" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
@@ -434,7 +454,7 @@
               </div>
 
               <!-- Action CTA -->
-              <div class="pt-3.5 sm:pt-4 mt-3.5 sm:mt-4 flex items-center gap-2.5 flex-wrap border-t border-slate-100">
+              <div class="pt-3.5 sm:pt-4 flex items-center gap-2.5 flex-wrap border-t border-slate-100">
                 {% if ev.status == 'in_progress' %}
                 <a href="{{ ev.action_url|default('#') }}" class="btn-3d-primary px-6 py-3 rounded-xl text-white text-xs font-black flex items-center gap-2 no-underline">
                   <i class="ph-bold ph-broadcast text-sm"></i>
@@ -469,9 +489,9 @@
             </div>
           {% else %}
             <!-- MULTI-LESSON DAY: 2-Column Balanced Peer Cards -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
               {% for ev in lessons %}
-              <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs flex flex-col justify-between space-y-4 {% if ev.status == 'in_progress' %}ring-2 ring-indigo-500/30 border-indigo-500{% endif %}">
+              <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs flex flex-col space-y-4 {% if ev.status == 'in_progress' %}ring-2 ring-indigo-500/30 border-indigo-500{% endif %}">
                 <div class="space-y-3.5">
                   <div class="flex items-center justify-between flex-wrap gap-2">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -511,29 +531,31 @@
                     {{ ev.title|default('Индивидуальное занятие') }}
                   </h3>
 
-                  <!-- Teacher Row -->
-                  <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70">
-                    <img src="{{ ev.teacher.avatar if ev.teacher is defined and ev.teacher.avatar else sp_data.teacher_avatar|default('/static/images/schedule/mock_teacher_avatar.png') }}"
-                         alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                         onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
-                    <div class="min-w-0">
-                      <div class="text-xs font-black text-slate-900 truncate">
-                        {{ ev.teacher.full_name if ev.teacher is defined and ev.teacher.full_name else sp_data.teacher_name|default('Преподаватель курса') }}
-                      </div>
-                      <div class="text-[11px] text-slate-500 font-medium truncate">
-                        {{ ev.teacher.role if ev.teacher is defined and ev.teacher.role else 'Преподаватель курса' }}
+                  <!-- Teacher Row & Recommendation -->
+                  <div class="flex flex-col w-full" style="gap: 15px !important; margin-top: 14px !important;">
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70 w-full">
+                      <img src="{{ ev.teacher.avatar if ev.teacher is defined and ev.teacher.avatar else sp_data.teacher_avatar|default('/static/images/schedule/mock_teacher_avatar.png') }}"
+                           alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                           onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
+                      <div class="min-w-0">
+                        <div class="text-xs font-black text-slate-900 truncate">
+                          {{ ev.teacher.full_name if ev.teacher is defined and ev.teacher.full_name else sp_data.teacher_name|default('Преподаватель курса') }}
+                        </div>
+                        <div class="text-[11px] text-slate-500 font-medium truncate">
+                          {{ ev.teacher.role if ev.teacher is defined and ev.teacher.role else 'Преподаватель курса' }}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {% if ev.notes or ev.student_notes %}
-                  <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium mt-3.5">
-                    <strong class="text-amber-800 uppercase text-[10px] block font-black mb-1 flex items-center gap-1">
-                      <i class="ph-bold ph-chat-teardrop-text text-sm"></i> Рекомендация преподавателя:
-                    </strong>
-                    {{ ev.notes|default(ev.student_notes) }}
+                    {% if ev.notes or ev.student_notes %}
+                    <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium w-full">
+                      <strong class="text-amber-800 uppercase text-[10px] block font-black mb-1 flex items-center gap-1">
+                        <i class="ph-bold ph-chat-teardrop-text text-sm"></i> Рекомендация преподавателя:
+                      </strong>
+                      {{ ev.notes|default(ev.student_notes) }}
+                    </div>
+                    {% endif %}
                   </div>
-                  {% endif %}
 
                   {% if ev.materials and ev.materials|length > 0 %}
                   <div class="space-y-1.5 mt-3.5">
@@ -856,8 +878,8 @@
         const isCancelled = ev.status === 'cancelled' || ev.status === 'canceled';
 
         html += `
-          <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs flex flex-col justify-between space-y-4 ${isLive ? 'ring-2 ring-indigo-500/30 border-indigo-500' : ''}">
-            <div class="space-y-3.5">
+          <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs flex flex-col space-y-5 ${isLive ? 'ring-2 ring-indigo-500/30 border-indigo-500' : ''}">
+            <div class="space-y-4">
               <div class="flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black uppercase tracking-wider">
@@ -894,32 +916,45 @@
                 </div>
               </div>
 
-              <h3 class="text-lg sm:text-2xl font-black text-slate-900 font-display leading-snug hyphens-auto break-words max-w-4xl">
+              <h3 class="text-lg sm:text-2xl font-black text-slate-900 font-display leading-snug hyphens-auto break-words">
                 ${ev.title || 'Индивидуальное занятие'}
               </h3>
 
-              <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-200/70 max-w-xl">
-                <img src="${(ev.teacher && ev.teacher.avatar) ? ev.teacher.avatar : (DATA.teacher_avatar || '/static/images/schedule/mock_teacher_avatar.png')}"
-                     alt="" class="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-                     onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
-                <div class="min-w-0">
-                  <div class="text-xs font-black text-slate-900 truncate">${(ev.teacher && (ev.teacher.full_name || ev.teacher.name)) ? (ev.teacher.full_name || ev.teacher.name) : (DATA.teacher_name || 'Преподаватель курса')}</div>
-                  <div class="text-[11px] text-slate-500 font-medium truncate">${(ev.teacher && ev.teacher.role) ? ev.teacher.role : 'Преподаватель курса'}</div>
-                </div>
-              </div>
-
               ${(ev.notes || ev.student_notes) ? `
-                <div class="p-3.5 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium mt-3.5 sm:mt-4 max-w-4xl">
-                  <strong class="text-amber-800 uppercase text-[10px] block font-black mb-1 flex items-center gap-1">
-                    <i class="ph-bold ph-chat-teardrop-text text-sm"></i> Рекомендация преподавателя:
-                  </strong>
-                  ${ev.notes || ev.student_notes}
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch" style="margin-top: 16px !important;">
+                  <div class="lg:col-span-5 flex items-center gap-3.5 p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80">
+                    <img src="${(ev.teacher && ev.teacher.avatar) ? ev.teacher.avatar : (DATA.teacher_avatar || '/static/images/schedule/mock_teacher_avatar.png')}"
+                         alt="" class="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                         onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
+                    <div class="min-w-0">
+                      <div class="text-xs sm:text-sm font-black text-slate-900 truncate">${(ev.teacher && (ev.teacher.full_name || ev.teacher.name)) ? (ev.teacher.full_name || ev.teacher.name) : (DATA.teacher_name || 'Преподаватель курса')}</div>
+                      <div class="text-[11px] text-slate-500 font-medium truncate">${(ev.teacher && ev.teacher.role) ? ev.teacher.role : 'Преподаватель курса'}</div>
+                    </div>
+                  </div>
+                  <div class="lg:col-span-7 p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs sm:text-sm text-amber-950 leading-relaxed font-medium flex flex-col justify-center">
+                    <strong class="text-amber-800 uppercase text-[10px] sm:text-[11px] block font-black mb-1 flex items-center gap-1.5">
+                      <i class="ph-bold ph-chat-teardrop-text text-base text-amber-600"></i> Рекомендация преподавателя:
+                    </strong>
+                    <span>${ev.notes || ev.student_notes}</span>
+                  </div>
                 </div>
-              ` : ''}
+              ` : `
+                <div class="max-w-md w-full" style="margin-top: 16px !important;">
+                  <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80">
+                    <img src="${(ev.teacher && ev.teacher.avatar) ? ev.teacher.avatar : (DATA.teacher_avatar || '/static/images/schedule/mock_teacher_avatar.png')}"
+                         alt="" class="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                         onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
+                    <div class="min-w-0">
+                      <div class="text-xs sm:text-sm font-black text-slate-900 truncate">${(ev.teacher && (ev.teacher.full_name || ev.teacher.name)) ? (ev.teacher.full_name || ev.teacher.name) : (DATA.teacher_name || 'Преподаватель курса')}</div>
+                      <div class="text-[11px] text-slate-500 font-medium truncate">${(ev.teacher && ev.teacher.role) ? ev.teacher.role : 'Преподаватель курса'}</div>
+                    </div>
+                  </div>
+                </div>
+              `}
 
               ${(ev.materials && ev.materials.length > 0) ? `
-                <div class="space-y-2 mt-3.5 sm:mt-4 max-w-4xl">
-                  <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Материалы к уроку:</div>
+                <div class="w-full" style="margin-top: 16px !important;">
+                  <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Материалы к уроку:</div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     ${ev.materials.map(m => `
                       <a href="${m.url || '#'}" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100 flex items-center justify-between text-xs font-bold text-slate-800 no-underline transition-all">
@@ -935,7 +970,7 @@
               ` : ''}
             </div>
 
-            <div class="pt-3.5 sm:pt-4 mt-3.5 sm:mt-4 flex items-center gap-2.5 flex-wrap border-t border-slate-100">
+            <div class="pt-3.5 sm:pt-4 flex items-center gap-2.5 flex-wrap border-t border-slate-100">
               ${isLive ? `
                 <a href="${ev.action_url || '#'}" class="btn-3d-primary px-6 py-3 rounded-xl text-white text-xs font-black flex items-center gap-2 no-underline">
                   <i class="ph-bold ph-broadcast text-sm"></i>
@@ -971,14 +1006,14 @@
       } else if (lessons.length > 1) {
         // Multi-Lesson Peer Cards Grid
         html += `
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
             ${lessons.map(ev => {
               const isLive = ev.status === 'in_progress';
               const isCompleted = ev.status === 'completed' || ev.status === 'done';
               const isCancelled = ev.status === 'cancelled' || ev.status === 'canceled';
 
               return `
-                <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs flex flex-col justify-between space-y-4 ${isLive ? 'ring-2 ring-indigo-500/30 border-indigo-500' : ''}">
+                <div class="peer-event-card bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs flex flex-col space-y-4 ${isLive ? 'ring-2 ring-indigo-500/30 border-indigo-500' : ''}">
                   <div class="space-y-3.5">
                     <div class="flex items-center justify-between flex-wrap gap-2">
                       <div class="flex items-center gap-2 flex-wrap">
@@ -1020,24 +1055,26 @@
                       ${ev.title || 'Индивидуальное занятие'}
                     </h3>
 
-                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70">
-                      <img src="${(ev.teacher && ev.teacher.avatar) ? ev.teacher.avatar : (DATA.teacher_avatar || '/static/images/schedule/mock_teacher_avatar.png')}"
-                           alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                           onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
-                      <div class="min-w-0">
-                        <div class="text-xs font-black text-slate-900 truncate">${(ev.teacher && (ev.teacher.full_name || ev.teacher.name)) ? (ev.teacher.full_name || ev.teacher.name) : (DATA.teacher_name || 'Преподаватель курса')}</div>
-                        <div class="text-[11px] text-slate-500 font-medium truncate">${(ev.teacher && ev.teacher.role) ? ev.teacher.role : 'Преподаватель курса'}</div>
+                    <div class="flex flex-col w-full" style="gap: 15px !important; margin-top: 14px !important;">
+                      <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70 w-full">
+                        <img src="${(ev.teacher && ev.teacher.avatar) ? ev.teacher.avatar : (DATA.teacher_avatar || '/static/images/schedule/mock_teacher_avatar.png')}"
+                             alt="" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                             onerror="this.src='/static/images/schedule/mock_teacher_avatar.png'">
+                        <div class="min-w-0">
+                          <div class="text-xs font-black text-slate-900 truncate">${(ev.teacher && (ev.teacher.full_name || ev.teacher.name)) ? (ev.teacher.full_name || ev.teacher.name) : (DATA.teacher_name || 'Преподаватель курса')}</div>
+                          <div class="text-[11px] text-slate-500 font-medium truncate">${(ev.teacher && ev.teacher.role) ? ev.teacher.role : 'Преподаватель курса'}</div>
+                        </div>
                       </div>
-                    </div>
 
-                    ${(ev.notes || ev.student_notes) ? `
-                      <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium mt-3.5">
-                        <strong class="text-amber-800 uppercase text-[10px] block font-black mb-1 flex items-center gap-1">
-                          <i class="ph-bold ph-chat-teardrop-text"></i> Рекомендация преподавателя:
-                        </strong>
-                        ${ev.notes || ev.student_notes}
-                      </div>
-                    ` : ''}
+                      ${(ev.notes || ev.student_notes) ? `
+                        <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 text-xs text-amber-950 leading-relaxed font-medium w-full">
+                          <strong class="text-amber-800 uppercase text-[10px] block font-black mb-1 flex items-center gap-1">
+                            <i class="ph-bold ph-chat-teardrop-text"></i> Рекомендация преподавателя:
+                          </strong>
+                          ${ev.notes || ev.student_notes}
+                        </div>
+                      ` : ''}
+                    </div>
 
                     ${(ev.materials && ev.materials.length > 0) ? `
                       <div class="space-y-1.5 mt-3.5">

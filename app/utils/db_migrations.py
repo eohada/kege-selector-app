@@ -1178,6 +1178,20 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add lessons_remaining to {us_table}: {e}")
                                 db.session.rollback()
+                        for column_name, column_type in (
+                            ('exam', 'VARCHAR(50)'),
+                            ('subject', 'VARCHAR(50)'),
+                            ('level', 'VARCHAR(50)'),
+                        ):
+                            if column_name not in cols:
+                                try:
+                                    db.session.execute(text(
+                                        f'ALTER TABLE "{us_table}" ADD COLUMN {column_name} {column_type}'
+                                    ))
+                                    logger.info(f"Added {column_name} to {us_table}")
+                                except Exception as e:
+                                    logger.warning(f"Could not add {column_name} to {us_table}: {e}")
+                                    db.session.rollback()
                 except Exception:
                     pass
 
@@ -2046,6 +2060,15 @@ def ensure_schema_columns(app):
                             logger.warning(f"Could not add telegram_notifications_enabled to {profiles_table}: {e}")
                             db.session.rollback()
 
+                    if 'telegram_blocked_at' not in cols:
+                        try:
+                            col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_blocked_at {col_type}'))
+                            logger.info(f"Added telegram_blocked_at to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_blocked_at to {profiles_table}: {e}")
+                            db.session.rollback()
+
                     if 'telegram_selected_child_id' not in cols:
                         try:
                             db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_selected_child_id INTEGER'))
@@ -2149,6 +2172,34 @@ def ensure_schema_columns(app):
                     logger.info("Created TelegramStartLeads table")
                 except Exception as e:
                     logger.warning(f"Could not create TelegramStartLeads table: {e}")
+
+            notif_prefs_table = _resolve_table_name(table_names, 'UserNotificationPreferences')
+            if not notif_prefs_table:
+                try:
+                    db.create_all()
+                    logger.info("Created UserNotificationPreferences table")
+                except Exception as e:
+                    logger.warning(f"Could not create UserNotificationPreferences table: {e}")
+
+            broadcasts_table = _resolve_table_name(table_names, 'TelegramBroadcasts')
+            if broadcasts_table:
+                try:
+                    b_cols = {c['name'] for c in inspector.get_columns(broadcasts_table)}
+                    if 'title' not in b_cols:
+                        db.session.execute(text(f'ALTER TABLE "{broadcasts_table}" ADD COLUMN title VARCHAR(200)'))
+                    if 'category' not in b_cols:
+                        db.session.execute(text(f'ALTER TABLE "{broadcasts_table}" ADD COLUMN category VARCHAR(50) DEFAULT \'announcement\''))
+                    if 'sender_role' not in b_cols:
+                        db.session.execute(text(f'ALTER TABLE "{broadcasts_table}" ADD COLUMN sender_role VARCHAR(50)'))
+                    if 'is_dry_run' not in b_cols:
+                        if _is_postgres(app):
+                            db.session.execute(text(f'ALTER TABLE "{broadcasts_table}" ADD COLUMN is_dry_run BOOLEAN DEFAULT FALSE NOT NULL'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE "{broadcasts_table}" ADD COLUMN is_dry_run INTEGER DEFAULT 0 NOT NULL'))
+                    db.session.commit()
+                except Exception as e:
+                    logger.warning(f"Could not update TelegramBroadcasts columns: {e}")
+                    db.session.rollback()
             
             family_ties_table = _resolve_table_name(table_names, 'FamilyTies')
             if not family_ties_table:

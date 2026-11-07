@@ -7,45 +7,50 @@
   <div class="max-w-[1600px] mx-auto w-full bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-sm border border-slate-200/60 my-2 sm:my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
     
     <!-- 1. HERO BANNER & TABS (Шапка аналитического дашборда) -->
-    <div class="w-full bg-white border-2 border-slate-200/80 rounded-[2.5rem] p-6 shadow-sm relative overflow-hidden space-y-6">
-      
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+    <div class="analytics-hero w-full rounded-[2rem] border-2 p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] relative">
+      <div class="analytics-hero-layout">
+        <div class="analytics-hero-copy">
+          <p class="analytics-eyebrow">
             <i class="ph-bold ph-chart-bar text-indigo-500"></i> Успеваемость & Прогнозы
           </p>
-          <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display">
+          <h1>
             Твоя аналитика & Прогноз КЕГЭ
           </h1>
           {% if is_demo_preview %}<p class="mt-1 text-xs font-bold text-indigo-500">Вот каким может стать твой кабинет через полгода регулярной работы</p>{% endif %}
           {% if is_demo_preview %}<div class="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-700" aria-label="Пример роста за полгода"><span class="rounded-xl bg-indigo-50 px-3 py-2">48% → 74% · стабильный рост</span><span class="rounded-xl bg-slate-50 px-3 py-2">36 уроков</span><span class="rounded-xl bg-slate-50 px-3 py-2">160 задач</span><span class="rounded-xl bg-slate-50 px-3 py-2">41 день серии</span><span class="rounded-xl bg-slate-50 px-3 py-2">7 освоенных тем</span></div>{% endif %}
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="analytics-controls" aria-label="Настройки аналитики">
           <!-- Фильтр источников: ДЗ vs Пробники -->
-          <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/60 text-xs font-bold">
+          <div class="analytics-control-row">
+            <span class="analytics-control-label">Данные</span>
+            <div class="analytics-segment analytics-source-filters" aria-label="Фильтр данных">
             <a href="{{ url_for('students.student_analytics', student_id=student.student_id, source='all') }}"
-               class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 {{ 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black' if source_filter == 'all' else 'text-slate-500 hover:text-slate-800' }}">
+               class="analytics-choice {{ 'is-active' if source_filter == 'all' else '' }}" {% if source_filter == 'all' %}aria-current="page"{% endif %}>
               <i class="ph-bold ph-squares-four"></i> Все данные
             </a>
             <a href="{{ url_for('students.student_analytics', student_id=student.student_id, source='exam') }}"
-               class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 {{ 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black' if source_filter == 'exam' else 'text-slate-500 hover:text-slate-800' }}">
+               class="analytics-choice {{ 'is-active' if source_filter == 'exam' else '' }}" {% if source_filter == 'exam' %}aria-current="page"{% endif %}>
               <i class="ph-bold ph-trophy"></i> Только пробники
             </a>
             <a href="{{ url_for('students.student_analytics', student_id=student.student_id, source='homework') }}"
-               class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 {{ 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black' if source_filter == 'homework' else 'text-slate-500 hover:text-slate-800' }}">
+               class="analytics-choice {{ 'is-active' if source_filter == 'homework' else '' }}" {% if source_filter == 'homework' %}aria-current="page"{% endif %}>
               <i class="ph-bold ph-book-open"></i> Только ДЗ
             </a>
+            </div>
           </div>
 
           <!-- Переключатель вкладок -->
-          <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 shrink-0 border border-slate-200/60">
-            <button id="btn-analytics-skills" onclick="switchAnalyticsTab('skills')" class="seg-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer">
+          <div class="analytics-control-row">
+            <span class="analytics-control-label">Раздел</span>
+            <div class="analytics-segment analytics-view-tabs" role="group" aria-label="Раздел аналитики">
+            <button id="btn-analytics-skills" type="button" aria-pressed="true" onclick="switchAnalyticsTab('skills')" class="seg-btn active">
               <i class="ph-bold ph-chart-line-up"></i> Навыки и Темы
             </button>
-            <button id="btn-analytics-elo" onclick="switchAnalyticsTab('elo')" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 flex items-center gap-2 cursor-pointer">
+            <button id="btn-analytics-elo" type="button" aria-pressed="false" onclick="switchAnalyticsTab('elo')" class="seg-btn">
               <i class="ph-bold ph-target"></i> Прогноз & ELO
             </button>
+            </div>
           </div>
         </div>
       </div>
@@ -716,16 +721,20 @@
       contentElo.classList.add('hidden');
       btnSkills.classList.add('active', 'text-indigo-700');
       btnSkills.classList.remove('text-slate-500');
+      btnSkills.setAttribute('aria-pressed', 'true');
       btnElo.classList.remove('active', 'text-indigo-700');
       btnElo.classList.add('text-slate-500');
+      btnElo.setAttribute('aria-pressed', 'false');
       window.scrollTo({ top: contentSkills.offsetTop - 80, behavior: 'smooth' });
     } else {
       contentSkills.classList.add('hidden');
       contentElo.classList.remove('hidden');
       btnElo.classList.add('active', 'text-indigo-700');
       btnElo.classList.remove('text-slate-500');
+      btnElo.setAttribute('aria-pressed', 'true');
       btnSkills.classList.remove('active', 'text-indigo-700');
       btnSkills.classList.add('text-slate-500');
+      btnSkills.setAttribute('aria-pressed', 'false');
       window.scrollTo({ top: contentElo.offsetTop - 80, behavior: 'smooth' });
     }
   }

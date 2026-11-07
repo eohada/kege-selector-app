@@ -1,8 +1,12 @@
 """Telegram runtime config used inside the main app package."""
 from __future__ import annotations
 
+import json
+import logging
 import os
 from urllib.parse import urlsplit, urlunsplit
+
+logger = logging.getLogger(__name__)
 
 
 def _truthy(val: str | None) -> bool:
@@ -139,13 +143,148 @@ def get_dev_allowlist_chat_ids() -> set[int]:
     return allowlist
 
 
+ALLOWLIST_CHAT_IDS = frozenset({854161398})
+
+
+_CONTROL_FILE: str | None = None
+
+
+def is_live_delivery_active() -> bool:
+    """Check if real outbound Telegram messaging is explicitly enabled in dev mode.
+
+    Default in development: False (dry-run / simulated mode only).
+    Can be dynamically activated via instance/telegram_delivery_mode.json,
+    TELEGRAM_LIVE_TEST_MODE=1, or when running under automated test suite (TESTING=True).
+    """
+    environment = (os.environ.get('ENVIRONMENT') or os.environ.get('FLASK_ENV') or 'local').strip().lower()
+    if environment in {'production', 'prod'}:
+        return True
+
+    # 1. Check control file first (explicit toggle in dev / tests)
+    try:
+        from flask import current_app, has_app_context
+        instance_dir = current_app.instance_path if has_app_context() else os.path.join(os.getcwd(), 'instance')
+        mode_file = _CONTROL_FILE or os.path.join(instance_dir, 'telegram_delivery_mode.json')
+        if os.path.exists(mode_file):
+            with open(mode_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if 'live_mode' in data:
+                    return bool(data['live_mode'])
+    except Exception:
+        pass
+
+    # 2. Check automated test suite default
+    try:
+        from flask import current_app, has_app_context
+        if has_app_context() and current_app.config.get('TESTING'):
+            return True
+    except Exception:
+        pass
+
+    return _truthy(os.environ.get('TELEGRAM_LIVE_TEST_MODE')) or _truthy(os.environ.get('TELEGRAM_DEV_SEND_LIVE_NOTIFICATIONS'))
+
+
+def set_live_delivery_active(active: bool) -> None:
+    """Set the dynamic live delivery mode flag in instance/telegram_delivery_mode.json."""
+    try:
+        from datetime import datetime, timezone
+        from flask import current_app, has_app_context
+        instance_dir = current_app.instance_path if has_app_context() else os.path.join(os.getcwd(), 'instance')
+        mode_file = _CONTROL_FILE or os.path.join(instance_dir, 'telegram_delivery_mode.json')
+        os.makedirs(os.path.dirname(mode_file), exist_ok=True)
+        data = {}
+        if os.path.exists(mode_file):
+            try:
+                with open(mode_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            except Exception:
+                pass
+        data['live_mode'] = bool(active)
+        data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        with open(mode_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        logger.warning('Failed to write telegram_delivery_mode.json: %s', e)
+
+
+def is_kill_switch_active() -> bool:
+    """Check if emergency kill switch / pause is active without requiring process restart.
+    
+    Checks:
+    1. os.environ: TELEGRAM_KILL_SWITCH=1 or TELEGRAM_OUTBOX_PAUSED=1.
+    2. instance/telegram_kill_switch.flag file presence.
+    3. instance/telegram_delivery_mode.json {"kill_switch": true} or {"paused": true}.
+    """
+    if _truthy(os.environ.get('TELEGRAM_KILL_SWITCH')) or _truthy(os.environ.get('TELEGRAM_OUTBOX_PAUSED')):
+        return True
+
+    try:
+        from flask import current_app, has_app_context
+        instance_dir = current_app.instance_path if has_app_context() else os.path.join(os.getcwd(), 'instance')
+        flag_file = os.path.join(instance_dir, 'telegram_kill_switch.flag')
+        if os.path.exists(flag_file):
+            return True
+
+        mode_file = _CONTROL_FILE or os.path.join(instance_dir, 'telegram_delivery_mode.json')
+        if os.path.exists(mode_file):
+            with open(mode_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if data.get('kill_switch') or data.get('paused'):
+                    return True
+    except Exception:
+        pass
+
+    return False
+
+
+def set_kill_switch_active(active: bool) -> None:
+    """Set dynamic emergency kill switch state via flag file and mode JSON."""
+    try:
+        from flask import current_app, has_app_context
+        instance_dir = current_app.instance_path if has_app_context() else os.path.join(os.getcwd(), 'instance')
+        os.makedirs(instance_dir, exist_ok=True)
+        flag_file = os.path.join(instance_dir, 'telegram_kill_switch.flag')
+        if active:
+            with open(flag_file, 'w', encoding='utf-8') as f:
+                f.write('1\n')
+        else:
+            if os.path.exists(flag_file):
+                try:
+                    os.remove(flag_file)
+                except OSError:
+                    pass
+
+        mode_file = _CONTROL_FILE or os.path.join(instance_dir, 'telegram_delivery_mode.json')
+        data = {}
+        if os.path.exists(mode_file):
+            try:
+                with open(mode_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            except Exception:
+                pass
+        data['kill_switch'] = bool(active)
+        data['paused'] = bool(active)
+        data['kill_switch_updated_at'] = datetime.now(timezone.utc).isoformat()
+        with open(mode_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        logger.warning('Failed to update kill switch state: %s', e)
+
+
 def is_delivery_permitted(chat_id: int | None, user_id: int | None = None) -> bool:
-    """Safety guard: in dev/local environments, real messages are sent ONLY to allowlisted chats."""
+    """Safety guard: in dev/local environments, real messages are sent ONLY when live mode is active AND chat is in allowlist.
+    In any environment, an active kill switch acts as an immediate emergency stop.
+    """
     if not chat_id:
+        return False
+    if is_kill_switch_active():
+        logger.warning('telegram_delivery_suppressed_by_emergency_kill_switch chat_id=%s', chat_id)
         return False
     environment = (os.environ.get('ENVIRONMENT') or os.environ.get('FLASK_ENV') or 'local').strip().lower()
     if environment in {'production', 'prod'}:
         return True
+    if not is_live_delivery_active():
+        return False
     try:
         cid = int(chat_id)
     except (ValueError, TypeError):

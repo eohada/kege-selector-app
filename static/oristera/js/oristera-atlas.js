@@ -1,215 +1,559 @@
 /**
- * Oristera Atlas: accessible focus and navigation for the topic map.
- * The page only presents evidence counts supplied by the read-only adapter.
+ * ORISTERA Atlas: data-backed territory exploration and a low-cost 2.5D camera.
+ * The visible filaments describe visual terrain only; topic evidence remains factual.
  */
 (function () {
   'use strict';
 
   class AtlasController {
-    constructor() {
-      this.svg = document.getElementById('ori-atlas-svg');
-      if (!this.svg) return;
-
-      this.clusters = Array.from(this.svg.querySelectorAll('.ori-constellation-cluster'));
-      this.currentView = 'overview';
+    constructor(root) {
+      this.root = root;
+      this.stage = root.querySelector('#ori-atlas-stage');
+      this.viewport = root.querySelector('#ori-atlas-viewport');
+      this.world = root.querySelector('#ori-atlas-world');
+      this.domains = Array.from(root.querySelectorAll('.atlas-domain'));
+      this.railButtons = Array.from(root.querySelectorAll('.ori-atlas-tab'));
+      this.searchInput = root.querySelector('#ori-atlas-search');
+      this.searchResults = root.querySelector('#ori-atlas-search-results');
+      this.resetButton = root.querySelector('#ori-atlas-reset-btn');
+      this.inspector = root.querySelector('#ori-atlas-inspector');
+      this.overviewReadout = root.querySelector('#ori-atlas-overview-card');
+      this.domainInspector = root.querySelector('#ori-cluster-inspector');
+      this.topicInspector = root.querySelector('#ori-skill-inspector');
+      this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      this.listeners = new AbortController();
+      this.resizeObserver = null;
+      this.visibilityObserver = null;
+      this.layoutFrame = null;
       this.activeCid = null;
       this.activeTopic = null;
       this.focusReturnTarget = null;
-      this.animationFrame = null;
-      this.viewBox = this.readViewBox();
+      this.overviewFocusTarget = null;
+      this.layoutMode = 'desktop';
+      this.baseScale = 1;
+      this.camera = { x: 0, y: 0, scale: 1 };
+      this.cameraLimits = { min: 1, max: 1 };
+      this.dragState = null;
+      this.suppressClick = false;
+      this.motionVisible = true;
 
-      this.resetButton = document.getElementById('ori-atlas-reset-btn');
-      this.level = document.getElementById('ori-atlas-view-level');
-      this.title = document.getElementById('ori-atlas-view-title');
-      this.subtitle = document.getElementById('ori-atlas-view-subtitle');
-      this.overviewPanel = document.getElementById('ori-atlas-overview-card');
-      this.clusterPanel = document.getElementById('ori-cluster-inspector');
-      this.skillPanel = document.getElementById('ori-skill-inspector');
-
+      this.prepareTopicNodes();
       this.bindEvents();
+      this.layoutScene();
+      this.observeLifecycle();
+      this.restoreState();
+      this.syncMotionLifecycle();
     }
 
-    readViewBox() {
-      const [x, y, width, height] = (this.svg.getAttribute('viewBox') || '0 0 1000 650')
-        .split(/\s+/)
-        .map(Number);
-      return { x, y, width, height };
+    prepareTopicNodes() {
+      this.domains.forEach((domain) => {
+        domain.querySelectorAll('.ori-star-node').forEach((topic) => {
+          const kind = this.evidenceKind(this.evidenceCount(topic));
+          topic.classList.add(kind);
+          topic.setAttribute('aria-pressed', 'false');
+        });
+      });
     }
 
     bindEvents() {
-      this.svg.addEventListener('click', (event) => {
+      const signal = this.listeners.signal;
+      this.root.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return;
         const topic = event.target.closest('.ori-star-node');
         if (topic) {
-          event.stopPropagation();
+          event.preventDefault();
           this.selectTopic(topic);
           return;
         }
-
-        const cluster = event.target.closest('.ori-constellation-cluster');
-        if (cluster) this.selectCluster(cluster.dataset.cid);
-      });
-
-      this.svg.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        const item = event.target.closest('.ori-star-node, .ori-constellation-cluster');
-        if (!item) return;
-        event.preventDefault();
-        if (item.classList.contains('ori-star-node')) this.selectTopic(item);
-        else this.selectCluster(item.dataset.cid);
-      });
-
-      document.querySelectorAll('.ori-atlas-tab, .ori-area-jump').forEach((button) => {
-        button.addEventListener('click', () => this.selectCluster(button.dataset.cid));
-      });
-
-      this.resetButton?.addEventListener('click', () => this.resetToOverview());
-      document.getElementById('ori-insp-close')?.addEventListener('click', () => this.closeTopic());
-
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-          if (this.activeTopic) this.closeTopic();
-          else if (this.currentView === 'area') this.resetToOverview();
+        const domainButton = event.target.closest('.ori-atlas-tab, .atlas-domain-trigger');
+        if (domainButton) {
+          this.selectDomain(domainButton.dataset.cid);
           return;
         }
+        const searchResult = event.target.closest('[data-search-kind]');
+        if (searchResult) this.openSearchResult(searchResult);
+      }, { signal });
 
-        if (event.altKey || event.ctrlKey || event.metaKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
-        const index = Number(event.key) - 1;
-        if (Number.isInteger(index) && index >= 0 && index < this.clusters.length) {
-          this.selectCluster(this.clusters[index].dataset.cid);
+      this.resetButton?.addEventListener('click', () => this.resetToOverview(), { signal });
+      this.root.querySelector('#ori-insp-close')?.addEventListener('click', () => this.closeTopic(), { signal });
+      this.root.querySelector('#ori-atlas-zoom-in')?.addEventListener('click', () => this.zoomBy(1.22), { signal });
+      this.root.querySelector('#ori-atlas-zoom-out')?.addEventListener('click', () => this.zoomBy(1 / 1.22), { signal });
+
+      this.searchInput?.addEventListener('input', () => this.renderSearchResults(), { signal });
+      this.searchInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          const firstResult = this.searchResults?.querySelector('[role="option"]');
+          if (firstResult) {
+            event.preventDefault();
+            firstResult.click();
+          }
+        } else if (event.key === 'Escape') {
+          this.closeSearchResults();
+        } else if (event.key === 'ArrowDown') {
+          const firstResult = this.searchResults?.querySelector('button');
+          if (firstResult) {
+            event.preventDefault();
+            firstResult.focus();
+          }
         }
+      }, { signal });
+      document.addEventListener('pointerdown', (event) => {
+        if (!(event.target instanceof Element) || !event.target.closest('.atlas-search')) this.closeSearchResults();
+      }, { signal });
+      document.addEventListener('keydown', (event) => this.onDocumentKeydown(event), { signal });
+      document.addEventListener('visibilitychange', () => this.syncMotionLifecycle(), { signal });
+      this.reduceMotion.addEventListener('change', () => this.syncMotionLifecycle(), { signal });
+
+      this.viewport?.addEventListener('pointerdown', (event) => this.beginPan(event), { signal });
+      this.viewport?.addEventListener('pointermove', (event) => this.movePan(event), { signal });
+      this.viewport?.addEventListener('pointerup', (event) => this.endPan(event), { signal });
+      this.viewport?.addEventListener('pointercancel', (event) => this.endPan(event), { signal });
+      this.viewport?.addEventListener('click', (event) => {
+        if (!this.suppressClick) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.suppressClick = false;
+      }, { capture: true, signal });
+      this.viewport?.addEventListener('wheel', (event) => this.onWheel(event), { passive: false, signal });
+      this.root.querySelector('.atlas-search')?.addEventListener('submit', (event) => event.preventDefault(), { signal });
+    }
+
+    observeLifecycle() {
+      if ('ResizeObserver' in window && this.viewport) {
+        this.resizeObserver = new ResizeObserver(() => this.scheduleLayout());
+        this.resizeObserver.observe(this.viewport);
+      } else {
+        window.addEventListener('resize', () => this.scheduleLayout(), { signal: this.listeners.signal });
+      }
+      if ('IntersectionObserver' in window && this.stage) {
+        this.visibilityObserver = new IntersectionObserver((entries) => {
+          this.motionVisible = entries.some((entry) => entry.isIntersecting);
+          this.syncMotionLifecycle();
+        }, { threshold: 0.05 });
+        this.visibilityObserver.observe(this.stage);
+      }
+    }
+
+    scheduleLayout() {
+      if (this.layoutFrame) return;
+      this.layoutFrame = requestAnimationFrame(() => {
+        this.layoutFrame = null;
+        this.layoutScene();
       });
     }
 
-    findCluster(cid) {
-      return this.clusters.find((cluster) => cluster.dataset.cid === cid);
+    layoutScene() {
+      if (!this.world || !this.viewport || !this.domains.length) return;
+      const width = this.viewport.clientWidth || window.innerWidth;
+      const mode = width <= 600 ? 'mobile' : width <= 1100 ? 'tablet' : 'desktop';
+      const modeChanged = mode !== this.layoutMode;
+      this.layoutMode = mode;
+      this.root.dataset.layout = mode;
+      this.world.dataset.layout = mode;
+
+      if (mode !== 'desktop') {
+        this.world.classList.add('is-flow-layout');
+        this.world.style.width = '';
+        this.world.style.height = '';
+        this.world.style.transform = 'none';
+        this.world.style.removeProperty('--camera-x');
+        this.world.style.removeProperty('--camera-y');
+        this.world.style.removeProperty('--camera-scale');
+        this.domains.forEach((domain) => {
+          domain.style.removeProperty('left');
+          domain.style.removeProperty('top');
+          domain.style.removeProperty('width');
+          domain.style.removeProperty('height');
+        });
+        this.baseScale = 1;
+        this.cameraLimits = { min: 1, max: 1 };
+        this.camera = { x: 0, y: 0, scale: 1 };
+        this.updateScaleReadout();
+        if (modeChanged && this.activeCid) {
+          this.findDomain(this.activeCid)?.scrollIntoView({
+            behavior: this.reduceMotion.matches ? 'auto' : 'smooth',
+            block: 'center',
+          });
+        }
+        return;
+      }
+
+      this.world.classList.remove('is-flow-layout');
+      const viewportWidth = this.viewport.clientWidth;
+      const viewportHeight = this.viewport.clientHeight;
+      const count = this.domains.length;
+      const columns = Math.max(1, Math.ceil(Math.sqrt(count * 1.45)));
+      const rows = Math.ceil(count / columns);
+      const cellWidth = 535;
+      const cellHeight = 372;
+      const worldWidth = Math.max(1680, 110 + columns * cellWidth + 70);
+      const worldHeight = Math.max(820, 70 + rows * cellHeight + 8);
+      this.world.style.width = worldWidth + 'px';
+      this.world.style.height = worldHeight + 'px';
+
+      this.domains.forEach((domain, index) => {
+        const row = Math.floor(index / columns);
+        const rowStart = row * columns;
+        const rowLength = Math.min(columns, count - rowStart);
+        const column = index - rowStart;
+        const rowWidth = rowLength * cellWidth + Math.max(0, rowLength - 1) * 32;
+        const left = (worldWidth - rowWidth) / 2 + column * (cellWidth + 32) + (row % 2 ? 20 : 0);
+        const top = 28 + row * cellHeight + (index % 2 ? 18 : 0);
+        const domainWidth = 500 + (index % 3 === 1 ? 14 : 0);
+        const domainHeight = 342 + (index % 4 === 2 ? 16 : 0);
+        domain.style.left = left + 'px';
+        domain.style.top = top + 'px';
+        domain.style.width = domainWidth + 'px';
+        domain.style.height = domainHeight + 'px';
+        domain.dataset.centerX = String(left + domainWidth / 2);
+        domain.dataset.centerY = String(top + domainHeight / 2);
+      });
+
+      this.baseScale = Math.min(viewportWidth / worldWidth, viewportHeight / worldHeight, 1);
+      this.cameraLimits = {
+        min: Math.max(0.42, this.baseScale * 0.88),
+        max: Math.min(1.8, this.baseScale * 1.8),
+      };
+      const activeDomain = this.activeCid && this.findDomain(this.activeCid);
+      if (activeDomain) this.focusDomain(activeDomain, { instant: true });
+      else this.applyCamera(this.overviewCamera(), {
+        instant: modeChanged || !this.world.classList.contains('is-layout-ready'),
+      });
+      this.world.classList.add('is-layout-ready');
+      this.updateScaleReadout();
     }
 
-    selectCluster(cid) {
-      const cluster = this.findCluster(cid);
-      if (!cluster) return;
+    overviewCamera() {
+      const viewportWidth = this.viewport.clientWidth;
+      const viewportHeight = this.viewport.clientHeight;
+      const worldWidth = this.world.offsetWidth;
+      const worldHeight = this.world.offsetHeight;
+      return {
+        scale: this.baseScale,
+        x: (viewportWidth - worldWidth * this.baseScale) / 2,
+        y: (viewportHeight - worldHeight * this.baseScale) / 2,
+      };
+    }
 
-      this.currentView = 'area';
+    clampCamera(camera) {
+      const width = this.viewport.clientWidth;
+      const height = this.viewport.clientHeight;
+      const scaledWidth = this.world.offsetWidth * camera.scale;
+      const scaledHeight = this.world.offsetHeight * camera.scale;
+      return {
+        scale: camera.scale,
+        x: scaledWidth <= width ? (width - scaledWidth) / 2 : Math.max(width - scaledWidth, Math.min(0, camera.x)),
+        y: scaledHeight <= height ? (height - scaledHeight) / 2 : Math.max(height - scaledHeight, Math.min(0, camera.y)),
+      };
+    }
+
+    applyCamera(camera, options = {}) {
+      if (this.layoutMode !== 'desktop') return;
+      const next = this.clampCamera(camera);
+      this.camera = next;
+      this.world.style.transform = 'translate3d(' + next.x + 'px, ' + next.y + 'px, 0) scale(' + next.scale + ')';
+      this.world.style.setProperty('--camera-scale', String(next.scale));
+      this.world.dataset.cameraMotion = options.instant || this.reduceMotion.matches ? 'instant' : 'spatial';
+      this.updateScaleReadout();
+    }
+
+    focusDomain(domain, options = {}) {
+      if (this.layoutMode !== 'desktop') {
+        domain.scrollIntoView({ behavior: this.reduceMotion.matches ? 'auto' : 'smooth', block: 'center' });
+        return;
+      }
+      const scale = Math.min(this.cameraLimits.max, this.baseScale * 1.43);
+      const centerX = Number(domain.dataset.centerX) || this.world.offsetWidth / 2;
+      const centerY = Number(domain.dataset.centerY) || this.world.offsetHeight / 2;
+      this.applyCamera({
+        scale,
+        x: this.viewport.clientWidth * 0.41 - centerX * scale,
+        y: this.viewport.clientHeight * 0.5 - centerY * scale,
+      }, options);
+    }
+
+    focusTopic(topic, options = {}) {
+      const domain = topic.closest('.atlas-domain');
+      if (!domain) return;
+      if (this.layoutMode !== 'desktop') {
+        topic.scrollIntoView({ behavior: this.reduceMotion.matches ? 'auto' : 'smooth', block: 'center' });
+        return;
+      }
+      const worldRect = this.world.getBoundingClientRect();
+      const topicRect = topic.getBoundingClientRect();
+      const pointX = (topicRect.left + topicRect.width / 2 - worldRect.left) / this.camera.scale;
+      const pointY = (topicRect.top + topicRect.height / 2 - worldRect.top) / this.camera.scale;
+      const scale = Math.min(this.cameraLimits.max, this.baseScale * 1.63);
+      this.applyCamera({
+        scale,
+        x: this.viewport.clientWidth * 0.38 - pointX * scale,
+        y: this.viewport.clientHeight * 0.5 - pointY * scale,
+      }, options);
+    }
+
+    zoomBy(factor) {
+      if (this.layoutMode !== 'desktop') return;
+      const rect = this.viewport.getBoundingClientRect();
+      this.zoomAt(this.camera.scale * factor, rect.width / 2, rect.height / 2);
+    }
+
+    zoomAt(scale, x, y) {
+      if (this.layoutMode !== 'desktop') return;
+      const nextScale = Math.max(this.cameraLimits.min, Math.min(this.cameraLimits.max, scale));
+      const worldX = (x - this.camera.x) / this.camera.scale;
+      const worldY = (y - this.camera.y) / this.camera.scale;
+      this.applyCamera({
+        scale: nextScale,
+        x: x - worldX * nextScale,
+        y: y - worldY * nextScale,
+      });
+    }
+
+    beginPan(event) {
+      if (this.layoutMode !== 'desktop' || event.button !== 0 || event.target.closest('button, a, input')) return;
+      this.dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        initialX: this.camera.x,
+        initialY: this.camera.y,
+        moved: false,
+      };
+      this.viewport.setPointerCapture?.(event.pointerId);
+      this.viewport.classList.add('is-panning');
+    }
+
+    movePan(event) {
+      if (!this.dragState || this.dragState.pointerId !== event.pointerId) return;
+      const dx = event.clientX - this.dragState.startX;
+      const dy = event.clientY - this.dragState.startY;
+      if (Math.abs(dx) + Math.abs(dy) > 4) this.dragState.moved = true;
+      if (!this.dragState.moved) return;
+      this.applyCamera({
+        scale: this.camera.scale,
+        x: this.dragState.initialX + dx,
+        y: this.dragState.initialY + dy,
+      }, { instant: true });
+    }
+
+    endPan(event) {
+      if (!this.dragState || this.dragState.pointerId !== event.pointerId) return;
+      this.suppressClick = this.dragState.moved;
+      this.dragState = null;
+      this.viewport.classList.remove('is-panning');
+      if (this.suppressClick) window.setTimeout(() => { this.suppressClick = false; }, 0);
+    }
+
+    onWheel(event) {
+      if (this.layoutMode !== 'desktop' || event.target.closest('button, a, input')) return;
+      event.preventDefault();
+      const rect = this.viewport.getBoundingClientRect();
+      const factor = Math.exp(-event.deltaY * 0.0012);
+      this.zoomAt(this.camera.scale * factor, event.clientX - rect.left, event.clientY - rect.top);
+    }
+
+    onDocumentKeydown(event) {
+      if (event.key === 'Escape') {
+        if (this.searchResults && !this.searchResults.hidden) {
+          this.closeSearchResults();
+          this.searchInput?.focus();
+        } else if (this.activeTopic) this.closeTopic();
+        else if (this.activeCid) this.resetToOverview();
+        return;
+      }
+      if (event.altKey || event.ctrlKey || event.metaKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+      if (event.key === '/') {
+        event.preventDefault();
+        this.searchInput?.focus();
+      } else if (event.key === '+' || event.key === '=') this.zoomBy(1.18);
+      else if (event.key === '-') this.zoomBy(1 / 1.18);
+      else if (event.key === '0') this.resetToOverview();
+      else {
+        const index = Number(event.key) - 1;
+        if (Number.isInteger(index) && index >= 0 && index < this.domains.length) {
+          this.selectDomain(this.domains[index].dataset.cid);
+        }
+      }
+    }
+
+    renderSearchResults() {
+      if (!this.searchInput || !this.searchResults) return;
+      const query = this.searchInput.value.trim().toLocaleLowerCase('ru-RU');
+      this.searchResults.replaceChildren();
+      if (query.length < 2) {
+        this.closeSearchResults();
+        return;
+      }
+
+      const matches = [];
+      this.domains.forEach((domain) => {
+        const domainName = domain.dataset.title || '';
+        if (domainName.toLocaleLowerCase('ru-RU').includes(query)) {
+          matches.push({ kind: 'domain', domain, title: domainName, detail: domain.dataset.count + ' тем' });
+        }
+        domain.querySelectorAll('.ori-star-node').forEach((topic) => {
+          const title = topic.dataset.name || '';
+          if (title.toLocaleLowerCase('ru-RU').includes(query) || (topic.dataset.num || '') === query.replace(/^№/, '')) {
+            matches.push({
+              kind: 'topic',
+              domain,
+              topic,
+              title,
+              detail: '№' + topic.dataset.num + ' · ' + domainName,
+            });
+          }
+        });
+      });
+
+      matches.slice(0, 7).forEach((match) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'atlas-search-result';
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', 'false');
+        button.dataset.searchKind = match.kind;
+        button.dataset.cid = match.domain.dataset.cid;
+        if (match.topic) button.dataset.topicNum = match.topic.dataset.num || '';
+        const title = document.createElement('span');
+        const detail = document.createElement('small');
+        title.textContent = match.title;
+        detail.textContent = match.detail;
+        button.append(title, detail);
+        this.searchResults.append(button);
+      });
+
+      if (!matches.length) {
+        const empty = document.createElement('li');
+        empty.className = 'atlas-search-empty';
+        empty.setAttribute('role', 'option');
+        empty.textContent = 'Совпадений в текущем каталоге нет';
+        this.searchResults.append(empty);
+      }
+      this.searchResults.hidden = false;
+      this.searchInput.setAttribute('aria-expanded', 'true');
+    }
+
+    openSearchResult(result) {
+      const domain = this.findDomain(result.dataset.cid);
+      if (!domain) return;
+      this.overviewFocusTarget = result;
+      this.selectDomain(domain.dataset.cid);
+      this.closeSearchResults();
+      if (result.dataset.searchKind === 'topic') {
+        const topic = Array.from(domain.querySelectorAll('.ori-star-node'))
+          .find((item) => item.dataset.num === result.dataset.topicNum);
+        if (topic) this.selectTopic(topic);
+      } else {
+        domain.querySelector('.atlas-domain-trigger')?.focus();
+      }
+      this.searchInput?.blur();
+    }
+
+    selectDomain(cid, options = {}) {
+      const domain = this.findDomain(cid);
+      if (!domain) return;
       this.activeCid = cid;
       this.activeTopic = null;
-      this.closeTopic(false);
-      this.viewToCluster(cluster);
-
-      this.resetButton?.classList.remove('hidden');
-      if (this.level) this.level.textContent = 'Выбранная область';
-      if (this.title) this.title.textContent = cluster.dataset.title || 'Область знаний';
-      if (this.subtitle) this.subtitle.textContent = 'Темы сгруппированы по разделам предмета. Выберите тему, чтобы увидеть только доступные подтверждения.';
-
-      this.overviewPanel?.classList.add('hidden');
-      this.skillPanel?.classList.add('hidden');
-      this.clusterPanel?.classList.remove('hidden');
-      const topicCount = cluster.querySelectorAll('.ori-star-node').length;
-      const summary = document.getElementById('ori-cluster-summary');
-      if (summary) summary.textContent = `${topicCount} тем в этой области. Показатели освоения не рассчитываются.`;
-      this.renderTopics(cluster);
-
-      this.clusters.forEach((item) => {
-        const isSelected = item === cluster;
-        item.classList.toggle('is-focused', isSelected);
-        item.classList.toggle('is-dimmed', !isSelected);
-        item.querySelector('.ori-map-region')?.setAttribute('aria-pressed', String(isSelected));
+      this.focusReturnTarget = domain.querySelector('.atlas-domain-trigger');
+      if (!this.overviewFocusTarget?.isConnected) this.overviewFocusTarget = this.focusReturnTarget;
+      this.root.dataset.activeDomain = cid;
+      this.world.dataset.state = 'domain';
+      this.world.dataset.activeDomain = cid;
+      this.domains.forEach((item) => {
+        const selected = item === domain;
+        item.classList.toggle('is-active', selected);
+        item.classList.toggle('is-muted', !selected);
+        item.querySelector('.atlas-domain-trigger')?.setAttribute('aria-pressed', String(selected));
+        const field = item.querySelector('.atlas-topic-field');
+        if (field) field.hidden = !selected;
       });
-      document.querySelectorAll('.ori-atlas-tab').forEach((tab) => {
-        const selected = tab.dataset.cid === cid;
-        tab.classList.toggle('is-active', selected);
-        tab.setAttribute('aria-pressed', String(selected));
+      this.railButtons.forEach((button) => {
+        const selected = button.dataset.cid === cid;
+        button.classList.toggle('is-active', selected);
+        button.setAttribute('aria-pressed', String(selected));
       });
+
+      this.overviewReadout.hidden = true;
+      this.domainInspector.hidden = false;
+      this.topicInspector.hidden = true;
+      this.inspector.hidden = false;
+      this.resetButton.hidden = false;
+      this.setHeading('Погружение', domain.dataset.title || 'Область знаний');
+      const topics = Array.from(domain.querySelectorAll('.ori-star-node'));
+      const observations = topics.reduce((sum, topic) => sum + this.evidenceCount(topic), 0);
+      this.root.querySelector('#ori-cluster-title').textContent = domain.dataset.title || 'Область знаний';
+      this.root.querySelector('#ori-cluster-count').textContent = topics.length + ' тем';
+      this.root.querySelector('#ori-cluster-summary').textContent = observations
+        ? topics.length + ' доступных тем. В каталоге есть ' + observations + ' подтверждённых учебных наблюдений.'
+        : topics.length + ' доступных тем. Подтверждённая учебная активность пока не записана.';
+      this.root.querySelector('#ori-cluster-evidence').textContent = String(observations);
+
+      if (!options.skipCamera) this.focusDomain(domain, { instant: options.instant });
+      if (options.writeState !== false) this.persistState();
     }
 
-    viewToCluster(cluster) {
-      if (!this.svg.getClientRects().length) return;
-      const cx = Number(cluster.dataset.centerX) || 500;
-      const cy = Number(cluster.dataset.centerY) || 325;
-      const width = 390;
-      const height = 290;
-      const target = {
-        x: Math.max(0, Math.min(1000 - width, cx - width / 2)),
-        y: Math.max(0, Math.min(650 - height, cy - height / 2)),
-        width,
-        height,
-      };
-      this.animateViewBox(target);
-    }
-
-    renderTopics(cluster) {
-      const list = document.getElementById('ori-cluster-topics');
-      const title = document.getElementById('ori-cluster-title');
-      if (!list || !title) return;
-
-      title.textContent = cluster.dataset.title || 'Темы области';
-      list.replaceChildren();
-      cluster.querySelectorAll('.ori-star-node').forEach((topic) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        const number = document.createElement('span');
-        const name = document.createElement('span');
-        const status = document.createElement('span');
-        const count = this.evidenceCount(topic);
-
-        button.type = 'button';
-        button.className = 'ori-cluster-topic';
-        number.className = 'ori-topic-number';
-        number.textContent = `№${topic.dataset.num || ''}`;
-        name.className = 'ori-topic-name';
-        name.textContent = topic.dataset.name || 'Тема';
-        status.className = `ori-topic-evidence ${this.evidenceKind(count)}`;
-        status.textContent = this.evidenceLabel(count);
-        button.append(number, name, status);
-        button.addEventListener('click', () => this.selectTopic(topic, button));
-        item.append(button);
-        list.append(item);
-      });
-    }
-
-    selectTopic(topic, returnTarget = topic) {
-      const cluster = topic.closest('.ori-constellation-cluster');
-      if (!cluster) return;
-      if (this.activeCid !== cluster.dataset.cid) this.selectCluster(cluster.dataset.cid);
-
+    selectTopic(topic, options = {}) {
+      const domain = topic.closest('.atlas-domain');
+      if (!domain) return;
+      if (this.activeCid !== domain.dataset.cid) {
+        this.selectDomain(domain.dataset.cid, { skipCamera: true, writeState: false });
+      }
       this.activeTopic = topic;
-      this.focusReturnTarget = returnTarget;
+      this.focusReturnTarget = topic;
+      this.domains.forEach((item) => {
+        item.querySelectorAll('.ori-star-node').forEach((node) => {
+          const selected = node === topic;
+          node.classList.toggle('is-selected', selected);
+          node.setAttribute('aria-pressed', String(selected));
+        });
+      });
+      this.domainInspector.hidden = true;
+      this.topicInspector.hidden = false;
+      this.inspector.hidden = false;
+      this.world.dataset.state = 'topic';
+      this.setHeading('Тема · исследование', topic.dataset.name || 'Тема');
       this.renderTopicDetails(topic);
-      this.clusterPanel?.classList.add('hidden');
-      this.skillPanel?.classList.remove('hidden');
-      this.clusters.forEach((item) => item.classList.toggle('is-focused', item === cluster));
-      this.svg.querySelectorAll('.ori-star-node').forEach((item) => item.classList.toggle('is-selected', item === topic));
+      if (!options.skipCamera) this.focusTopic(topic, { instant: options.instant });
+      if (options.writeState !== false) this.persistState();
     }
 
     renderTopicDetails(topic) {
       const count = this.evidenceCount(topic);
-      const badge = document.getElementById('ori-insp-badge');
-      const description = document.getElementById('ori-insp-desc');
-      const countElement = document.getElementById('ori-insp-evidence-count');
-      const evidence = document.getElementById('ori-insp-evidence');
-      const practiceLink = document.getElementById('ori-insp-practice-link');
-
-      document.getElementById('ori-insp-num').textContent = `№${topic.dataset.num || ''}`;
-      document.getElementById('ori-insp-title').textContent = topic.dataset.name || 'Тема';
+      const badge = this.root.querySelector('#ori-insp-badge');
+      const domain = topic.closest('.atlas-domain');
+      const practiceLink = this.root.querySelector('#ori-insp-practice-link');
+      this.root.querySelector('#ori-insp-num').textContent = 'ТЕМА №' + (topic.dataset.num || '');
+      this.root.querySelector('#ori-insp-title').textContent = topic.dataset.name || 'Тема';
       if (badge) {
         badge.textContent = this.evidenceLabel(count);
-        badge.className = `ori-inspector-tag ${this.evidenceKind(count)}`;
+        badge.className = 'atlas-inspector-badge ' + this.evidenceKind(count);
       }
-      if (description) {
-        description.textContent = count === 0
-          ? 'Подтверждённые учебные наблюдения пока не записаны. Это не означает, что тема не освоена.'
-          : count < 3
-            ? 'Для этой темы есть отдельные наблюдения. Их недостаточно, чтобы делать вывод об освоении.'
-            : 'По теме записаны повторные наблюдения. Карта показывает их количество и не рассчитывает уровень освоения.';
-      }
-      if (countElement) countElement.textContent = String(count);
-      if (evidence) evidence.textContent = count === 0
-        ? 'Подтверждений в доступных данных нет.'
-        : `${count} подтверждённых наблюдений доступно для просмотра.`;
-      if (practiceLink) practiceLink.href = `/oristera/practice?task_no=${encodeURIComponent(topic.dataset.num || '')}`;
+      this.root.querySelector('#ori-insp-desc').textContent = count === 0
+        ? 'Подтверждённые учебные наблюдения пока не записаны. Это не означает, что тема не освоена.'
+        : count < 3
+          ? 'Для этой темы есть отдельные наблюдения. Доступные данные не позволяют делать вывод об уровне освоения.'
+          : 'По теме записаны повторные наблюдения. Atlas показывает их количество, но не рассчитывает мастерство.';
+      this.root.querySelector('#ori-insp-evidence-count').textContent = String(count);
+      this.root.querySelector('#ori-insp-evidence').textContent = count === 0
+        ? 'В доступной истории нет подтверждений по этой теме.'
+        : count + ' подтверждённых наблюдений доступно для просмотра.';
+      const url = new URL(practiceLink.href, window.location.href);
+      url.searchParams.delete('task_no');
+      url.searchParams.set('atlas_area', domain?.dataset.cid || '');
+      url.searchParams.set('atlas_topic', topic.dataset.num || '');
+      practiceLink.href = url.href;
+      practiceLink.setAttribute('aria-label', 'Перейти к практике по теме ' + (topic.dataset.name || ''));
     }
 
     evidenceCount(topic) {
-      const value = Number.parseInt(topic.dataset.evidenceCount || '0', 10);
-      return Number.isFinite(value) && value > 0 ? value : 0;
+      const count = Number.parseInt(topic.dataset.evidenceCount || '0', 10);
+      return Number.isFinite(count) && count > 0 ? count : 0;
+    }
+
+    evidenceLabel(count) {
+      if (count >= 3) return 'Повторные наблюдения';
+      if (count > 0) return count + ' наблюдения';
+      return 'Нет подтверждений';
     }
 
     evidenceKind(count) {
@@ -218,84 +562,140 @@
       return 'is-unobserved';
     }
 
-    evidenceLabel(count) {
-      if (count >= 3) return 'Повторные подтверждения';
-      if (count > 0) return `${count} наблюд.`;
-      return 'Нет данных';
-    }
-
-    closeTopic(restoreFocus = true) {
+    closeTopic(restoreFocus = true, options = {}) {
+      if (!this.activeTopic) return;
+      const focusTarget = this.focusReturnTarget;
       this.activeTopic = null;
-      this.skillPanel?.classList.add('hidden');
-      this.clusterPanel?.classList.toggle('hidden', this.currentView !== 'area');
-      this.svg.querySelectorAll('.ori-star-node').forEach((topic) => topic.classList.remove('is-selected'));
-      if (restoreFocus) this.focusReturnTarget?.focus?.();
+      this.world.dataset.state = 'domain';
+      this.domains.forEach((domain) => {
+        domain.querySelectorAll('.ori-star-node').forEach((topic) => {
+          topic.classList.remove('is-selected');
+          topic.setAttribute('aria-pressed', 'false');
+        });
+      });
+      this.topicInspector.hidden = true;
+      this.domainInspector.hidden = false;
+      this.inspector.hidden = false;
+      const domain = this.findDomain(this.activeCid);
+      this.setHeading('Погружение', domain?.dataset.title || 'Область знаний');
+      if (restoreFocus && focusTarget?.isConnected) focusTarget.focus();
+      if (options.writeState !== false) this.persistState();
     }
 
-    resetToOverview() {
-      this.currentView = 'overview';
+    resetToOverview(options = {}) {
+      const focusTarget = this.overviewFocusTarget?.isConnected ? this.overviewFocusTarget : this.railButtons[0];
       this.activeCid = null;
-      this.closeTopic(false);
-      this.animateViewBox({ x: 0, y: 0, width: 1000, height: 650 });
-      this.resetButton?.classList.add('hidden');
-      if (this.level) this.level.textContent = 'Обзор предмета';
-      if (this.title) this.title.textContent = 'Связи между темами';
-      if (this.subtitle) this.subtitle.textContent = 'Исследуйте карту информатики. Метки показывают только подтверждённые наблюдения; отсутствие данных не означает отсутствие знаний.';
-      this.overviewPanel?.classList.remove('hidden');
-      this.clusterPanel?.classList.add('hidden');
-      this.skillPanel?.classList.add('hidden');
-      this.clusters.forEach((cluster) => {
-        cluster.classList.remove('is-focused', 'is-dimmed');
-        cluster.querySelector('.ori-map-region')?.setAttribute('aria-pressed', 'false');
+      this.activeTopic = null;
+      this.root.removeAttribute('data-active-domain');
+      this.world.removeAttribute('data-active-domain');
+      this.world.dataset.state = 'overview';
+      this.domains.forEach((domain) => {
+        domain.classList.remove('is-active', 'is-muted');
+        domain.querySelector('.atlas-domain-trigger')?.setAttribute('aria-pressed', 'false');
+        domain.querySelectorAll('.ori-star-node').forEach((topic) => {
+          topic.classList.remove('is-selected');
+          topic.setAttribute('aria-pressed', 'false');
+        });
+        const topicField = domain.querySelector('.atlas-topic-field');
+        if (topicField) topicField.hidden = true;
       });
-      document.querySelectorAll('.ori-atlas-tab').forEach((tab) => {
-        tab.classList.remove('is-active');
-        tab.setAttribute('aria-pressed', 'false');
+      this.railButtons.forEach((button) => {
+        button.classList.remove('is-active');
+        button.setAttribute('aria-pressed', 'false');
       });
+      this.inspector.hidden = true;
+      this.domainInspector.hidden = true;
+      this.topicInspector.hidden = true;
+      this.overviewReadout.hidden = false;
+      this.resetButton.hidden = true;
+      this.setHeading('Общий рельеф', 'Мир знаний');
+      this.applyCamera(this.overviewCamera());
+      this.overviewFocusTarget = null;
+      if (options.focus !== false) focusTarget?.focus?.();
+      if (options.writeState !== false) this.persistState();
     }
 
-    animateViewBox(target) {
-      if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
-      const start = { ...this.viewBox };
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (reduceMotion) {
-        this.viewBox = { ...target };
-        this.applyViewBox();
-        return;
+    setHeading(level, title) {
+      const levelElement = this.root.querySelector('#ori-atlas-view-level');
+      const titleElement = this.root.querySelector('#ori-atlas-view-title');
+      if (levelElement) {
+        levelElement.textContent = title;
+        levelElement.dataset.level = level;
       }
-
-      const startedAt = performance.now();
-      const duration = 360;
-      const easeOut = (progress) => 1 - Math.pow(1 - progress, 4);
-      const frame = (now) => {
-        const progress = Math.min(1, (now - startedAt) / duration);
-        const eased = easeOut(progress);
-        this.viewBox = {
-          x: start.x + (target.x - start.x) * eased,
-          y: start.y + (target.y - start.y) * eased,
-          width: start.width + (target.width - start.width) * eased,
-          height: start.height + (target.height - start.height) * eased,
-        };
-        this.applyViewBox();
-        if (progress < 1) this.animationFrame = requestAnimationFrame(frame);
-        else this.animationFrame = null;
-      };
-      this.animationFrame = requestAnimationFrame(frame);
+      this.root.querySelector('#ori-atlas-view-subtitle').textContent = level === 'Общий рельеф'
+        ? 'Информатика · ' + this.root.dataset.topicCount + ' доступных тем'
+        : level;
+      if (titleElement) titleElement.textContent = title;
     }
 
-    applyViewBox() {
-      this.svg.setAttribute('viewBox', `${this.viewBox.x} ${this.viewBox.y} ${this.viewBox.width} ${this.viewBox.height}`);
+    persistState() {
+      const url = new URL(window.location.href);
+      if (this.activeCid) url.searchParams.set('atlas_area', this.activeCid);
+      else url.searchParams.delete('atlas_area');
+      if (this.activeTopic) url.searchParams.set('atlas_topic', this.activeTopic.dataset.num || '');
+      else url.searchParams.delete('atlas_topic');
+      window.history.replaceState({
+        ...(window.history.state || {}),
+        oristeraAtlas: { area: this.activeCid, topic: this.activeTopic?.dataset.num || null },
+      }, document.title, url.href);
+    }
+
+    restoreState() {
+      const params = new URLSearchParams(window.location.search);
+      const cid = params.get('atlas_area');
+      const domain = cid && this.findDomain(cid);
+      if (!domain) return;
+      this.selectDomain(cid, { instant: true, writeState: false });
+      const topicNum = params.get('atlas_topic');
+      if (!topicNum) return;
+      const topic = Array.from(domain.querySelectorAll('.ori-star-node'))
+        .find((item) => item.dataset.num === topicNum);
+      if (topic) this.selectTopic(topic, { instant: true, writeState: false });
+    }
+
+    findDomain(cid) {
+      return this.domains.find((domain) => domain.dataset.cid === cid);
+    }
+
+    closeSearchResults() {
+      if (!this.searchResults || !this.searchInput) return;
+      this.searchResults.hidden = true;
+      this.searchInput.setAttribute('aria-expanded', 'false');
+    }
+
+    updateScaleReadout() {
+      const output = this.root.querySelector('#ori-atlas-scale');
+      if (output) output.value = Math.round(this.camera.scale / (this.baseScale || 1) * 100) + '%';
+    }
+
+    syncMotionLifecycle() {
+      const mainStage = document.getElementById('ori-main-stage');
+      const paused = document.hidden || !this.motionVisible || mainStage?.dataset.oriMotion === 'paused' || this.reduceMotion.matches;
+      this.root.dataset.motionPaused = String(Boolean(paused));
+    }
+
+    destroy() {
+      this.listeners.abort();
+      this.resizeObserver?.disconnect();
+      this.visibilityObserver?.disconnect();
+      if (this.layoutFrame) cancelAnimationFrame(this.layoutFrame);
     }
   }
 
   function initAtlas() {
-    if (document.getElementById('ori-atlas-svg') && !window.OristeraAtlas) {
-      window.OristeraAtlas = new AtlasController();
-    }
+    const root = document.getElementById('ori-atlas-universe');
+    if (!root) return;
+    if (window.OristeraAtlas?.root === root) return;
+    window.OristeraAtlas?.destroy?.();
+    window.OristeraAtlas = new AtlasController(root);
   }
 
   document.addEventListener('DOMContentLoaded', initAtlas, { once: true });
   window.addEventListener('ori:space-entered', (event) => {
-    if (event.detail?.path?.includes('atlas')) initAtlas();
+    if (event.detail?.path?.includes('/atlas')) initAtlas();
+    else if (window.OristeraAtlas?.root && !window.OristeraAtlas.root.isConnected) {
+      window.OristeraAtlas.destroy();
+      window.OristeraAtlas = null;
+    }
   });
 })();

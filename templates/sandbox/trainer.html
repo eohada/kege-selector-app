@@ -42,7 +42,8 @@
   'lesson_duration': room_lesson.duration|default(60) if room_lesson else 60,
   'lesson_student_name': student.name|default('Ученик') if student else 'Ученик',
   'lesson_date': room_lesson.lesson_date.isoformat() if room_lesson and room_lesson.lesson_date else '',
-  'lesson_homework': lesson_homework|default([])
+  'lesson_homework': lesson_homework|default([]),
+  'pocket_os_enabled': pocket_os_enabled|default(false)
 }|tojson }}</script>
 
 <style>
@@ -2333,7 +2334,7 @@
         font-weight: 800 !important;
       }
     </style>
-    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261026-room-actions-v2"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261023-sync-v3">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
+    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261026-room-actions-v2"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261023-sync-v3">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% if pocket_os_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-pocket-os.css') }}?v=20261102-pocket-v123">{% endif %}{% endif %}
 
     <!-- 3. РЕЖИМ 2: АРЕНА НАРЕШИВАНИЯ (REAL GLASS OS 8.0 ULTRA WORKSPACE) -->
     <div id="trainer-arena-view"
@@ -2448,6 +2449,10 @@
             <i class="ph-bold ph-bounding-box" aria-hidden="true"></i>
             <span>Контур ученика</span>
           </button>
+          <button type="button" id="btn-teacher-show-here" class="lesson-os-system-action" onclick="window.teacherShowHere?.()" title="Показать текущую область экрана ученику (однократная синхронизация камеры)" aria-label="Показать ученику здесь">
+            <i class="ph-bold ph-broadcast" aria-hidden="true"></i>
+            <span>Показать здесь</span>
+          </button>
           <div class="lesson-os-control-wrap" id="lesson-os-control-wrap">
             <button type="button" id="lesson-os-control-toggle" class="lesson-os-system-action lesson-os-control-action" aria-label="Управление уроком" aria-expanded="false" aria-controls="lesson-os-control-popover" title="Управление следованием и синхронизацией">
               <i class="ph-bold ph-sliders" aria-hidden="true"></i>
@@ -2522,7 +2527,28 @@
                   </label>
                 </div>
               </div>
+              <div class="lesson-os-control-section" style="padding-top: 6px; padding-bottom: 6px;">
+                <div class="lesson-os-control-subtitle font-bold text-slate-700 text-xs mb-1.5">Предложить фокус ученику (Pocket OS):</div>
+                <div class="grid grid-cols-3 gap-1.5" id="control-focus-suggestions">
+                  <button type="button" class="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1 transition-all" onclick="window.sendFocusSuggestion?.('board')" title="Предложить ученику открыть доску">
+                    <i class="ph-bold ph-chalkboard-simple text-indigo-600"></i> Доска
+                  </button>
+                  <button type="button" class="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1 transition-all" onclick="window.sendFocusSuggestion?.('code')" title="Предложить ученику открыть код">
+                    <i class="ph-bold ph-code text-emerald-600"></i> Код
+                  </button>
+                  <button type="button" class="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-center gap-1 transition-all" onclick="window.sendFocusSuggestion?.('task')" title="Предложить ученику открыть задание">
+                    <i class="ph-bold ph-check-square-offset text-sky-600"></i> Задание
+                  </button>
+                </div>
+              </div>
               <div class="lesson-os-control-section lesson-os-control-footer space-y-1.5">
+                <label class="lesson-os-control-toggle-row">
+                  <input type="checkbox" id="control-teacher-controls-focus">
+                  <div class="lesson-os-control-text">
+                    <strong>Управлять экраном ученика</strong>
+                    <span>Принудительно переключать фокус (иначе отправлять предложение)</span>
+                  </div>
+                </label>
                 <label class="lesson-os-control-toggle-row">
                   <input type="checkbox" id="control-student-whiteboard-edit" checked>
                   <div class="lesson-os-control-text">
@@ -3214,7 +3240,7 @@
             {% endif %}
           </div>
           {% elif room_mode %}
-          <div class="space-y-2 pt-3 border-t border-slate-200/60">
+          <div class="space-y-2 pt-3 border-t border-slate-200/60 pocket-os-hide-guidance">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Фокус урока</span>
             <p class="lesson-os-task-guidance text-xs text-slate-600 leading-relaxed">Работай в редакторе, открывай теорию и фиксируй вопросы в заметках. Все инструменты комнаты доступны из нижней панели.</p>
           </div>
@@ -4902,6 +4928,7 @@
     }
   })();
   window.trainerOsConfig = trainerOsConfig;
+  window.__pocketOsFeatureEnabled = Boolean(trainerOsConfig.pocket_os_enabled);
 
   const configuredRoomStarterCode = (trainerOsConfig.room_mode && typeof trainerOsConfig.starter_code === 'string')
     ? trainerOsConfig.starter_code.trim()
@@ -6648,6 +6675,7 @@
     }
 
     savePageWindows(pageId) {
+      if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
       if (!trainerOsConfig.room_mode || !pageId) return;
       for (const [id, { windowEl }] of this.registeredWindows) {
         if (!PAGE_SCOPED_WINDOWS.has(id)) continue;
@@ -6674,6 +6702,7 @@
     }
 
     restoreWindowLayout(windowEl, pageId = null) {
+      if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
       const entry = this.savedLayouts(windowEl.id, pageId)[windowEl.id];
       const saved = window.innerWidth < 1200 ? entry?.compact : entry;
       if (!saved || !Number.isFinite(Number(saved.width)) || !Number.isFinite(Number(saved.height)) || windowEl.id === 'canvas-window') return;
@@ -6749,6 +6778,7 @@
 
     ensureRoomWindowAccessible(windowEl) {
       if (!windowEl || windowEl.classList.contains('hidden')) return;
+      if (document.body.classList.contains('pocket-os-active')) return;
 
       const parentEl = windowEl.parentElement;
       const rect = windowEl.getBoundingClientRect();
@@ -6810,6 +6840,7 @@
     }
 
     initWindowResize(windowEl) {
+      if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
       if (!windowEl || windowEl._multiResizeInitialized) return;
       windowEl._multiResizeInitialized = true;
 
@@ -6838,6 +6869,7 @@
         el.style.touchAction = 'none';
 
         el.addEventListener('pointerdown', (e) => {
+          if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
           if (!e.isPrimary || e.button !== 0) return;
           if (!canUserInteractWindow(windowEl.id)) return;
           e.stopPropagation();
@@ -7046,6 +7078,7 @@
       headerEl.style.touchAction = 'none';
 
       headerEl.addEventListener('pointerdown', (e) => {
+        if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
         if (e.target.closest('button, a, input, select, textarea, details, summary, .no-drag, [data-window-action], .lesson-os-window-controls, .lesson-os-window-dot')) return;
         if (!e.isPrimary || e.button !== 0) return;
         if (!canUserInteractWindow(windowId)) return;
@@ -7778,6 +7811,14 @@
     if (trainerOsConfig.room_mode && !options.remote && shouldSyncWindowAction(windowId)) {
       roomBridge?.sendUi?.({ kind: 'window', window_id: windowId, action: 'minimize', updated_at: Date.now() });
     }
+    if (windowId === 'terminal-window' && (trainerOsConfig.is_studio_teacher || state.role === 'teacher') && !options.remote) {
+      roomBridge?.sendUi?.({
+        kind: 'terminal_close',
+        updated_at: Date.now(),
+        page_id: window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1',
+      });
+      window.dispatchEvent(new CustomEvent('boostudy:terminal-close'));
+    }
     if (trainerOsConfig.room_mode && !options.remote) windowManager.saveWindowVisibility(windowEl, false);
     dockIconEl?.classList.remove('is-active');
 
@@ -8076,7 +8117,7 @@
       }
     }
 
-    if (termEl) {
+    if (termEl && !window.BooStudyPocketOS?.active) {
       openWindow('terminal-window', { remote: Boolean(options.remote) });
     }
 
@@ -8093,13 +8134,22 @@
       return;
     }
 
+    const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
+    const runId = options.runId || ('run_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+
     setExecutionStatus('running');
     if (terminalExitStatus) terminalExitStatus.textContent = 'Выполняется';
     const code = typeof options.code === 'string' ? options.code : (virtualFS[fileName] || '');
     const canBroadcastRun = !options.remote && trainerOsConfig.room_mode && (trainerOsConfig.is_studio_teacher || window.boostudyLessonControl?.canEditCode?.());
     if (canBroadcastRun) {
-      window.boostudyLessonControl?.sendUi?.({ kind: 'run_start', file_name: fileName, code });
-      window.boostudyLessonControl?.sendUi?.({ kind: 'run', file_name: fileName, code });
+      window.boostudyLessonControl?.sendUi?.({
+        kind: 'run_start',
+        file_name: fileName,
+        page_id: activePid,
+        run_id: runId,
+        initiator_name: state.role === 'teacher' ? 'Преподаватель' : 'Ученик',
+        initiator_id: trainerOsConfig.user_id,
+      });
     }
     termConsole.innerHTML = `
       <div class="text-amber-400 font-bold flex items-center gap-2">
@@ -8149,16 +8199,22 @@
           <div class="text-emerald-400 font-bold text-xs whitespace-pre-wrap">${escapeHtml(cleanOutput)}</div>
           <div class="text-slate-400 text-[10px] pt-1">Выполнено за ${duration} с · Код выхода: 0</div>
         `;
+        const payload = {
+          kind: 'terminal_output',
+          file_name: fileName,
+          page_id: activePid,
+          run_id: runId,
+          output: cleanOutput,
+          duration: duration,
+          exit_code: 0,
+          is_error: false,
+          initiator_name: state.role === 'teacher' ? 'Преподаватель' : 'Ученик',
+          initiator_id: trainerOsConfig.user_id,
+        };
         if (canBroadcastRun) {
-          window.boostudyLessonControl?.sendUi?.({
-            kind: 'terminal_output',
-            file_name: fileName,
-            output: cleanOutput,
-            duration: duration,
-            exit_code: 0,
-            is_error: false,
-          });
+          window.boostudyLessonControl?.sendUi?.(payload);
         }
+        window.dispatchEvent(new CustomEvent('boostudy:terminal-output', { detail: { ...payload, is_local: true } }));
       }, function (err) {
         setExecutionStatus('ready');
         if (terminalExitStatus) terminalExitStatus.textContent = 'Код выхода: 1';
@@ -8169,16 +8225,22 @@
           <div class="text-rose-400 font-bold text-xs whitespace-pre-wrap">[Python Error]: ${escapeHtml(err.toString())}</div>
           <div class="text-slate-400 text-[10px] pt-1">Failed in ${duration}s (Exit code: 1)</div>
         `;
+        const payload = {
+          kind: 'terminal_output',
+          file_name: fileName,
+          page_id: activePid,
+          run_id: runId,
+          output: err.toString(),
+          duration: duration,
+          exit_code: 1,
+          is_error: true,
+          initiator_name: state.role === 'teacher' ? 'Преподаватель' : 'Ученик',
+          initiator_id: trainerOsConfig.user_id,
+        };
         if (canBroadcastRun) {
-          window.boostudyLessonControl?.sendUi?.({
-            kind: 'terminal_output',
-            file_name: fileName,
-            output: err.toString(),
-            duration: duration,
-            exit_code: 1,
-            is_error: true,
-          });
+          window.boostudyLessonControl?.sendUi?.(payload);
         }
+        window.dispatchEvent(new CustomEvent('boostudy:terminal-output', { detail: { ...payload, is_local: true } }));
       });
     } else {
       if (trainerOsConfig.room_mode) {
@@ -10430,6 +10492,7 @@
         freeze_student: Boolean(state.freeze_student),
         teacher_controls_windows: true,
         teacher_controls_mode: false,
+        teacher_controls_focus: false,
         teacher_controls_pages: false,
         teacher_controls_frames: false,
         code_sync: true,
@@ -10461,6 +10524,7 @@
         windows_sync: ctrl.windows_sync !== undefined ? ctrl.windows_sync : base.windows_sync,
         windows_mode: ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : base.windows_mode),
         workspace_sync: ctrl.workspace_sync !== undefined ? ctrl.workspace_sync : base.workspace_sync,
+        teacher_controls_focus: ctrl.teacher_controls_focus !== undefined ? Boolean(ctrl.teacher_controls_focus) : base.teacher_controls_focus,
         window_positions_sync: ctrl.window_positions_sync !== undefined ? ctrl.window_positions_sync : base.window_positions_sync,
         windows_allowed: Array.from(new Set([...(Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : base.windows_allowed), 'tracer-window'])),
       };
@@ -10502,9 +10566,18 @@
         if (badge) {
           const control = controlState();
           const studentAllowed = Boolean(control.student_code_editing);
-          badge.className = `lesson-os-permission-badge text-[10px] px-2 py-0.5 rounded font-medium border flex items-center gap-1 ${studentAllowed ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' : 'bg-slate-500/10 text-slate-500 border-slate-500/20'}`;
+          badge.className = `lesson-os-permission-badge text-[10px] px-2 py-0.5 rounded font-medium border flex items-center gap-1 cursor-pointer select-none transition-colors ${studentAllowed ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20' : 'bg-slate-500/10 text-slate-500 border-slate-500/20 hover:bg-slate-500/20'}`;
           badge.innerHTML = studentAllowed ? '<i class="ph-bold ph-users"></i> Ученик может писать' : '<i class="ph-bold ph-lock-key"></i> Код только у вас';
-          badge.title = studentAllowed ? 'Ученику разрешено совместное редактирование кода' : 'Ученик только наблюдает за вашим кодом';
+          badge.title = studentAllowed ? 'Нажмите, чтобы запретить ученику редактировать код' : 'Нажмите, чтобы разрешить ученику редактировать код';
+          badge.onclick = (e) => {
+            e.stopPropagation();
+            if (state.role !== 'teacher' || !state.canPresent) return;
+            const ctrl = controlState();
+            commitControl({ student_code_editing: !ctrl.student_code_editing });
+          };
+        }
+        if (window.BooStudyPocketOS?.updateCodePermissionBadge) {
+          window.BooStudyPocketOS.updateCodePermissionBadge();
         }
         return;
       }
@@ -10526,6 +10599,9 @@
           badge.innerHTML = readOnly ? '<i class="ph-bold ph-lock-key"></i> Только чтение' : '<i class="ph-bold ph-pencil-simple-line"></i> Можно писать';
           badge.title = readOnly ? 'Преподаватель пишет код (режим демонстрации)' : 'Вам разрешено редактировать код';
         }
+      }
+      if (window.BooStudyPocketOS?.updateCodePermissionBadge) {
+        window.BooStudyPocketOS.updateCodePermissionBadge();
       }
       if (_lastReportedStudentCodeEditing !== null && _lastReportedStudentCodeEditing !== control.student_code_editing) {
         showReaction(control.student_code_editing ? 'Преподаватель разрешил редактирование кода' : 'Редактирование кода заблокировано преподавателем');
@@ -10592,6 +10668,11 @@
 
     function commitControl(controlPatch) {
       if (!state.canPresent) return;
+      if (controlPatch.freeze_student !== undefined) {
+        state.freeze_student = Boolean(controlPatch.freeze_student);
+        sendRoomUi({ kind: controlPatch.freeze_student ? 'freeze_student' : 'free_mode' });
+        renderCodePermission();
+      }
       commit({ type: 'control.update', control: { ...controlState(), ...controlPatch } });
     }
 
@@ -10751,14 +10832,19 @@
 
     function sendStudentViewport(immediate = false) {
       if (state.role !== 'student' || !state.socket) return;
+      if (window.BooStudyPocketOS && window.BooStudyPocketOS.active) {
+        window.BooStudyPocketOS.reportMobileViewport(immediate);
+        return;
+      }
       const now = performance.now();
       const doSend = () => {
         studentViewportRaf = null;
         lastStudentViewportSentAt = performance.now();
         const vp = viewport();
         if (!vp) return;
+        const isPocketMobile = Boolean(window.BooStudyPocketOS?.active);
         const isBoardMode = $('#trainer-arena-view')?.classList.contains('room-board-mode');
-        const mode = isBoardMode ? 'board' : 'code';
+        const mode = isPocketMobile ? (window.BooStudyPocketOS.currentFocus || 'board') : (isBoardMode ? 'board' : 'code');
 
         let worldX, worldY, worldW, worldH;
         if (window.BooCanvasOverlay?.getViewportWorldBounds) {
@@ -10779,6 +10865,8 @@
           lesson_id: lessonId,
           page_id: state.currentPageId,
           mode: mode,
+          is_mobile: isPocketMobile,
+          device: isPocketMobile ? 'pocket_os' : 'desktop',
           world_x: worldX,
           world_y: worldY,
           world_w: worldW,
@@ -10874,7 +10962,7 @@
       }
       container.classList.remove('hidden');
 
-      const activePageId = state.currentPageId;
+      const activePageId = window.BooCanvasOverlay?.getActivePageId?.() || state.currentPageId || 'page_1';
       const entries = Object.entries(state.remoteStudentViewports || {});
       if (entries.length === 0) {
         container.innerHTML = '';
@@ -10882,7 +10970,9 @@
       }
 
       entries.forEach(([userId, data]) => {
-        if (!data || data.page_id !== activePageId || !data.viewport) {
+        const studentPage = data?.page_id ? String(data.page_id).replace(/-/g, '_') : null;
+        const teacherPage = activePageId ? String(activePageId).replace(/-/g, '_') : null;
+        if (!data || (studentPage && teacherPage && studentPage !== teacherPage) || !data.viewport) {
           document.getElementById(`student-viewport-${userId}`)?.remove();
           return;
         }
@@ -10912,7 +11002,11 @@
 
         const color = data.color || '#4f46e5';
         const isCodeMode = data.mode === 'code';
+        const isTaskMode = data.mode === 'task';
+        const isMobile = Boolean(data.is_mobile || data.device === 'pocket_os');
         box.classList.toggle('is-code-mode', isCodeMode);
+        box.classList.toggle('is-task-mode', isTaskMode);
+        box.classList.toggle('is-mobile-contour', isMobile);
         box.style.left = `${screenX}px`;
         box.style.top = `${screenY}px`;
         box.style.width = `${screenW}px`;
@@ -10932,17 +11026,46 @@
         badge.style.color = color;
 
         const name = escapeHtml(data.name || 'Ученик');
-        const modeBadge = isCodeMode
-          ? `<span class="board-student-viewport-status-tag">В редакторе кода</span>`
+        const mobileBadge = isMobile
+          ? `<span class="pocket-contour-tag"><i class="ph-bold ph-device-mobile"></i> Pocket</span>`
           : '';
+        let modeBadge = '';
+        if (isCodeMode) {
+          const isTermOpen = Boolean(data.terminal_open);
+          modeBadge = isTermOpen
+            ? `<span class="board-student-viewport-status-tag is-term-open" data-terminal-status="open"><i class="ph-bold ph-terminal-window"></i> Код · Консоль открыта</span>`
+            : `<span class="board-student-viewport-status-tag is-term-closed" data-terminal-status="closed"><i class="ph-bold ph-code"></i> Код · Консоль закрыта</span>`;
+        } else if (isTaskMode) {
+          modeBadge = `<span class="board-student-viewport-status-tag is-task-mode"><i class="ph-bold ph-check-square-offset"></i> В задании</span>`;
+        } else {
+          modeBadge = `<span class="board-student-viewport-status-tag is-board-mode"><i class="ph-bold ph-chalkboard-simple"></i> На доске</span>`;
+        }
 
         badge.innerHTML = `
-          <i class="ph-bold ph-eye"></i>
-          <span>${name}</span>
-          ${modeBadge}
-          <button type="button" class="board-student-viewport-jump-btn" title="Переместить камеру к экрану ученика" onclick="window.focusOnStudentViewport?.('${userId}')">
-            <i class="ph-bold ph-crosshair"></i><span>К ученику</span>
-          </button>
+          <div class="board-student-viewport-badge-row">
+            <i class="ph-bold ${isMobile ? 'ph-device-mobile' : 'ph-eye'}"></i>
+            <span>${name}</span>
+            ${mobileBadge}
+            ${modeBadge}
+          </div>
+          <div class="board-student-viewport-actions">
+            <button type="button" class="board-student-viewport-jump-btn board-student-action-btn" title="Переместить камеру к контуру ученика" onclick="window.focusOnStudentViewport?.('${userId}')">
+              <i class="ph-bold ph-crosshair"></i><span>К контуру</span>
+            </button>
+            <button type="button" class="board-student-action-btn is-primary" title="Показать текущую область ученику" onclick="window.teacherShowHere?.('${userId}')">
+              <i class="ph-bold ph-broadcast"></i><span>Показать здесь</span>
+            </button>
+            <div class="board-student-suggest-dropdown">
+              <button type="button" class="board-student-action-btn board-student-suggest-trigger" onclick="event.stopPropagation(); this.nextElementSibling.classList.toggle('hidden')">
+                <i class="ph-bold ph-lightbulb"></i><span>Фокус ▾</span>
+              </button>
+              <div class="board-student-suggest-menu hidden" onclick="event.stopPropagation()">
+                <button type="button" onclick="window.sendFocusSuggestion?.('board', '${userId}'); this.parentElement.classList.add('hidden');">Доска</button>
+                <button type="button" onclick="window.sendFocusSuggestion?.('code', '${userId}'); this.parentElement.classList.add('hidden');">Код</button>
+                <button type="button" onclick="window.sendFocusSuggestion?.('task', '${userId}'); this.parentElement.classList.add('hidden');">Задание</button>
+              </div>
+            </div>
+          </div>
         `;
       });
     }
@@ -10962,15 +11085,147 @@
         const curScale = bounds.viewScale || 1.0;
         const targetOffsetX = -(centerX - bounds.width / 2) * curScale;
         const targetOffsetY = -(centerY - bounds.height / 2) * curScale;
-        window.BooCanvasOverlay.setCamera(targetOffsetX, targetOffsetY, curScale, true);
+        window.BooCanvasOverlay.setCamera(targetOffsetX, targetOffsetY, curScale, false);
       } else {
         state.panX = vp.clientWidth / 2 - centerX * state.scale;
         state.panY = vp.clientHeight / 2 - centerY * state.scale;
         renderTransform();
       }
-      scheduleCameraCommit();
     }
     window.focusOnStudentViewport = focusOnStudentViewport;
+
+    function teacherShowHere(targetUserId) {
+      const isTeacher = state.role === 'teacher' || state.canPresent || trainerOsConfig.is_studio_teacher;
+      if (!state.socket || !isTeacher) return;
+
+      let worldX = 0, worldY = 0, worldW = 600, worldH = 600;
+      if (window.BooCanvasOverlay?.getViewportWorldBounds) {
+        const bounds = window.BooCanvasOverlay.getViewportWorldBounds();
+        const curPid = window.BooCanvasOverlay.getActivePageId?.() || state.currentPageId || 'page_1';
+        const allStrokes = (window.BooCanvasOverlay.getStrokes?.() || []).filter(s => !s.page_id || s.page_id === curPid);
+        const selIds = new Set(window.BooCanvasOverlay.getSelectedIds?.() || []);
+
+        let targetStrokes = [];
+        if (selIds.size > 0) {
+          targetStrokes = allStrokes.filter(s => selIds.has(s.id));
+        } else if (allStrokes.length > 0) {
+          // Focus on strokes that fall inside the teacher's visible viewport
+          targetStrokes = allStrokes.filter(s => {
+            if (!s.points || s.points.length === 0) return false;
+            return s.points.some(p => p.x >= bounds.worldX && p.x <= bounds.worldX + bounds.worldW &&
+                                      p.y >= bounds.worldY && p.y <= bounds.worldY + bounds.worldH);
+          });
+        }
+
+        if (targetStrokes.length > 0) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          targetStrokes.forEach(s => {
+            (s.points || []).forEach(p => {
+              if (p.x < minX) minX = p.x;
+              if (p.x > maxX) maxX = p.x;
+              if (p.y < minY) minY = p.y;
+              if (p.y > maxY) maxY = p.y;
+            });
+          });
+          if (Number.isFinite(minX) && Number.isFinite(maxX)) {
+            const pad = 40;
+            worldX = Math.round(minX - pad);
+            worldY = Math.round(minY - pad);
+            worldW = Math.max(120, Math.round(maxX - minX + pad * 2));
+            worldH = Math.max(120, Math.round(maxY - minY + pad * 2));
+          } else {
+            worldX = bounds.worldX + bounds.worldW * 0.2;
+            worldY = bounds.worldY + bounds.worldH * 0.15;
+            worldW = bounds.worldW * 0.6;
+            worldH = bounds.worldH * 0.7;
+          }
+        } else {
+          // Central focal area of teacher's screen
+          const centerX = bounds.worldX + bounds.worldW / 2;
+          const centerY = bounds.worldY + bounds.worldH / 2;
+          const focalW = Math.min(bounds.worldW, 600);
+          const focalH = Math.min(bounds.worldH, 700);
+          worldX = Math.round(centerX - focalW / 2);
+          worldY = Math.round(centerY - focalH / 2);
+          worldW = Math.round(focalW);
+          worldH = Math.round(focalH);
+        }
+      } else {
+        const currentScale = state.scale || 1.0;
+        const vp = viewport();
+        worldX = (0 - state.panX) / currentScale;
+        worldY = (0 - state.panY) / currentScale;
+        worldW = (vp?.clientWidth || 800) / currentScale;
+        worldH = (vp?.clientHeight || 600) / currentScale;
+      }
+
+      const payload = {
+        lesson_id: lessonId,
+        page_id: state.currentPageId || 'page_1',
+        world_x: worldX,
+        world_y: worldY,
+        world_w: worldW,
+        world_h: worldH,
+      };
+      if (targetUserId) {
+        payload.target_user_id = targetUserId;
+      }
+
+      emitRealtime('whiteboard_show_here', payload);
+
+      const btn = document.getElementById('btn-teacher-show-here');
+      if (btn) {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-check text-emerald-400"></i><span class="text-emerald-400">Показано!</span>';
+        setTimeout(() => { btn.innerHTML = originalHtml; }, 1800);
+      }
+    }
+    window.teacherShowHere = teacherShowHere;
+
+    window._pendingFocusSuggestions = window._pendingFocusSuggestions || new Map();
+
+    function sendFocusSuggestion(targetFocus, targetUserId) {
+      if (!['board', 'code', 'task'].includes(targetFocus)) return;
+      const ctrl = controlState();
+      const isForced = Boolean(ctrl.teacher_controls_focus);
+      const cmdId = 'cmd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      const payload = {
+        kind: isForced ? 'set_focus' : 'focus_suggestion',
+        target_focus: targetFocus,
+        command_id: cmdId,
+        created_at: Date.now(),
+      };
+      if (targetUserId) {
+        payload.target_user_id = targetUserId;
+      }
+      sendRoomUi(payload);
+
+      // In suggest mode, set up limited bounded retry (up to 2 retries, 1500ms intervals) until ACK
+      if (!isForced) {
+        let attempts = 1;
+        const retryTimer = setInterval(() => {
+          if (!window._pendingFocusSuggestions?.has(cmdId)) {
+            clearInterval(retryTimer);
+            return;
+          }
+          if (attempts >= 3) {
+            clearInterval(retryTimer);
+            window._pendingFocusSuggestions?.delete(cmdId);
+            return;
+          }
+          attempts++;
+          sendRoomUi({ ...payload, retry_attempt: attempts });
+        }, 1500);
+        window._pendingFocusSuggestions.set(cmdId, retryTimer);
+      }
+
+      const names = { board: 'доску', code: 'редактор кода', task: 'задание' };
+      if (typeof showSystemNotice === 'function') {
+        const actionText = isForced ? `Ученик переключён на ${names[targetFocus] || targetFocus}` : `Ученику предложено открыть ${names[targetFocus] || targetFocus}`;
+        showSystemNotice(actionText);
+      }
+    }
+    window.sendFocusSuggestion = sendFocusSuggestion;
 
     function canStudentMode() {
       if (state.role !== 'student') return true;
@@ -10999,8 +11254,12 @@
       const isWorkspaceKind = payload.kind === 'workspace';
       const isTracerKind = typeof payload.kind === 'string' && payload.kind.startsWith('tracer_');
       const isOrbitKind = typeof payload.kind === 'string' && payload.kind.startsWith('orbit_');
-      const isTeacherMasterKind = ['teacher_stamp', 'teacher_hint', 'teacher_answer_vis', 'task_switch', 'focus_board', 'freeze_student', 'free_mode'].includes(payload.kind);
+      const isTeacherMasterKind = ['teacher_stamp', 'teacher_hint', 'teacher_answer_vis', 'task_switch', 'focus_board', 'freeze_student', 'free_mode', 'focus_suggestion', 'set_focus', 'terminal_close'].includes(payload.kind);
 
+      if (payload.kind === 'focus_suggestion_ack') {
+        state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
+        return;
+      }
       if (isOrbitKind) {
         state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
         return;
@@ -12192,7 +12451,21 @@
         return;
       }
 
+      if (payload.kind === 'focus_suggestion_ack' && payload.command_id) {
+        const timer = window._pendingFocusSuggestions?.get(payload.command_id);
+        if (timer) {
+          clearInterval(timer);
+          window._pendingFocusSuggestions.delete(payload.command_id);
+        }
+        return;
+      }
+      if (payload.kind === 'terminal_close') {
+        window.dispatchEvent(new CustomEvent('boostudy:terminal-close', { detail: payload }));
+        return;
+      }
+
       if (isWindowKind) {
+        if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
         if (winMode === 'independent') return;
         if (winMode === 'teacher' && isTeacher) return;
         if (winMode === 'student' && !isTeacher) return;
@@ -12204,7 +12477,10 @@
       const allowedWindows = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
         'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window'
       ];
-      if (payload.kind === 'mode' && canStudentMode() === false) switchRoomWorkMode(payload.mode, { remote: true });
+      if (payload.kind === 'mode') {
+        if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
+        if (canStudentMode() === false) switchRoomWorkMode(payload.mode, { remote: true });
+      }
       if (payload.kind === 'terminal_tab' && ctrl.terminal_sync !== false) {
         switchTerminalTab(payload.tab, { remote: true });
       }
@@ -12319,8 +12595,12 @@
         }
       }
       if (payload.kind === 'run_start' && (ctrl.auto_open_terminal_on_run !== false || ctrl.terminal_sync !== false)) {
-        switchRoomWorkMode('code', { remote: true });
-        openWindow('terminal-window', { remote: true });
+        const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
+        if (payload.page_id && String(payload.page_id).replace(/-/g, '_') !== String(activePid).replace(/-/g, '_')) return;
+        if (!window.BooStudyPocketOS?.active) {
+          switchRoomWorkMode('code', { remote: true });
+          openWindow('terminal-window', { remote: true });
+        }
         setExecutionStatus('running');
         const terminalExitStatus = document.getElementById('terminal-exit-status');
         if (terminalExitStatus) terminalExitStatus.textContent = 'Выполняется';
@@ -12333,10 +12613,15 @@
             </div>
           `;
         }
+        window.dispatchEvent(new CustomEvent('boostudy:terminal-run-start', { detail: payload }));
       }
       if (payload.kind === 'terminal_output' && ctrl.terminal_sync !== false) {
-        switchRoomWorkMode('code', { remote: true });
-        openWindow('terminal-window', { remote: true });
+        const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
+        if (payload.page_id && String(payload.page_id).replace(/-/g, '_') !== String(activePid).replace(/-/g, '_')) return;
+        if (!window.BooStudyPocketOS?.active) {
+          switchRoomWorkMode('code', { remote: true });
+          openWindow('terminal-window', { remote: true });
+        }
         setExecutionStatus('ready');
         const terminalExitStatus = document.getElementById('terminal-exit-status');
         if (terminalExitStatus) terminalExitStatus.textContent = `Код выхода: ${payload.exit_code ?? 0}`;
@@ -12350,13 +12635,16 @@
             <div class="text-slate-400 text-[10px] pt-1">Выполнено за ${payload.duration || '0.000'} с · Код выхода: ${payload.exit_code ?? 0}</div>
           `;
         }
+        window.dispatchEvent(new CustomEvent('boostudy:terminal-output', { detail: payload }));
       }
       if (typeof payload.kind === 'string' && payload.kind.startsWith('tracer_')) {
         window.BooTracer?.applyRemoteState?.(payload);
       }
       if (payload.kind === 'run' && ctrl.auto_open_terminal_on_run === true) {
-        switchRoomWorkMode('code', { remote: true });
-        executeRunCode({ remote: true, fileName: payload.file_name, code: payload.code });
+        if (!window.BooStudyPocketOS?.active) {
+          switchRoomWorkMode('code', { remote: true });
+          openWindow('terminal-window', { remote: true });
+        }
       }
     }
 
@@ -14737,6 +15025,7 @@
       const syncWindowPosInput = document.getElementById('control-sync-window-positions');
       const studentWhiteboardInput = document.getElementById('control-student-whiteboard-edit');
       const studentCodeEditInput = document.getElementById('control-student-code-edit');
+      const teacherControlsFocusInput = document.getElementById('control-teacher-controls-focus');
       const winCheckboxes = popover.querySelectorAll('.control-win-checkbox');
 
       function updateUiFromState() {
@@ -14745,6 +15034,7 @@
         if (syncWindowPosInput) syncWindowPosInput.checked = ctrl.window_positions_sync !== false;
         if (studentWhiteboardInput) studentWhiteboardInput.checked = ctrl.student_editing !== false;
         if (studentCodeEditInput) studentCodeEditInput.checked = ctrl.student_code_editing === true;
+        if (teacherControlsFocusInput) teacherControlsFocusInput.checked = ctrl.teacher_controls_focus === true;
 
         const currentMode = ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : 'teacher');
         popover.querySelectorAll('.win-mode-btn').forEach((btn) => {
@@ -14789,6 +15079,7 @@
           student_editing: studentWhiteboardInput ? studentWhiteboardInput.checked : true,
           window_positions_sync: syncWindowPosInput ? syncWindowPosInput.checked : true,
           student_code_editing: studentCodeEditInput ? studentCodeEditInput.checked : false,
+          teacher_controls_focus: teacherControlsFocusInput ? teacherControlsFocusInput.checked : false,
           windows_allowed: Array.from(new Set([...allowed, 'tracer-window'])),
         };
         commit({ type: 'control.update', control: updated });
@@ -14801,7 +15092,7 @@
           pushControlUpdate(btn.dataset.mode);
         });
       });
-      [syncCanvasInput, syncWindowPosInput, studentWhiteboardInput, studentCodeEditInput].forEach((input) => {
+      [syncCanvasInput, syncWindowPosInput, studentWhiteboardInput, studentCodeEditInput, teacherControlsFocusInput].forEach((input) => {
         input?.addEventListener('change', () => pushControlUpdate());
       });
       winCheckboxes.forEach((cb) => cb.addEventListener('change', () => pushControlUpdate()));
@@ -14843,7 +15134,11 @@
           if (state.socket) state.socket.emit('lesson_vfs_tab_switch', { lesson_id: lessonId, file_name: fileName });
         },
         getControl: () => controlState(),
+        commitControl: (patch) => commitControl(patch),
       };
+      window.controlState = controlState;
+      window.commitControl = commitControl;
+      window.state = state;
       window.boostudyWhiteboard = {
         state: state,
         activatePage: (pageId) => {
@@ -16351,7 +16646,7 @@
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261023-engine-v10"></script><script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-v1"></script><script src="{{ url_for('static', filename='js/boostudy-teacher-orbit.js') }}?v=20261022-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261023-engine-v10"></script><script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-v1"></script><script src="{{ url_for('static', filename='js/boostudy-teacher-orbit.js') }}?v=20261022-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% if pocket_os_enabled %}<script src="{{ url_for('static', filename='js/boostudy-pocket-os.js') }}?v=20261102-pocket-v123"></script>{% endif %}{% endif %}
 <script src="{{ url_for('static', filename='js/boostudy-code-autocomplete.js') }}?v=20261022-v1"></script>
 <script src="{{ url_for('static', filename='js/boostudy-tracer.js') }}?v=20261022-v2"></script>
 <script>

@@ -34,7 +34,10 @@ os.environ.setdefault('SECRET_KEY', 'dev-secret-key-123')
 os.environ.setdefault('RATELIMIT_ENABLED', 'false')
 
 def main():
-    print('Запуск приложения на http://127.0.0.1:5000')
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
+    print(f'Запуск приложения на http://{host}:{port}')
+    print(f'Локально: http://127.0.0.1:{port}')
     print('Страница тарифов (для вёрстки): http://127.0.0.1:5000/billing/plans/public')
     print('Остановка: Ctrl+C')
     print()
@@ -43,9 +46,9 @@ def main():
     app = create_app()
     socketio = getattr(app, 'socketio', None)
     if socketio:
-        socketio.run(app, debug=True, host='127.0.0.1', port=5000, allow_unsafe_werkzeug=True, use_reloader=False)
+        socketio.run(app, debug=True, host=host, port=port, allow_unsafe_werkzeug=True, use_reloader=False)
     else:
-        app.run(debug=True, host='127.0.0.1', port=5000)
+        app.run(debug=True, host=host, port=port, use_reloader=False)
 
 if __name__ == '__main__':
     main()

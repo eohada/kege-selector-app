@@ -76,6 +76,9 @@ def get_mini_app_url() -> str:
 
 def build_mini_app_button(label: str = "📱 Открыть Mini App") -> InlineKeyboardButton | None:
     """Build a WebAppInfo or browser button for Telegram Mini App."""
+    from app.telegram.config import is_mini_app_enabled
+    if not is_mini_app_enabled():
+        return None
     url = get_mini_app_url()
     if not url:
         return None
@@ -142,7 +145,7 @@ def build_pagination_row(
     total_pages: int,
     extra: str = "",
 ) -> list[InlineKeyboardButton]:
-    """Build a standard compact pagination bar: [◀ Пред.] [ 1 / 3 ] [След. ▶]."""
+    """Build a standard compact pagination bar without dummy dot placeholders."""
     if total_pages <= 1:
         return []
 
@@ -151,17 +154,13 @@ def build_pagination_row(
 
     if page > 1:
         prev_cb = f"{CB_PREFIX}:{domain}:{action}:{page - 1}{suffix}"
-        row.append(InlineKeyboardButton("◀", callback_data=prev_cb))
-    else:
-        row.append(InlineKeyboardButton("·", callback_data=f"{CB_PREFIX}:noop"))
+        row.append(InlineKeyboardButton("◀ Назад", callback_data=prev_cb))
 
     row.append(InlineKeyboardButton(f"{page} / {total_pages}", callback_data=f"{CB_PREFIX}:noop"))
 
     if page < total_pages:
         next_cb = f"{CB_PREFIX}:{domain}:{action}:{page + 1}{suffix}"
-        row.append(InlineKeyboardButton("▶", callback_data=next_cb))
-    else:
-        row.append(InlineKeyboardButton("·", callback_data=f"{CB_PREFIX}:noop"))
+        row.append(InlineKeyboardButton("Вперёд ▶", callback_data=next_cb))
 
     return row
 

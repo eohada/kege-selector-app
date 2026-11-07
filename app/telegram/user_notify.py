@@ -12,7 +12,9 @@ from typing import Optional
 from sqlalchemy import or_
 
 from app.models import User, UserProfile
+from core.db_models import UserNotificationPreference, db, moscow_now
 from app.runtime_state import get_json, set_json
+from app.telegram.registry import NotificationTypeRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +29,23 @@ _KIND_TO_ATTR: dict[str, str] = {
     'teacher_homework_submitted':'tg_notify_homework_submitted',
     'assignment_assigned':       'tg_notify_homework_submitted',
     'assignment_deadline':       'tg_notify_homework_submitted',
+    'lesson_comment':            'tg_notify_homework_submitted',
     'review_queue':              'tg_notify_homework_submitted',
     'lesson_reminder':           'tg_notify_lesson_reminder',
     'lesson_scheduled':          'tg_notify_lesson_scheduled',
+    'lesson_batch_scheduled':    'tg_notify_lesson_scheduled',
     'lesson_rescheduled':        'tg_notify_lesson_scheduled',
     'lesson_cancelled':          'tg_notify_lesson_scheduled',
+    'lesson_started':            'tg_notify_lesson_scheduled',
+    'lesson_started_student':    'tg_notify_lesson_scheduled',
+    'lesson_finished':           'tg_notify_lesson_scheduled',
+    'teacher_hw_note_reminder':  'tg_notify_homework_submitted',
     'new_message':               'tg_notify_new_message',
     'news':                      'tg_notify_news',
+    'announcement':              'tg_notify_news',
+    'broadcast':                 'tg_notify_news',
     'achievement':               'tg_notify_news',
+    'achievement_unlocked':      'tg_notify_news',
     'family_link_created':       'tg_notify_news',
     'family_link_confirmed':     'tg_notify_news',
     'family_link_updated':       'tg_notify_news',
@@ -44,18 +55,27 @@ _KIND_TO_ATTR: dict[str, str] = {
     'system_errors':             'tg_notify_system_errors',
     'system_critical_error':     'tg_notify_system_errors',
     'operational_alert':         'tg_notify_system_errors',
+    'lesson_balance_changed':    'tg_notify_low_lessons',
     'low_lessons':               'tg_notify_low_lessons',
+    'package_exhausted':         'tg_notify_low_lessons',
     'subscription_expiring':     'tg_notify_subscription_expiring',
     'bug_report_reply':          'tg_notify_bug_report_reply',
     'daily_digest':              'tg_notify_daily_digest',
     'child_digest':              'tg_notify_daily_digest',
 }
 
-# Public taxonomy for new application services.  Kinds without a profile
-# attribute still honor the global switch, quiet hours and Redis dedupe.
+# Public taxonomy for new application services.
 TELEGRAM_NOTIFICATION_KINDS = frozenset({
     *_KIND_TO_ATTR.keys(),
     'generic',
+    'lesson_batch_scheduled',
+    'announcement',
+    'broadcast',
+    'package_exhausted',
+    'lesson_started',
+    'lesson_started_student',
+    'lesson_finished',
+    'teacher_hw_note_reminder',
 })
 
 # Kinds that bypass quiet hours (urgent or time-sensitive)
@@ -68,6 +88,7 @@ _QUIET_HOURS_BYPASS = {
     'lesson_rescheduled',
     'lesson_cancelled',
     'lesson_reminder',
+    'lesson_started_student',
 }
 _TELEGRAM_DEDUPE_SECONDS = 120
 _STUDENT_ACK_PROMPT = 'Уведомление пришло?(уведомления тестируются, это - временная мера)'
@@ -81,6 +102,8 @@ def normalize_notification_kind(kind: Optional[str]) -> Optional[str]:
     if kind is None:
         return None
     value = str(kind).strip().lower()
+    if value == 'achievement_unlocked':
+        return 'achievement'
     return value if value in TELEGRAM_NOTIFICATION_KINDS else 'generic'
 
 
@@ -120,9 +143,137 @@ def _in_quiet_hours(profile: UserProfile) -> bool:
         return False
 
 
+def is_notification_enabled_for_user(
+    user_id: int,
+    role: str | None = None,
+    kind: str | None = None,
+) -> bool:
+    """Check if notification kind is enabled for a given user and role.
+
+    Resolution hierarchy:
+    1. Check UserProfile.telegram_notifications_enabled (global killswitch)
+    2. Check UserNotificationPreference (user_id, role, kind) explicit record
+    3. Check legacy UserProfile.tg_notify_* attribute fallback (honor opt-outs)
+    4. Fall back to NotificationTypeRegistry default for the role
+    """
+    if not user_id:
+        return False
+    user_id = int(user_id)
+
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile or not profile.telegram_chat_id:
+        return False
+    if not _truthy(profile.telegram_notifications_enabled):
+        return False
+
+    if not kind:
+        return True
+
+    kind = normalize_notification_kind(kind) or kind
+
+    if not role:
+        user = User.query.get(user_id)
+        role = getattr(user, 'role', 'student') or 'student'
+    role = str(role).lower().strip()
+
+    # 1. UserNotificationPreference table
+    pref = UserNotificationPreference.query.filter_by(
+        user_id=user_id,
+        role=role,
+        event_kind=kind,
+    ).first()
+    if pref is not None:
+        return bool(pref.is_enabled)
+
+    # 2. Legacy UserProfile fallback (honor explicit opt-outs)
+    attr = _KIND_TO_ATTR.get(kind)
+    if attr and hasattr(profile, attr):
+        legacy_val = getattr(profile, attr)
+        if legacy_val is False:
+            return False
+
+    # 3. Registry default
+    return NotificationTypeRegistry.is_default_enabled(kind, role)
+
+
+def get_user_notification_preference(
+    user_id: int,
+    role: str,
+    kind: str,
+) -> tuple[bool, str]:
+    """Return (is_enabled, provenance) where provenance is 'user', 'legacy', or 'default'."""
+    user_id = int(user_id)
+    role = str(role).lower().strip()
+    kind = normalize_notification_kind(kind) or kind
+
+    pref = UserNotificationPreference.query.filter_by(
+        user_id=user_id,
+        role=role,
+        event_kind=kind,
+    ).first()
+    if pref is not None:
+        return bool(pref.is_enabled), "user"
+
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    attr = _KIND_TO_ATTR.get(kind)
+    if profile and attr and hasattr(profile, attr):
+        legacy_val = getattr(profile, attr)
+        if legacy_val is False:
+            return False, "legacy"
+
+    return NotificationTypeRegistry.is_default_enabled(kind, role), "default"
+
+
+def set_user_notification_preference(
+    user_id: int,
+    role: str,
+    kind: str,
+    is_enabled: bool,
+) -> UserNotificationPreference:
+    """Upsert user's explicit preference."""
+    user_id = int(user_id)
+    role = str(role).lower().strip()
+    kind = normalize_notification_kind(kind) or kind
+
+    pref = UserNotificationPreference.query.filter_by(
+        user_id=user_id,
+        role=role,
+        event_kind=kind,
+    ).first()
+    if pref:
+        pref.is_enabled = bool(is_enabled)
+        pref.updated_at = moscow_now()
+    else:
+        pref = UserNotificationPreference(
+            user_id=user_id,
+            role=role,
+            event_kind=kind,
+            is_enabled=bool(is_enabled),
+        )
+        db.session.add(pref)
+    db.session.commit()
+    return pref
+
+
+def reset_user_notification_preferences_to_defaults(
+    user_id: int,
+    role: str,
+) -> int:
+    """Delete explicit preferences for user and role, reverting to defaults."""
+    user_id = int(user_id)
+    role = str(role).lower().strip()
+    count = UserNotificationPreference.query.filter_by(
+        user_id=user_id,
+        role=role,
+    ).delete()
+    db.session.commit()
+    return count
+
+
 def user_allows_telegram_notification(
     profile: UserProfile | None,
     kind: Optional[str] = None,
+    role: Optional[str] = None,
 ) -> bool:
     """
     Проверяет: можно ли отправить уведомление данного типа профилю.
@@ -135,10 +286,8 @@ def user_allows_telegram_notification(
     if not _truthy(profile.telegram_notifications_enabled):
         return False
 
-    attr = _KIND_TO_ATTR.get(kind) if kind else None
-    if attr:
-        if not _truthy(getattr(profile, attr, True)):
-            return False
+    if not is_notification_enabled_for_user(profile.user_id, role=role, kind=kind):
+        return False
 
     # Тихие часы (кроме bypass-типов)
     if kind not in _QUIET_HOURS_BYPASS and _in_quiet_hours(profile):
@@ -276,64 +425,9 @@ def send_student_notification_ack_report(
     feedback_title: str | None = None,
     feedback_details: str | None = None,
 ) -> int:
-    """Сообщить создателям, что ученик дал обратную связь по тестовому уведомлению."""
-    from core.db_models import moscow_now
-
-    username = (student_username or '').strip().lstrip('@')
-    full_name = ' '.join(part for part in [student_first_name, student_last_name] if part).strip()
-    if username:
-        student_tag = f'@{username}'
-    elif full_name:
-        student_tag = f'{full_name} (chat_id {student_chat_id})'
-    else:
-        student_tag = f'chat_id {student_chat_id}'
-
-    confirmed_at = moscow_now().strftime('%d.%m.%Y %H:%M:%S')
-    text_plain = (notification_text or '').strip() or 'Текст уведомления недоступен'
-    if len(text_plain) > 2600:
-        text_plain = f'{text_plain[:2600].rstrip()}\n...'
-
-    header = '✅ <b>Ученик подтвердил получение уведомления</b>'
-    if feedback_title:
-        header = '⚠️ <b>Ученик отметил проблему с уведомлением</b>'
-
-    feedback_block = ''
-    if feedback_title:
-        feedback_block = f'🧪 Обратная связь: <b>{html.escape(feedback_title)}</b>\n'
-        if feedback_details:
-            feedback_block += f'📝 Детали: <b>{html.escape(feedback_details)}</b>\n'
-
-    report = (
-        f'{header}\n\n'
-        f'👤 Telegram ученика: <b>{html.escape(student_tag)}</b>\n'
-        f'🆔 Chat ID: <code>{int(student_chat_id)}</code>\n'
-        f'🔔 Тип: <code>{html.escape(kind or "generic")}</code>\n'
-        f'{feedback_block}'
-        f'🕒 Подтверждено: <b>{html.escape(confirmed_at)} МСК</b>\n\n'
-        '<b>Текст уведомления:</b>\n'
-        f'<pre>{html.escape(text_plain)}</pre>'
-    )
-
-    recipients = (
-        User.query
-        .join(UserProfile, UserProfile.user_id == User.id)
-        .filter(UserProfile.telegram_chat_id.isnot(None))
-        .filter(User.role.in_(('creator', 'chief_admin')))
-        .all()
-    )
-
-    sent = 0
-    for creator in recipients:
-        profile = UserProfile.query.filter_by(user_id=creator.id).first()
-        chat_id = getattr(profile, 'telegram_chat_id', None)
-        if not chat_id:
-            continue
-        try:
-            if notify_user_by_id(int(creator.id), report, kind='operational_alert'):
-                sent += 1
-        except Exception:
-            logger.warning('notification ack report failed creator_id=%s', creator.id, exc_info=True)
-    return sent
+    """Deprecated test reporting hook: neutralized to prevent noisy developer alerts."""
+    logger.debug('student_notification_ack received for chat_id=%s kind=%s (suppressed)', student_chat_id, kind)
+    return 0
 
 
 def notify_user_by_id(
@@ -356,7 +450,6 @@ def notify_user_by_id(
         if _telegram_dedupe_hit(profile, dedupe_text, kind):
             logger.info('Skipped duplicate Telegram notification user_id=%s kind=%s', user_id, kind)
             return True
-        text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
         row = enqueue_delivery(
             int(user_id),
             text,
@@ -400,7 +493,6 @@ def notify_user_by_chat_id(
         if _telegram_dedupe_hit(profile, dedupe_text, kind):
             logger.info('Skipped duplicate Telegram notification chat_id=%s kind=%s', chat_id, kind)
             return True
-        text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
         row = enqueue_delivery(
             int(profile.user_id),
             text,
@@ -413,6 +505,7 @@ def notify_user_by_chat_id(
             _mark_telegram_dedupe(profile, dedupe_text, kind)
         return queued
     except Exception as e:
+
         logger.warning('notify_user_by_chat_id failed chat_id=%s: %s', chat_id, e, exc_info=True)
         return False
 

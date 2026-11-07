@@ -98,6 +98,10 @@ def get_diagnostics() -> dict:
     users_count = 0
     pending_codes_count = 0
 
+    outbox_stats = {}
+    campaign_stats = {}
+    recent_errors = []
+
     if db_exists:
         try:
             conn = sqlite3.connect(db_path)
@@ -105,6 +109,28 @@ def get_diagnostics() -> dict:
             pending_codes_count = conn.execute(
                 "SELECT COUNT(*) FROM UserProfiles WHERE telegram_link_code IS NOT NULL"
             ).fetchone()[0]
+
+            # Outbox delivery breakdown
+            cursor = conn.execute("SELECT status, COUNT(*) FROM TelegramDeliveries GROUP BY status")
+            for row in cursor.fetchall():
+                outbox_stats[row[0]] = row[1]
+
+            # Recent errors (last 3, sanitized)
+            err_cursor = conn.execute(
+                "SELECT kind, last_error FROM TelegramDeliveries WHERE last_error IS NOT NULL ORDER BY delivery_id DESC LIMIT 3"
+            )
+            for row in err_cursor.fetchall():
+                err_text = (row[1] or "")[:120]
+                recent_errors.append(f"[{row[0]}] {err_text}")
+
+            # Campaigns breakdown
+            try:
+                camp_cursor = conn.execute("SELECT status, COUNT(*) FROM TelegramBroadcasts GROUP BY status")
+                for row in camp_cursor.fetchall():
+                    campaign_stats[row[0]] = row[1]
+            except Exception:
+                pass
+
             conn.close()
         except Exception:
             pass
@@ -118,11 +144,21 @@ def get_diagnostics() -> dict:
     except Exception:
         pass
 
+    # 5. Check run_bot process
+    bot_process_running = False
+    try:
+        import subprocess
+        res = subprocess.run(["pgrep", "-f", "run_bot.py"], stdout=subprocess.PIPE, text=True)
+        bot_process_running = bool(res.stdout.strip())
+    except Exception:
+        pass
+
     return {
         "token_source": source,
         "is_dev_token": is_dev_token,
         "masked_token": masked_token,
         "bot": bot_info,
+        "bot_process_running": bot_process_running,
         "conflict_detected": conflict_detected,
         "conflict_reason": conflict_reason,
         "db_path": db_path,
@@ -130,6 +166,9 @@ def get_diagnostics() -> dict:
         "db_size_kb": db_size_kb,
         "users_count": users_count,
         "pending_codes_count": pending_codes_count,
+        "outbox_stats": outbox_stats,
+        "campaign_stats": campaign_stats,
+        "recent_errors": recent_errors,
         "backend_running": backend_running,
     }
 

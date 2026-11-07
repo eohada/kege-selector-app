@@ -40,6 +40,11 @@ env/
 # Flask
 instance/
 .webassets-cache
+certs/
+*.key
+*.crt
+*.csr
+*.pem
 
 # Database
 *.db

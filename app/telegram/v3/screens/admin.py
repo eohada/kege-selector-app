@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 from typing import Any
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
@@ -13,6 +14,7 @@ from app.telegram.application import (
 from app.telegram.v3.constants import (
     CB_PREFIX,
     DOMAIN_ADMIN,
+    DOMAIN_BROADCAST,
     DOMAIN_NAV,
     DOMAIN_SETTINGS,
     PAGE_SIZE_USERS,
@@ -64,7 +66,12 @@ async def show_admin_home(update: Update, user: User) -> None:
     keyboard: list[list[InlineKeyboardButton]] = [
         [InlineKeyboardButton("👥 Пользователи платформы", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:u:1:all")],
         [InlineKeyboardButton("📊 Полная статистика", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:metrics")],
-        [InlineKeyboardButton("⚠️ Обращения и проблемы", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:probs")],
+        [InlineKeyboardButton(f"📬 Сбои Telegram Outbox ({summary.failed_deliveries if summary else 0})", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:deliveries:1")],
+        [InlineKeyboardButton(f"⚠️ Обращения и проблемы ({summary.open_bug_reports if summary else 0})", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:probs")],
+        [
+            InlineKeyboardButton("🛡️ Аудит уведомлений", callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:notif:hub"),
+            InlineKeyboardButton("📢 Центр рассылок", callback_data=f"{CB_PREFIX}:{DOMAIN_BROADCAST}:start"),
+        ],
         [
             InlineKeyboardButton("⚙️ Настройки", callback_data=f"{CB_PREFIX}:{DOMAIN_SETTINGS}:home"),
             InlineKeyboardButton("🔄 Обновить", callback_data=f"{CB_PREFIX}:{DOMAIN_NAV}:home"),
@@ -246,7 +253,7 @@ async def show_admin_problems(update: Update, user: User) -> None:
     keyboard: list[list[InlineKeyboardButton]] = []
 
     if not problems:
-        text += empty_state("🎉", "Нет открытых проблем", "Все обращения обработаны, сбоев доставки в очереди нет.")
+        text += empty_state("🛡️", "Нет открытых проблем", "Все обращения обработаны, открытых проблем и инцидентов нет.")
     else:
         text += "Список инцидентов:\n\n"
         for idx, p in enumerate(problems, 1):
@@ -259,3 +266,185 @@ async def show_admin_problems(update: Update, user: User) -> None:
 
     keyboard.append(build_nav_row(back_cb=f"{CB_PREFIX}:{DOMAIN_ADMIN}:home"))
     await render_screen(update, text, InlineKeyboardMarkup(keyboard))
+
+
+async def show_admin_failed_deliveries(update: Update, user: User, page: int = 1) -> None:
+    """Render inspector for failed Telegram Outbox deliveries with retry option."""
+    if not _can_access_admin(user):
+        text = f"{card_header('Доступ ограничен')}\n<i>Раздел доступен только администраторам платформы.</i>"
+        keyboard = [build_nav_row(back_cb=f"{CB_PREFIX}:{DOMAIN_NAV}:home")]
+        await render_screen(update, text, InlineKeyboardMarkup(keyboard))
+        return
+
+    from core.db_models import TelegramDelivery
+    query = TelegramDelivery.query.filter(TelegramDelivery.status.in_(("failed", "dead_letter", "error")))
+    total_count = query.count()
+    per_page = 4
+    total_pages = max(1, math.ceil(total_count / per_page))
+    page = max(1, min(page, total_pages))
+
+    items = (
+        query.order_by(
+            TelegramDelivery.last_attempt_at.desc().nullslast(),
+            TelegramDelivery.delivery_id.desc(),
+        )
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    tz_name = getattr(user.profile, "timezone", "Europe/Moscow")
+
+    text = f"{card_header('📬 Сбои Telegram Outbox', f'Недоставленных сообщений: {total_count}')}\n"
+    keyboard: list[list[InlineKeyboardButton]] = []
+
+    if not items:
+        text += empty_state(
+            "✅",
+            "Ошибок доставки нет",
+            "Все сообщения платформы успешно отправлены или ожидают очереди в штатном режиме."
+        )
+    else:
+        text += "Список зафиксированных сбоев доставки:\n\n"
+        for item in items:
+            t_user = item.user
+            uname = escape(t_user.username if t_user else f"user_{item.user_id}")
+            err = escape((item.last_error or "Неизвестная ошибка")[:100])
+            att_time = format_dt(item.last_attempt_at, tz_name) if item.last_attempt_at else "не производилась"
+
+            text += (
+                f"• <b>#{item.delivery_id}</b> [Тип: <code>{escape(item.kind)}</code>]\n"
+                f"  Получатель: <b>{uname}</b> (ID: {item.user_id})\n"
+                f"  Попыток: {item.attempt_count} | Время: {att_time}\n"
+                f"  Причина: <code>{err}</code>\n\n"
+            )
+
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"🔄 Повторить отправку #{item.delivery_id}",
+                    callback_data=f"{CB_PREFIX}:{DOMAIN_ADMIN}:retry_dl:{item.delivery_id}:{page}",
+                )
+            ])
+
+    pag_row = build_pagination_row(DOMAIN_ADMIN, "deliveries", page, total_pages)
+    if pag_row:
+        keyboard.append(pag_row)
+
+    keyboard.append(build_nav_row(back_cb=f"{CB_PREFIX}:{DOMAIN_ADMIN}:home"))
+    await render_screen(update, text, InlineKeyboardMarkup(keyboard))
+
+
+async def retry_admin_delivery(update: Update, user: User, delivery_id: int, return_page: int = 1) -> None:
+    """Reset a failed delivery to pending status after rigorous validation."""
+    if not _can_access_admin(user):
+        return
+
+    from core.db_models import TelegramDelivery, UserProfile, User
+    from app.telegram.delivery import validate_delivery_freshness
+    from app.telegram.user_notify import is_notification_enabled_for_user
+
+    item = db.session.get(TelegramDelivery, delivery_id)
+    if not item:
+        if update.callback_query:
+            await update.callback_query.answer("⚠️ Запись доставки не найдена", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # 1. State check: do not retry already sent or in-flight deliveries
+    if item.status in ("sent", "simulated"):
+        if update.callback_query:
+            await update.callback_query.answer("⚠️ Сообщение уже доставлено. Повтор отменён.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    if item.status == "processing":
+        if update.callback_query:
+            await update.callback_query.answer("⚠️ Сообщение уже находится в процессе отправки.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # 2. Recipient active status
+    target_user = db.session.get(User, item.user_id)
+    if not target_user or not getattr(target_user, "is_active", True):
+        item.status = "cancelled"
+        item.last_error = "retry_rejected: recipient account inactive or deleted"
+        db.session.commit()
+        if update.callback_query:
+            await update.callback_query.answer("⚠️ Аккаунт получателя неактивен. Доставка отменена.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # 3. Telegram identity check
+    direct_chat_id = (item.payload or {}).get("direct_chat_id")
+    prof = UserProfile.query.filter_by(user_id=item.user_id).first()
+    chat_id = direct_chat_id or getattr(prof, "telegram_chat_id", None) or target_user.telegram_chat_id
+    if not chat_id:
+        item.status = "cancelled"
+        item.last_error = "retry_rejected: telegram identity unlinked"
+        db.session.commit()
+        if update.callback_query:
+            await update.callback_query.answer("⚠️ У пользователя не привязан Telegram-аккаунт. Доставка отменена.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # 4. User notification preferences
+    meta = (item.payload or {}).get("meta") or {}
+    role = meta.get("recipient_role") or meta.get("role")
+    if not direct_chat_id and not is_notification_enabled_for_user(item.user_id, role=role, kind=item.kind):
+        item.status = "cancelled"
+        item.last_error = f"retry_rejected: notification {item.kind} disabled by user preference"
+        db.session.commit()
+        if update.callback_query:
+            await update.callback_query.answer("⚠️ Уведомление отключено в настройках пользователя. Доставка отменена.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # 5. Freshness & TTL Guard
+    is_valid, cancel_reason = validate_delivery_freshness(item)
+    if not is_valid:
+        item.status = "cancelled"
+        item.last_error = f"retry_rejected: {cancel_reason}"
+        db.session.commit()
+        reason_map = {
+            "lesson_cancelled": "урок отменён",
+            "lesson_already_started": "урок уже начался или прошёл",
+            "lesson_not_found": "урок не найден",
+            "submission_already_graded": "работа уже проверена",
+            "family tie unconfirmed or revoked": "семейная связь отозвана",
+            "expired_by_policy": "срок актуальности истёк (TTL)",
+        }
+        msg_reason = reason_map.get(cancel_reason, cancel_reason or "устарело")
+        if update.callback_query:
+            await update.callback_query.answer(f"⚠️ Событие неактуально ({msg_reason}). Доставка отменена.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # 6. Idempotency guard: prevent duplicate if another delivery for the same notification or entity was already sent
+    payload = item.payload or {}
+    sent_duplicate = None
+    if item.notification_id:
+        sent_duplicate = TelegramDelivery.query.filter(
+            TelegramDelivery.notification_id == item.notification_id,
+            TelegramDelivery.status.in_(["sent", "simulated"]),
+            TelegramDelivery.delivery_id != item.delivery_id,
+        ).first()
+
+    if sent_duplicate:
+        item.status = "cancelled"
+        item.last_error = f"retry_rejected: duplicate already sent in delivery #{sent_duplicate.delivery_id}"
+        db.session.commit()
+        if update.callback_query:
+            await update.callback_query.answer(f"⚠️ Уведомление уже доставлено (ID #{sent_duplicate.delivery_id}). Повтор отменён.", show_alert=True)
+        await show_admin_failed_deliveries(update, user, page=return_page)
+        return
+
+    # All guards passed: safely enqueue for immediate dispatch
+    item.status = "pending"
+    item.next_attempt_at = datetime.now(timezone.utc)
+    item.last_error = None
+    db.session.commit()
+
+    if update.callback_query:
+        await update.callback_query.answer("✅ Доставка верифицирована и возвращена в очередь", show_alert=False)
+
+    await show_admin_failed_deliveries(update, user, page=return_page)

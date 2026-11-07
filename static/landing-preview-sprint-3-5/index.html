@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f6ff">
+  <meta name="description" content="От аналитики к понятному личному центру обучения BooStudy.">
+  <title>BooStudy — Dashboard Showcase Sprint 3.5</title>
+  <link rel="stylesheet" href="/static/css/boostudy-design-system.css?v=20261102">
+  <link rel="stylesheet" href="/static/landing-preview-sprint-3-5/experience.css?v=3.5.0">
+  <link rel="stylesheet" href="/static/landing-preview-sprint-3-5/analytics.css?v=3.3.0">
+  <link rel="stylesheet" href="/static/landing-preview-sprint-3-5/attention.css?v=3.5.0">
+  <link rel="stylesheet" href="/static/landing-preview-sprint-3-5/dashboard-story.css?v=3.5.0">
+  <script defer src="/static/landing-preview-sprint-3-5/experience.js?v=3.5.0"></script>
+  <script defer src="/static/landing-preview-sprint-3-5/analytics.js?v=3.5.0"></script>
+  <script defer src="/static/landing-preview-sprint-3-5/dashboard-story.js?v=3.5.0"></script>
+</head>
+<body class="s30-page">
+  <a class="s30-skip" href="#s31-payoff" data-s30-goto="payoff">К финальному пространству</a>
+  <a class="s32-skip" href="#s32-analytics">Перейти к аналитике</a>
+  <a class="s35-skip" href="#s35-dashboard">Перейти к личному кабинету</a>
+  <main>
+    <div class="s30-story" id="s30-story" data-s30-story>
+      <section class="s30-stage" data-s30-stage data-scene="hero" aria-label="BooStudy OS: два учебных сценария">
+        <div class="s30-atmosphere" aria-hidden="true"></div>
+        <div class="s30-dot-field" aria-hidden="true"></div>
+
+        <header class="s30-header">
+          <a class="s30-brand" href="#s31-hero" id="s31-top" data-s30-goto="top" aria-label="BooStudy — начало">
+            <span class="s30-brand__mark" aria-hidden="true">B</span>
+            <span class="s30-brand__name"><b>boo</b>study</span>
+          </a>
+          <nav class="s30-nav" aria-label="Навигация по демонстрации">
+            <a href="#s31-informatics" data-s30-goto="informatics">Информатика</a>
+            <a href="#s31-math" data-s30-goto="math-empty">Математика</a>
+            <a class="s30-nav__login" href="/login">Войти</a>
+          </nav>
+        </header>
+
+        <div class="s30-copy-stack" aria-live="polite" aria-atomic="true">
+          <section class="s30-copy" data-s30-copy="hero" aria-labelledby="s30-hero-title">
+            <p class="s30-kicker"><span></span>Одна среда для разных занятий</p>
+            <h1 id="s30-hero-title">У каждого урока<br><em>своё пространство.</em></h1>
+            <p class="s30-lede">У каждого занятия — свои инструменты и место, чтобы спокойно разобраться в теме.</p>
+            <div class="s30-actions">
+              <a class="s30-button s30-button--primary" href="/register">Создать аккаунт <span aria-hidden="true">↗</span></a>
+              <a class="s30-button s30-button--quiet" href="#s31-informatics" data-s30-goto="informatics">Смотреть демо <span aria-hidden="true">↓</span></a>
+            </div>
+            <p class="s30-proof"><span aria-hidden="true">✦</span> Всё для занятия — рядом</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="enter" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Начало занятия</p>
+            <h2>Твоё пространство<br>для больших идей.</h2>
+            <p class="s30-lede">Здесь начинается урок. А как он будет выглядеть — зависит от того, что предстоит изучить.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="task" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Информатика · ЕГЭ №5</p>
+            <h2>Всё нужное —<br>перед глазами.</h2>
+            <p class="s30-lede">Условие, код и результат рядом. Можно сосредоточиться на решении.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="typing" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Рабочее пространство для информатики</p>
+            <h2>Больше места<br>для понимания.</h2>
+            <p class="s30-lede">Задача и решение остаются рядом. Весь ход работы — в поле зрения.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="result" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Задача, решение и результат</p>
+            <h2>Всё нужное —<br>перед глазами.</h2>
+            <p class="s30-lede">Условие и рабочее окно рядом: контекст не теряется, пока ищешь ответ.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="switch" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Другое занятие · отдельный пример</p>
+            <h2>Каждому уроку —<br><em>свои инструменты.</em></h2>
+            <p class="s30-lede">Для программирования важен код. Для математики — пространство, где удобно объяснять и разбираться.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-empty" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Математика · вероятность</p>
+            <h2>Когда мысль<br>становится наглядной.</h2>
+            <p class="s30-lede">На доске можно выстроить каждый шаг и увидеть, как из отдельных исходов складывается ответ.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-write" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Математика · вероятность</p>
+            <h2>Каждый шаг<br>на своём месте.</h2>
+            <p class="s30-lede">Запись и схема остаются на одной доске, рядом с условием задачи.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-tree" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Наглядное объяснение</p>
+            <h2>Сложное проще<br>разобрать.</h2>
+            <p class="s30-lede">Ветви собирают возможные исходы в одну ясную картину.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-count" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Учебная доска</p>
+            <h2>Важное легче<br>увидеть.</h2>
+            <p class="s30-lede">Схема и условие остаются рядом — внимание держится на ходе решения.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-formula" aria-hidden="true">
+            <p class="s30-kicker"><span></span>От объяснения к выводу</p>
+            <h2>От наглядности —<br>к ответу.</h2>
+            <p class="s30-lede">Три подходящих исхода из четырёх становятся понятным расчётом.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="math-done" aria-hidden="true">
+            <p class="s30-kicker"><span></span>Математика · решение на доске</p>
+            <h2>Тема собрана<br>в одном месте.</h2>
+            <p class="s30-lede">Условие, дерево исходов и расчёт складываются в цельное объяснение.</p>
+          </section>
+
+          <section class="s30-copy" data-s30-copy="outro" aria-hidden="true">
+            <p class="s30-kicker"><span></span>BooStudy OS</p>
+            <h2>Не подстраивай урок под интерфейс.<br><em>Пусть интерфейс подстраивается под урок.</em></h2>
+            <p class="s30-lede">Задания, код и интерактивная доска — в одном пространстве, с тем, что нужно именно сейчас.</p>
+            <div class="s30-actions"><a class="s30-button s30-button--primary" href="/register">Попробовать BooStudy <span aria-hidden="true">↗</span></a></div>
+          </section>
+        </div>
+
+        <div class="s30-room" data-s30-room aria-label="Комната ученика BooStudy OS, демонстрационная реконструкция">
+          <div class="s30-room__bar">
+            <span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="s30-room__title"><span class="s30-os-mark" aria-hidden="true">B</span> BooStudy OS <b>/</b> <span data-s30-room-title>Комната ученика</span></span>
+            <span class="s30-room__state"><i aria-hidden="true"></i><span data-s30-room-state>демонстрационная композиция</span></span>
+          </div>
+
+          <div class="s30-workspace" data-s30-workspace>
+            <div class="s31-system-rail" aria-hidden="true"><span class="is-active">+</span><span>▦</span><span>◌</span><span>···</span></div>
+            <div class="s31-empty-state" aria-label="Чистое рабочее пространство, готовое к занятию">
+              <span class="s31-empty-state__mark" aria-hidden="true">+</span>
+              <strong>Пространство готово</strong>
+              <span>Здесь будут инструменты твоего занятия</span>
+            </div>
+
+            <section class="s30-task-window" data-s30-task-window aria-label="Окно демонстрационного задания">
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b data-s30-task-title>Задание №5</b><span>условие</span></div>
+              <div class="s30-task-body s30-task-body--informatics">
+                <p class="s30-task-tag">ЕГЭ · ИНФОРМАТИКА</p>
+                <p>На вход поступает натуральное число <b>N</b>. Строится его двоичная запись. К ней дважды справа дописывается остаток от деления суммы цифр текущей записи на 2.</p>
+                <p>Полученное двоичное число переводится в десятичную систему.</p>
+                <div class="s30-task-question">Найдите минимальное N, при котором R &gt; 253.</div>
+              </div>
+              <div class="s30-task-body s30-task-body--math">
+                <p class="s30-task-tag">ЕГЭ · ПРОФИЛЬНАЯ МАТЕМАТИКА</p>
+                <p>Правильную монету бросают два раза.</p>
+                <div class="s30-task-question">Найдите вероятность того, что орёл выпадет хотя бы один раз.</div>
+                <p class="s30-task-footnote">Авторский демонстрационный пример.</p>
+              </div>
+            </section>
+
+            <section class="s30-code-window" data-s30-code-window aria-label="Демонстрационный фрагмент решения на Python">
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b>Программирование</b><span class="s30-readonly">ДЕМО · НЕ РЕДАКТОР</span></div>
+              <div class="s30-code-toolbar"><span>solution.py</span><span>Python 3</span><span class="s30-run"><i aria-hidden="true"></i>Проверить пример</span></div>
+              <pre class="s30-code" data-s30-code aria-label="Код Python появляется постепенно"><code></code></pre>
+              <div class="s30-output" data-s30-output aria-live="polite" aria-hidden="true"><span>Вывод проверенного решения</span><strong data-s30-output-result></strong></div>
+              <div class="s30-code-foot"><span>Демонстрационное воспроизведение</span><span>Локально проверено</span></div>
+            </section>
+
+            <section class="s30-canvas-window" data-s30-canvas-window aria-label="Холст BooCanvas, демонстрационная реконструкция">
+              <div class="s30-window-bar"><span class="s30-lights" aria-hidden="true"><i></i><i></i><i></i></span><b>BooCanvas</b><span data-s30-canvas-state>Страница 1 · чистый холст</span></div>
+              <div class="s30-canvas">
+                <div class="s30-tools" aria-label="Панель инструментов холста"><span class="is-active" aria-hidden="true">↖</span><span aria-hidden="true">✎</span><span aria-hidden="true">◯</span><span aria-hidden="true">T</span><span aria-hidden="true">⌕</span></div>
+                <div class="s30-pad">
+                  <p class="s30-hand-title" data-s30-hand-title aria-hidden="true"></p>
+                  <svg class="s30-tree" viewBox="0 0 800 370" role="img" aria-label="Дерево четырёх исходов двух бросков монеты">
+                    <path class="s30-stroke s30-stroke--ink" data-draw="0.08 0.16" d="M93 180 C150 180 184 107 280 107"></path>
+                    <path class="s30-stroke s30-stroke--ink" data-draw="0.16 0.24" d="M93 180 C150 180 184 253 280 253"></path>
+                    <path class="s30-stroke s30-stroke--good" data-draw="0.24 0.32" d="M280 107 C355 107 380 53 495 53"></path>
+                    <path class="s30-stroke s30-stroke--good" data-draw="0.32 0.4" d="M280 107 C355 107 380 161 495 161"></path>
+                    <path class="s30-stroke s30-stroke--good" data-draw="0.4 0.48" d="M280 253 C355 253 380 218 495 218"></path>
+                    <path class="s30-stroke s30-stroke--ink" data-draw="0.48 0.56" d="M280 253 C355 253 380 310 495 310"></path>
+                    <path class="s30-stroke s30-stroke--guide" data-draw="0.56 0.58" d="M80 180 h26"></path>
+                    <g class="s30-tree-label" data-appear="0.16" transform="translate(45 186)"><text>старт</text></g>
+                    <g class="s30-tree-label" data-appear="0.25" transform="translate(285 101)"><text>О</text></g>
+                    <g class="s30-tree-label" data-appear="0.29" transform="translate(285 272)"><text>Р</text></g>
+                    <g class="s30-tree-label" data-appear="0.38" transform="translate(407 48)"><text>О</text></g>
+                    <g class="s30-tree-label" data-appear="0.42" transform="translate(407 167)"><text>Р</text></g>
+                    <g class="s30-tree-label" data-appear="0.46" transform="translate(407 223)"><text>О</text></g>
+                    <g class="s30-tree-label" data-appear="0.5" transform="translate(407 318)"><text>Р</text></g>
+                    <g class="s30-outcome is-favorable" data-appear="0.52" transform="translate(505 38)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">ОО</text></g>
+                    <g class="s30-outcome is-favorable" data-appear="0.55" transform="translate(505 146)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">ОР</text></g>
+                    <g class="s30-outcome is-favorable" data-appear="0.58" transform="translate(505 203)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">РО</text></g>
+                    <g class="s30-outcome" data-appear="0.61" transform="translate(505 295)"><rect width="83" height="31" rx="15"></rect><text x="41" y="21">РР</text></g>
+                    <g class="s30-tree-caption" data-appear="0.63" transform="translate(635 87)"><text>орёл есть</text><text y="19">в трёх исходах</text></g>
+                  </svg>
+                  <div class="s30-formula" aria-label="Расчёт вероятности">
+                    <span class="s30-formula__general" data-formula-at="0.84">P(A) = m / n</span>
+                    <span class="s30-formula__fraction" data-formula-at="0.9">P = 3 / 4</span>
+                    <span class="s30-formula__answer" data-formula-at="0.96">0,75</span>
+                  </div>
+                </div>
+                <div class="s30-canvas-status"><span>Перо · фиолетовый · 3 px</span><span data-s30-canvas-progress>Готово к записи</span><span>100%</span></div>
+              </div>
+            </section>
+
+            <div class="s30-dock" aria-label="Инструменты учебного пространства"><span>Задание</span><span>Программа</span><span>Холст</span></div>
+            <span class="s30-rebuild-label"><i aria-hidden="true"></i><span data-s30-rebuild-label>Визуальная реконструкция · Preview</span></span>
+          </div>
+          <div class="s30-room__shadow" aria-hidden="true"></div>
+        </div>
+
+        <div class="s30-mascot" aria-hidden="true">
+          <img src="/static/images/landing/boo-peek-clean.png" alt="" width="1322" height="1190" fetchpriority="high" decoding="async">
+          <img src="/static/images/landing/boo-pointing-clean.webp" alt="" width="1312" height="1199" loading="lazy" decoding="async">
+          <img src="/static/images/landing/boo-reading-clean.png" alt="" width="1278" height="1230" loading="lazy" decoding="async">
+        </div>
+
+        <div class="s30-controls">
+          <span class="s30-progress-count" data-s30-progress-label>01 <i>/ 13</i></span>
+          <span class="s30-progress-track"><i data-s30-progress-bar></i></span>
+          <span class="s30-progress-hint">Пространство меняется вместе с уроком</span>
+          <a href="#s31-payoff" data-s30-goto="payoff">К финалу <span aria-hidden="true">↓</span></a>
+        </div>
+      </section>
+
+      <div class="s30-track" aria-hidden="true">
+        <section class="s30-step" id="s31-hero" data-s30-step="hero"><span>Твоё пространство для больших идей.</span></section>
+        <section class="s30-step" id="s31-enter" data-s30-step="enter"><span>Чистое пространство готово к занятию.</span></section>
+        <section class="s30-step" id="s31-informatics" data-s30-step="task"><span>Условие задачи ЕГЭ №5 появляется в рабочем пространстве.</span></section>
+        <section class="s30-step" data-s30-step="typing"><span>Код появляется по символам.</span></section>
+        <section class="s30-step" data-s30-step="typing-continue"><span>Код решения допечатывается.</span></section>
+        <section class="s30-step" data-s30-step="result"><span>Подтверждённый результат: 64 и 258.</span></section>
+        <section class="s30-step" data-s30-step="switch"><span>Переход к отдельному демонстрационному уроку математики.</span></section>
+        <section class="s30-step" id="s31-math" data-s30-step="math-empty"><span>Отдельный урок математики начинается с чистого холста.</span></section>
+        <section class="s30-step" data-s30-step="math-write"><span>На холсте появляется запись о двух бросках.</span></section>
+        <section class="s30-step" data-s30-step="math-tree"><span>По ветвям строится дерево исходов.</span></section>
+        <section class="s30-step" data-s30-step="math-count"><span>Три благоприятных исхода выделяются.</span></section>
+        <section class="s30-step" data-s30-step="math-formula"><span>На доске появляется вычисление вероятности.</span></section>
+        <section class="s30-step" data-s30-step="math-done"><span>Готовое решение на доске.</span></section>
+        <section class="s30-step" id="s31-payoff" data-s30-step="outro"><span>Завершённое учебное пространство и предложение попробовать BooStudy.</span></section>
+      </div>
+    </div>
+
+    <section class="s32-story s33-story" id="s32-analytics" aria-label="От занятия к аналитике и личному учебному пространству" data-s32-story>
+      <div class="s32-pin">
+        <div class="s32-transition" aria-hidden="true">
+          <span class="s32-transition__lesson" data-s33-transition-from>Занятие завершено</span>
+          <span class="s32-transition__arrow">→</span>
+          <span class="s32-transition__analytics" data-s33-transition-to>Твоя аналитика</span>
+        </div>
+
+        <div class="s32-composition" data-s33-composition data-layout="text-left">
+          <div class="s32-copy" aria-live="polite">
+            <p class="s32-eyebrow"><i></i> ТВОЙ УЧЕБНЫЙ ПУТЬ</p>
+            <h2 data-s32-title>Прогресс, который видно.</h2>
+            <p class="s32-copy__body" data-s32-description>Результаты проверенных работ помогают увидеть путь по шагам.</p>
+            <div class="s32-copy__progress" aria-label="Развитие аналитики">
+              <span data-s32-progress-label>Исходная точка</span>
+              <span class="s32-copy__track"><i data-s32-progress-bar></i></span>
+            </div>
+            <div class="s32-copy__mascot" data-s32-mascot aria-hidden="true">
+              <img src="/static/images/landing/boo-reading-clean.png" width="1278" height="1230" loading="lazy" alt="">
+              <span>Шаг за шагом — виднее путь.</span>
+            </div>
+            <a class="s32-cta" href="/register" data-s32-cta hidden>Попробовать BooStudy <span aria-hidden="true">↗</span></a>
+          </div>
+
+          <div class="s32-app-shell" aria-label="Демонстрационная аналитика и реконструкция кабинета ученика BooStudy" data-s33-surface>
+            <div class="s32-app-topbar">
+              <span class="s32-brand"><span class="s32-brand__mark">B</span><strong>BooStudy</strong></span>
+              <span class="s32-app-topbar__context"><i></i> <span data-s33-context>Личная аналитика</span></span>
+              <span class="s32-demo-badge" data-s33-badge>Демонстрационные данные</span>
+            </div>
+            <div class="s32-app-content">
+              <div class="s33-app-view s33-analytics-view" data-s33-view="analytics" aria-hidden="false">
+              <header class="s32-app-heading">
+                <div>
+                  <p class="s32-app-kicker">УСПЕВАЕМОСТЬ И РЕЗУЛЬТАТЫ</p>
+                  <h3>Твоя аналитика</h3>
+                  <p>Результаты проверенных работ по датам</p>
+                </div>
+                <span class="s32-history-tag"><i></i> Учебная история</span>
+              </header>
+
+              <div class="s32-metrics" aria-label="Итоги демонстрационной истории">
+                <article class="s32-metric">
+                  <span>Проверенные работы</span>
+                  <strong data-s32-metric="works">—</strong>
+                  <small data-s32-metric-note="works">Начни с первой работы</small>
+                </article>
+                <article class="s32-metric s32-metric--mint">
+                  <span>Решено заданий</span>
+                  <strong data-s32-metric="attempts">—</strong>
+                  <small>В выбранном примере</small>
+                </article>
+                <article class="s32-metric s32-metric--peach">
+                  <span>Верно решено</span>
+                  <strong data-s32-metric="correct">—</strong>
+                  <small>По проверенным попыткам</small>
+                </article>
+                <article class="s32-metric s32-metric--lavender">
+                  <span>Точность решённых попыток</span>
+                  <strong data-s32-metric="accuracy">—</strong>
+                  <small data-s32-metric-note="accuracy">Появится после проверки</small>
+                </article>
+              </div>
+
+              <div class="s32-analytics-grid">
+                <section class="s32-panel s32-trend-panel" aria-labelledby="s32-trend-title">
+                  <div class="s32-panel-heading">
+                    <div>
+                      <h4 id="s32-trend-title">Динамика результатов</h4>
+                      <p>Точность в каждой проверенной работе</p>
+                    </div>
+                    <span class="s32-delta" data-s32-delta>—</span>
+                  </div>
+                  <div class="s32-chart-wrap">
+                    <svg class="s32-chart" viewBox="0 0 700 240" role="img" aria-label="График появится после первой проверенной работы" data-s32-chart>
+                      <defs><linearGradient id="s32ChartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#806bed" stop-opacity=".25"></stop><stop offset="100%" stop-color="#806bed" stop-opacity="0"></stop></linearGradient></defs>
+                      <g class="s32-chart__grid" aria-hidden="true">
+                        <line x1="52" y1="22" x2="676" y2="22"></line>
+                        <line x1="52" y1="69" x2="676" y2="69"></line>
+                        <line x1="52" y1="116" x2="676" y2="116"></line>
+                        <line x1="52" y1="163" x2="676" y2="163"></line>
+                        <line x1="52" y1="210" x2="676" y2="210"></line>
+                        <text x="8" y="26">100%</text><text x="20" y="73">75%</text><text x="20" y="120">50%</text><text x="20" y="167">25%</text><text x="35" y="214">0</text>
+                      </g>
+                      <g data-s32-chart-data></g>
+                    </svg>
+                    <p class="s32-chart-empty" data-s32-chart-empty>Динамика появится после первой проверенной работы.</p>
+                  </div>
+                </section>
+
+                <section class="s32-panel s32-mastery-panel" aria-labelledby="s32-mastery-title">
+                  <div class="s32-panel-heading">
+                    <div>
+                      <h4 id="s32-mastery-title">Освоение разделов</h4>
+                      <p>Доля верных решений по попыткам</p>
+                    </div>
+                    <span class="s32-panel-note">вес в КЕГЭ</span>
+                  </div>
+                  <div class="s32-sections" data-s32-sections></div>
+                </section>
+
+                <section class="s32-panel s32-activity-panel" aria-labelledby="s32-activity-title">
+                  <div class="s32-panel-heading">
+                    <div>
+                      <h4 id="s32-activity-title">История результатов</h4>
+                      <p>Каждая работа добавляет новую точку</p>
+                    </div>
+                    <span class="s32-panel-note" data-s32-period>—</span>
+                  </div>
+                  <ol class="s32-activity-list" data-s32-activity>
+                    <li class="s32-activity-empty">Здесь появятся проверенные работы.</li>
+                  </ol>
+                </section>
+
+                <section class="s32-panel s32-readiness-panel" aria-labelledby="s32-readiness-title">
+                  <div class="s32-panel-heading">
+                    <div>
+                      <h4 id="s32-readiness-title">Карта заданий КЕГЭ</h4>
+                      <p>Точность считается по решённым попыткам</p>
+                    </div>
+                    <span class="s32-panel-note" data-s32-practiced>0 из 27 начато</span>
+                  </div>
+                  <div class="s32-task-grid" data-s32-task-grid aria-label="Статус подготовки по заданиям с первого по двадцать седьмое"></div>
+                  <div class="s32-task-legend"><span><i class="s32-dot s32-dot--started"></i> Есть попытки</span><span><i class="s32-dot s32-dot--empty"></i> Ещё не начато</span></div>
+                </section>
+              </div>
+
+              <p class="s32-data-caption">Иллюстративный набор для презентации · не реальные результаты ученика</p>
+              </div>
+
+              <template id="s34-sprint-3-4-dashboard-archive">
+                <div class="s34-command-center">
+                  <aside class="s34-sidebar" aria-label="Навигация ученика, визуальная реконструкция">
+                    <div class="s34-brand"><span class="s34-brand-mark">B</span><strong>BooStudy</strong></div>
+                    <p class="s34-nav-caption">УЧЕБНОЕ ПРОСТРАНСТВО</p>
+                    <nav class="s34-nav" aria-label="Основные разделы кабинета">
+                      <span class="is-active"><i>⌂</i> Главная</span><span><i>▣</i> Задания</span><span><i>▤</i> Теория</span><span><i>◌</i> Аналитика</span><span><i>▦</i> Расписание</span><span><i>◇</i> Программа</span>
+                    </nav>
+                    <div class="s34-sidebar-profile"><span class="s34-avatar">А</span><span><strong>Аня</strong><small>Ученица</small></span><i>⌄</i></div>
+                  </aside>
+
+                  <div class="s34-workspace">
+                    <header class="s34-topbar">
+                      <div class="s34-search"><span>⌕</span> Поиск по BooStudy <kbd>⌘ K</kbd></div>
+                      <div class="s34-topbar-right"><span class="s34-notice" aria-label="Уведомления без фиктивного счётчика">♧</span><span class="s34-avatar s34-avatar--top">А</span><span class="s34-profile-label"><strong>Аня</strong><small>Ученица</small></span></div>
+                    </header>
+
+                    <main class="s34-dashboard-main" aria-label="Демонстрационная реконструкция ученической главной">
+                      <header class="s34-page-heading" data-dashboard-item="heading" data-reveal-at="0">
+                        <div><p>ПОНЕДЕЛЬНИК · 2 НОЯБРЯ</p><h3 id="s34-dashboard-title">Добрый день, Аня!</h3><span>Твой учебный день начинается здесь.</span></div>
+                        <span class="s34-demo-tag"><i></i> Синтетический пример</span>
+                      </header>
+
+                      <div class="s34-dashboard-grid">
+                        <article class="s34-card s34-welcome" data-dashboard-item="welcome" data-reveal-at="0">
+                          <div class="s34-welcome-copy"><p class="s34-card-kicker">ТВОЙ УЧЕБНЫЙ ПУТЬ</p><h4>Продолжай подготовку —<br>шаг за шагом.</h4><p>Подготовка к ЕГЭ по информатике</p><div class="s34-welcome-meta"><span>Следующее занятие</span><strong>4 ноября · 16:00</strong><i>60 минут · онлайн</i></div></div>
+                          <img src="/static/images/dashboard/hero_student.png" alt="Бу помогает учиться" loading="lazy" decoding="async">
+                        </article>
+
+                        <article class="s34-card s34-goal" data-dashboard-item="goal" data-reveal-at=".08">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-pink">◎</span><span class="s34-card-kicker">ТВОЯ ЦЕЛЬ</span><span class="s34-route-hint">Профиль ↗</span></div>
+                          <div class="s34-goal-row"><div class="s34-goal-ring"><strong>36%</strong></div><div><h4>ЕГЭ по информатике</h4><p>32 из 90 баллов</p><div class="s34-progress"><i style="width:36%"></i></div><small>Целевой балл · 90</small></div></div>
+                          <div class="s34-goal-foot"><span>Фокус сейчас</span><strong>Кодирование информации</strong></div>
+                        </article>
+
+                        <article class="s34-card s34-next-lesson" data-dashboard-item="lesson" data-reveal-at=".17">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-violet">▷</span><div><p class="s34-card-kicker">ПРОДОЛЖИТЬ ОБУЧЕНИЕ</p><h4>Ближайший урок</h4></div><span class="s34-status is-planned">Запланирован</span></div>
+                          <div class="s34-lesson-topic"><strong>Кодирование изображений</strong><span>Информатика · ЕГЭ</span></div>
+                          <div class="s34-lesson-footer"><span>4 ноября · 16:00</span><span>60 мин</span><span>Онлайн</span></div>
+                          <div class="s34-lesson-tiles"><div><small>АКТИВНОЕ ЗАДАНИЕ</small><strong>Кодирование · №7</strong><span>В работе · 2 из 4 ответов</span></div><div><small>ТЕМА ДЛЯ ПОВТОРЕНИЯ</small><strong>Информационный объём</strong><span>Материал программы · скоро</span></div></div>
+                        </article>
+
+                        <article class="s34-card s34-schedule" data-dashboard-item="schedule" data-reveal-at=".22">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-mint">▦</span><div><p class="s34-card-kicker">РАСПИСАНИЕ</p><h4>Ближайшие занятия</h4></div><span class="s34-route-hint">Всё расписание ↗</span></div>
+                          <div class="s34-week-strip" aria-label="Неделя со 2 по 8 ноября"><span class="is-today"><small>ПН</small><strong>02</strong></span><span><small>ВТ</small><strong>03</strong></span><span class="is-event"><small>СР</small><strong>04</strong></span><span><small>ЧТ</small><strong>05</strong></span><span class="is-event"><small>ПТ</small><strong>06</strong></span><span><small>СБ</small><strong>07</strong></span><span><small>ВС</small><strong>08</strong></span></div>
+                          <div class="s34-schedule-list"><div><time>16:00</time><i></i><span><strong>Кодирование изображений</strong><small>Урок · 60 минут · онлайн</small></span></div><div><time>17:30</time><i></i><span><strong>Разбор домашней работы</strong><small>Урок · 45 минут · онлайн</small></span></div></div>
+                        </article>
+
+                        <article class="s34-card s34-path" data-dashboard-item="path" data-reveal-at=".29">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-violet">◇</span><div><p class="s34-card-kicker">ПРОГРАММА ОБУЧЕНИЯ</p><h4>Твой учебный путь</h4></div><span class="s34-route-hint">Открыть программу ↗</span></div>
+                          <div class="s34-path-list"><div class="is-done"><span>01</span><div><strong>Информация и данные</strong><small>3 из 3 элементов</small><i><b style="width:100%"></b></i></div><em>Завершён</em></div><div class="is-current"><span>02</span><div><strong>Кодирование информации</strong><small>2 из 5 элементов</small><i><b style="width:40%"></b></i></div><em>В работе</em></div><div><span>03</span><div><strong>Логика и алгоритмы</strong><small>0 из 4 элементов</small><i><b style="width:0%"></b></i></div><em>В плане</em></div></div>
+                        </article>
+
+                        <article class="s34-card s34-performance" data-dashboard-item="performance" data-reveal-at=".4">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-blue">↗</span><div><p class="s34-card-kicker">КОРОТКО О ПРОГРЕССЕ</p><h4>Успеваемость</h4></div></div>
+                          <div class="s34-performance-stats"><div><small>Выполнение ДЗ</small><strong>67%</strong><i><b style="width:67%"></b></i></div><div><small>Средняя оценка</small><strong>71%</strong><i><b style="width:71%"></b></i></div><div><small>Проверено работ</small><strong>4</strong><span>Сводка по журналу</span></div></div>
+                          <span class="s34-route-hint s34-analytics-hint">Подробнее в аналитике ↗</span>
+                        </article>
+
+                        <article class="s34-card s34-materials" data-dashboard-item="materials" data-reveal-at=".32">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-peach">▤</span><div><p class="s34-card-kicker">ПОЛЕЗНЫЕ МАТЕРИАЛЫ</p><h4>Рядом с уроком</h4></div></div>
+                          <div class="s34-material-row"><span class="s34-material-icon">▧</span><span><strong>Конспекты и теория</strong><small>Короткие материалы и шпаргалки</small></span><em>Библиотека ↗</em></div>
+                          <div class="s34-material-row is-soon"><span class="s34-material-icon">◇</span><span><strong>Материалы программы</strong><small>Учебные материалы курса</small></span><em>Скоро</em></div>
+                          <button type="button" class="s34-checklist-trigger" data-checklist-open><span class="s34-material-icon">☷</span><span><strong>Подготовиться к уроку</strong><small>Открыть чек-лист из 5 шагов</small></span><i>↗</i></button>
+                        </article>
+
+                        <article class="s34-card s34-quick-actions" data-dashboard-item="quick" data-reveal-at=".6">
+                          <div class="s34-card-heading"><span class="s34-card-icon is-orange">⌁</span><div><p class="s34-card-kicker">БЫСТРЫЕ ДЕЙСТВИЯ</p><h4>Куда перейти</h4></div></div>
+                          <div class="s34-quick-list"><span><i>▣</i><strong>Все задания и ДЗ</strong><em>↗</em></span><span><i>▤</i><strong>Повторить теорию</strong><em>↗</em></span><span><i>▦</i><strong>Посмотреть расписание</strong><em>↗</em></span><span><i>◌</i><strong>Мой прогресс и оценки</strong><em>↗</em></span></div>
+                        </article>
+                      </div>
+                      <p class="s34-reconstruction-note">Демо-реконструкция структуры ученического кабинета BooStudy · имя, даты, статусы и результаты на экране синтетические. Навигация показана как структура; внутри превью интерактивен чек-лист.</p>
+                    </main>
+                    <nav class="s34-mobile-nav" aria-label="Мобильная навигация ученика"><span class="is-active"><i>⌂</i>Главная</span><span><i>▣</i>Задания</span><span><i>▦</i>Расписание</span><span><i>○</i>Профиль</span></nav>
+                  </div>
+                </div>
+
+                <div class="s34-checklist-modal" data-checklist-modal hidden>
+                  <section class="s34-checklist-dialog" role="dialog" aria-modal="true" aria-labelledby="s34-checklist-title">
+                    <header><span class="s34-card-icon is-peach">☷</span><div><p class="s34-card-kicker">ПОДГОТОВКА К ЗАНЯТИЮ</p><h4 id="s34-checklist-title">Чек-лист перед уроком</h4><small>Пять небольших шагов перед встречей</small></div><button type="button" data-checklist-close aria-label="Закрыть чек-лист">×</button></header>
+                    <div class="s34-checklist-progress"><i><b data-checklist-bar></b></i><span data-checklist-count>0 из 5 выполнено</span></div>
+                    <div class="s34-checklist-items">
+                      <label><input type="checkbox"><span><strong>Проверить микрофон и интернет</strong><small>Убедись, что связь работает стабильно</small></span></label>
+                      <label><input type="checkbox"><span><strong>Повторить конспект прошлого урока</strong><small>Освежи ключевые тезисы и формулы</small></span></label>
+                      <label><input type="checkbox"><span><strong>Открыть рабочее окружение</strong><small>Приготовь тетрадь или среду для практики</small></span></label>
+                      <label><input type="checkbox"><span><strong>Записать вопросы к преподавателю</strong><small>Собери то, что хочется разобрать</small></span></label>
+                      <label><input type="checkbox"><span><strong>Проверить статус домашней работы</strong><small>Посмотри, что уже отправлено на проверку</small></span></label>
+                    </div>
+                    <footer><button type="button" class="s34-checklist-reset" data-checklist-reset>Сбросить</button><button type="button" class="s34-checklist-done" data-checklist-close>Готово</button></footer>
+                  </section>
+                </div>
+              </template>
+
+              <template id="s33-legacy-dashboard-archive">
+                <header class="s33-dashboard-heading">
+                  <div>
+                    <p class="s32-app-kicker">ЛИЧНОЕ ПРОСТРАНСТВО · ДЕМО-РЕКОНСТРУКЦИЯ</p>
+                    <h3 id="s33-dashboard-title">Твоё обучение</h3>
+                    <p>Подтверждённые точки маршрута: журнал занятий, программа и аналитика.</p>
+                  </div>
+                  <span class="s32-history-tag"><i></i> Пространство ученика</span>
+                </header>
+
+                <div class="s33-dashboard-grid">
+                  <section class="s33-dashboard-panel s33-program-panel" data-dashboard-item="program" aria-labelledby="s33-program-title">
+                    <div class="s33-panel-mark s33-panel-mark--violet" aria-hidden="true">↗</div>
+                    <p class="s33-dashboard-kicker">УЧЕБНЫЙ МАРШРУТ</p>
+                    <h4 id="s33-program-title">Программа обучения</h4>
+                    <p>Переход к программе обучения из ученического профиля.</p>
+                    <span class="s33-route-caption">Подтверждённый раздел личного пространства</span>
+                  </section>
+
+                  <section class="s33-dashboard-panel s33-journal-panel" data-dashboard-item="journal" aria-labelledby="s33-journal-title">
+                    <div class="s33-dashboard-panel-heading">
+                      <div>
+                        <p class="s33-dashboard-kicker">ЗАНЯТИЯ</p>
+                        <h4 id="s33-journal-title">История обучения</h4>
+                      </div>
+                      <span class="s33-history-tag"><i></i> Журнал</span>
+                    </div>
+                    <ol class="s33-lesson-list">
+                      <li data-dashboard-lesson="1"><span class="s33-lesson-index">01</span><span><strong>Практика по информатике</strong><small>Синтетический пример · завершено</small></span><i class="s33-lesson-status s33-lesson-status--done" aria-label="Синтетический пример"></i></li>
+                      <li data-dashboard-lesson="2"><span class="s33-lesson-index">02</span><span><strong>Разбор учебной задачи</strong><small>Синтетический пример · завершено</small></span><i class="s33-lesson-status s33-lesson-status--done" aria-label="Синтетический пример"></i></li>
+                      <li data-dashboard-lesson="3"><span class="s33-lesson-index">03</span><span><strong>Работа в учебной комнате</strong><small>Текущая запись · синтетический пример</small></span><i class="s33-lesson-status s33-lesson-status--current" aria-label="В процессе"></i></li>
+                    </ol>
+                  </section>
+
+                  <section class="s33-dashboard-panel s33-analytics-route" data-dashboard-item="analytics" aria-labelledby="s33-analytics-route-title">
+                    <div class="s33-panel-mark s33-panel-mark--mint" aria-hidden="true">↗</div>
+                    <p class="s33-dashboard-kicker">РЕЗУЛЬТАТЫ</p>
+                    <h4 id="s33-analytics-route-title">Личная аналитика</h4>
+                    <p>График проверенных работ, освоение разделов и карта заданий.</p>
+                    <ul class="s33-confirmed-list"><li>Динамика результатов</li><li>Освоение разделов</li><li>Карта заданий</li></ul>
+                    <span class="s33-route-caption">Переход к подтверждённой странице ученика</span>
+                  </section>
+
+                  <section class="s33-dashboard-panel s33-next-step" data-dashboard-item="next" aria-labelledby="s33-next-title">
+                    <p class="s33-dashboard-kicker">СЛЕДУЮЩИЙ ШАГ</p>
+                    <h4 id="s33-next-title">Продолжи свой учебный маршрут</h4>
+                    <p>В профиле доступны переходы к программе обучения и личной аналитике. Здесь показан только обзор разделов.</p>
+                  </section>
+                </div>
+                <p class="s33-reconstruction-note">Демонстрационная реконструкция по подтверждённым ученическим маршрутам. Записи журнала синтетические; вход под ролью ученика в этой среде недоступен.</p>
+              </template>
+            </div>
+          </div>
+        </div>
+        <div class="s32-bottom-mark" aria-hidden="true"><span></span> BooStudy · учись с ясностью</div>
+      </div>
+    </section>
+
+    <section class="s35-dashboard-story" id="s35-dashboard" aria-label="Знакомство с личным кабинетом BooStudy" data-s35-story>
+      <div class="s35-pin">
+        <div class="s35-bridge" aria-hidden="true"><span>ТВОЙ УЧЕБНЫЙ ПУТЬ</span><i>→</i><strong>ЛИЧНОЕ ПРОСТРАНСТВО</strong></div>
+        <div class="s35-story-layout" data-s35-layout>
+          <div class="s35-copy" aria-live="polite" aria-atomic="true">
+            <p class="s35-eyebrow"><i></i><span data-s35-eyebrow>ЦЕНТР ТВОЕЙ ПОДГОТОВКИ</span></p>
+            <h2 data-s35-title>Твоё обучение. Всё на своих местах.</h2>
+            <p class="s35-copy-body" data-s35-description>Занятия, программа и необходимые материалы собраны в одном личном пространстве.</p>
+            <div class="s35-copy-progress" aria-label="Знакомство с личным кабинетом">
+              <span data-s35-progress-label>Личное пространство</span>
+              <span class="s35-copy-track"><i data-s35-progress-bar></i></span>
+            </div>
+            <div class="s35-mascot" aria-hidden="true"><img src="/static/images/landing/boo-reading-clean.png" width="1278" height="1230" alt=""><span>Шаг за шагом — виднее путь.</span></div>
+            <a class="s32-cta s35-cta" href="/register" data-s35-cta hidden>Попробовать BooStudy <span aria-hidden="true">↗</span></a>
+          </div>
+
+          <div class="s35-product-frame" data-dashboard-camera>
+            <header class="s35-product-head">
+              <span class="s35-product-brand"><i>B</i><strong>BooStudy</strong></span>
+              <span class="s35-product-context">ЛИЧНОЕ ПРОСТРАНСТВО</span>
+              <span class="s35-demo-tag"><i></i> СИНТЕТИЧЕСКИЙ ПРИМЕР</span>
+            </header>
+            <div class="s35-dashboard-viewport" data-dashboard-viewport>
+              <div class="s34-command-center s35-dashboard-surface" data-dashboard-surface data-focus="overview">
+                <header class="s35-dashboard-heading" data-dashboard-region="heading">
+                  <div><p>ПОНЕДЕЛЬНИК · 2 НОЯБРЯ</p><h3>Добрый день, Аня!</h3><span>Твой учебный день начинается здесь.</span></div>
+                  <span class="s34-demo-tag"><i></i> Синтетические данные</span>
+                </header>
+
+                <div class="s34-dashboard-grid s35-dashboard-grid">
+                  <article class="s34-card s34-welcome s35-region" data-dashboard-region="welcome">
+                    <div class="s34-welcome-copy"><p class="s34-card-kicker">ТВОЙ УЧЕБНЫЙ ПУТЬ</p><h4>Продолжай подготовку —<br>шаг за шагом.</h4><p>Подготовка к ЕГЭ по информатике</p><div class="s34-welcome-meta"><span>Следующее занятие</span><strong>4 ноября · 16:00</strong><i>60 минут · онлайн</i></div></div>
+                    <img src="/static/images/dashboard/hero_student.png" alt="Бу помогает учиться" loading="lazy" decoding="async">
+                  </article>
+
+                  <article class="s34-card s34-goal s35-region" data-dashboard-region="goal">
+                    <div class="s34-card-heading"><span class="s34-card-icon is-pink">◎</span><div><p class="s34-card-kicker">ЦЕЛЬ ПОДГОТОВКИ</p><h4>ЕГЭ по информатике</h4></div></div>
+                    <div class="s34-goal-row"><div class="s34-goal-ring"><strong>36%</strong></div><div><p>32 из 90 баллов</p><div class="s34-progress"><i style="width:36%"></i></div><small>Текущий балл · цель 90</small></div></div>
+                    <div class="s34-goal-foot"><span>Фокус сейчас</span><strong>Кодирование информации</strong></div>
+                  </article>
+
+                  <article class="s34-card s34-next-lesson s35-region" data-dashboard-region="continue">
+                    <div class="s34-card-heading"><span class="s34-card-icon is-violet">▷</span><div><p class="s34-card-kicker">ПРОДОЛЖИТЬ ОБУЧЕНИЕ</p><h4>Ближайший урок</h4></div><span class="s34-status is-planned">Запланирован</span></div>
+                    <div class="s34-lesson-topic"><strong>Кодирование изображений</strong><span>Информатика · ЕГЭ</span></div>
+                    <div class="s34-lesson-footer"><span>4 ноября · 16:00</span><span>60 мин</span><span>Онлайн</span></div>
+                    <div class="s34-lesson-tiles"><div><small>АКТИВНОЕ ЗАДАНИЕ</small><strong>Кодирование · №7</strong><span>Синтетический пример</span></div><div><small>ТЕМА ДЛЯ ПОВТОРЕНИЯ</small><strong>Информационный объём</strong><span>Материалы программы · скоро</span></div></div>
+                  </article>
+
+                  <article class="s34-card s34-schedule s35-region" data-dashboard-region="schedule">
+                    <div class="s34-card-heading"><span class="s34-card-icon is-mint">▦</span><div><p class="s34-card-kicker">РАСПИСАНИЕ</p><h4>Ближайшие занятия</h4></div></div>
+                    <div class="s34-week-strip" aria-label="Демонстрационная неделя со 2 по 8 ноября"><span class="is-today"><small>ПН</small><strong>02</strong></span><span><small>ВТ</small><strong>03</strong></span><span class="is-event"><small>СР</small><strong>04</strong></span><span><small>ЧТ</small><strong>05</strong></span><span class="is-event"><small>ПТ</small><strong>06</strong></span><span><small>СБ</small><strong>07</strong></span><span><small>ВС</small><strong>08</strong></span></div>
+                    <div class="s34-schedule-list"><div><time>16:00</time><i></i><span><strong>Кодирование изображений</strong><small>4 ноября · 60 минут · онлайн</small></span></div><div><time>17:30</time><i></i><span><strong>Разбор домашней работы</strong><small>6 ноября · 45 минут · онлайн</small></span></div></div>
+                  </article>
+
+                  <article class="s34-card s34-path s35-region" data-dashboard-region="curriculum">
+                    <div class="s34-card-heading"><span class="s34-card-icon is-violet">◇</span><div><p class="s34-card-kicker">ПРОГРАММА ОБУЧЕНИЯ</p><h4>Путь подготовки</h4></div></div>
+                    <div class="s34-path-list"><div class="is-done"><span>01</span><div><strong>Информация и данные</strong><small>3 из 3 тем</small><i><b style="width:100%"></b></i></div><em>Завершён</em></div><div class="is-current"><span>02</span><div><strong>Кодирование информации</strong><small>2 из 5 тем</small><i><b style="width:40%"></b></i></div><em>Текущая тема</em></div><div><span>03</span><div><strong>Логика и алгоритмы</strong><small>0 из 4 тем</small><i><b style="width:0%"></b></i></div><em>Дальше</em></div></div>
+                  </article>
+
+                  <article class="s34-card s34-performance s35-region" data-dashboard-region="progress">
+                    <div class="s34-card-heading"><span class="s34-card-icon is-blue">↗</span><div><p class="s34-card-kicker">КРАТКО О ПРОГРЕССЕ</p><h4>Проверенные работы</h4></div></div>
+                    <div class="s35-progress-stats"><div><small>Работы</small><strong>4</strong><span>проверены</span></div><div><small>Верно решено</small><strong>22 из 32</strong><i><b style="width:68.8%"></b></i></div><div><small>Точность попыток</small><strong>68,8%</strong><i><b style="width:68.8%"></b></i></div></div>
+                    <p class="s35-progress-caption">Те же итоги, что в аналитике: 4 работы, 32 попытки, 22 верных ответа.</p>
+                  </article>
+
+                  <div class="s35-resource-row s35-region" data-dashboard-region="materials">
+                    <article class="s34-card s34-materials">
+                      <div class="s34-card-heading"><span class="s34-card-icon is-peach">▤</span><div><p class="s34-card-kicker">МАТЕРИАЛЫ</p><h4>Рядом с занятием</h4></div></div>
+                      <div class="s34-material-row"><span class="s34-material-icon">▧</span><span><strong>Конспекты и теория</strong><small>Короткие материалы и шпаргалки</small></span><em>Библиотека</em></div>
+                      <div class="s34-material-row is-soon"><span class="s34-material-icon">◇</span><span><strong>Материалы программы</strong><small>Материалы курса</small></span><em>Скоро</em></div>
+                    </article>
+                    <article class="s34-card s35-checklist-card">
+                      <div class="s34-card-heading"><span class="s34-card-icon is-orange">☷</span><div><p class="s34-card-kicker">ПОДГОТОВКА К УРОКУ</p><h4>Пять коротких шагов</h4></div></div>
+                      <div class="s34-checklist-progress"><i><b data-checklist-bar></b></i><span data-checklist-count>0 из 5 выполнено</span></div>
+                      <div class="s34-checklist-items s35-checklist-items">
+                        <label><input type="checkbox"><span><strong>Проверить микрофон и интернет</strong></span></label>
+                        <label><input type="checkbox"><span><strong>Повторить конспект прошлого урока</strong></span></label>
+                        <label><input type="checkbox"><span><strong>Открыть рабочее окружение</strong></span></label>
+                        <label><input type="checkbox"><span><strong>Записать вопрос к преподавателю</strong></span></label>
+                        <label><input type="checkbox"><span><strong>Проверить статус домашней работы</strong></span></label>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+                <p class="s35-board-note">Демо-реконструкция ученика · имя, даты, цель и статусы синтетические · показатели сводки совпадают с примером аналитики.</p>
+              </div>
+            </div>
+          </div>
+
+          <ol class="s35-static-guides" aria-label="Разделы личного кабинета">
+            <li><strong>Продолжить обучение</strong><span>Вернись к ближайшему занятию и его учебному контексту.</span></li>
+            <li><strong>Ближайшие занятия</strong><span>Сверь время и подготовься к следующей встрече.</span></li>
+            <li><strong>Программа подготовки</strong><span>Увидь завершённые, текущие и предстоящие темы.</span></li>
+            <li><strong>Материалы и подготовка</strong><span>Найди конспект и отметь подготовительные шаги.</span></li>
+            <li><strong>Краткий прогресс</strong><span>Посмотри итог и открой подробную аналитику в отдельном разделе.</span></li>
+          </ol>
+        </div>
+        <div class="s32-bottom-mark" aria-hidden="true"><span></span> BooStudy · учись с ясностью</div>
+      </div>
+    </section>
+
+    <section class="s35-next-seam" aria-label="Продолжение пути в BooStudy">
+      <span class="s34-seam-glow" aria-hidden="true"></span>
+      <p>Твой учебный путь продолжается.</p>
+      <span class="s34-seam-arrow" aria-hidden="true">↓</span>
+    </section>
+
+  </main>
+</body>
+</html>
