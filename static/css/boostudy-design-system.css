@@ -3618,11 +3618,15 @@ html body.bs-student-shell.bs-lesson-room .bs-dashboard-content {
   display: -webkit-box;
   width: calc(100% - 120px);
   min-width: 0;
-  min-height: 2.2em;
+  min-height: 0;
+  margin: 6px 0;
   overflow: hidden;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+.bs-student-dashboard-v2 .student-dashboard-next-lesson .student-dashboard-meta-row {
+  margin-bottom: 10px;
 }
 .bs-student-dashboard-v2 .student-dashboard-path {
   height: auto !important;
