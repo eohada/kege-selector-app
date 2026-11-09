@@ -34,6 +34,24 @@ math_cli() {
     --prevalidated-latex-sha256 "$digest"
 }
 
+math_cli_json() {
+  local package="$1" mode="$2" digest="$3"
+  local output result
+
+  if ! output="$(math_cli "$package" "$mode" "$digest" 2>&1)"; then
+    printf '%s\n' "$output" >&2
+    echo "Theory CLI failed: package=$package mode=$mode" >&2
+    return 1
+  fi
+
+  if ! result="$(printf '%s\n' "$output" | extract_cli_json)"; then
+    printf '%s\n' "$output" >&2
+    echo "Theory CLI returned no usable JSON: package=$package mode=$mode" >&2
+    return 1
+  fi
+  printf '%s\n' "$result"
+}
+
 extract_cli_json() {
   python3 -c '
 import json
@@ -111,24 +129,24 @@ PY
 }
 
 echo "Reading the current mathematics course and article status"
-STATUS_BEFORE="$(math_cli "$FIRST6_PACKAGE" status "$FIRST6_SHA256" | extract_cli_json)"
+STATUS_BEFORE="$(math_cli_json "$FIRST6_PACKAGE" status "$FIRST6_SHA256")"
 
 echo "Checking the first six articles against the production database"
-FIRST6_PREVIEW="$(math_cli "$FIRST6_PACKAGE" preview "$FIRST6_SHA256" | extract_cli_json)"
+FIRST6_PREVIEW="$(math_cli_json "$FIRST6_PACKAGE" preview "$FIRST6_SHA256")"
 check_preview 1 6 <<< "$FIRST6_PREVIEW"
 echo "Checking articles 7–12 against the production database"
-ARTICLES_07_12_PREVIEW="$(math_cli "$ARTICLES_07_12_PACKAGE" preview "$ARTICLES_07_12_SHA256" | extract_cli_json)"
+ARTICLES_07_12_PREVIEW="$(math_cli_json "$ARTICLES_07_12_PACKAGE" preview "$ARTICLES_07_12_SHA256")"
 check_preview 7 12 <<< "$ARTICLES_07_12_PREVIEW"
 
 echo "Importing articles 1–6 as drafts"
-FIRST6_IMPORT="$(math_cli "$FIRST6_PACKAGE" import-draft "$FIRST6_SHA256" | extract_cli_json)"
+FIRST6_IMPORT="$(math_cli_json "$FIRST6_PACKAGE" import-draft "$FIRST6_SHA256")"
 check_import 1 6 <<< "$FIRST6_IMPORT"
 echo "Importing articles 7–12 as drafts"
-ARTICLES_07_12_IMPORT="$(math_cli "$ARTICLES_07_12_PACKAGE" import-draft "$ARTICLES_07_12_SHA256" | extract_cli_json)"
+ARTICLES_07_12_IMPORT="$(math_cli_json "$ARTICLES_07_12_PACKAGE" import-draft "$ARTICLES_07_12_SHA256")"
 check_import 7 12 <<< "$ARTICLES_07_12_IMPORT"
 
 echo "Verifying course state, article order, assignments, and illustrations"
-STATUS_AFTER="$(math_cli "$FIRST6_PACKAGE" status "$FIRST6_SHA256" | extract_cli_json)"
+STATUS_AFTER="$(math_cli_json "$FIRST6_PACKAGE" status "$FIRST6_SHA256")"
 EXPECTED_ARTICLES="$(python3 - "$APP_DIR/content/theory/ege-profile-math-2027" <<'PY'
 import json
 import sys
