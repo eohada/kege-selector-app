@@ -43,14 +43,27 @@ if [[ ! -t 0 ]]; then
     deploy_input="$(cat)"
     if [[ -n "$deploy_input" ]]; then
         mapfile -t deploy_input_lines <<< "$deploy_input"
-        if [[ "${#deploy_input_lines[@]}" -ne 2 ||
-            ! "${deploy_input_lines[0]}" =~ ^[a-f0-9]{64}$ ||
-            ! "${deploy_input_lines[1]}" =~ ^[a-f0-9]{64}$ ]]; then
-            echo "Expected exactly two validated theory package SHA-256 values on stdin." >&2
-            exit 2
-        fi
-        MATH_IMPORT_FIRST6_SHA256="${deploy_input_lines[0]}"
-        MATH_IMPORT_ARTICLES_07_12_SHA256="${deploy_input_lines[1]}"
+        case "${#deploy_input_lines[@]}" in
+            1)
+                BRANCH="${deploy_input_lines[0]}"
+                ;;
+            2|3)
+                if [[ ! "${deploy_input_lines[0]}" =~ ^[a-f0-9]{64}$ ||
+                    ! "${deploy_input_lines[1]}" =~ ^[a-f0-9]{64}$ ]]; then
+                    echo "Expected validated theory package SHA-256 values on stdin." >&2
+                    exit 2
+                fi
+                MATH_IMPORT_FIRST6_SHA256="${deploy_input_lines[0]}"
+                MATH_IMPORT_ARTICLES_07_12_SHA256="${deploy_input_lines[1]}"
+                if [[ "${#deploy_input_lines[@]}" -eq 3 ]]; then
+                    BRANCH="${deploy_input_lines[2]}"
+                fi
+                ;;
+            *)
+                echo "Expected a branch name, two package SHA-256 values, or two hashes followed by a branch name on stdin." >&2
+                exit 2
+                ;;
+        esac
     fi
 fi
 
@@ -58,6 +71,10 @@ cd "$APP_DIR"
 if [[ -z "$BRANCH" ]]; then
     BRANCH="$(git branch --show-current)"
     BRANCH="${BRANCH:-main}"
+fi
+if ! git check-ref-format --branch "$BRANCH" >/dev/null; then
+    echo "Invalid deployment branch: $BRANCH" >&2
+    exit 2
 fi
 mkdir -p "$STATE_DIR"
 
