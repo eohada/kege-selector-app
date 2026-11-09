@@ -96,17 +96,19 @@ jobs:
       - name: Deploy with blue-green helper
         shell: bash
         env:
+          DEPLOY_BRANCH: ${{ github.ref_name }}
           IMPORT_MATH_FOUNDATION: ${{ inputs.import_math_foundation }}
           FIRST6_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.first6_sha256 }}
           ARTICLES_07_12_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.articles_07_12_sha256 }}
         run: |
           set -euo pipefail
-          REMOTE_COMMAND='sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy'
+          [[ "${DEPLOY_BRANCH}" =~ ^[A-Za-z0-9._/-]+$ ]]
           if [[ "${IMPORT_MATH_FOUNDATION}" == "true" ]]; then
             [[ "${FIRST6_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
             [[ "${ARTICLES_07_12_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
-            REMOTE_COMMAND="printf '%s\\n%s\\n' '${FIRST6_PACKAGE_SHA256}' '${ARTICLES_07_12_PACKAGE_SHA256}' | ${REMOTE_COMMAND}"
           fi
+
+          REMOTE_COMMAND="bash -s -- '${DEPLOY_BRANCH}' '${FIRST6_PACKAGE_SHA256}' '${ARTICLES_07_12_PACKAGE_SHA256}'"
 
           KEY_FILE="$(mktemp)"
           KNOWN_HOSTS="$(mktemp)"
@@ -127,7 +129,34 @@ jobs:
               -o ServerAliveInterval=25 \
               -o ServerAliveCountMax=8 \
               "${USERNAME}@${HOST}" \
-              "${REMOTE_COMMAND}"; then
+              "${REMOTE_COMMAND}" <<'REMOTE'
+          set -euo pipefail
+          branch="$1"
+          first6_sha256="$2"
+          articles_07_12_sha256="$3"
+          [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ ]]
+          git check-ref-format "refs/heads/$branch"
+          cd /opt/boostudy
+
+          if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+            echo "Deployment stopped: the server checkout contains local changes or untracked files." >&2
+            exit 1
+          fi
+
+          git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+          git switch --force-create "$branch" "origin/$branch"
+          unset BRANCH
+
+          if [[ -n "$first6_sha256" || -n "$articles_07_12_sha256" ]]; then
+            [[ "$first6_sha256" =~ ^[a-f0-9]{64}$ ]]
+            [[ "$articles_07_12_sha256" =~ ^[a-f0-9]{64}$ ]]
+            printf '%s\n%s\n' "$first6_sha256" "$articles_07_12_sha256" | \
+              sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy
+          else
+            sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy
+          fi
+          REMOTE
+            then
               exit 0
             fi
             if [[ "${attempt}" -lt 3 ]]; then

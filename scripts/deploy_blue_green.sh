@@ -18,7 +18,7 @@ set -euo pipefail
 # switches nginx back.
 
 APP_DIR="${APP_DIR:-/opt/boostudy}"
-BRANCH="${BRANCH:-main}"
+BRANCH="${BRANCH:-}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.bluegreen.yml}"
 STATE_DIR="${STATE_DIR:-$APP_DIR/.deploy}"
 ACTIVE_FILE="${ACTIVE_FILE:-$STATE_DIR/active_color}"
@@ -55,6 +55,10 @@ if [[ ! -t 0 ]]; then
 fi
 
 cd "$APP_DIR"
+if [[ -z "$BRANCH" ]]; then
+    BRANCH="$(git branch --show-current)"
+    BRANCH="${BRANCH:-main}"
+fi
 mkdir -p "$STATE_DIR"
 
 compose() {
