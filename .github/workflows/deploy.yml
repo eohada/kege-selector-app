@@ -95,8 +95,19 @@ jobs:
 
       - name: Deploy with blue-green helper
         shell: bash
+        env:
+          IMPORT_MATH_FOUNDATION: ${{ inputs.import_math_foundation }}
+          FIRST6_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.first6_sha256 }}
+          ARTICLES_07_12_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.articles_07_12_sha256 }}
         run: |
           set -euo pipefail
+          REMOTE_COMMAND='sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy'
+          if [[ "${IMPORT_MATH_FOUNDATION}" == "true" ]]; then
+            [[ "${FIRST6_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+            [[ "${ARTICLES_07_12_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+            REMOTE_COMMAND="printf '%s\\n%s\\n' '${FIRST6_PACKAGE_SHA256}' '${ARTICLES_07_12_PACKAGE_SHA256}' | ${REMOTE_COMMAND}"
+          fi
+
           KEY_FILE="$(mktemp)"
           KNOWN_HOSTS="$(mktemp)"
           umask 077
@@ -116,7 +127,7 @@ jobs:
               -o ServerAliveInterval=25 \
               -o ServerAliveCountMax=8 \
               "${USERNAME}@${HOST}" \
-              'sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy'; then
+              "${REMOTE_COMMAND}"; then
               exit 0
             fi
             if [[ "${attempt}" -lt 3 ]]; then
@@ -124,46 +135,6 @@ jobs:
             fi
           done
           echo "::error::Blue-green deploy failed after 3 SSH attempts"
-          exit 1
-
-      - name: Import mathematics foundation as drafts
-        if: ${{ inputs.import_math_foundation }}
-        shell: bash
-        env:
-          FIRST6_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.first6_sha256 }}
-          ARTICLES_07_12_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.articles_07_12_sha256 }}
-        run: |
-          set -euo pipefail
-          [[ "${FIRST6_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
-          [[ "${ARTICLES_07_12_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
-
-          KEY_FILE="$(mktemp)"
-          KNOWN_HOSTS="$(mktemp)"
-          umask 077
-          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${KEY_FILE}"
-          trap 'rm -f "${KEY_FILE}" "${KNOWN_HOSTS}"' EXIT
-
-          printf '%s\n' "${SSH_KNOWN_HOSTS}" > "${KNOWN_HOSTS}"
-          cat "${GITHUB_WORKSPACE}/.github/boostudy_known_hosts" >> "${KNOWN_HOSTS}"
-
-          for attempt in 1 2 3; do
-            echo "Production theory import attempt ${attempt}/3"
-            if ssh -4 -i "${KEY_FILE}" -p "${SSH_PORT}" \
-              -o BatchMode=yes \
-              -o UserKnownHostsFile="${KNOWN_HOSTS}" \
-              -o StrictHostKeyChecking=yes \
-              -o ConnectTimeout=30 \
-              -o ServerAliveInterval=25 \
-              -o ServerAliveCountMax=8 \
-              "${USERNAME}@${HOST}" \
-              "sudo -n bash /opt/boostudy/scripts/import_ege_profile_math_drafts.sh ${FIRST6_PACKAGE_SHA256} ${ARTICLES_07_12_PACKAGE_SHA256}"; then
-              exit 0
-            fi
-            if [[ "${attempt}" -lt 3 ]]; then
-              sleep 30
-            fi
-          done
-          echo "::error::Production theory import failed after 3 SSH attempts"
           exit 1
 
       - name: Public production smoke check
