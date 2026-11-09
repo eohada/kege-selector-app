@@ -205,10 +205,10 @@ def build_experience(student_id=None, *, staff=False):
         else:
             enrollment_status = 'active' if staff else 'none'
 
-        # Ученикам показываются только курсы, назначенные преподавателем (активные или неинициализированные).
-        # Неназначенные курсы и курсы без тем не загромождают библиотеку ученика.
+        # Ученикам показываются только назначенные курсы. Пустой курс тоже
+        # должен быть виден: преподаватель мог активировать его до публикации тем.
         if not staff and student_id is not None:
-            if enrollment_status == 'none' or len(topics) == 0:
+            if enrollment_status == 'none':
                 continue
 
         is_initialized = bool(staff or enrollment_status == 'active')

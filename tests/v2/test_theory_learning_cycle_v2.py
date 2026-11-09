@@ -181,11 +181,15 @@ def test_theory_experience_excludes_drafts_and_respects_teacher_locks(app, role_
 
 def test_theory_experience_empty_course_renders_without_writes(app, client, role_users):
     from app import db
-    from app.models import Course, TheoryGroup
+    from app.models import Course, StudentCourseEnrollment, TheoryGroup
 
     with app.app_context():
         course = Course(title='Пустой курс', slug='empty-theory', is_active=True)
         db.session.add(course)
+        db.session.flush()
+        db.session.add(StudentCourseEnrollment(
+            student_id=role_users['student_id'], course_id=course.id, is_active=True,
+        ))
         db.session.commit()
         course_id = course.id
     login_as(client, role_users['student_user_id'], 'student')
@@ -194,6 +198,33 @@ def test_theory_experience_empty_course_renders_without_writes(app, client, role
     assert 'пока нет доступных материалов' in response.get_data(as_text=True)
     with app.app_context():
         assert TheoryGroup.query.filter_by(course_id=course_id).count() == 0
+
+
+def test_active_empty_course_is_visible_in_student_catalog(app, client, role_users):
+    from app import db
+    from app.models import Course, StudentCourseEnrollment
+    from app.theory.experience import build_experience
+
+    with app.app_context():
+        course = Course(title='ЕГЭ Математика — профиль', slug='empty-math-profile', is_active=True)
+        db.session.add(course)
+        db.session.flush()
+        db.session.add(StudentCourseEnrollment(
+            student_id=role_users['student_id'], course_id=course.id, is_active=True,
+        ))
+        db.session.commit()
+        course_id = course.id
+
+        experience = build_experience(role_users['student_id'])
+        visible_course = next(item for item in experience['courses'] if item['id'] == course_id)
+        assert visible_course['enrollment_status'] == 'active'
+        assert visible_course['enrolled'] is True
+        assert visible_course['total'] == 0
+
+    login_as(client, role_users['student_user_id'], 'student')
+    response = client.get('/theory')
+    assert response.status_code == 200
+    assert 'ЕГЭ Математика — профиль' in response.get_data(as_text=True)
 
 
 def test_tutor_can_assign_theory_to_scoped_student(app, client, role_users):

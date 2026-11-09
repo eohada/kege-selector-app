@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370">
+<ns0:rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE" />
+<ns0:text x="32" y="40" fill="#243251" font-size="22" font-family="Arial, sans-serif">Процентные изменения применяются последовательно</ns0:text>
+<ns0:text x="180" y="98" font-size="18" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">Исходно</ns0:text>
+<ns0:rect x="110" y="137" width="160" height="140" rx="10" fill="#FFFFFF" stroke="#D1DBEA" stroke-width="1" />
+<ns0:rect x="110" y="167.0" width="160" height="110.00000000000001" rx="6" fill="#587DF7" stroke="none" stroke-width="0" />
+<ns0:text x="190" y="303" font-size="25" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle">100</ns0:text>
+<ns0:text x="440" y="98" font-size="18" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">После +20%</ns0:text>
+<ns0:rect x="370" y="137" width="160" height="140" rx="10" fill="#FFFFFF" stroke="#D1DBEA" stroke-width="1" />
+<ns0:rect x="370" y="145.0" width="160" height="132.0" rx="6" fill="#17A398" stroke="none" stroke-width="0" />
+<ns0:text x="450" y="303" font-size="25" fill="#17A398" font-family="Arial, sans-serif" text-anchor="middle">120</ns0:text>
+<ns0:text x="700" y="98" font-size="18" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">После −25%</ns0:text>
+<ns0:rect x="630" y="137" width="160" height="140" rx="10" fill="#FFFFFF" stroke="#D1DBEA" stroke-width="1" />
+<ns0:rect x="630" y="178.0" width="160" height="99.00000000000001" rx="6" fill="#E47477" stroke="none" stroke-width="0" />
+<ns0:text x="710" y="303" font-size="25" fill="#E47477" font-family="Arial, sans-serif" text-anchor="middle">90</ns0:text>
+<ns0:text x="450" y="352" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">100 × 1,20 × 0,75 = 90</ns0:text>
+</ns0:svg>

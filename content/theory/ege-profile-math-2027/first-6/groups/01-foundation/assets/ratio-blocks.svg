@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370" role="img" aria-label="Отношение 2:3 показывает размеры двух групп">
+<rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE"/>
+<text x="32" y="40" fill="#243251" font-size="22" font-weight="700" font-family="Arial, sans-serif">Отношение 2:3 показывает размеры двух групп</text>
+<text x="250" y="106" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">Первая: 2 доли</text>
+<rect x="100" y="146" width="84" height="86" rx="9" fill="#587DF7" stroke="none" stroke-width="0"/>
+<rect x="193" y="146" width="84" height="86" rx="9" fill="#587DF7" stroke="none" stroke-width="0"/>
+<text x="650" y="106" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">Вторая: 3 доли</text>
+<rect x="500" y="146" width="84" height="86" rx="9" fill="#17A398" stroke="none" stroke-width="0"/>
+<rect x="593" y="146" width="84" height="86" rx="9" fill="#17A398" stroke="none" stroke-width="0"/>
+<rect x="686" y="146" width="84" height="86" rx="9" fill="#17A398" stroke="none" stroke-width="0"/>
+<text x="450" y="313" font-size="20" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">2:3 = 2/3 (отношение первой величины ко второй)</text>
+<text x="450" y="349" font-size="17" fill="#64748b" font-family="Arial, sans-serif" text-anchor="middle">Доля первой в общей сумме равна 2/(2+3) = 2/5.</text>
+</svg>

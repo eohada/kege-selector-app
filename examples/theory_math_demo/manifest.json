@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "course": {
+    "slug": "theory-math-demo-v1",
+    "title": "Математика: демонстрационный модуль"
+  },
+  "expected_structure": {
+    "groups": 1,
+    "articles": 1
+  },
+  "groups": [
+    {
+      "key": "quadratic-functions",
+      "name": "Квадратичная функция",
+      "description": "График, свойства и квадратные уравнения",
+      "position": 1,
+      "assets": [
+        {
+          "key": "parabola-scheme",
+          "path": "groups/quadratic-functions/assets/parabola-scheme.svg"
+        }
+      ],
+      "articles": [
+        {
+          "key": "quadratic-function-intro",
+          "task_number": 1,
+          "position": 1,
+          "title": "Квадратичная функция: график и свойства",
+          "description": "Определение, исследование параболы, уравнения и практика",
+          "read_minutes": 18,
+          "status": "draft",
+          "source": "groups/quadratic-functions/001-quadratic-function.md"
+        }
+      ]
+    }
+  ]
+}

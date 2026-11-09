@@ -28,6 +28,7 @@ scripts/
 !data/
 !data/task_banks/
 !data/task_banks/python_foundations.json
+!content/theory/**
 admin_tokens.txt
 *.txt
 !requirements.txt

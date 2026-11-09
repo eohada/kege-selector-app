@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370" role="img" aria-label="Почему √2 лежит на числовой прямой">
+<rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE"/>
+<text x="32" y="40" fill="#243251" font-size="22" font-weight="700" font-family="Arial, sans-serif">Почему √2 лежит на числовой прямой</text>
+<line x1="160" y1="295" x2="380" y2="295" stroke="#243251" stroke-width="3" stroke-linecap="round" />
+<line x1="380" y1="295" x2="380" y2="75" stroke="#243251" stroke-width="3" stroke-linecap="round" />
+<path d="M 160 295 L 380 75" fill="none" stroke="#587DF7" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M 358 295 L 358 273 L 380 273" fill="none" stroke="#64748b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="270" y="326" font-size="23" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">1</text>
+<text x="400" y="206" font-size="23" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">1</text>
+<text x="250" y="174" font-size="28" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="start" font-weight="bold">√2</text>
+<text x="670" y="135" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">1² + 1² = 2</text>
+<text x="670" y="173" font-size="19" fill="#17A398" font-family="Arial, sans-serif" text-anchor="start">Гипотенуза = √2</text>
+<text x="670" y="236" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">Точная длина</text>
+</svg>

@@ -747,9 +747,6 @@ def create_app(config_name=None):
     
     app.register_blueprint(chief_tester_bp)
     app.register_blueprint(theory_bp)
-    # JSON actions in the authenticated theory workspace must not be rejected
-    # by a second endpoint-level CSRF lookup after blueprint registration.
-    csrf.exempt(theory_bp)
     app.register_blueprint(reminders_bp)
     app.register_blueprint(telegram_bp)
     app.register_blueprint(tg_app_bp)
@@ -886,32 +883,6 @@ def create_app(config_name=None):
     from app.auth.routes import logout
     csrf.exempt(logout)
 
-    # Theory progress is a debounced autosave request. Exempt it explicitly
-    # during application registration as well as at the view declaration so
-    # blueprint import order cannot reintroduce a stale 403 in WSGI workers.
-    from app.theory.routes import (
-        theory_api_bookmark,
-        theory_api_checkpoint,
-        theory_api_feedback,
-        theory_api_note,
-        theory_api_progress,
-        theory_api_read,
-        theory_api_run_code,
-    )
-    # Theory interactions are authenticated session APIs.  They send JSON
-    # from the article page and must not be rejected by a stale CSRF cookie;
-    # authentication and student ownership checks remain enforced in each view.
-    for theory_api in (
-        theory_api_bookmark,
-        theory_api_checkpoint,
-        theory_api_feedback,
-        theory_api_note,
-        theory_api_progress,
-        theory_api_read,
-        theory_api_run_code,
-    ):
-        csrf.exempt(theory_api)
-    
     from app.admin.routes import maintenance_status_api
     csrf.exempt(maintenance_status_api)
 

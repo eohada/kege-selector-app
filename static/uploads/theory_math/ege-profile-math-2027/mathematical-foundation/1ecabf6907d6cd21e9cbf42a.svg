@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370">
+<ns0:rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE" />
+<ns0:text x="32" y="40" fill="#243251" font-size="22" font-family="Arial, sans-serif">Неравенство |x − 2| &lt; 3: открытый интервал</ns0:text>
+<ns0:line x1="90" y1="215" x2="810" y2="215" stroke="#526789" stroke-width="3" stroke-linecap="round" />
+<ns0:rect x="286" y="189" width="346" height="52" rx="7" fill="#DDF4EB" stroke="none" stroke-width="0" />
+<ns0:line x1="286" y1="202" x2="286" y2="229" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="286" y="264" font-size="20" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">−1</ns0:text>
+<ns0:line x1="459" y1="202" x2="459" y2="229" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="459" y="264" font-size="20" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">2</ns0:text>
+<ns0:line x1="632" y1="202" x2="632" y2="229" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="632" y="264" font-size="20" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">5</ns0:text>
+<ns0:circle cx="286" cy="215" r="9" fill="#FFFFFF" stroke="#587DF7" stroke-width="4" />
+<ns0:circle cx="632" cy="215" r="9" fill="#FFFFFF" stroke="#587DF7" stroke-width="4" />
+<ns0:circle cx="459" cy="215" r="7" fill="#17A398" stroke="#FFFFFF" stroke-width="2" />
+<ns0:text x="459" y="138" font-size="23" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle">центр = 2, радиус = 3</ns0:text>
+<ns0:text x="459" y="328" font-size="24" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">−1 &lt; x &lt; 5</ns0:text>
+</ns0:svg>

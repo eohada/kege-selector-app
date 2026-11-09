@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370">
+<ns0:rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE" />
+<ns0:text x="32" y="40" fill="#243251" font-size="22" font-family="Arial, sans-serif">Рациональное число между двумя дробями</ns0:text>
+<ns0:line x1="110" y1="205" x2="790" y2="205" stroke="#243251" stroke-width="4" stroke-linecap="round" />
+<ns0:path d="M 780 197 L 797 205 L 780 213" fill="none" stroke="#243251" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+<ns0:line x1="175" y1="188" x2="175" y2="222" stroke="#587DF7" stroke-width="3" stroke-linecap="round" />
+<ns0:circle cx="175" cy="205" r="9" fill="#587DF7" stroke="#FFFFFF" stroke-width="2" />
+<ns0:text x="175" y="174" font-size="23" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle">1/2</ns0:text>
+<ns0:line x1="450" y1="188" x2="450" y2="222" stroke="#17A398" stroke-width="3" stroke-linecap="round" />
+<ns0:circle cx="450" cy="205" r="9" fill="#17A398" stroke="#FFFFFF" stroke-width="2" />
+<ns0:text x="450" y="174" font-size="23" fill="#17A398" font-family="Arial, sans-serif" text-anchor="middle">7/12</ns0:text>
+<ns0:line x1="725" y1="188" x2="725" y2="222" stroke="#E47477" stroke-width="3" stroke-linecap="round" />
+<ns0:circle cx="725" cy="205" r="9" fill="#E47477" stroke="#FFFFFF" stroke-width="2" />
+<ns0:text x="725" y="174" font-size="23" fill="#E47477" font-family="Arial, sans-serif" text-anchor="middle">2/3</ns0:text>
+<ns0:text x="450" y="278" font-size="24" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">1/2 &lt; 7/12 &lt; 2/3</ns0:text>
+<ns0:text x="450" y="322" font-size="17" fill="#64748b" font-family="Arial, sans-serif" text-anchor="middle">Среднее двух различных рациональных чисел тоже рационально.</ns0:text>
+</ns0:svg>

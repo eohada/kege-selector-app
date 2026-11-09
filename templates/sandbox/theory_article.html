@@ -2,8 +2,43 @@
 
 {% block sandbox_content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/katex/katex.min.css') }}">
+{% if has_math_input|default(false) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/mathlive/mathlive-fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/mathlive/mathlive-static.css') }}">
+{% endif %}
+<script defer src="{{ url_for('static', filename='vendor/katex/katex.min.js') }}"></script>
+{% if has_math_input|default(false) %}
+<script defer src="{{ url_for('static', filename='vendor/mathlive/mathlive.min.js') }}"></script>
+{% endif %}
+<script defer src="{{ url_for('static', filename='js/theory-math.js') }}"></script>
 <style>
   #article-content { color: #334155; }
+  #article-content .theory-figure { max-width: 100%; margin: 1.5rem auto; text-align: center; }
+  #article-content .theory-figure-image { max-width: min(100%, 920px) !important; height: auto !important; margin: .25rem auto .5rem !important; object-fit: contain; }
+  #article-content .theory-figure-caption { max-width: 60rem; margin: .35rem auto 0; padding: 0 .75rem; color: var(--bs-text-muted, #64748b); font-size: .875rem; line-height: 1.55; text-align: center; overflow-wrap: anywhere; }
+  #article-content .theory-figure-caption p { margin: 0 !important; color: inherit !important; font-size: inherit !important; line-height: inherit !important; }
+  #article-content .theory-figure-caption .theory-math-source { color: inherit; }
+  #article-content .theory-action-button,
+  #article-content .theory-step-submit {
+    min-width: 44px; min-height: 44px; border: 1px solid color-mix(in srgb, var(--bs-primary, #5b35f5) 34%, #ffffff);
+    border-bottom: 3px solid color-mix(in srgb, var(--bs-primary, #5b35f5) 76%, #151044);
+    border-radius: var(--bs-radius-md, 14px); background: var(--bs-primary, #5b35f5); color: #fff;
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--bs-primary, #5b35f5) 68%, #151044), 0 5px 12px rgba(50, 37, 130, .12);
+    cursor: pointer; font: inherit; font-weight: 800; line-height: 1.2; transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+  }
+  #article-content .theory-action-button:hover,
+  #article-content .theory-step-submit:hover { background: var(--bs-primary-hover, #4924db); box-shadow: 0 4px 0 color-mix(in srgb, var(--bs-primary, #5b35f5) 68%, #151044), 0 6px 14px rgba(50, 37, 130, .16); transform: translateY(-1px); }
+  #article-content .theory-action-button:active,
+  #article-content .theory-step-submit:active { transform: translateY(2px); box-shadow: 0 1px 0 color-mix(in srgb, var(--bs-primary, #5b35f5) 68%, #151044); }
+  #article-content .theory-action-button:focus-visible,
+  #article-content .theory-step-submit:focus-visible { outline: 3px solid color-mix(in srgb, var(--bs-primary, #5b35f5) 36%, transparent); outline-offset: 3px; }
+  #article-content .theory-action-button:disabled,
+  #article-content .theory-step-submit:disabled { opacity: .68; cursor: not-allowed; transform: none; box-shadow: 0 1px 0 color-mix(in srgb, var(--bs-primary, #5b35f5) 48%, #151044); }
+  #article-content .theory-action-button.is-loading,
+  #article-content .theory-step-submit.is-loading { cursor: progress; }
+  @media (prefers-reduced-motion: reduce) { #article-content .theory-action-button, #article-content .theory-step-submit { transition: none; } }
+  #theory-article-shell { overflow-x:clip; }
   #article-content > h1:first-child { display: none; }
   #article-content h1 { font-size: 2rem !important; line-height: 1.15 !important; font-weight: 900 !important; color: #0f172a !important; margin: .5rem 0 1.25rem !important; }
   #article-content h2 { display:flex; align-items:center; gap:.7rem; font-size: 1.5rem !important; line-height: 1.25 !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 0 .85rem !important; }
@@ -98,7 +133,135 @@
     color: #4338CA !important;
     font-weight: 700 !important;
   }
-  .theory-inline-math { white-space: nowrap !important; }
+  .theory-math-source { max-width:100%; }
+  .theory-math-source[data-math-mode="inline"] { display:inline-block; vertical-align:baseline; }
+  .theory-math-source[data-math-mode="display"] {
+    display:block;
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-inline:contain;
+    padding:.45rem .25rem .65rem;
+    text-align:center;
+    scrollbar-width:thin;
+  }
+  .theory-math-source .katex-display { margin:.35rem 0; }
+  .theory-math-invalid .katex-error { color:#b42318; white-space:normal; }
+  .theory-math-preview-warning {
+    margin:0 0 1rem;
+    border:1px solid #fed7aa;
+    border-radius:1rem;
+    background:#fff7ed;
+    padding:.75rem 1rem;
+    color:#9a3412;
+    font-size:.875rem;
+    font-weight:700;
+  }
+  #article-content .theory-concept {
+    margin:1.5rem 0;
+    padding:1.15rem 1.3rem;
+    border:1px solid color-mix(in srgb, var(--theory-concept-accent) 24%, white);
+    border-left:5px solid var(--theory-concept-accent);
+    border-radius:1.25rem;
+    background:var(--theory-concept-bg);
+    box-shadow:0 3px 0 color-mix(in srgb, var(--theory-concept-accent) 16%, white);
+  }
+  #article-content .theory-concept > h3 {
+    margin:0 0 .6rem !important;
+    color:var(--theory-concept-accent) !important;
+    font-size:1.05rem !important;
+  }
+  #article-content .theory-concept-body > :first-child { margin-top:0 !important; }
+  #article-content .theory-concept-body > :last-child { margin-bottom:0 !important; }
+  #article-content .theory-formula .theory-concept-body { font-size:1.15rem; font-weight:700; }
+  #article-content .theory-solution {
+    margin:1.35rem 0;
+    overflow:hidden;
+    border:2px solid #dbe4ef;
+    border-radius:1.25rem;
+    background:#fff;
+    box-shadow:0 3px 0 #dae1e9;
+  }
+  #article-content .theory-solution > summary {
+    cursor:pointer;
+    padding:.95rem 1.15rem;
+    color:#4338ca;
+    font-weight:850;
+    background:#f5f3ff;
+  }
+  #article-content .theory-solution-body { padding:.6rem 1.15rem 1rem; }
+  #article-content .theory-step-exercise {
+    margin:1.75rem 0;
+    padding:1.25rem;
+    border:2px solid #c7d2fe;
+    border-radius:1.5rem;
+    background:linear-gradient(145deg,#f5f3ff,#fff 52%,#eff6ff);
+  }
+  #article-content .theory-step-exercise > header > span {
+    color:#4f46e5;
+    font-size:.7rem;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  #article-content .theory-step-exercise > header > h3 { margin:.2rem 0 !important; }
+  #article-content .theory-step-exercise > header > p { margin:.35rem 0 1rem !important; font-size:.9rem !important; }
+  #article-content .theory-step-item { display:flex; align-items:flex-start; gap:.8rem; margin:1rem 0; }
+  #article-content .theory-step-number {
+    display:grid; place-items:center; flex:0 0 2rem; height:2rem;
+    border-radius:.7rem; background:#4f46e5; color:#fff; font-weight:900;
+  }
+  #article-content .theory-step-item .theory-interactive-card {
+    min-width:0; border:1px solid #dbe4ef; border-radius:1rem; padding:1rem; background:#fff;
+  }
+  #article-content .theory-step-item h4 { margin:0 0 .75rem; color:#0f172a; font-weight:800; line-height:1.5; }
+  #article-content .theory-step-answer { max-width:38rem; }
+  #article-content .theory-step-submit {
+    margin-top:.75rem; border-radius:.75rem; border-bottom:3px solid #3730a3;
+    background:#4f46e5; padding:.55rem .9rem; color:white; font-size:.8rem; font-weight:850;
+  }
+  #article-content .theory-step-exercise > footer {
+    margin-top:1rem; border-top:1px solid #c7d2fe; padding-top:.8rem;
+    color:#4338ca; font-size:.8rem; font-weight:850;
+  }
+  #article-content .theory-visualization { max-width:100%; margin:1.5rem 0; }
+  #article-content .theory-table-scroll {
+    display:block; width:100%; max-width:100%; min-width:0; overflow-x:auto;
+    overscroll-behavior-inline:contain; -webkit-overflow-scrolling:touch;
+  }
+  #article-content .theory-svg-scroll {
+    max-width:100%; overflow-x:auto; overscroll-behavior-inline:contain;
+    border:1px solid #dbe4ef; border-radius:1.25rem; background:#fff;
+  }
+  #article-content .theory-plot-svg,
+  #article-content .theory-geometry-svg { display:block; width:100%; min-width:360px; height:auto; }
+  #article-content .theory-plot-label { fill:#64748b; font:11px ui-sans-serif,system-ui,sans-serif; }
+  #article-content .theory-plot-axis { fill:#334155; font:700 12px ui-sans-serif,system-ui,sans-serif; }
+  #article-content .theory-plot-point-label,
+  #article-content .theory-geometry-label { fill:#1e293b; font:700 13px ui-sans-serif,system-ui,sans-serif; }
+  #article-content .theory-plot-legend { display:flex; flex-wrap:wrap; gap:.75rem 1.25rem; margin:.7rem .25rem; color:#475569; font-size:.8rem; font-weight:750; }
+  #article-content .theory-plot-legend span { display:inline-flex; align-items:center; gap:.45rem; }
+  #article-content .theory-plot-legend i { width:1.2rem; height:.2rem; border-radius:99px; }
+  #article-content .theory-authoring-error { border:1px solid #fdba74; border-radius:1rem; background:#fff7ed; padding:.8rem 1rem; color:#9a3412; font-weight:700; }
+  math-field[data-interactive-math] {
+    display:block;
+    width:100%;
+    min-height:3.25rem;
+    border:1px solid #cbd5e1;
+    border-radius:.9rem;
+    background:#fff;
+    padding:.7rem .85rem;
+    color:#0f172a;
+    font-size:1.2rem;
+    --selection-background-color:#dbeafe;
+    --contains-highlight-background-color:#eff6ff;
+    --caret-color:#4f46e5;
+  }
+  math-field[data-interactive-math]:focus-within { outline:2px solid #818cf8; outline-offset:2px; }
+  @media (max-width: 640px) {
+    #article-content .katex { font-size:1em; }
+    #article-content .katex-display { margin:.35rem 0; text-align:left; }
+  }
   #article-content blockquote {
     max-width: 100% !important;
     margin: 1.35rem 0 !important;
@@ -508,7 +671,7 @@
   #article-content .theory-interactive-editor { box-shadow: 0 4px 0 #cbd5e1, 0 10px 24px rgba(96, 75, 91, 0.05); }
   #article-content .theory-how-it-works { box-shadow: 0 6px 0 #c7d2fe, 0 12px 28px rgba(99, 102, 241, 0.07); }
   #article-content .theory-code-snippet { box-shadow: 0 5px 0 #cbd5e1, 0 10px 24px rgba(96, 75, 91, 0.06); }
-  @media (max-width:640px) { #article-content .theory-section { padding:1.1rem; border-radius:1.25rem; } #article-content h2 { font-size:1.3rem !important; } }
+  @media (max-width:640px) { #article-content .theory-section { padding:1.1rem; border-radius:1.25rem; } #article-content h2 { font-size:1.3rem !important; } #article-content .theory-figure { margin:1.15rem auto; } #article-content .theory-figure-caption { padding:0 .25rem; font-size:.8rem; } }
   /* Sticky right-sidebar pinned widgets (Notes & Boo Advice) */
   @media (min-width: 1024px) {
     .theory-pinned-sidebar {
@@ -558,7 +721,7 @@
     box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25) !important;
   }
 </style>
-<main class="flex-1 min-h-screen bg-[#FAF9FC] overflow-x-clip p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 relative">
+<main id="theory-article-shell" class="flex-1 min-h-screen bg-[#FAF9FC] overflow-x-clip p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 relative">
   <!-- Subtle Ambient Glow Auras -->
   <div class="absolute top-8 right-12 w-96 h-96 bg-gradient-to-br from-amber-200/20 via-pink-200/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
   <div class="absolute top-96 left-8 w-96 h-96 bg-gradient-to-tr from-indigo-200/20 via-purple-200/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
@@ -602,7 +765,7 @@
           </div>
 
           <!-- Main Row: Left = Topic Title & Description, Right = Compact Module Switcher -->
-          <div class="relative z-10 mt-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="relative z-10 mt-3.5 flex flex-col justify-between gap-4">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="rounded-lg border border-indigo-200 bg-indigo-100/70 px-2.5 py-0.5 text-xs font-black text-indigo-700 font-mono shadow-xs">№{{ block.task_number }}</span>
@@ -896,6 +1059,10 @@
   const root = document.getElementById('theory-article');
   if (!root) return;
   const blockId = Number(root.dataset.blockId);
+  const showFeedback = (node, text) => {
+    if (window.BooTheoryMath?.renderText) window.BooTheoryMath.renderText(text, node);
+    else if (node) node.textContent = text;
+  };
   const post = async (body) => {
     const response = await fetch('{{ url_for("theory.theory_api_checkpoint") }}', {
       method: 'POST',
@@ -905,6 +1072,41 @@
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Не удалось сохранить ответ.');
     return data;
+  };
+  const updateStepExercise = (card) => {
+    const exercise = card?.closest('[data-step-exercise]');
+    if (!exercise) return;
+    const cards = [...exercise.querySelectorAll('.theory-interactive[data-interactive-key]')];
+    const passed = cards.filter(item => item.dataset.passed === 'true').length;
+    const status = exercise.querySelector('[data-step-exercise-status]');
+    if (status) status.textContent = `Выполнено шагов: ${passed} из ${cards.length}`;
+    exercise.dataset.completed = passed === cards.length ? 'true' : 'false';
+  };
+  const setCheckpointFeedback = (node, success, heading, message) => {
+    if (!node) return;
+    node.replaceChildren();
+    node.className = success
+      ? 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 text-emerald-950 text-xs sm:text-sm transition'
+      : 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 text-slate-800 text-xs sm:text-sm transition';
+    const row = document.createElement('div');
+    row.className = 'flex items-start gap-3';
+    const badge = document.createElement('span');
+    badge.className = success
+      ? 'w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm shrink-0'
+      : 'w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0';
+    badge.textContent = success ? '✓' : '💡';
+    const content = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = success
+      ? 'text-[11px] uppercase tracking-wider font-extrabold text-emerald-700 mb-0.5'
+      : 'text-[11px] uppercase tracking-wider font-extrabold text-amber-800 mb-0.5';
+    title.textContent = heading;
+    const body = document.createElement('div');
+    body.className = 'font-bold leading-relaxed text-slate-700';
+    showFeedback(body, message);
+    content.append(title, body);
+    row.append(badge, content);
+    node.append(row);
   };
   document.querySelectorAll('.theory-interactive').forEach(card => {
     const kind = card.dataset.interactiveType || card.className.match(/theory-interactive--([\w-]+)/)?.[1] || '';
@@ -935,7 +1137,7 @@
             if (data.correct) {
               option.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');
               if (result) {
-                result.textContent = `Верно. ${data.explanation || 'Результат сохранён.'}`;
+                showFeedback(result, `Верно. ${data.explanation || 'Результат сохранён.'}`);
                 result.className = 'mt-3 text-sm font-bold text-emerald-700';
               }
               card.dataset.passed = 'true';
@@ -946,7 +1148,9 @@
             } else {
               option.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-800');
               if (result) {
-                result.textContent = `Пока нет. ${data.explanation || 'Попробуйте ещё раз.'}`;
+                showFeedback(result, ['invalid_format', 'unsupported'].includes(data.status)
+                  ? data.message || 'Не удалось проверить эту запись.'
+                  : `Пока нет. ${data.hint || 'Попробуйте ещё раз.'}`);
                 result.className = 'mt-3 text-sm font-bold text-rose-700';
               }
               options.forEach(item => { item.disabled = false; });
@@ -976,6 +1180,13 @@
         return;
       }
       if (!event.target.closest('[data-action="interactive-submit"]')) return;
+      const submitButton = event.target.closest('[data-action="interactive-submit"]');
+      if (!submitButton || submitButton.disabled) return;
+      const originalButtonHtml = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.setAttribute('aria-busy', 'true');
+      submitButton.classList.add('is-loading');
+      submitButton.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin" aria-hidden="true"></i><span>Проверяем…</span>';
       let answer = '';
       if (kind === 'choice') answer = card.dataset.selected || '';
       else if (kind === 'multi' || kind === 'classify' || kind === 'hotspot') answer = [...card.querySelectorAll('[data-interactive-option].border-emerald-500')].map(x => x.dataset.interactiveOption).join('|');
@@ -996,6 +1207,7 @@
           answer = data.success ? (data.output || '').trim() : '';
         } catch (_) { answer = ''; }
       }
+      else if (kind === 'math') answer = card.querySelector('[data-interactive-math]')?.value || '';
       else answer = card.querySelector('[data-interactive-input]')?.value.trim() || '';
       const result = card.querySelector('[data-interactive-result]');
       if (result) {
@@ -1005,13 +1217,16 @@
       try {
         const data = await post({checkpoint_key:card.dataset.interactiveKey, answer});
         if (result) {
-          result.textContent = data.correct
+          showFeedback(result, data.correct
             ? `Верно. ${data.explanation || 'Результат сохранён.'}`
-            : `Пока не совпало. ${data.explanation || 'Попробуйте ещё раз.'}`;
+            : ['invalid_format', 'unsupported'].includes(data.status)
+              ? data.message || 'Не удалось проверить эту запись.'
+              : `Пока не совпало. ${data.hint || 'Попробуйте ещё раз.'}`);
           result.className = `mt-3 text-sm font-bold ${data.correct ? 'text-emerald-700' : 'text-rose-700'}`;
         }
         if (data.correct) {
           card.dataset.passed = 'true';
+          updateStepExercise(card);
           window.updateCheckpointSummary?.();
           if (typeof window.triggerAchievement === 'function') {
             window.triggerAchievement('theory_quiz_pass');
@@ -1022,6 +1237,11 @@
           result.textContent = error.message || 'Не удалось сохранить результат.';
           result.className = 'mt-3 text-sm font-bold text-rose-700';
         }
+      } finally {
+        submitButton.innerHTML = originalButtonHtml;
+        submitButton.disabled = false;
+        submitButton.setAttribute('aria-busy', 'false');
+        submitButton.classList.remove('is-loading');
       }
     });
     card.querySelector('[data-interactive-slider]')?.addEventListener('input', event => { const output = card.querySelector('[data-slider-output]'); if (output) output.value = event.target.value, output.textContent = event.target.value; });
@@ -1060,16 +1280,7 @@
           selected.classList.add('is-correct');
           const badge = selected.querySelector('.checkpoint-letter-badge');
           if (badge) badge.textContent = '✓';
-          result.className = 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 shadow-[0_3px_0_#A7F3D0] text-emerald-950 text-xs sm:text-sm transition';
-          result.innerHTML = `
-            <div class="flex items-start gap-3">
-              <span class="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">✓</span>
-              <div>
-                <div class="text-[11px] uppercase tracking-wider font-extrabold text-emerald-700 mb-0.5">Отлично! Проверка пройдена</div>
-                <div class="font-bold leading-relaxed">${data.explanation || 'Проверка засчитана.'}</div>
-              </div>
-            </div>
-          `;
+          setCheckpointFeedback(result, true, 'Отлично! Проверка пройдена', data.explanation || 'Проверка засчитана.');
           card.dataset.passed = 'true';
           window.updateCheckpointSummary?.();
           if (typeof window.triggerAchievement === 'function') {
@@ -1079,23 +1290,14 @@
           selected.classList.add('is-wrong');
           const badge = selected.querySelector('.checkpoint-letter-badge');
           if (badge) badge.textContent = '✕';
-          result.className = 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 shadow-[0_3px_0_#FDE68A] text-slate-800 text-xs sm:text-sm transition';
-          result.innerHTML = `
-            <div class="flex items-start gap-3">
-              <span class="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">💡</span>
-              <div>
-                <div class="text-[11px] uppercase tracking-wider font-extrabold text-amber-800 mb-0.5">Пока не совсем так · Подсказка</div>
-                <div class="font-bold leading-relaxed text-slate-700">${data.hint || 'Подумайте ещё раз и выберите другой вариант ответа.'}</div>
-              </div>
-            </div>
-          `;
+          setCheckpointFeedback(result, false, 'Пока не совсем так · Подсказка', data.hint || 'Подумайте ещё раз и выберите другой вариант ответа.');
           choices.forEach(choice => { choice.disabled = false; });
         }
       } catch (error) {
         selected.classList.remove('is-pending');
         selected.classList.add('is-wrong');
         result.className = 'mt-4 p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-900 text-xs sm:text-sm font-bold flex items-center gap-3 transition';
-        result.innerHTML = `<span>${error.message || 'Не удалось сохранить ответ. Попробуйте ещё раз.'}</span>`;
+        result.textContent = error.message || 'Не удалось сохранить ответ. Попробуйте ещё раз.';
         choices.forEach(choice => { choice.disabled = false; });
       }
     });
@@ -1294,6 +1496,18 @@
           const output = interactiveCard.querySelector('[data-slider-output]');
           if (slider) slider.value = answerVal;
           if (output) { output.value = answerVal; output.textContent = answerVal; }
+        } else if (kind === 'math') {
+          const input = interactiveCard.querySelector('[data-interactive-math]');
+          if (input && answerVal) {
+            const restoreMathValue = () => {
+              if (input.isConnected) {
+                input.value = answerVal;
+                input.setAttribute('value', answerVal);
+              }
+            };
+            if (window.customElements?.get('math-field')) restoreMathValue();
+            else window.customElements?.whenDefined('math-field').then(restoreMathValue);
+          }
         } else {
           // input, fill, formula, regex, binary, explain, etc.
           const input = interactiveCard.querySelector('[data-interactive-input]');
@@ -1314,6 +1528,7 @@
             result.textContent = 'Пока не совпало. Попробуйте ещё раз.';
           }
         }
+        updateStepExercise(interactiveCard);
       }
     });
   };

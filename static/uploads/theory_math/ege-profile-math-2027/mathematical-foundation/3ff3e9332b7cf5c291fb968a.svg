@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" viewBox="0 0 920 176">
+<ns0:rect width="920" height="176" rx="20" fill="#f8fafc" />
+<ns0:line x1="55" y1="82" x2="866" y2="82" stroke="#334155" stroke-width="3" stroke-linecap="round" />
+<ns0:path d="M866 82 L852 74 M866 82 L852 90" fill="none" stroke="#334155" stroke-width="3" stroke-linecap="round" />
+<ns0:g stroke="#64748b" stroke-width="2">
+<ns0:path d="M90 72V92 M180 72V92 M270 72V92 M360 72V92 M450 66V98 M540 72V92 M630 72V92 M720 72V92 M810 72V92" />
+</ns0:g>
+<ns0:g fill="#334155" font-family="Arial, sans-serif" font-size="21" text-anchor="middle">
+<ns0:text x="90" y="123">−4</ns0:text><ns0:text x="180" y="123">−3</ns0:text><ns0:text x="270" y="123">−2</ns0:text><ns0:text x="360" y="123">−1</ns0:text><ns0:text x="450" y="123">0</ns0:text><ns0:text x="540" y="123">1</ns0:text><ns0:text x="630" y="123">2</ns0:text><ns0:text x="720" y="123">3</ns0:text><ns0:text x="810" y="123">4</ns0:text>
+</ns0:g>
+<ns0:circle cx="450" cy="82" r="7" fill="#2563eb" /><ns0:text x="450" y="49" fill="#1d4ed8" font-family="Arial,sans-serif" text-anchor="middle" font-size="21">O</ns0:text>
+<ns0:text x="135" y="154" fill="#b45309" font-family="Arial,sans-serif" text-anchor="middle" font-size="15">Отрицательные</ns0:text><ns0:text x="732" y="154" fill="#047857" font-family="Arial,sans-serif" text-anchor="middle" font-size="15">Положительные</ns0:text>
+</ns0:svg>

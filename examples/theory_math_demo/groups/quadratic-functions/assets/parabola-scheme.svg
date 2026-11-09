@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" role="img" aria-labelledby="title desc">
+  <title id="title">Парабола и её ключевые элементы</title>
+  <desc id="desc">Схематичный график параболы с осью симметрии и вершиной.</desc>
+  <rect width="720" height="300" rx="20" fill="#f8fafc"/>
+  <path d="M90 245 C190 45 530 45 630 245" fill="none" stroke="#4f46e5" stroke-width="6" stroke-linecap="round"/>
+  <line x1="360" y1="35" x2="360" y2="265" stroke="#059669" stroke-width="3" stroke-dasharray="10 9"/>
+  <circle cx="360" cy="95" r="9" fill="#e11d48"/>
+  <line x1="90" y1="245" x2="630" y2="245" stroke="#64748b" stroke-width="2"/>
+  <text x="380" y="58" fill="#047857" font-size="20" font-family="sans-serif">ось симметрии</text>
+  <text x="380" y="90" fill="#be123c" font-size="20" font-family="sans-serif">вершина</text>
+</svg>

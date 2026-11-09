@@ -4,6 +4,12 @@
 
 {% block sandbox_content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/katex/katex.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/mathlive/mathlive-fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/mathlive/mathlive-static.css') }}">
+<script defer src="{{ url_for('static', filename='vendor/katex/katex.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='vendor/mathlive/mathlive.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/theory-math.js') }}"></script>
 <style>
   .admin-hub-tab-btn {
     transition: all 0.15s ease-in-out;
@@ -20,6 +26,24 @@
   .modal-backdrop {
     background: rgba(15, 23, 42, 0.55);
     backdrop-filter: blur(4px);
+  }
+  #btn-toggle-selected-course { min-height: 44px; }
+  #modal-student-theory-profile { z-index: 1000 !important; box-sizing: border-box; padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); overflow-y: auto; overscroll-behavior: contain; }
+  #modal-student-theory-profile:not(.hidden) { display: flex; }
+  #modal-student-theory-profile > .stp-modal-panel { box-sizing: border-box; width: min(100%, 56rem); min-height: 0; max-height: min(92vh, calc(100vh - 24px)); max-height: min(92dvh, calc(100dvh - 24px)); margin: auto; display: flex; flex-direction: column; overflow: hidden; }
+  #stp-courses-container { min-height: 0; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  #modal-student-theory-profile .stp-status-segmented { flex-wrap: wrap; }
+  #modal-student-theory-profile .stp-btn-status { min-height: 44px; white-space: normal; }
+  #modal-student-theory-profile .stp-btn-status:focus-visible { outline: 3px solid color-mix(in srgb, var(--bs-primary, #5b35f5) 38%, transparent); outline-offset: 2px; position: relative; z-index: 1; }
+  #modal-student-theory-profile .stp-btn-status:disabled { cursor: not-allowed; opacity: .52; box-shadow: none; }
+  @media (max-width: 640px) {
+    #modal-student-theory-profile > .stp-modal-panel { width: 100%; border-radius: 1.25rem; }
+    #modal-student-theory-profile .stp-modal-header { padding: .9rem; align-items: flex-start; }
+    #modal-student-theory-profile .stp-modal-header .stp-header-description { display: none; }
+    #stp-courses-container { padding: .75rem; }
+    #modal-student-theory-profile .stp-modal-footer { padding: .75rem; gap: .5rem; flex-wrap: nowrap; }
+    #modal-student-theory-profile .stp-modal-footer > div { min-width: 0; max-width: calc(100% - 92px); font-size: 10px; line-height: 1.3; }
+    #modal-student-theory-profile .stp-modal-footer > button { min-height: 44px; flex: 0 0 auto; }
   }
 </style>
 
@@ -121,6 +145,41 @@
           </button>
         </div>
       </div>
+
+      {% if selected_course %}
+      {% set published_course_count = blocks | selectattr('status', 'equalto', 'published') | list | length %}
+      {% set draft_course_count = blocks | selectattr('status', 'equalto', 'draft') | list | length %}
+      <section class="rounded-3xl border-2 {{ 'border-emerald-200 bg-emerald-50/60' if selected_course.is_active else 'border-amber-200 bg-amber-50/60' }} p-4 sm:p-5 shadow-[0_4px_0_rgba(148,163,184,0.18)]" aria-labelledby="selected-course-status-title">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black {{ 'border-emerald-200 bg-white text-emerald-700' if selected_course.is_active else 'border-amber-200 bg-white text-amber-800' }}">
+                <i class="ph-bold {{ 'ph-check-circle' if selected_course.is_active else 'ph-lock-key' }}"></i>
+                {{ 'Курс активен' if selected_course.is_active else 'Курс неактивен' }}
+              </span>
+              <span class="text-[11px] font-bold text-slate-500">{{ published_course_count }} опубликовано · {{ draft_course_count }} черновиков</span>
+            </div>
+            <h3 id="selected-course-status-title" class="text-sm sm:text-base font-black text-slate-900 truncate">{{ selected_course.title }}</h3>
+            <p class="mt-1 text-xs font-semibold text-slate-600">
+              {% if selected_course.is_active %}
+              Деактивация скроет курс у учеников; их назначения и прогресс сохранятся.
+              {% elif published_course_count %}
+              Активация покажет курс в каталоге учеников, но не назначит его автоматически.
+              {% else %}
+              Чтобы активировать курс, сначала опубликуйте хотя бы одну статью.
+              {% endif %}
+            </p>
+          </div>
+          <button type="button" id="btn-toggle-selected-course" data-course-id="{{ selected_course.id }}" data-is-active="{{ 'true' if selected_course.is_active else 'false' }}"
+                  aria-label="{{ 'Деактивировать' if selected_course.is_active else 'Активировать' }} курс {{ selected_course.title }}"
+                  {% if not selected_course.is_active and not published_course_count %}disabled aria-disabled="true"{% endif %}
+                  class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border-b-[3px] px-4 py-2.5 text-xs font-black shadow-xs transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {{ 'border-rose-800 bg-rose-600 text-white hover:bg-rose-500 focus-visible:outline-rose-600' if selected_course.is_active else 'border-indigo-800 bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:outline-indigo-600' }}">
+            <i class="ph-bold {{ 'ph-eye-slash' if selected_course.is_active else 'ph-lightning' }}" aria-hidden="true"></i>
+            <span>{{ 'Деактивировать курс' if selected_course.is_active else 'Активировать курс' }}</span>
+          </button>
+        </div>
+      </section>
+      {% endif %}
 
       <!-- Modules Grid for Selected Course -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -249,6 +308,10 @@
                   {% if b.description %}
                   <div class="text-[11px] text-slate-400 truncate max-w-md">{{ b.description }}</div>
                   {% endif %}
+                  <a href="{{ url_for('theory.theory_view_block', block_id=b.id, course_id=selected_course.id) }}" target="_blank" rel="noopener noreferrer" aria-label="Просмотреть материал: {{ b.title }}" title="Открыть материал в режиме просмотра" class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline no-underline">
+                    <i class="ph-bold ph-eye"></i>
+                    <span>Просмотреть материал</span>
+                  </a>
                 </td>
                 <td class="py-3 px-4 font-semibold text-slate-600">
                   {{ b.group_name or 'Без модуля' }}
@@ -275,9 +338,6 @@
                   <button type="button" class="btn-edit-article px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 font-bold text-slate-700 transition cursor-pointer" data-block-id="{{ b.id }}">
                     <i class="ph-bold ph-pencil-simple"></i> Редактор
                   </button>
-                  <a href="{{ url_for('theory.theory_view_block', block_id=b.id, course_id=selected_course.id) }}" target="_blank" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-600 transition no-underline inline-block">
-                    <i class="ph-bold ph-eye"></i>
-                  </a>
                   <button type="button" class="btn-delete-article px-2 py-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer" data-block-id="{{ b.id }}" data-title="{{ b.title }}">
                     <i class="ph-bold ph-trash"></i>
                   </button>
@@ -771,10 +831,10 @@
 <!-- ========================================================================================= -->
 <!-- MODAL: МИНИ-ПРОФИЛЬ ТЕОРИИ УЧЕНИКА (УПРАВЛЕНИЕ КУРСАМИ И ДОСТУПАМИ) -->
 <!-- ========================================================================================= -->
-<div id="modal-student-theory-profile" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden">
-  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+<div id="modal-student-theory-profile" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="stp-header-name" aria-describedby="stp-header-description" tabindex="-1">
+  <div class="stp-modal-panel bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
     <!-- Header -->
-    <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/80">
+    <div class="stp-modal-header p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/80">
       <div class="flex items-center gap-3.5 min-w-0">
         <div id="stp-header-avatar" class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white ring-2 ring-indigo-200 shadow-sm">
           ST
@@ -785,10 +845,10 @@
             <span id="stp-header-username" class="text-xs font-bold text-slate-400">@username</span>
             <span id="stp-header-id" class="px-2 py-0.5 rounded-lg bg-slate-200 text-slate-700 text-[10px] font-bold">ID: 0</span>
           </div>
-          <p class="text-xs text-slate-500 font-semibold mt-0.5">Мини-профиль теории: назначение курсов платформы и персональные доступы к темам</p>
+          <p id="stp-header-description" class="stp-header-description text-xs text-slate-500 font-semibold mt-0.5">Мини-профиль теории: назначение курсов платформы и персональные доступы к темам</p>
         </div>
       </div>
-      <button type="button" class="btn-close-modal p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0" title="Закрыть окно">
+      <button type="button" class="btn-close-modal p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0" title="Закрыть окно" aria-label="Закрыть окно">
         <i class="ph-bold ph-x text-lg"></i>
       </button>
     </div>
@@ -802,7 +862,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4 flex-wrap">
+    <div class="stp-modal-footer p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4 flex-wrap">
       <div class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
         <i class="ph-bold ph-check-circle text-emerald-500 text-sm"></i>
         <span>Настройки сохраняются автоматически в реальном времени</span>
@@ -863,14 +923,55 @@
     document.getElementById('modal-student-topics'),
     document.getElementById('modal-student-theory-profile')
   ];
-  const closeModal = (modal) => modal?.classList.add('hidden');
+  let modalFocusReturnTarget = null;
+  let previousBodyOverflow = '';
+  const closeModal = (modal) => {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    if (modal.id === 'modal-student-theory-profile') {
+      document.body.style.overflow = previousBodyOverflow;
+      const returnTarget = modalFocusReturnTarget;
+      modalFocusReturnTarget = null;
+      if (returnTarget?.isConnected) returnTarget.focus();
+    }
+  };
   document.querySelectorAll('.btn-close-modal').forEach(btn => {
-    btn.addEventListener('click', () => modals.forEach(closeModal));
+    btn.addEventListener('click', () => {
+      const containingModal = btn.closest('.modal-backdrop');
+      if (containingModal?.id === 'modal-student-theory-profile') closeModal(containingModal);
+      else modals.forEach(closeModal);
+    });
   });
   modals.forEach(m => {
     m?.addEventListener('click', (e) => {
       if (e.target === m) closeModal(m);
     });
+  });
+  document.addEventListener('keydown', (event) => {
+    const profileModal = document.getElementById('modal-student-theory-profile');
+    if (!profileModal || profileModal.classList.contains('hidden')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeModal(profileModal);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = [...profileModal.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => element.getClientRects().length > 0);
+    if (!focusable.length) {
+      event.preventDefault();
+      profileModal.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !profileModal.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !profileModal.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
   });
 
   // 4. Course Modal
@@ -905,6 +1006,36 @@
       setTimeout(() => location.reload(), 500);
     } catch (err) {
       window.BooNotify?.error(err.message || 'Не удалось сохранить курс');
+    }
+  });
+
+  document.getElementById('btn-toggle-selected-course')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const nextActive = button.dataset.isActive !== 'true';
+    const prompt = nextActive
+      ? 'Активировать курс? Он появится в каталоге учеников, но автоматически никому назначен не будет.'
+      : 'Деактивировать курс? Он станет недоступен ученикам, а назначения и прогресс сохранятся.';
+    if (!window.confirm(prompt)) return;
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin" aria-hidden="true"></i><span>Сохраняем…</span>';
+    try {
+      const response = await fetch('{{ url_for("theory.api_manage_course_activation") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({course_id: Number(button.dataset.courseId), is_active: nextActive})
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Не удалось изменить статус курса');
+      window.BooNotify?.success(result.message || (nextActive ? 'Курс активирован' : 'Курс деактивирован'));
+      location.reload();
+    } catch (error) {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.innerHTML = originalHtml;
+      window.BooNotify?.error(error.message || 'Не удалось изменить статус курса');
     }
   });
 
@@ -1070,6 +1201,9 @@
       });
       const res = await resp.json();
       previewContainer.innerHTML = res.html || '<p class="text-slate-400">Пустой конспект</p>';
+      previewContainer.dataset.theoryPreview = 'true';
+      window.BooTheoryMath?.render(previewContainer);
+      window.BooTheoryMath?.initializeMathFields(previewContainer);
       if (window.Prism) window.Prism.highlightAllUnder(previewContainer);
     } catch (e) {
       previewContainer.innerHTML = '<p class="text-rose-600">Ошибка формирования предпросмотра</p>';
@@ -1242,6 +1376,7 @@
     const isAssigned = c.status === 'assigned';
     const isActive = c.status === 'active';
     const isNone = c.status === 'none';
+    const canAssign = c.can_assign !== false;
 
     let cardBorder = 'border-slate-200 bg-white';
     if (isActive) cardBorder = 'border-emerald-200 bg-emerald-50/20';
@@ -1255,6 +1390,7 @@
     } else {
       statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200"><i class="ph-bold ph-minus-circle"></i> Не назначен</span>';
     }
+    const availabilityBadge = canAssign ? '' : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200"><i class="ph-bold ph-lock-key"></i> ${c.course_is_active ? 'Нет опубликованных статей' : 'Курс неактивен'} · черновики: ${c.draft_topics || 0}</span>`;
 
     const noneBtnClass = isNone ? 'bg-white text-slate-800 shadow-xs font-black' : 'text-slate-500 hover:text-slate-800';
     const assignedBtnClass = isAssigned ? 'bg-amber-500 text-white shadow-xs font-black' : 'text-slate-500 hover:text-slate-800';
@@ -1262,7 +1398,13 @@
 
     // Status description
     let explainerHTML = '';
-    if (isNone) {
+    if (!canAssign) {
+      explainerHTML = `
+        <div class="p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs font-bold text-amber-900 flex items-start gap-2">
+          <i class="ph-bold ph-lock-key text-amber-600 text-sm shrink-0 mt-0.5"></i>
+          <span>${c.availability_reason || 'Курс пока недоступен для назначения.'} Сейчас: ${c.published_topics || 0} опубликовано, ${c.draft_topics || 0} черновиков.</span>
+        </div>`;
+    } else if (isNone) {
       explainerHTML = `
         <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-500 flex items-center gap-2">
           <i class="ph-bold ph-info text-slate-400 text-sm"></i>
@@ -1453,6 +1595,7 @@
                 <h4 class="text-sm sm:text-base font-black text-slate-900 truncate">${c.title}</h4>
                 <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">${c.total_topics} тем</span>
                 <span class="stp-course-status-badge">${statusBadge}</span>
+                ${availabilityBadge}
               </div>
               <p class="text-[11px] font-semibold text-slate-400">Слаг курса: /${c.slug}</p>
             </div>
@@ -1467,11 +1610,11 @@
               Не назначен
             </button>
             <button type="button" class="stp-btn-status px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${assignedBtnClass}" 
-                    data-status="assigned" title="Ученик видит курс в каталоге со статусом «Не инициализирован», конспекты закрыты">
+                    data-status="assigned" ${canAssign ? '' : 'disabled aria-disabled="true"'} title="${canAssign ? 'Ученик видит курс в каталоге со статусом «Не инициализирован», конспекты закрыты' : (c.availability_reason || 'Курс пока недоступен для назначения')} ">
               <i class="ph-bold ph-lock-key text-xs"></i> Не инициализирован
             </button>
             <button type="button" class="stp-btn-status px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeBtnClass}" 
-                    data-status="active" title="Курс активирован и полностью открыт для прохождения">
+                    data-status="active" ${canAssign ? '' : 'disabled aria-disabled="true"'} title="${canAssign ? 'Курс активирован и полностью открыт для прохождения' : (c.availability_reason || 'Курс пока недоступен для назначения')} ">
               <i class="ph-bold ph-lightning text-xs"></i> Активен
             </button>
           </div>
@@ -1532,7 +1675,11 @@
         <p class="text-xs font-bold">Загрузка мини-профиля теории...</p>
       </div>
     `;
+    modalFocusReturnTarget = document.activeElement;
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     modalStudentProfile.classList.remove('hidden');
+    requestAnimationFrame(() => modalStudentProfile.querySelector('.stp-modal-header .btn-close-modal')?.focus());
 
     try {
       const resp = await fetch(`/theory/api/manage/student/${studentId}/theory-profile`);

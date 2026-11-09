@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370">
+<ns0:rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE" />
+<ns0:text x="32" y="40" fill="#243251" font-size="22" font-family="Arial, sans-serif">Как вложены числовые множества</ns0:text>
+<ns0:rect x="45" y="66" width="810" height="270" rx="18" fill="#FFFFFF" stroke="#587DF7" stroke-width="3" />
+<ns0:text x="70" y="102" font-size="21" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">R — действительные числа</ns0:text>
+<ns0:rect x="70" y="120" width="555" height="192" rx="16" fill="#EAF0FF" stroke="#587DF7" stroke-width="2" />
+<ns0:text x="95" y="152" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">Q — рациональные</ns0:text>
+<ns0:rect x="90" y="166" width="420" height="126" rx="14" fill="#DFF5F0" stroke="#17A398" stroke-width="2" />
+<ns0:text x="115" y="194" font-size="18" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">Z — целые</ns0:text>
+<ns0:rect x="110" y="208" width="230" height="65" rx="12" fill="#FFF0CF" stroke="#F2B94D" stroke-width="2" />
+<ns0:text x="225" y="248" font-size="17" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">N — натуральные</ns0:text>
+<ns0:text x="665" y="190" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="start">Иррациональные</ns0:text>
+<ns0:text x="680" y="232" font-size="22" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="start">√2, π, …</ns0:text>
+<ns0:text x="45" y="355" font-size="15" fill="#64748b" font-family="Arial, sans-serif" text-anchor="start">Примечание: 0 принадлежит Z и Q; включение 0 в N зависит от соглашения.</ns0:text>
+</ns0:svg>

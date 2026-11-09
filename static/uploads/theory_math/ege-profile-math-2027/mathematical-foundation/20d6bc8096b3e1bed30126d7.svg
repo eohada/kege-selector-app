@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370">
+<ns0:rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE" />
+<ns0:text x="32" y="40" fill="#243251" font-size="22" font-family="Arial, sans-serif">Распределительный закон как площадь</ns0:text>
+<ns0:rect x="150" y="106" width="620" height="170" rx="4" fill="#E9F0FE" stroke="#526789" stroke-width="2" />
+<ns0:rect x="150" y="106" width="380" height="170" rx="2" fill="#D6E5FF" stroke="#587DF7" stroke-width="2" />
+<ns0:rect x="530" y="106" width="240" height="170" rx="2" fill="#DAF3EC" stroke="#17A398" stroke-width="2" />
+<ns0:text x="340" y="202" font-size="32" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">ab</ns0:text>
+<ns0:text x="650" y="202" font-size="32" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">ac</ns0:text>
+<ns0:text x="140" y="202" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="end">a</ns0:text>
+<ns0:text x="340" y="298" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">b</ns0:text>
+<ns0:text x="650" y="298" font-size="19" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">c</ns0:text>
+<ns0:text x="450" y="346" font-size="23" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle">a(b + c) = ab + ac</ns0:text>
+</ns0:svg>
