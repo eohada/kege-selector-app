@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370" role="img" aria-label="Скобки меняют область действия степени">
+<rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE"/>
+<text x="32" y="40" fill="#243251" font-size="22" font-weight="700" font-family="Arial, sans-serif">Скобки меняют область действия степени</text>
+<rect x="75" y="95" width="345" height="176" rx="16" fill="#EAF0FF" stroke="#587DF7" stroke-width="2"/>
+<rect x="480" y="95" width="345" height="176" rx="16" fill="#FDEDED" stroke="#E47477" stroke-width="2"/>
+<text x="248" y="162" font-size="32" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">(−2)² = 4</text>
+<text x="652" y="162" font-size="32" fill="#E47477" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">−2² = −4</text>
+<text x="248" y="213" font-size="18" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">Квадрат всего числа</text>
+<text x="652" y="213" font-size="18" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">Минус вне квадрата</text>
+<text x="450" y="319" font-size="18" fill="#64748b" font-family="Arial, sans-serif" text-anchor="middle">Сначала степень; внешний минус применяется после неё.</text>
+</svg>

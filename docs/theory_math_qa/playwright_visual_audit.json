@@ -1,0 +1,187 @@
+{
+  "finalUrl": "http://127.0.0.1:5098/theory/topic/1?course_id=1",
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "document": {
+        "clientWidth": 1920,
+        "scrollWidth": 1920,
+        "scrollHeight": 10410,
+        "horizontalOverflow": false
+      },
+      "article": {
+        "clientWidth": 1328,
+        "scrollWidth": 1328,
+        "height": 9910
+      },
+      "shellOverflow": "clip",
+      "renderedMath": 120,
+      "invalidMath": 0,
+      "plots": 1,
+      "geometry": 1,
+      "validImages": 3,
+      "mathFields": 5,
+      "stepItems": 3,
+      "tableScroll": {
+        "clientWidth": 1254,
+        "scrollWidth": 1254,
+        "overflowX": "auto"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "document": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "scrollHeight": 10207,
+        "horizontalOverflow": false
+      },
+      "article": {
+        "clientWidth": 848,
+        "scrollWidth": 848,
+        "height": 9707
+      },
+      "shellOverflow": "clip",
+      "renderedMath": 120,
+      "invalidMath": 0,
+      "plots": 1,
+      "geometry": 1,
+      "validImages": 3,
+      "mathFields": 5,
+      "stepItems": 3,
+      "tableScroll": {
+        "clientWidth": 774,
+        "scrollWidth": 774,
+        "overflowX": "auto"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "document": {
+        "clientWidth": 1366,
+        "scrollWidth": 1366,
+        "scrollHeight": 10297,
+        "horizontalOverflow": false
+      },
+      "article": {
+        "clientWidth": 774,
+        "scrollWidth": 774,
+        "height": 9797
+      },
+      "shellOverflow": "clip",
+      "renderedMath": 120,
+      "invalidMath": 0,
+      "plots": 1,
+      "geometry": 1,
+      "validImages": 3,
+      "mathFields": 5,
+      "stepItems": 3,
+      "tableScroll": {
+        "clientWidth": 700,
+        "scrollWidth": 700,
+        "overflowX": "auto"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "document": {
+        "clientWidth": 1024,
+        "scrollWidth": 1024,
+        "scrollHeight": 12868,
+        "horizontalOverflow": false
+      },
+      "article": {
+        "clientWidth": 432,
+        "scrollWidth": 432,
+        "height": 12186
+      },
+      "shellOverflow": "clip",
+      "renderedMath": 120,
+      "invalidMath": 0,
+      "plots": 1,
+      "geometry": 1,
+      "validImages": 3,
+      "mathFields": 5,
+      "stepItems": 3,
+      "tableScroll": {
+        "clientWidth": 358,
+        "scrollWidth": 396,
+        "overflowX": "auto"
+      }
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "document": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "scrollHeight": 12348,
+        "horizontalOverflow": false
+      },
+      "article": {
+        "clientWidth": 652,
+        "scrollWidth": 652,
+        "height": 10319
+      },
+      "shellOverflow": "clip",
+      "renderedMath": 120,
+      "invalidMath": 0,
+      "plots": 1,
+      "geometry": 1,
+      "validImages": 3,
+      "mathFields": 5,
+      "stepItems": 3,
+      "tableScroll": {
+        "clientWidth": 578,
+        "scrollWidth": 578,
+        "overflowX": "auto"
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "document": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "scrollHeight": 15679,
+        "horizontalOverflow": false
+      },
+      "article": {
+        "clientWidth": 366,
+        "scrollWidth": 366,
+        "height": 13425
+      },
+      "shellOverflow": "clip",
+      "renderedMath": 120,
+      "invalidMath": 0,
+      "plots": 1,
+      "geometry": 1,
+      "validImages": 3,
+      "mathFields": 5,
+      "stepItems": 3,
+      "tableScroll": {
+        "clientWidth": 292,
+        "scrollWidth": 382,
+        "overflowX": "auto"
+      }
+    }
+  ],
+  "browserErrors": [],
+  "failedRequests": []
+}

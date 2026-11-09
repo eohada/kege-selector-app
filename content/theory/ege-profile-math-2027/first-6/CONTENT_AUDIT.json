@@ -1,0 +1,123 @@
+[
+  {
+    "key": "real-numbers",
+    "chars": 34449,
+    "bytes": 54583,
+    "words": 4096,
+    "sections": 14,
+    "examples": 12,
+    "solutions": 12,
+    "checkpoint": 8,
+    "interactive": 6,
+    "step_exercise": 1,
+    "steps": 3,
+    "proofs": 7,
+    "assets": [
+      "sqrt2-triangle",
+      "sets-inclusion",
+      "number-line",
+      "rational-density"
+    ],
+    "sha256": "caf72e101a5a5dde1346e557cfdb2d409ce5035a7811b1a77826b13a885ec0b3"
+  },
+  {
+    "key": "fractions",
+    "chars": 30183,
+    "bytes": 46291,
+    "words": 3383,
+    "sections": 14,
+    "examples": 20,
+    "solutions": 24,
+    "checkpoint": 7,
+    "interactive": 6,
+    "step_exercise": 2,
+    "steps": 5,
+    "proofs": 6,
+    "assets": [
+      "fraction-bars",
+      "fraction-division",
+      "fraction-decimal"
+    ],
+    "sha256": "505af3a6d1e1052a879cf67912dd15158ad590cc1485a1ee3013475643b342bf"
+  },
+  {
+    "key": "negative-numbers",
+    "chars": 28693,
+    "bytes": 45082,
+    "words": 3283,
+    "sections": 14,
+    "examples": 17,
+    "solutions": 34,
+    "checkpoint": 7,
+    "interactive": 5,
+    "step_exercise": 2,
+    "steps": 5,
+    "proofs": 4,
+    "assets": [
+      "signed-line",
+      "negative-square",
+      "sign-chart"
+    ],
+    "sha256": "f100c18cfce221ff2adff5ad0c4a201c33d3cf7d0f76687123a0f4c12074b69a"
+  },
+  {
+    "key": "order-and-transformations",
+    "chars": 27123,
+    "bytes": 42723,
+    "words": 3030,
+    "sections": 14,
+    "examples": 12,
+    "solutions": 30,
+    "checkpoint": 6,
+    "interactive": 4,
+    "step_exercise": 2,
+    "steps": 5,
+    "proofs": 3,
+    "assets": [
+      "operation-tree",
+      "fraction-scope",
+      "distributive-rect"
+    ],
+    "sha256": "6f03bc5ed5d36cc0b630b1da38ee6170b78c9b5bfdad26e86c20e5f70290a9da"
+  },
+  {
+    "key": "percent-ratio-proportion",
+    "chars": 29444,
+    "bytes": 46270,
+    "words": 3652,
+    "sections": 15,
+    "examples": 22,
+    "solutions": 31,
+    "checkpoint": 6,
+    "interactive": 5,
+    "step_exercise": 2,
+    "steps": 6,
+    "proofs": 3,
+    "assets": [
+      "percent-grid",
+      "ratio-blocks",
+      "percent-changes"
+    ],
+    "sha256": "16b132c49c26a44ccb12c374d6f7b0b6b36210c268a62e0a127236ae96bea009"
+  },
+  {
+    "key": "absolute-value",
+    "chars": 27885,
+    "bytes": 43012,
+    "words": 3422,
+    "sections": 14,
+    "examples": 19,
+    "solutions": 35,
+    "checkpoint": 6,
+    "interactive": 5,
+    "step_exercise": 1,
+    "steps": 3,
+    "proofs": 8,
+    "assets": [
+      "modulus-distance",
+      "modulus-intervals",
+      "absolute-v-graph"
+    ],
+    "sha256": "48642dcbfdf5b07c3a75ad1c5177aecbbdcdaf8eabf7f3a95194ad468df90521"
+  }
+]

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370" role="img" aria-label="Деление дробей: сколько восьмых в трёх четвертях?">
+<rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE"/>
+<text x="32" y="40" fill="#243251" font-size="22" font-weight="700" font-family="Arial, sans-serif">Деление дробей: сколько восьмых в трёх четвертях?</text>
+<rect x="95" y="126" width="83" height="85" rx="5" fill="#17A398" stroke="#526789" stroke-width="2"/>
+<rect x="182" y="126" width="83" height="85" rx="5" fill="#17A398" stroke="#526789" stroke-width="2"/>
+<rect x="269" y="126" width="83" height="85" rx="5" fill="#17A398" stroke="#526789" stroke-width="2"/>
+<rect x="356" y="126" width="83" height="85" rx="5" fill="#17A398" stroke="#526789" stroke-width="2"/>
+<rect x="443" y="126" width="83" height="85" rx="5" fill="#17A398" stroke="#526789" stroke-width="2"/>
+<rect x="530" y="126" width="83" height="85" rx="5" fill="#17A398" stroke="#526789" stroke-width="2"/>
+<rect x="617" y="126" width="83" height="85" rx="5" fill="#FFFFFF" stroke="#526789" stroke-width="2"/>
+<rect x="704" y="126" width="83" height="85" rx="5" fill="#FFFFFF" stroke="#526789" stroke-width="2"/>
+<text x="450" y="109" font-size="24" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">3/4 = 6/8</text>
+<text x="450" y="262" font-size="29" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">(3/4) : (1/8) = 6</text>
+<text x="450" y="318" font-size="16" fill="#64748b" font-family="Arial, sans-serif" text-anchor="middle">В шести закрашенных восьмых помещается шесть частей по 1/8.</text>
+</svg>

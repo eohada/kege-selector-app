@@ -11,15 +11,16 @@ import mimetypes
 import hashlib
 import random
 from collections import defaultdict
+from types import SimpleNamespace
 from flask import make_response, render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file, session
 from markupsafe import Markup
 from flask_login import login_required, current_user
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
+from werkzeug.datastructures import FileStorage
 from bs4 import BeautifulSoup
-from bs4.element import Tag
+from bs4.element import NavigableString, Tag
 
 from app.theory import theory_bp
-from app import csrf
 from app.models import (
     db,
     TheoryBlock,
@@ -40,6 +41,9 @@ from app.models import (
     moscow_now,
 )
 from app.auth.rbac_utils import has_permission
+from app.theory.math_rendering import prepare_theory_source, restore_theory_math
+from app.theory.math_validation import UnsupportedMathAnswer, validate_math_answer
+from app.theory.visualizations import render_function_plot, render_geometry
 
 try:
     import pygments
@@ -73,7 +77,10 @@ logger = logging.getLogger(__name__)
 _CHECKPOINT_RE = re.compile(r'\[CHECKPOINT\s+((?:[^"\]]|"(?:[^"\\]|\\.)*")+)\s*\]', re.IGNORECASE | re.DOTALL)
 _CHECKPOINT_ATTR_RE = re.compile(r'(key|question|options|answer|explanation|hint)="((?:[^"\\]|\\.)*)"', re.IGNORECASE | re.DOTALL)
 _INTERACTIVE_RE = re.compile(r'\[INTERACTIVE\s+((?:[^"\]]|"(?:[^"\\]|\\.)*")+)\s*\]', re.IGNORECASE | re.DOTALL)
-_INTERACTIVE_ATTR_RE = re.compile(r'(type|key|prompt|answer|options|code|expected|placeholder|rows|hint)="((?:[^"\\]|\\.)*)"', re.IGNORECASE | re.DOTALL)
+_INTERACTIVE_ATTR_RE = re.compile(r'(type|key|prompt|answer|options|code|expected|placeholder|rows|hint|explanation|validator|absolute_tolerance|relative_tolerance|valid_answers|domain|title)="((?:[^"\\]|\\.)*)"', re.IGNORECASE | re.DOTALL)
+_STEP_EXERCISE_RE = re.compile(r'\[STEP_EXERCISE\s+((?:[^"\]]|"(?:[^"\\]|\\.)*")+?)\](.*?)\[/STEP_EXERCISE\]', re.IGNORECASE | re.DOTALL)
+_STEP_MARKER_RE = re.compile(r'\[STEP\s+((?:[^"\]]|"(?:[^"\\]|\\.)*")+?)\]', re.IGNORECASE | re.DOTALL)
+_STEP_ATTR_RE = re.compile(r'(key|prompt|answer|hint|explanation|validator|absolute_tolerance|relative_tolerance|valid_answers|domain|type)="((?:[^"\\]|\\.)*)"', re.IGNORECASE | re.DOTALL)
 
 
 def _parse_theory_checkpoints(content_value):
@@ -110,7 +117,8 @@ def _parse_theory_checkpoints(content_value):
             'question': item['prompt'],
             'options': allowed,
             'answer': item['answer'],
-            'explanation': 'Результат лаборатории сохранён. При ошибке повторите действие и сравните его с разбором темы.',
+            'explanation': item.get('explanation') or 'Результат лаборатории сохранён. При ошибке повторите действие и сравните его с разбором темы.',
+            'hint': item.get('hint', ''),
         })
     return checkpoints
 
@@ -128,7 +136,7 @@ def _parse_theory_interactives(content_value):
         if kind not in {
             'input', 'choice', 'order', 'table', 'code', 'boolean', 'multi', 'match',
             'classify', 'fill', 'slider', 'hotspot', 'sequence', 'trace', 'regex',
-            'binary', 'formula', 'predict', 'debug', 'explain',
+            'binary', 'formula', 'predict', 'debug', 'explain', 'math',
         }:
             continue
         key = attrs.get('key') or f'interactive-{index + 1}'
@@ -136,6 +144,22 @@ def _parse_theory_interactives(content_value):
         if not attrs.get('prompt') or not answer:
             continue
         items.append({**attrs, 'type': kind, 'key': key, 'answer': answer})
+    for exercise_index, exercise_match in enumerate(_STEP_EXERCISE_RE.finditer(_strip_status_marker(content_value or ''))):
+        exercise_attrs = {name.lower(): value.strip() for name, value in _INTERACTIVE_ATTR_RE.findall(exercise_match.group(1))}
+        exercise_key = exercise_attrs.get('key') or f'step-exercise-{exercise_index + 1}'
+        for step_index, step_match in enumerate(_STEP_MARKER_RE.finditer(exercise_match.group(2))):
+            attrs = {name.lower(): value.strip() for name, value in _STEP_ATTR_RE.findall(step_match.group(1))}
+            if not attrs.get('prompt') or not attrs.get('answer'):
+                continue
+            step_key = attrs.get('key') or f'step-{step_index + 1}'
+            items.append({
+                **attrs,
+                'type': attrs.get('type', 'math').lower(),
+                'key': f'{exercise_key}.{step_key}',
+                'prompt': attrs['prompt'],
+                'answer': attrs['answer'],
+                'title': exercise_attrs.get('title', 'Пошаговое упражнение'),
+            })
     return items
 
 
@@ -192,9 +216,46 @@ def _resolve_student_block_from_payload(payload):
     student = Student.query.filter_by(user_id=current_user.id).first()
     if not student:
         return None, 'Ученик не найден.'
-    if not _student_can_view_task_number(student.student_id, block.task_number, block.course_id):
-        return None, 'Доступ к материалу закрыт.'
+    access_error = _student_block_access_error(student, block)
+    if access_error:
+        return None, access_error
     return (student, block), None
+
+
+def _student_block_access_error(student, block):
+    """Keep direct article URLs and student APIs under the same access policy."""
+    if not block.course or not block.course.is_active or _extract_status(block.content) != 'published':
+        return 'Материал недоступен.'
+    enrollment = StudentCourseEnrollment.query.filter_by(
+        student_id=student.student_id, course_id=block.course_id,
+    ).first()
+    if enrollment and not enrollment.is_active:
+        return 'Курс ожидает активации преподавателем.'
+    if not _student_can_view_task_number(student.student_id, block.task_number, block.course_id):
+        return 'Доступ к материалу закрыт.'
+
+    # Match the catalogue's sequential lock using metadata only; article bodies
+    # are not loaded to decide whether a prior topic was completed.
+    from app.theory.experience import published_expression
+    ordered = db.session.query(
+        TheoryBlock.id, TheoryBlock.task_number,
+    ).outerjoin(TheoryGroup, TheoryGroup.id == TheoryBlock.group_id).filter(
+        TheoryBlock.course_id == block.course_id,
+        published_expression(),
+    ).order_by(
+        TheoryGroup.position.asc().nullslast(), TheoryGroup.id.asc().nullslast(),
+        TheoryBlock.position.asc(), TheoryBlock.task_number.asc(), TheoryBlock.id.asc(),
+    ).all()
+    position = next((index for index, item in enumerate(ordered) if item.id == block.id), None)
+    if position is not None and position > 0:
+        previous_task = ordered[position - 1].task_number
+        previous_state = StudentTheoryState.query.filter_by(
+            student_id=student.student_id, course_id=block.course_id,
+            task_number=previous_task,
+        ).first()
+        if not previous_state or not previous_state.is_read:
+            return 'Сначала завершите предыдущую тему.'
+    return None
 
 
 def _get_scoped_students_for_theory_manager():
@@ -229,7 +290,14 @@ def _strip_status_marker(content_value):
 
 
 def _render_theory_content_html(content_value):
-    """Render block-based theory markers to safe-ish HTML fragments."""
+    """Render sanitized theory content and preserve math through Markdown passes."""
+    prepared_source, math_tokens = prepare_theory_source(content_value or '')
+    rendered = _render_theory_content_html_core(prepared_source)
+    return Markup(restore_theory_math(rendered, math_tokens))
+
+
+def _render_theory_content_html_core(content_value):
+    """Render block-based theory markers to application-owned HTML fragments."""
     text = _strip_status_marker(content_value or '').replace('\r\n', '\n')
 
     # Support multiple learning levels (e.g. beginner / advanced)
@@ -241,7 +309,7 @@ def _render_theory_content_html(content_value):
             raw_label = (lm.group(2) or ('С нуля' if lvl_name == 'beginner' else 'С опытом')).strip()
             lvl_label = re.sub(r'^[^\w\s]+', '', raw_label).strip() or raw_label
             lvl_body = lm.group(3) or ''
-            lvl_html = _render_theory_content_html(lvl_body)
+            lvl_html = _render_theory_content_html_core(lvl_body)
             is_active = (idx == 0)
             rendered_levels.append(
                 f'<div class="theory-level-pane {"is-active" if is_active else "hidden"}" '
@@ -354,16 +422,28 @@ def _render_theory_content_html(content_value):
             )
             return chunk
 
-        # Never render math inside inline code `...`.
-        parts = re.split(r'(`[^`]*`)', fragment)
+        # Code is literal content. Keep math markers inside Markdown fences,
+        # [CODE] blocks and already generated <pre>/<code> nodes untouched.
+        code_region_re = re.compile(
+            r'(?ms)(^ {0,3}(?:`{3,}|~{3,})[^\n]*\n.*?^ {0,3}(?:`{3,}|~{3,})[ \t]*$|'
+            r'\[CODE\s+lang="[^"]+"\].*?\[/CODE\]|'
+            r'<pre\b[^>]*>.*?</pre\s*>|<code\b[^>]*>.*?</code\s*>)',
+            re.IGNORECASE,
+        )
+        parts = code_region_re.split(fragment)
         rendered = []
         for part in parts:
             if not part:
                 continue
-            if len(part) >= 2 and part.startswith('`') and part.endswith('`'):
+            if code_region_re.fullmatch(part):
                 rendered.append(part)
             else:
-                rendered.append(_render_math_in_plain_text(part))
+                inline_parts = re.split(r'(`[^`]*`)', part)
+                for inline_part in inline_parts:
+                    if len(inline_part) >= 2 and inline_part.startswith('`') and inline_part.endswith('`'):
+                        rendered.append(inline_part)
+                    else:
+                        rendered.append(_render_math_in_plain_text(inline_part))
         return ''.join(rendered)
 
     def _render_ascii_tables_to_html(src):
@@ -1008,6 +1088,83 @@ def _render_theory_content_html(content_value):
             '</div>'
         )
 
+    def _semantic_block(kind, match):
+        title = (match.group(1) or '').strip()
+        body = (match.group(2) or '').strip()
+        safe_body = _format_callout_body(body)
+        definitions = {
+            'DEFINITION': ('Определение', 'theory-concept theory-definition', '#eef2ff', '#4f46e5'),
+            'THEOREM': ('Теорема', 'theory-concept theory-theorem', '#ecfdf5', '#059669'),
+            'PROOF': ('Доказательство', 'theory-concept theory-proof', '#f8fafc', '#475569'),
+            'EXAMPLE': ('Пример', 'theory-concept theory-example', '#eff6ff', '#2563eb'),
+            'FORMULA': ('Формула', 'theory-concept theory-formula', '#f5f3ff', '#7c3aed'),
+            'COMMON_MISTAKE': ('Типичная ошибка', 'theory-concept theory-common-mistake', '#fff1f2', '#e11d48'),
+            'SUMMARY': ('Итог темы', 'theory-concept theory-summary', '#f0fdf4', '#15803d'),
+        }
+        label, css_class, background, accent = definitions[kind]
+        heading = html.escape(title or label, quote=False)
+        block = (
+            f'<section class="{css_class}" style="--theory-concept-bg:{background};--theory-concept-accent:{accent}">'
+            f'<h3>{heading}</h3><div class="theory-concept-body">{safe_body}</div></section>'
+        )
+        return _stash_custom_block(block)
+
+    def _solution_repl(match):
+        title = html.escape((match.group(1) or 'Показать решение').strip(), quote=False)
+        safe_body = _format_callout_body((match.group(2) or '').strip())
+        return _stash_custom_block(
+            '<details class="theory-solution"><summary>' + title +
+            '</summary><div class="theory-solution-body">' + safe_body + '</div></details>'
+        )
+
+    def _step_exercise_repl(match):
+        attrs = {name.lower(): value.strip() for name, value in _INTERACTIVE_ATTR_RE.findall(match.group(1))}
+        exercise_key = attrs.get('key', f'step-exercise-{len(custom_blocks) + 1}')
+        title = html.escape(attrs.get('title', 'Пошаговое упражнение'), quote=False)
+        step_matches = list(_STEP_MARKER_RE.finditer(match.group(2)))
+        cards = []
+        usable_steps = 0
+        for step_index, step_match in enumerate(step_matches):
+            step = {name.lower(): value.strip() for name, value in _STEP_ATTR_RE.findall(step_match.group(1))}
+            if not step.get('prompt') or not step.get('answer'):
+                continue
+            usable_steps += 1
+            kind = (step.get('type') or 'math').lower()
+            if kind not in {'math', 'input'}:
+                kind = 'input'
+            key = html.escape(f'{exercise_key}.{step.get("key", f"step-{step_index + 1}")}', quote=True)
+            prompt = _format_inline_code_markup(step['prompt'])
+            input_html = (
+                '<math-field data-interactive-math virtual-keyboard-mode="onfocus" smart-fence aria-label="Ответ шага"></math-field>'
+                if kind == 'math' else
+                '<input data-interactive-input type="text" class="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500" aria-label="Ответ шага">'
+            )
+            cards.append(
+                f'<div class="theory-step-item" data-exercise-step="{usable_steps}">'
+                f'<div class="theory-step-number">{usable_steps}</div>'
+                f'<div class="theory-interactive theory-interactive-card flex-1" data-interactive-key="{key}" data-interactive-type="{kind}">'
+                f'<h4>{prompt}</h4><div class="theory-step-answer">{input_html}</div>'
+                f'<button type="button" data-action="interactive-submit" class="theory-step-submit">Проверить шаг</button>'
+                f'<div data-interactive-result class="mt-3 hidden rounded-xl p-3.5 text-xs sm:text-sm font-bold"></div>'
+                '</div></div>'
+            )
+        if not cards:
+            return _stash_custom_block('<div class="theory-authoring-error">Пошаговое упражнение не содержит корректных шагов.</div>')
+        content = (
+            '<section class="theory-step-exercise" data-step-exercise>'
+            f'<header><span>Пошаговая задача</span><h3>{title}</h3><p>Проверяйте каждый шаг отдельно: его ответ и результат сохраняются независимо.</p></header>'
+            + ''.join(cards) +
+            f'<footer data-step-exercise-status>Выполнено шагов: 0 из {usable_steps}</footer></section>'
+        )
+        return _stash_custom_block(content)
+
+    def _visualization_repl(kind, match):
+        try:
+            html_content = render_function_plot(match.group(1)) if kind == 'FUNCTION_PLOT' else render_geometry(match.group(1))
+        except (ValueError, ArithmeticError, UnsupportedMathAnswer) as exc:
+            html_content = f'<div class="theory-authoring-error" role="note">Визуализация не отображена: {html.escape(str(exc), quote=False)}</div>'
+        return _stash_custom_block(html_content)
+
     def _format_inline_code_markup(raw_str):
         if not raw_str:
             return ''
@@ -1082,6 +1239,7 @@ def _render_theory_content_html(content_value):
             'order': ('ph-bold ph-sort-ascending', 'Практика · Упорядочивание'),
             'sequence': ('ph-bold ph-sort-ascending', 'Практика · Упорядочивание'),
             'code': ('ph-bold ph-code', 'Практика · Код'),
+            'math': ('ph-bold ph-function', 'Практика · Математический ответ'),
         }
         icon, label = type_labels.get(kind, ('ph-bold ph-lightning', 'Практическое задание'))
 
@@ -1169,6 +1327,14 @@ def _render_theory_content_html(content_value):
             controls = '<div class="mt-4 max-w-md"><input type="range" min="0" max="100" value="0" data-interactive-slider class="w-full accent-indigo-600"><output data-slider-output class="mt-2 block text-sm font-black text-indigo-700">0</output></div>'
         elif kind == 'match':
             controls = '<div class="mt-4 grid max-w-lg gap-2.5 sm:grid-cols-2"><input data-match-left class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Термин / объект"><input data-match-right class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Соответствие / значение"></div>'
+        elif kind == 'math':
+            controls = (
+                f'<div class="mt-4 max-w-xl">'
+                f'<math-field data-interactive-math virtual-keyboard-mode="onfocus" smart-fence '
+                f'aria-label="{html.escape(prompt_raw, quote=True)}"></math-field>'
+                f'<p class="mt-2 text-xs font-semibold text-slate-500">Введите ответ с помощью клавиатуры или математической панели.</p>'
+                f'</div>'
+            )
         elif kind in {'multi', 'classify'}:
             options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
             controls = '<div class="mt-4 grid gap-2.5 sm:grid-cols-2">' + ''.join(
@@ -1184,7 +1350,7 @@ def _render_theory_content_html(content_value):
         submit_class = 'hidden' if kind in {'choice', 'boolean'} else 'flex'
         submit = (
             f'<div class="mt-4 {submit_class} items-center gap-3">'
-            f'<button type="button" data-action="interactive-submit" class="px-5 py-2.5 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 hover:bg-indigo-700 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 flex items-center gap-1.5"><i class="ph-bold ph-check"></i>Проверить</button>'
+            f'<button type="button" data-action="interactive-submit" aria-busy="false" class="theory-action-button inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition"><i class="ph-bold ph-check" aria-hidden="true"></i><span>Проверить</span></button>'
             f'</div>'
         )
         return _stash_custom_block(base + controls + submit + '<div data-interactive-result class="mt-3 hidden rounded-xl p-3.5 text-xs sm:text-sm font-bold"></div></div>')
@@ -1351,6 +1517,13 @@ def _render_theory_content_html(content_value):
     text = _escape_numeric_multiplication_stars(text)
     text = _escape_literal_asterisks_in_quotes(text)
     text = _render_math_in_html_fragment(text)
+    text = _STEP_EXERCISE_RE.sub(_step_exercise_repl, text)
+    for marker in ('DEFINITION', 'THEOREM', 'PROOF', 'EXAMPLE', 'FORMULA', 'COMMON_MISTAKE', 'SUMMARY'):
+        block_re = re.compile(rf'\[{marker}(?:\s+title="([^"]*)")?\](.*?)\[/{marker}\]', re.DOTALL | re.IGNORECASE)
+        text = block_re.sub(lambda match, kind=marker: _semantic_block(kind, match), text)
+    text = re.sub(r'\[SOLUTION(?:\s+title="([^"]*)")?\](.*?)\[/SOLUTION\]', _solution_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'\[FUNCTION_PLOT\s*\](.*?)\[/FUNCTION_PLOT\]', lambda match: _visualization_repl('FUNCTION_PLOT', match), text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'\[GEOMETRY\s*\](.*?)\[/GEOMETRY\]', lambda match: _visualization_repl('GEOMETRY', match), text, flags=re.DOTALL | re.IGNORECASE)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
     text = re.sub(r'(?m)^\s*\*\s+', '- ', text)
@@ -1384,6 +1557,22 @@ def _render_theory_content_html(content_value):
         pass
     try:
         soup = BeautifulSoup(text, 'html.parser')
+        # Tables generated from standard Markdown need a local scroll region.
+        # Long inline formulas otherwise enlarge the document on narrow screens.
+        for table in list(soup.find_all('table')):
+            if not isinstance(table, Tag):
+                continue
+            has_scroll_parent = table.find_parent(
+                'div',
+                class_=lambda classes: bool(classes) and any(
+                    token in classes for token in ('overflow-x-auto', 'theory-table-scroll', 'theory-table-wrap')
+                ),
+            )
+            if has_scroll_parent:
+                continue
+            wrapper = soup.new_tag('div')
+            wrapper['class'] = ['theory-table-scroll']
+            table.wrap(wrapper)
         # Imported legacy notes sometimes arrive as one paragraph with
         # newline-separated section labels. Split those labels after the
         # markdown pass as well, otherwise the browser shows them as plain
@@ -1603,6 +1792,124 @@ def _render_theory_content_html(content_value):
             if not img.get('style'):
                 img['style'] = 'max-width: min(100%, 920px); height: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,.35); display:block; margin: .35rem 0;'
 
+        # The legacy spacer normalizer can leave several Markdown paragraphs
+        # inside one <p> when an image is followed by a caption. Re-split only
+        # image-containing paragraphs on explicit blank-line boundaries.
+        for paragraph in list(soup.find_all('p')):
+            if not paragraph.find('img'):
+                continue
+            segments = [[]]
+            for child in list(paragraph.contents):
+                if isinstance(child, NavigableString):
+                    pieces = re.split(r'(\n[ \t]*\n+)', str(child))
+                    for piece in pieces:
+                        if re.fullmatch(r'\n[ \t]*\n+', piece):
+                            if segments[-1]:
+                                segments.append([])
+                        elif piece:
+                            segments[-1].append(NavigableString(piece))
+                elif isinstance(child, Tag) and child.name in {'strong', 'b'} and child.get_text(' ', strip=True) == 'THEORY_SPACER':
+                    if segments[-1]:
+                        segments.append([])
+                    child.decompose()
+                else:
+                    segments[-1].append(child.extract())
+            segments = [segment for segment in segments if any(
+                not (isinstance(node, NavigableString) and not str(node).strip()) for node in segment
+            )]
+            if len(segments) < 2:
+                for node in segments[0] if segments else []:
+                    paragraph.append(node)
+                continue
+            replacement = []
+            for segment in segments:
+                part = soup.new_tag('p')
+                for node in segment:
+                    part.append(node)
+                replacement.append(part)
+            paragraph.replace_with(*replacement)
+
+        # Treat an image paragraph and its immediately following caption as a
+        # semantic figure. Legacy articles use "Подпись: …"; newer Markdown
+        # packages use a standalone italic paragraph. Move existing nodes so
+        # inline math, links, emphasis and explanatory text remain intact.
+        for image_paragraph in list(soup.find_all('p')):
+            images = image_paragraph.find_all('img')
+            if len(images) != 1:
+                continue
+            meaningful = [
+                child for child in image_paragraph.contents
+                if not (isinstance(child, NavigableString) and not str(child).strip())
+            ]
+            image_container = next((
+                child for child in meaningful
+                if child is images[0] or isinstance(child, Tag) and child.find('img') is images[0]
+            ), None)
+            if image_container is None or meaningful[0] is not image_container:
+                continue
+
+            inline_caption_nodes = meaningful[1:]
+            inline_caption_text = ''.join(str(node) for node in inline_caption_nodes)
+            inline_caption_plain = BeautifulSoup(inline_caption_text, 'html.parser').get_text(' ', strip=True)
+            inline_has_legacy_prefix = bool(re.match(r'^Подпись\s*:', inline_caption_plain, flags=re.IGNORECASE))
+            inline_is_standalone_emphasis = bool(inline_caption_nodes) and all(
+                isinstance(child, Tag) and child.name in {'em', 'i'}
+                for child in inline_caption_nodes
+            )
+            has_inline_caption = bool(inline_caption_nodes) and (
+                inline_has_legacy_prefix or inline_is_standalone_emphasis
+            )
+            if inline_caption_nodes and not has_inline_caption:
+                continue
+
+            caption_paragraph = None
+            has_legacy_prefix = inline_has_legacy_prefix
+            has_caption = has_inline_caption
+            if not has_inline_caption:
+                caption_paragraph = image_paragraph.find_next_sibling()
+                while isinstance(caption_paragraph, NavigableString) and not str(caption_paragraph).strip():
+                    caption_paragraph = caption_paragraph.find_next_sibling()
+                caption_text = caption_paragraph.get_text(' ', strip=True) if isinstance(caption_paragraph, Tag) and caption_paragraph.name == 'p' else ''
+                has_legacy_prefix = bool(re.match(r'^Подпись\s*:', caption_text, flags=re.IGNORECASE))
+                meaningful_caption_children = []
+                if isinstance(caption_paragraph, Tag) and caption_paragraph.name == 'p':
+                    meaningful_caption_children = [
+                        child for child in caption_paragraph.contents
+                        if not (isinstance(child, NavigableString) and not str(child).strip())
+                    ]
+                is_standalone_emphasis = bool(meaningful_caption_children) and all(
+                    isinstance(child, Tag) and child.name in {'em', 'i'}
+                    for child in meaningful_caption_children
+                )
+                has_caption = bool(has_legacy_prefix or is_standalone_emphasis)
+
+            figure = soup.new_tag('figure')
+            figure['class'] = ['theory-figure']
+            figure.append(image_container.extract())
+            image_paragraph.replace_with(figure)
+            images[0]['class'] = list(images[0].get('class', [])) + ['theory-figure-image']
+
+            if not has_caption:
+                continue
+            caption = soup.new_tag('figcaption')
+            caption['class'] = ['theory-figure-caption']
+            if has_inline_caption:
+                for child in inline_caption_nodes:
+                    caption.append(child.extract())
+            else:
+                for child in list(caption_paragraph.contents):
+                    caption.append(child.extract())
+            if has_legacy_prefix:
+                for text_node in caption.find_all(string=True):
+                    replacement = re.sub(r'^\s*Подпись\s*:\s*', '', str(text_node), count=1, flags=re.IGNORECASE)
+                    if replacement != str(text_node):
+                        text_node.replace_with(replacement)
+                        break
+            if caption.get_text(' ', strip=True) or caption.find(class_='theory-math-source'):
+                figure.append(caption)
+            if caption_paragraph is not None:
+                caption_paragraph.decompose()
+
         for block in soup.find_all(['p', 'div']):
             if not isinstance(block, Tag):
                 continue
@@ -1818,6 +2125,34 @@ def _get_course_groups_with_blocks(course_id):
             block.group_id = groups[0].id
         if block.group_id:
             blocks_by_group[block.group_id].append(block)
+    return groups, blocks_by_group
+
+
+def _get_course_groups_with_metadata(course_id):
+    """Load the theory manager catalogue without fetching large article bodies."""
+    groups = TheoryGroup.query.filter_by(course_id=course_id).order_by(TheoryGroup.position, TheoryGroup.id).all()
+    content = func.coalesce(TheoryBlock.content, '')
+    status = case(
+        (content.startswith('<!--status:draft-->'), 'draft'),
+        (func.trim(content) != '', 'published'),
+        else_='draft',
+    ).label('status')
+    rows = db.session.query(
+        TheoryBlock.id, TheoryBlock.course_id, TheoryBlock.group_id,
+        TheoryBlock.task_number, TheoryBlock.title, TheoryBlock.description,
+        TheoryBlock.read_minutes, TheoryBlock.position, TheoryBlock.pdf_path,
+        status,
+    ).filter(TheoryBlock.course_id == course_id).order_by(
+        TheoryBlock.position, TheoryBlock.id,
+    ).all()
+    blocks_by_group = defaultdict(list)
+    for row in rows:
+        blocks_by_group[row.group_id].append(SimpleNamespace(
+            id=row.id, course_id=row.course_id, group_id=row.group_id,
+            task_number=row.task_number, title=row.title,
+            description=row.description, read_minutes=row.read_minutes,
+            position=row.position, pdf_path=row.pdf_path, status=row.status,
+        ))
     return groups, blocks_by_group
 
 
@@ -2189,24 +2524,9 @@ def theory_view_block(block_id):
             db.session.add(student)
             db.session.commit()
         if student and current_user.is_student():
-            # 0. Check uninitialized course
-            if course_id:
-                enrollment = StudentCourseEnrollment.query.filter_by(
-                    student_id=student.student_id,
-                    course_id=course_id
-                ).first()
-                if enrollment and not enrollment.is_active:
-                    flash('Курс ожидает активации преподавателем.', 'warning')
-                    return redirect(url_for('theory.theory_index'))
-
-            # 1. Teacher lock check
-            access_row = StudentTheoryAccess.query.filter_by(
-                student_id=student.student_id,
-                course_id=course_id,
-                task_number=task_number,
-            ).first()
-            if access_row and not access_row.can_view:
-                flash('Эта тема заблокирована преподавателем.', 'warning')
+            access_error = _student_block_access_error(student, block)
+            if access_error:
+                flash(access_error, 'warning')
                 return redirect(url_for('theory.theory_index', course_id=course_id))
 
     # IMPORTANT:
@@ -2279,6 +2599,7 @@ def theory_view_block(block_id):
         active_page='theory',
         custom_html=custom_html,
         rendered_content_html=_render_theory_content_html(block.content or ''),
+        has_math_input=any(item['type'] == 'math' for item in _parse_theory_interactives(block.content or '')),
         sections=sections,
         note=note,
         checkpoint_attempts=checkpoint_attempts,
@@ -2799,11 +3120,7 @@ def manage_list():
             can_manage=True,
         )
 
-    groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
-    if not groups:
-        _ensure_default_group(course_id)
-        db.session.commit()
-        groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
+    groups, blocks_by_group = _get_course_groups_with_metadata(course_id)
 
     if request.method == 'POST':
         action = (request.form.get('action') or '').strip()
@@ -2964,15 +3281,18 @@ def manage_list():
     selected_task_number = request.args.get('task_number', type=int)
     selected_group = next((g for g in groups if g.id == selected_group_id), None) if selected_group_id else (groups[0] if groups else None)
     group_blocks = blocks_by_group.get(selected_group.id, []) if selected_group else []
-    selected_block = None
+    selected_block_meta = None
     if selected_block_id:
-        selected_block = next((b for b in group_blocks if b.id == selected_block_id), None)
-    if selected_block is None and selected_task_number is not None and selected_group:
-        selected_block = next((b for b in group_blocks if b.task_number == selected_task_number), None)
-    if selected_block is None:
-        selected_block = group_blocks[0] if group_blocks else None
-    if selected_block and (selected_group is None or selected_group.id != selected_block.group_id):
-        selected_group = next((g for g in groups if g.id == selected_block.group_id), selected_group)
+        selected_block_meta = next((b for b in group_blocks if b.id == selected_block_id), None)
+    if selected_block_meta is None and selected_task_number is not None and selected_group:
+        selected_block_meta = next((b for b in group_blocks if b.task_number == selected_task_number), None)
+    if selected_block_meta is None:
+        selected_block_meta = group_blocks[0] if group_blocks else None
+    if selected_block_meta and (selected_group is None or selected_group.id != selected_block_meta.group_id):
+        selected_group = next((g for g in groups if g.id == selected_block_meta.group_id), selected_group)
+    selected_block = TheoryBlock.query.filter_by(
+        id=selected_block_meta.id, course_id=course_id,
+    ).first() if selected_block_meta else None
     selected_task_number = selected_block.task_number if selected_block else None
     selected_display_number = (selected_block.position if selected_block and selected_block.position else None)
     selected_block_status = _extract_status(selected_block.content) if selected_block else 'draft'
@@ -2985,7 +3305,7 @@ def manage_list():
             'block_id': b.id,
             'task_number': b.task_number,  # тех. номер, используется в аналитике/истории
             'display_number': (b.position or idx),  # локальная нумерация в группе
-            'state': _extract_status(b.content),
+            'state': b.status,
         }
         for idx, b in enumerate(current_group_blocks, start=1)
     ]
@@ -2993,7 +3313,7 @@ def manage_list():
     slots = [(b.task_number, b) for b in current_group_blocks]
 
     total_count = sum(len(v) for v in blocks_by_group.values())
-    published_count = sum(1 for items in blocks_by_group.values() for b in items if _extract_status(b.content) == 'published')
+    published_count = sum(1 for items in blocks_by_group.values() for b in items if b.status == 'published')
     completion_percent = int(round((published_count / total_count) * 100)) if total_count else 0
 
     scoped_students = _get_scoped_students_for_theory_manager()
@@ -3013,7 +3333,7 @@ def manage_list():
             TheoryCheckpointAttempt.student_id.in_(scoped_student_ids),
         ).all():
             attempts_by_block[attempt.block_id].append(attempt)
-        for candidate in [block for entries in blocks_by_group.values() for block in entries if _extract_status(block.content) == 'published']:
+        for candidate in [block for entries in blocks_by_group.values() for block in entries if block.status == 'published']:
             states = states_by_task.get(candidate.task_number, [])
             completed = sum(1 for state_item in states if state_item.is_read or int(state_item.reading_progress or 0) >= 100)
             completion_rate = int(round((completed / len(scoped_student_ids)) * 100)) if scoped_student_ids else 0
@@ -3099,7 +3419,7 @@ def manage_list():
             'description': b.description or '',
             'group_id': b.group_id,
             'group_name': group_map.get(b.group_id, 'Без модуля'),
-            'status': _extract_status(b.content),
+            'status': b.status,
             'read_minutes': b.read_minutes or 15,
             'avg_rating': f"{avg_r:.1f}" if avg_r else None,
             'feedback_count': len(fbs),
@@ -3265,6 +3585,49 @@ def manage_list():
         can_manage=True,
         active_page='theory_manage',
     )
+
+
+@theory_bp.route('/theory/api/manage/course/activation', methods=['POST'])
+@login_required
+def api_manage_course_activation():
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        course_id = int(payload.get('course_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный ID курса'}), 400
+
+    is_active = payload.get('is_active')
+    if not isinstance(is_active, bool):
+        return jsonify({'success': False, 'error': 'Статус курса должен быть логическим значением'}), 400
+
+    course = Course.query.get(course_id)
+    if not course:
+        return jsonify({'success': False, 'error': 'Курс не найден'}), 404
+
+    if is_active:
+        has_published_articles = any(
+            _extract_status(content) == 'published'
+            for (content,) in db.session.query(TheoryBlock.content).filter_by(course_id=course.id).all()
+        )
+        if not has_published_articles:
+            return jsonify({
+                'success': False,
+                'error': 'Перед активацией курса опубликуйте хотя бы одну статью.',
+            }), 409
+
+    if course.is_active != is_active:
+        course.is_active = is_active
+        db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'course_id': course.id,
+        'is_active': bool(course.is_active),
+        'message': 'Курс активирован' if course.is_active else 'Курс деактивирован',
+    })
 
 
 @theory_bp.route('/theory/api/manage/course/save', methods=['POST'])
@@ -3521,6 +3884,17 @@ def api_manage_block_delete():
     return jsonify({'success': True})
 
 
+def _course_assignment_unavailable_reason(course):
+    if course is None:
+        return 'Курс не найден.'
+    if not course.is_active:
+        return 'Курс неактивен; назначение пока недоступно.'
+    blocks = TheoryBlock.query.filter_by(course_id=course.id).all()
+    if blocks and not any(_extract_status(block.content) == 'published' for block in blocks):
+        return 'В курсе пока нет опубликованных статей.'
+    return None
+
+
 @theory_bp.route('/theory/api/manage/student/course-status', methods=['POST'])
 @login_required
 def api_manage_student_course_status():
@@ -3537,6 +3911,11 @@ def api_manage_student_course_status():
 
     student_id = int(student_id)
     course_id = int(course_id)
+
+    if status != 'none':
+        unavailable_reason = _course_assignment_unavailable_reason(Course.query.get(course_id))
+        if unavailable_reason:
+            return jsonify({'success': False, 'error': unavailable_reason}), 409
 
     enrollment = StudentCourseEnrollment.query.filter_by(
         student_id=student_id,
@@ -3579,10 +3958,9 @@ def api_manage_student_theory_profile(student_id):
     student = Student.query.get_or_404(student_id)
     user = User.query.get(student.user_id) if student.user_id else None
 
-    # Все активные курсы (ЕГЭ Информатика, Python и др.)
-    courses = Course.query.filter_by(is_active=True).order_by(Course.id).all()
-    if not courses:
-        courses = Course.query.order_by(Course.id).all()
+    # Показываем активные курсы и неактивные курсы, в которых уже есть
+    # материалы: преподаватель должен видеть подготовленный draft-каталог.
+    courses = Course.query.order_by(Course.id).all()
 
     # Зачисления ученика
     enrollments = {
@@ -3622,9 +4000,14 @@ def api_manage_student_theory_profile(student_id):
     courses_data = []
     for c in courses:
         blocks = TheoryBlock.query.filter_by(course_id=c.id).order_by(TheoryBlock.position, TheoryBlock.task_number).all()
-        # Показываем основные курсы или курсы с темами
-        if not blocks and c.id not in (1, 6):
+        # Показываем основные курсы, курсы с темами и профильную математику,
+        # чтобы преподаватель мог назначить курс до загрузки теоретических статей.
+        if not blocks and (not c.is_active or (c.id not in (1, 6) and c.slug != 'ege_math_profile')):
             continue
+
+        published_topics = sum(1 for block in blocks if _extract_status(block.content) == 'published')
+        draft_topics = len(blocks) - published_topics
+        unavailable_reason = _course_assignment_unavailable_reason(c)
 
         enr = enrollments.get(c.id)
         if enr is not None:
@@ -3670,6 +4053,11 @@ def api_manage_student_theory_profile(student_id):
             'course_id': c.id,
             'title': c.title,
             'slug': c.slug,
+            'course_is_active': bool(c.is_active),
+            'published_topics': published_topics,
+            'draft_topics': draft_topics,
+            'can_assign': unavailable_reason is None,
+            'availability_reason': unavailable_reason,
             'status': status,
             'total_topics': total_b,
             'completed_topics': completed_in_blocks,
@@ -3720,6 +4108,10 @@ def api_manage_student_enroll_toggle():
     is_active = bool(payload.get('is_active', True))
     if not student_id or not course_id:
         return jsonify({'success': False, 'error': 'Некорректные параметры'}), 400
+
+    unavailable_reason = _course_assignment_unavailable_reason(Course.query.get(int(course_id)))
+    if unavailable_reason:
+        return jsonify({'success': False, 'error': unavailable_reason}), 409
 
     enrollment = StudentCourseEnrollment.query.filter_by(
         student_id=student_id,
@@ -3838,8 +4230,20 @@ def upload_image():
         from app.uploads.service import save_uploaded_file
         storage = _resolve_theory_storage('theory')
         upload_folder = os.path.join(storage['base_folder'], str(current_user.id))
+        upload = file
+        if os.path.splitext(file.filename or '')[1].lower() == '.svg':
+            payload = file.stream.read(15 * 1024 * 1024 + 1)
+            if len(payload) > 15 * 1024 * 1024:
+                raise ValueError('file too large')
+            from app.theory.math_curriculum import _sanitize_svg
+            safe_svg = _sanitize_svg(payload)
+            upload = FileStorage(
+                stream=io.BytesIO(safe_svg),
+                filename=file.filename,
+                content_type='image/svg+xml',
+            )
         orig, abs_path, _size = save_uploaded_file(
-            file=file,
+            file=upload,
             base_folder=upload_folder,
             allowed_exts={'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
             max_bytes=15 * 1024 * 1024,
@@ -4253,11 +4657,11 @@ def theory_manage_preview():
     payload = request.get_json(silent=True) or {}
     content = (payload.get('content') or '').strip()
     title = (payload.get('title') or 'Предпросмотр').strip()
-    html = (
-        f'<article class="prose-article"><h1 class="text-3xl font-black text-slate-900 mb-4">{title}</h1>'
+    rendered_html = (
+        f'<article class="prose-article"><h1 class="text-3xl font-black text-slate-900 mb-4">{html.escape(title, quote=False)}</h1>'
         f'{_render_theory_content_html(content)}</article>'
     )
-    return jsonify({'success': True, 'html': html})
+    return jsonify({'success': True, 'html': rendered_html})
 
 
 @theory_bp.route('/theory/manage/stats', methods=['GET'])
@@ -4355,7 +4759,6 @@ def theory_api_read():
 
 
 @theory_bp.route('/theory/api/progress', methods=['POST'])
-@csrf.exempt
 def theory_api_progress():
     # Progress is a background autosave.  A cached article can outlive the
     # login session; in that case it must be a harmless no-op rather than a
@@ -4426,13 +4829,30 @@ def theory_api_checkpoint():
 
     checkpoint_key = (payload.get('checkpoint_key') or '').strip()
     selected_answer = (payload.get('answer') or '').strip()
+    if len(selected_answer) > 500:
+        return jsonify({'success': False, 'error': 'Ответ слишком длинный.'}), 400
     checkpoint = next((item for item in _parse_theory_checkpoints(block.content) if item['key'] == checkpoint_key), None)
     interactive = next((item for item in _parse_theory_interactives(block.content) if item['key'] == checkpoint_key), None)
     if not checkpoint and not interactive:
         return jsonify({'success': False, 'error': 'Проверка не найдена.'}), 404
     kind = interactive['type'] if interactive else 'checkpoint'
     expected_answer = (interactive.get('answer') if interactive else checkpoint['answer']) or ''
-    if kind in {'code', 'debug'}:
+    validation_result = None
+    validator = (interactive or {}).get('validator', '')
+    if kind == 'math' or bool(validator):
+        validation_result = validate_math_answer(
+            selected_answer,
+            expected_answer,
+            validator=validator or 'numeric',
+            absolute_tolerance=(interactive or {}).get('absolute_tolerance'),
+            relative_tolerance=(interactive or {}).get('relative_tolerance'),
+            valid_answers=(interactive or {}).get('valid_answers', ''),
+            domain=(interactive or {}).get('domain', ''),
+        )
+        is_correct = bool(validation_result['correct'])
+        if validation_result['status'] == 'unsupported':
+            current_app.logger.info('Unsupported theory math answer validator block=%s key=%s', block.id, checkpoint_key)
+    elif kind in {'code', 'debug'}:
         # Code activities submit the actual program output; the expected value
         # remains server-side in the interactive marker.
         is_correct = selected_answer == (interactive.get('expected') or expected_answer).strip()
@@ -4478,6 +4898,8 @@ def theory_api_checkpoint():
         return jsonify({
             'success': True,
             'correct': False,
+            'status': (validation_result or {}).get('status', 'incorrect'),
+            'message': (validation_result or {}).get('message', ''),
             'hint': hint,
             'attempts': attempts_count,
         })
@@ -4486,6 +4908,7 @@ def theory_api_checkpoint():
     return jsonify({
         'success': True,
         'correct': True,
+        'status': 'correct',
         'explanation': explanation,
         'attempts': attempts_count,
     })

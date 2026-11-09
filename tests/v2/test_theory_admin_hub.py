@@ -218,3 +218,106 @@ def test_theory_admin_hub_and_management_api(app, client):
     login_as(client, user_id=student_user_id, role="student")
     resp_stud = client.get("/theory", follow_redirects=False)
     assert resp_stud.status_code == 200
+
+
+def test_teacher_can_activate_course_with_published_articles(app, client):
+    with app.app_context():
+        teacher = User.query.filter_by(username="theory_course_activation_admin").first()
+        if not teacher:
+            teacher = User(username="theory_course_activation_admin", role="admin")
+            teacher.set_password("pass123")
+            db.session.add(teacher)
+            db.session.flush()
+
+        course = Course.query.filter_by(slug="theory-course-activation-test").first()
+        if not course:
+            course = Course(
+                title="Курс для проверки активации",
+                slug="theory-course-activation-test",
+                is_active=False,
+            )
+            db.session.add(course)
+            db.session.flush()
+        else:
+            course.is_active = False
+
+        group = TheoryGroup.query.filter_by(course_id=course.id, name="Модуль активации").first()
+        if not group:
+            group = TheoryGroup(course_id=course.id, name="Модуль активации", position=1)
+            db.session.add(group)
+            db.session.flush()
+
+        block = TheoryBlock.query.filter_by(course_id=course.id, task_number=1).first()
+        if not block:
+            block = TheoryBlock(
+                course_id=course.id,
+                group_id=group.id,
+                task_number=1,
+                title="Опубликованная тема",
+                content="<!--status:published-->\nСодержание.",
+                position=1,
+            )
+            db.session.add(block)
+        else:
+            block.content = "<!--status:published-->\nСодержание."
+
+        draft_course = Course.query.filter_by(slug="theory-course-activation-draft-test").first()
+        if not draft_course:
+            draft_course = Course(
+                title="Курс только с черновиками",
+                slug="theory-course-activation-draft-test",
+                is_active=False,
+            )
+            db.session.add(draft_course)
+            db.session.flush()
+        else:
+            draft_course.is_active = False
+
+        draft_group = TheoryGroup.query.filter_by(course_id=draft_course.id, name="Черновики").first()
+        if not draft_group:
+            draft_group = TheoryGroup(course_id=draft_course.id, name="Черновики", position=1)
+            db.session.add(draft_group)
+            db.session.flush()
+
+        draft_block = TheoryBlock.query.filter_by(course_id=draft_course.id, task_number=1).first()
+        if not draft_block:
+            draft_block = TheoryBlock(
+                course_id=draft_course.id,
+                group_id=draft_group.id,
+                task_number=1,
+                title="Черновик",
+                content="<!--status:draft-->\nСодержание.",
+                position=1,
+            )
+            db.session.add(draft_block)
+        else:
+            draft_block.content = "<!--status:draft-->\nСодержание."
+
+        teacher_id = teacher.id
+        course_id = course.id
+        draft_course_id = draft_course.id
+        db.session.commit()
+
+    login_as(client, user_id=teacher_id, role="admin")
+
+    manage_response = client.get(f"/theory/manage?course_id={course_id}&tab=courses")
+    assert manage_response.status_code == 200
+    assert "Активировать курс" in manage_response.get_data(as_text=True)
+
+    activate_response = client.post(
+        "/theory/api/manage/course/activation",
+        json={"course_id": course_id, "is_active": True},
+    )
+    assert activate_response.status_code == 200
+    assert activate_response.get_json()["is_active"] is True
+
+    blocked_response = client.post(
+        "/theory/api/manage/course/activation",
+        json={"course_id": draft_course_id, "is_active": True},
+    )
+    assert blocked_response.status_code == 409
+    assert "опубликуйте хотя бы одну статью" in blocked_response.get_json()["error"]
+
+    with app.app_context():
+        assert db.session.get(Course, course_id).is_active is True
+        assert db.session.get(Course, draft_course_id).is_active is False

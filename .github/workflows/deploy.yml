@@ -2,6 +2,12 @@ name: Deploy to VPS (MANUAL PROD)
 
 on:
   workflow_dispatch:
+    inputs:
+      import_math_foundation:
+        description: Import the validated EGE mathematics foundation package as drafts after deployment
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: boostudy-production-deploy
@@ -36,6 +42,57 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Set up Python for theory package validation
+        if: ${{ inputs.import_math_foundation }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set up Node for KaTeX validation
+        if: ${{ inputs.import_math_foundation }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install theory package validation dependencies
+        if: ${{ inputs.import_math_foundation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          npm ci --ignore-scripts
+
+      - name: Validate math foundation packages
+        if: ${{ inputs.import_math_foundation }}
+        id: validate_math_packages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate_package() {
+            local package_path="$1"
+            local output_name="$2"
+            local report digest
+            report="$(BOOSTUDY_SKIP_DATABASE_BOOTSTRAP=1 BOOSTUDY_BACKGROUND_WORKERS_ENABLED=0 \
+              python scripts/import_theory_math.py --package "$package_path" --mode validate)"
+            printf '%s\n' "$report" | python -c '
+          import json, re, sys
+          result = json.load(sys.stdin)
+          validation = result.get("validation", {})
+          if validation.get("valid") is not True or validation.get("latex_checked") is not True or validation.get("issues") != []:
+              raise SystemExit("Math package must validate with valid=true, latex_checked=true, issues=[]")
+          digest = validation.get("package_sha256", "")
+          if not re.fullmatch(r"[a-f0-9]{64}", digest):
+              raise SystemExit("Validator did not return a package SHA-256")
+          print("validated:", validation.get("course_slug"), validation.get("articles"), "articles,", validation.get("assets"), "assets")
+          '
+            digest="$(printf '%s\n' "$report" | python -c 'import json,sys; print(json.load(sys.stdin)["validation"]["package_sha256"])')"
+            printf '%s=%s\n' "$output_name" "$digest" >> "$GITHUB_OUTPUT"
+          }
+
+          validate_package content/theory/ege-profile-math-2027/first-6 first6_sha256
+          validate_package content/theory/ege-profile-math-2027/articles-07-12 articles_07_12_sha256
+
       - name: Deploy with blue-green helper
         shell: bash
         run: |
@@ -67,6 +124,46 @@ jobs:
             fi
           done
           echo "::error::Blue-green deploy failed after 3 SSH attempts"
+          exit 1
+
+      - name: Import mathematics foundation as drafts
+        if: ${{ inputs.import_math_foundation }}
+        shell: bash
+        env:
+          FIRST6_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.first6_sha256 }}
+          ARTICLES_07_12_PACKAGE_SHA256: ${{ steps.validate_math_packages.outputs.articles_07_12_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "${FIRST6_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+          [[ "${ARTICLES_07_12_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
+
+          KEY_FILE="$(mktemp)"
+          KNOWN_HOSTS="$(mktemp)"
+          umask 077
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${KEY_FILE}"
+          trap 'rm -f "${KEY_FILE}" "${KNOWN_HOSTS}"' EXIT
+
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" > "${KNOWN_HOSTS}"
+          cat "${GITHUB_WORKSPACE}/.github/boostudy_known_hosts" >> "${KNOWN_HOSTS}"
+
+          for attempt in 1 2 3; do
+            echo "Production theory import attempt ${attempt}/3"
+            if ssh -4 -i "${KEY_FILE}" -p "${SSH_PORT}" \
+              -o BatchMode=yes \
+              -o UserKnownHostsFile="${KNOWN_HOSTS}" \
+              -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=25 \
+              -o ServerAliveCountMax=8 \
+              "${USERNAME}@${HOST}" \
+              "sudo -n bash /opt/boostudy/scripts/import_ege_profile_math_drafts.sh ${FIRST6_PACKAGE_SHA256} ${ARTICLES_07_12_PACKAGE_SHA256}"; then
+              exit 0
+            fi
+            if [[ "${attempt}" -lt 3 ]]; then
+              sleep 30
+            fi
+          done
+          echo "::error::Production theory import failed after 3 SSH attempts"
           exit 1
 
       - name: Public production smoke check

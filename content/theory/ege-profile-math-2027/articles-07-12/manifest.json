@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "course": {
+    "slug": "ege-profile-math-2027",
+    "title": "ЕГЭ-2027: профильная математика"
+  },
+  "expected_structure": {
+    "groups": 1,
+    "articles": 6
+  },
+  "groups": [
+    {
+      "key": "mathematical-foundation",
+      "name": "Математический фундамент",
+      "description": "Числовые множества, арифметика, преобразования выражений и математические основы профильного ЕГЭ",
+      "position": 1,
+      "assets": [
+        {
+          "key": "algebra-area-model",
+          "path": "groups/01-foundation/assets/algebra-area-model.svg"
+        },
+        {
+          "key": "algebra-domain-hole",
+          "path": "groups/01-foundation/assets/algebra-domain-hole.svg"
+        },
+        {
+          "key": "algebra-like-terms",
+          "path": "groups/01-foundation/assets/algebra-like-terms.svg"
+        },
+        {
+          "key": "cubes-formula-map",
+          "path": "groups/01-foundation/assets/cubes-formula-map.svg"
+        },
+        {
+          "key": "divisibility-digits",
+          "path": "groups/01-foundation/assets/divisibility-digits.svg"
+        },
+        {
+          "key": "factor-common",
+          "path": "groups/01-foundation/assets/factor-common.svg"
+        },
+        {
+          "key": "factor-method-tree",
+          "path": "groups/01-foundation/assets/factor-method-tree.svg"
+        },
+        {
+          "key": "factor-tree",
+          "path": "groups/01-foundation/assets/factor-tree.svg"
+        },
+        {
+          "key": "gcd-lcm-grid",
+          "path": "groups/01-foundation/assets/gcd-lcm-grid.svg"
+        },
+        {
+          "key": "horner-schema",
+          "path": "groups/01-foundation/assets/horner-schema.svg"
+        },
+        {
+          "key": "interval-endpoints",
+          "path": "groups/01-foundation/assets/interval-endpoints.svg"
+        },
+        {
+          "key": "interval-intersection",
+          "path": "groups/01-foundation/assets/interval-intersection.svg"
+        },
+        {
+          "key": "interval-union",
+          "path": "groups/01-foundation/assets/interval-union.svg"
+        },
+        {
+          "key": "odz-hole-line",
+          "path": "groups/01-foundation/assets/odz-hole-line.svg"
+        },
+        {
+          "key": "odz-intersection",
+          "path": "groups/01-foundation/assets/odz-intersection.svg"
+        },
+        {
+          "key": "odz-square-root",
+          "path": "groups/01-foundation/assets/odz-square-root.svg"
+        },
+        {
+          "key": "pascal-triangle",
+          "path": "groups/01-foundation/assets/pascal-triangle.svg"
+        },
+        {
+          "key": "square-sum-area",
+          "path": "groups/01-foundation/assets/square-sum-area.svg"
+        }
+      ],
+      "articles": [
+        {
+          "key": "divisibility-primes-gcd-lcm",
+          "task_number": 7,
+          "position": 7,
+          "title": "Делимость, простые числа, НОД и НОК",
+          "description": "Делители, простые множители, признаки делимости, алгоритм Евклида, остатки и доказательства",
+          "read_minutes": 85,
+          "status": "draft",
+          "source": "groups/01-foundation/007-divisibility-primes-gcd-lcm.md"
+        },
+        {
+          "key": "intervals-and-sets",
+          "task_number": 8,
+          "position": 8,
+          "title": "Числовые промежутки и запись множеств",
+          "description": "Открытые и закрытые границы, операции над множествами, системы, объединения и целые точки",
+          "read_minutes": 80,
+          "status": "draft",
+          "source": "groups/01-foundation/008-intervals-and-sets.md"
+        },
+        {
+          "key": "algebraic-expressions-identities",
+          "task_number": 9,
+          "position": 9,
+          "title": "Алгебраические выражения и тождества",
+          "description": "Одночлены, многочлены, тождества, рациональные преобразования, доказательства и ограничения",
+          "read_minutes": 80,
+          "status": "draft",
+          "source": "groups/01-foundation/009-algebraic-expressions-identities.md"
+        },
+        {
+          "key": "special-products",
+          "task_number": 10,
+          "position": 10,
+          "title": "Формулы сокращённого умножения",
+          "description": "Вывод квадратов и кубов, разложение, биномиальные коэффициенты, вычисления и оценки",
+          "read_minutes": 80,
+          "status": "draft",
+          "source": "groups/01-foundation/010-special-products.md"
+        },
+        {
+          "key": "factorization",
+          "task_number": 11,
+          "position": 11,
+          "title": "Разложение на множители",
+          "description": "Общий множитель, группировка, формулы, квадратные трёхчлены, замены и теорема Безу",
+          "read_minutes": 85,
+          "status": "draft",
+          "source": "groups/01-foundation/011-factorization.md"
+        },
+        {
+          "key": "domains-of-expressions",
+          "task_number": 12,
+          "position": 12,
+          "title": "Область допустимых значений выражения",
+          "description": "Знаменатели, корни, интервалы, исходные ограничения, сокращения и посторонние корни",
+          "read_minutes": 90,
+          "status": "draft",
+          "source": "groups/01-foundation/012-domains-of-expressions.md"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" role="img" aria-label="Дерево операций: 8 − 2(3 + 1)²">
+<rect x="0" y="0" width="900" height="470" rx="24" fill="#F7F9FE"/>
+<text x="32" y="40" fill="#243251" font-size="22" font-weight="700" font-family="Arial, sans-serif">Дерево операций: 8 − 2(3 + 1)²</text>
+<line x1="450" y1="138" x2="250" y2="153" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<line x1="450" y1="138" x2="635" y2="153" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<line x1="635" y1="197" x2="540" y2="223" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<line x1="635" y1="197" x2="735" y2="223" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<line x1="735" y1="267" x2="735" y2="285" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<line x1="735" y1="329" x2="665" y2="365" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<line x1="735" y1="329" x2="805" y2="365" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<rect x="410" y="89" width="80" height="48" rx="11" fill="#EAF0FF" stroke="#587DF7" stroke-width="2"/>
+<text x="450" y="121" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">−</text>
+<rect x="210" y="151" width="80" height="48" rx="11" fill="#DAF3EC" stroke="#17A398" stroke-width="2"/>
+<text x="250" y="183" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">8</text>
+<rect x="595" y="151" width="80" height="48" rx="11" fill="#EAF0FF" stroke="#587DF7" stroke-width="2"/>
+<text x="635" y="183" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">×</text>
+<rect x="500" y="221" width="80" height="48" rx="11" fill="#DAF3EC" stroke="#17A398" stroke-width="2"/>
+<text x="540" y="253" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">2</text>
+<rect x="695" y="221" width="80" height="48" rx="11" fill="#EAF0FF" stroke="#587DF7" stroke-width="2"/>
+<text x="735" y="253" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">( )²</text>
+<rect x="695" y="283" width="80" height="48" rx="11" fill="#EAF0FF" stroke="#587DF7" stroke-width="2"/>
+<text x="735" y="315" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">+</text>
+<rect x="625" y="363" width="80" height="48" rx="11" fill="#DAF3EC" stroke="#17A398" stroke-width="2"/>
+<text x="665" y="395" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">3</text>
+<rect x="765" y="363" width="80" height="48" rx="11" fill="#DAF3EC" stroke="#17A398" stroke-width="2"/>
+<text x="805" y="395" font-size="22" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle" font-weight="bold">1</text>
+<text x="40" y="449" font-size="17" fill="#64748b" font-family="Arial, sans-serif" text-anchor="start">От листьев 3 и 1 вверх: сложение, квадрат, умножение, вычитание.</text>
+</svg>

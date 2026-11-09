@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "course": {
+    "slug": "ege-profile-math-2027",
+    "title": "ЕГЭ-2027: профильная математика"
+  },
+  "expected_structure": {
+    "groups": 1,
+    "articles": 6
+  },
+  "groups": [
+    {
+      "key": "mathematical-foundation",
+      "name": "Математический фундамент",
+      "description": "Числовые множества, арифметика, преобразования выражений и математические основы профильного ЕГЭ",
+      "position": 1,
+      "assets": [
+        {
+          "key": "sqrt2-triangle",
+          "path": "groups/01-foundation/assets/sqrt2-triangle.svg"
+        },
+        {
+          "key": "sets-inclusion",
+          "path": "groups/01-foundation/assets/sets-inclusion.svg"
+        },
+        {
+          "key": "number-line",
+          "path": "groups/01-foundation/assets/number-line.svg"
+        },
+        {
+          "key": "rational-density",
+          "path": "groups/01-foundation/assets/rational-density.svg"
+        },
+        {
+          "key": "fraction-bars",
+          "path": "groups/01-foundation/assets/fraction-bars.svg"
+        },
+        {
+          "key": "fraction-division",
+          "path": "groups/01-foundation/assets/fraction-division.svg"
+        },
+        {
+          "key": "fraction-decimal",
+          "path": "groups/01-foundation/assets/fraction-decimal.svg"
+        },
+        {
+          "key": "signed-line",
+          "path": "groups/01-foundation/assets/signed-line.svg"
+        },
+        {
+          "key": "negative-square",
+          "path": "groups/01-foundation/assets/negative-square.svg"
+        },
+        {
+          "key": "sign-chart",
+          "path": "groups/01-foundation/assets/sign-chart.svg"
+        },
+        {
+          "key": "operation-tree",
+          "path": "groups/01-foundation/assets/operation-tree.svg"
+        },
+        {
+          "key": "fraction-scope",
+          "path": "groups/01-foundation/assets/fraction-scope.svg"
+        },
+        {
+          "key": "distributive-rect",
+          "path": "groups/01-foundation/assets/distributive-rect.svg"
+        },
+        {
+          "key": "percent-grid",
+          "path": "groups/01-foundation/assets/percent-grid.svg"
+        },
+        {
+          "key": "ratio-blocks",
+          "path": "groups/01-foundation/assets/ratio-blocks.svg"
+        },
+        {
+          "key": "percent-changes",
+          "path": "groups/01-foundation/assets/percent-changes.svg"
+        },
+        {
+          "key": "modulus-distance",
+          "path": "groups/01-foundation/assets/modulus-distance.svg"
+        },
+        {
+          "key": "modulus-intervals",
+          "path": "groups/01-foundation/assets/modulus-intervals.svg"
+        },
+        {
+          "key": "absolute-v-graph",
+          "path": "groups/01-foundation/assets/absolute-v-graph.svg"
+        }
+      ],
+      "articles": [
+        {
+          "key": "real-numbers",
+          "task_number": 1,
+          "position": 1,
+          "title": "Числовые множества и числовая прямая",
+          "description": "Натуральные, целые, рациональные, иррациональные и действительные числа; строгие доказательства, сравнения и числовая прямая",
+          "read_minutes": 65,
+          "status": "draft",
+          "source": "groups/01-foundation/001-real-numbers.md"
+        },
+        {
+          "key": "fractions",
+          "task_number": 2,
+          "position": 2,
+          "title": "Обыкновенные и десятичные дроби",
+          "description": "Доли, точная арифметика дробей, сравнение, периодические записи, округление и контроль погрешности",
+          "read_minutes": 75,
+          "status": "draft",
+          "source": "groups/01-foundation/002-fractions.md"
+        },
+        {
+          "key": "negative-numbers",
+          "task_number": 3,
+          "position": 3,
+          "title": "Отрицательные числа и правила знаков",
+          "description": "Противоположные числа, порядок на прямой, четыре операции, степени, скобки, неравенства и знаки выражений",
+          "read_minutes": 70,
+          "status": "draft",
+          "source": "groups/01-foundation/003-negative-numbers.md"
+        },
+        {
+          "key": "order-and-transformations",
+          "task_number": 4,
+          "position": 4,
+          "title": "Порядок действий и преобразование выражений",
+          "description": "Скобки, приоритет операций, распределительный закон, подобные члены, тождества и контроль равносильности",
+          "read_minutes": 70,
+          "status": "draft",
+          "source": "groups/01-foundation/004-order-and-transformations.md"
+        },
+        {
+          "key": "percent-ratio-proportion",
+          "task_number": 5,
+          "position": 5,
+          "title": "Проценты, доли, отношения и пропорции",
+          "description": "Базовые и обратные процентные задачи, масштаб, смеси, взвешенные доли и многошаговые изменения",
+          "read_minutes": 80,
+          "status": "draft",
+          "source": "groups/01-foundation/005-percent-ratio-proportion.md"
+        },
+        {
+          "key": "absolute-value",
+          "task_number": 6,
+          "position": 6,
+          "title": "Модуль числа и его геометрический смысл",
+          "description": "Модуль как расстояние, уравнения и неравенства, графики, несколько модулей и задачи с параметрами",
+          "read_minutes": 80,
+          "status": "draft",
+          "source": "groups/01-foundation/006-absolute-value.md"
+        }
+      ]
+    }
+  ]
+}

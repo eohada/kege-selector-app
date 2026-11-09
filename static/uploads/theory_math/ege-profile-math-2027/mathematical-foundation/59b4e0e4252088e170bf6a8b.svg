@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:svg xmlns:ns0="http://www.w3.org/2000/svg" width="900" height="370" viewBox="0 0 900 370">
+<ns0:rect x="0" y="0" width="900" height="370" rx="24" fill="#F7F9FE" />
+<ns0:text x="32" y="40" fill="#243251" font-size="22" font-family="Arial, sans-serif">Сложение: от −3 смещаемся на +5</ns0:text>
+<ns0:line x1="90" y1="200" x2="810" y2="200" stroke="#526789" stroke-width="3" stroke-linecap="round" />
+<ns0:path d="M 795 191 L 811 200 L 795 209" fill="none" stroke="#243251" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+<ns0:line x1="162" y1="191" x2="162" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="162" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">-6</ns0:text>
+<ns0:line x1="210" y1="191" x2="210" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="210" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">-5</ns0:text>
+<ns0:line x1="258" y1="191" x2="258" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="258" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">-4</ns0:text>
+<ns0:line x1="306" y1="191" x2="306" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="306" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">-3</ns0:text>
+<ns0:line x1="354" y1="191" x2="354" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="354" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">-2</ns0:text>
+<ns0:line x1="402" y1="191" x2="402" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="402" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">-1</ns0:text>
+<ns0:line x1="450" y1="191" x2="450" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="450" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">0</ns0:text>
+<ns0:line x1="498" y1="191" x2="498" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="498" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">1</ns0:text>
+<ns0:line x1="546" y1="191" x2="546" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="546" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">2</ns0:text>
+<ns0:line x1="594" y1="191" x2="594" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="594" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">3</ns0:text>
+<ns0:line x1="642" y1="191" x2="642" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="642" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">4</ns0:text>
+<ns0:line x1="690" y1="191" x2="690" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="690" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">5</ns0:text>
+<ns0:line x1="738" y1="191" x2="738" y2="209" stroke="#526789" stroke-width="2" stroke-linecap="round" />
+<ns0:text x="738" y="234" font-size="16" fill="#243251" font-family="Arial, sans-serif" text-anchor="middle">6</ns0:text>
+<ns0:path d="M 306 183 Q 404 72 546 180" fill="none" stroke="#587DF7" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+<ns0:path d="M 534 170 L 546 180 L 531 188" fill="none" stroke="#587DF7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+<ns0:circle cx="306" cy="200" r="7" fill="#E47477" stroke="#FFFFFF" stroke-width="2" />
+<ns0:circle cx="546" cy="200" r="7" fill="#17A398" stroke="#FFFFFF" stroke-width="2" />
+<ns0:text x="450" y="99" font-size="25" fill="#587DF7" font-family="Arial, sans-serif" text-anchor="middle">−3 + 5 = 2</ns0:text>
+<ns0:text x="450" y="323" font-size="17" fill="#64748b" font-family="Arial, sans-serif" text-anchor="middle">Положительное слагаемое перемещает точку вправо.</ns0:text>
+</ns0:svg>
