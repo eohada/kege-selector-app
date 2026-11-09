@@ -105,9 +105,7 @@ jobs:
           if [[ "${IMPORT_MATH_FOUNDATION}" == "true" ]]; then
             [[ "${FIRST6_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
             [[ "${ARTICLES_07_12_PACKAGE_SHA256}" =~ ^[a-f0-9]{64}$ ]]
-            REMOTE_COMMAND="printf '%s\\n%s\\n%s\\n' '${FIRST6_PACKAGE_SHA256}' '${ARTICLES_07_12_PACKAGE_SHA256}' 'main' | ${REMOTE_COMMAND}"
-          else
-            REMOTE_COMMAND="printf '%s\\n' 'main' | ${REMOTE_COMMAND}"
+            REMOTE_COMMAND="printf '%s\\n%s\\n' '${FIRST6_PACKAGE_SHA256}' '${ARTICLES_07_12_PACKAGE_SHA256}' | ${REMOTE_COMMAND}"
           fi
 
           KEY_FILE="$(mktemp)"

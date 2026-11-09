@@ -69,8 +69,7 @@ fi
 
 cd "$APP_DIR"
 if [[ -z "$BRANCH" ]]; then
-    BRANCH="$(git branch --show-current)"
-    BRANCH="${BRANCH:-main}"
+    BRANCH="main"
 fi
 if ! git check-ref-format --branch "$BRANCH" >/dev/null; then
     echo "Invalid deployment branch: $BRANCH" >&2
