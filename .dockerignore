@@ -24,6 +24,7 @@ node_modules/
 docs/
 scripts/
 !scripts/
+!scripts/import_theory_math.py
 !scripts/import_python_ege_bank.py
 !data/
 !data/task_banks/

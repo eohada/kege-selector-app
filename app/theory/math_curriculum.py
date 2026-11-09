@@ -72,28 +72,34 @@ def content_hash(content: str) -> str:
 
 
 def package_tree_sha256(package_dir: str | Path) -> str:
-    """Hash every regular file in a package by relative path and file bytes."""
+    """Hash regular package files, treating text CRLF and LF as identical."""
     root = Path(package_dir).resolve(strict=True)
     if not root.is_dir():
         raise ValueError('Путь пакета должен указывать на каталог.')
     digest = hashlib.sha256()
     total_bytes = 0
+    text_suffixes = {'.csv', '.html', '.json', '.md', '.svg', '.txt', '.xml', '.yaml', '.yml'}
     for path in sorted(root.rglob('*'), key=lambda item: item.relative_to(root).as_posix()):
         if path.is_symlink():
             raise ValueError(f'Символические ссылки в пакете запрещены: {path.relative_to(root)}.')
         if not path.is_file():
             continue
         relative = path.relative_to(root).as_posix().encode('utf-8')
-        size = path.stat().st_size
-        total_bytes += size
+        source_size = path.stat().st_size
+        total_bytes += source_size
         if total_bytes > MAX_PACKAGE_BYTES:
             raise ValueError(f'Объём пакета превышает {MAX_PACKAGE_BYTES} байт.')
         digest.update(len(relative).to_bytes(8, 'big'))
         digest.update(relative)
-        digest.update(size.to_bytes(8, 'big'))
-        with path.open('rb') as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b''):
-                digest.update(chunk)
+        if path.suffix.lower() in text_suffixes:
+            content = path.read_bytes().replace(b'\r\n', b'\n')
+            digest.update(len(content).to_bytes(8, 'big'))
+            digest.update(content)
+        else:
+            digest.update(source_size.to_bytes(8, 'big'))
+            with path.open('rb') as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+                    digest.update(chunk)
     return digest.hexdigest()
 
 
