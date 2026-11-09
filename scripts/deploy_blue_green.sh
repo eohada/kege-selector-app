@@ -37,6 +37,23 @@ MIGRATION_RECOVERY_ANCHOR="${MIGRATION_RECOVERY_ANCHOR:-f2b3c4d5e6f7}"
 # blue-green file could create duplicate workers and duplicate scheduled jobs.
 UPDATE_CELERY="${UPDATE_CELERY:-0}"
 
+MATH_IMPORT_FIRST6_SHA256=""
+MATH_IMPORT_ARTICLES_07_12_SHA256=""
+if [[ ! -t 0 ]]; then
+    deploy_input="$(cat)"
+    if [[ -n "$deploy_input" ]]; then
+        mapfile -t deploy_input_lines <<< "$deploy_input"
+        if [[ "${#deploy_input_lines[@]}" -ne 2 ||
+            ! "${deploy_input_lines[0]}" =~ ^[a-f0-9]{64}$ ||
+            ! "${deploy_input_lines[1]}" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "Expected exactly two validated theory package SHA-256 values on stdin." >&2
+            exit 2
+        fi
+        MATH_IMPORT_FIRST6_SHA256="${deploy_input_lines[0]}"
+        MATH_IMPORT_ARTICLES_07_12_SHA256="${deploy_input_lines[1]}"
+    fi
+fi
+
 cd "$APP_DIR"
 if [[ -z "$BRANCH" ]]; then
     BRANCH="$(git branch --show-current)"
@@ -265,7 +282,15 @@ status() {
 }
 
 case "${1:-deploy}" in
-    deploy) deploy ;;
+    deploy)
+        deploy
+        if [[ -n "$MATH_IMPORT_FIRST6_SHA256" ]]; then
+            echo "Importing validated EGE mathematics foundation as drafts"
+            bash "$APP_DIR/scripts/import_ege_profile_math_drafts.sh" \
+                "$MATH_IMPORT_FIRST6_SHA256" \
+                "$MATH_IMPORT_ARTICLES_07_12_SHA256"
+        fi
+        ;;
     rollback) rollback ;;
     status) status ;;
     switch-blue) write_nginx_upstream blue ;;
