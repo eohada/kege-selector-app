@@ -609,7 +609,7 @@
 
     // 5. Shapes Flyout (R)
     const shapeBtn = mkBtn('ph-rectangle', 'Библиотека фигур 2D/3D (R)', () => {
-      if (tool !== 'shape' && !ALL_SHAPE_IDS.includes(tool)) {
+      if (selectedIds.size === 0 && tool !== 'shape' && !ALL_SHAPE_IDS.includes(tool)) {
         setTool('shape');
       }
       toggleShapesMenu();
@@ -857,12 +857,14 @@
           currentShape = s.id;
           const isConn = ['line', 'arrow', 'double-arrow', 'curved-arrow'].includes(s.id);
           if (selectedIds.size > 0) {
+            const changedStrokes = [];
             strokes.forEach((stroke) => {
               if (selectedIds.has(stroke.id)) {
                 stroke.type = isConn ? 'connector' : 'shape';
                 stroke.shape = s.id;
                 stroke.fill = shapeFill;
                 stroke.fillColor = penColor;
+                changedStrokes.push(stroke);
               }
             });
             dirty = true;
@@ -870,6 +872,7 @@
             redraw();
             updateSelectionBox();
             scheduleSave();
+            realtimeSyncAdapter?.onStrokesUpdate?.(changedStrokes);
           } else {
             setTool('shape');
           }
@@ -1654,24 +1657,36 @@
   function renderPageTabs() {
     if (!pagesBar) return;
     pagesBar.innerHTML = '';
+    const tabsList = document.createElement('div');
+    tabsList.className = 'boo-pages-tabs';
+    pagesBar.appendChild(tabsList);
 
     pages.forEach((pg, index) => {
       const tab = document.createElement('button');
       tab.type = 'button';
       tab.className = 'boo-page-tab' + (pg.id === currentPageId ? ' active' : '');
-      tab.innerHTML = `<span>${pg.title || ('Стр ' + (index + 1))}</span>`;
+      const label = document.createElement('span');
+      label.textContent = pg.title || ('Стр ' + (index + 1));
+      tab.appendChild(label);
       tab.addEventListener('click', (e) => {
         e.stopPropagation();
         switchPage(pg.id);
       });
-      pagesBar.appendChild(tab);
+      tabsList.appendChild(tab);
+    });
+    requestAnimationFrame(() => {
+      const activeTab = tabsList.querySelector('.boo-page-tab.active');
+      if (tabsList.isConnected && activeTab) {
+        tabsList.scrollLeft = activeTab.offsetLeft - tabsList.offsetLeft - (tabsList.clientWidth - activeTab.offsetWidth) / 2;
+      }
     });
 
     // Add page button
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'boo-page-btn';
-    addBtn.title = 'Добавить новую страницу';
+    addBtn.disabled = isReadOnly;
+    addBtn.title = isReadOnly ? 'Создание страниц доступно после разрешения преподавателя' : 'Добавить новую страницу';
     addBtn.innerHTML = '<i class="ph-bold ph-plus"></i>';
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1683,7 +1698,8 @@
     const bgBtn = document.createElement('button');
     bgBtn.type = 'button';
     bgBtn.className = 'boo-page-btn';
-    bgBtn.title = 'Фон холста (точки, клетка, линейка, координатная)';
+    bgBtn.disabled = isReadOnly;
+    bgBtn.title = isReadOnly ? 'Изменение фона доступно после разрешения преподавателя' : 'Фон холста (точки, клетка, линейка, координатная)';
     bgBtn.innerHTML = '<i class="ph-bold ph-grid-four"></i>';
     bgBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1762,8 +1778,8 @@
   }
 
   function applyCanvasBackground(bgType, skipSync = false) {
-    if (isReadOnly || !overlay) return;
-    overlay.className = `boo-canvas-overlay boo-bg-${bgType || 'dots'}` + (embeddedTarget ? ' is-embedded' : '') + (isOpen ? ' active' : '');
+    if ((isReadOnly && !skipSync) || !overlay) return;
+    overlay.className = `boo-canvas-overlay boo-bg-${bgType || 'dots'}` + (embeddedTarget ? ' is-embedded' : '') + (isOpen ? ' active' : '') + (isReadOnly ? ' is-read-only' : '');
     const curPage = getActivePage();
     curPage.background = bgType;
     if (!skipSync) realtimeSyncAdapter?.onPageBackground?.(curPage.id, bgType);
@@ -4294,6 +4310,12 @@
     ta.placeholder = isReadOnly ? '' : 'Введите текст заметки...';
     ta.value = note.text || '';
     ta.readOnly = isReadOnly;
+    let noteSyncTimer = null;
+    const syncNoteText = () => {
+      if (noteSyncTimer) clearTimeout(noteSyncTimer);
+      noteSyncTimer = null;
+      realtimeSyncAdapter?.onStrokeCommit?.(note);
+    };
     if (isReadOnly) {
       ta.style.cursor = 'default';
     }
@@ -4303,6 +4325,8 @@
       dirty = true;
       saveLocal();
       scheduleSave();
+      if (noteSyncTimer) clearTimeout(noteSyncTimer);
+      noteSyncTimer = setTimeout(syncNoteText, 250);
     });
     ta.addEventListener('focus', () => {
       el.classList.add('is-editing');
@@ -4311,7 +4335,10 @@
       selectedIds.add(note.id);
       updateSelectionBox();
     });
-    ta.addEventListener('blur', () => el.classList.remove('is-editing'));
+    ta.addEventListener('blur', () => {
+      el.classList.remove('is-editing');
+      if (noteSyncTimer) syncNoteText();
+    });
 
     el.addEventListener('pointerdown', (ev) => {
       if (isReadOnly) return;
@@ -4357,6 +4384,8 @@
     turtle: { title: 'Исполнитель Черепаха', icon: 'ph-navigation-arrow' },
     number_line: { title: 'Числовая прямая', icon: 'ph-arrows-horizontal' },
     graph: { title: 'Граф / Узлы и рёбра', icon: 'ph-circles-three' },
+    pdf: { title: 'PDF-материал', icon: 'ph-file-pdf' },
+    file: { title: 'Вложение', icon: 'ph-file' },
   };
 
   function createWidgetDom(item) {
@@ -4413,7 +4442,7 @@
         return;
       }
       e.stopPropagation();
-      if (['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'CANVAS'].includes(e.target.tagName)) return;
+      if (['A', 'IFRAME', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'CANVAS'].includes(e.target.tagName)) return;
       if (tool === 'select') {
         if (!selectedIds.has(item.id)) {
           selectedIds.clear();
@@ -4433,7 +4462,29 @@
     };
 
     // 3. Concrete Widget Renderers
-    if (item.widgetType === 'truth_table') {
+    if (item.widgetType === 'pdf' || item.widgetType === 'file') {
+      body.classList.add('boo-widget-attachment-body');
+      const name = document.createElement('strong');
+      name.className = 'boo-widget-attachment-name';
+      name.textContent = item.data.name || 'Вложение';
+      body.appendChild(name);
+
+      const link = document.createElement('a');
+      link.className = 'boo-widget-attachment-link';
+      link.href = item.data.url;
+      if (item.widgetType === 'pdf') {
+        link.download = item.data.name || 'material.pdf';
+      } else {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      }
+      link.textContent = item.widgetType === 'pdf' ? 'Скачать PDF' : 'Открыть файл';
+      body.appendChild(link);
+      const hint = document.createElement('small');
+      hint.className = 'boo-widget-attachment-help';
+      hint.textContent = 'Материал доступен участникам урока';
+      body.appendChild(hint);
+    } else if (item.widgetType === 'truth_table') {
       const formulaVal = item.data.formula || '(A and B) or not C';
       body.innerHTML = `
         <div class="boo-tt-input-row">
@@ -7135,6 +7186,7 @@
         redraw();
         updateSelectionBox();
         scheduleSave();
+        realtimeSyncAdapter?.onStrokeCommit?.(existing);
         return;
       }
     }
@@ -7504,7 +7556,9 @@
     }
     if (idx === -1) return;
 
-    const [restored] = redoStack.splice(idx, 1);
+    const [undone] = redoStack.splice(idx, 1);
+    // Deleted IDs are tombstoned by the room server; redo is a new creation.
+    const restored = { ...undone, id: generateId(undone.type || 'strk') };
     strokes.push(restored);
     dirty = true;
     redraw();
@@ -7537,7 +7591,14 @@
 
   // --- Persistence Engine ---
 
+  function usesRoomPersistence() {
+    return (contextType === 'lesson' || contextType === 'lesson_task' ||
+      (contextType === 'sandbox_workspace' && Boolean(window.trainerOsConfig?.sandbox_mode))) &&
+      !Boolean(window.trainerOsConfig?.homework_mode);
+  }
+
   function scheduleSave() {
+    if (usesRoomPersistence()) return;
     if (saveTimer) clearTimeout(saveTimer);
     updateSaveStatus('unsaved');
     saveTimer = setTimeout(() => saveToServer(), 3000);
@@ -7545,6 +7606,7 @@
 
   async function saveToServer() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    if (usesRoomPersistence()) return true;
     if (!taskId) return false;
     if (pendingSavePromise) await waitPendingSave();
     if (!dirty && strokes.length === 0) return true;
@@ -7650,7 +7712,7 @@
   }
 
   async function loadFromServer() {
-    const isLessonRoom = (contextType === 'lesson' || contextType === 'lesson_task') && !Boolean(window.trainerOsConfig?.homework_mode);
+    const isLessonRoom = (contextType === 'lesson' || contextType === 'lesson_task' || (contextType === 'sandbox_workspace' && Boolean(window.trainerOsConfig?.sandbox_mode))) && !Boolean(window.trainerOsConfig?.homework_mode);
     if (isLessonRoom) return;
 
     if (!taskId) {
@@ -8416,7 +8478,8 @@
     }
     embeddedTarget.appendChild(toolbar);
     if (zoomIsland) embeddedTarget.appendChild(zoomIsland);
-    if (pagesBar) embeddedTarget.appendChild(pagesBar);
+    // Page navigation belongs to the room chrome, above movable lesson windows.
+    if (pagesBar) (document.querySelector('.room-lesson-os') || embeddedTarget).appendChild(pagesBar);
     if (minimapEl) embeddedTarget.appendChild(minimapEl);
     if (saveStatus) embeddedTarget.appendChild(saveStatus);
 
@@ -8439,6 +8502,7 @@
     taskId = normalizedTaskId;
     contextType = ctype || 'submission';
     contextId = normalizedContextId;
+    if (saveStatus) saveStatus.style.display = usesRoomPersistence() ? 'none' : '';
     syncFabVisibility();
     if (!hasValidContext() && isOpen) {
       if (!embeddedTarget && !document.getElementById('canvas-window')) {
@@ -8451,14 +8515,14 @@
         return;
       }
     }
-    const isLessonRoom = (contextType === 'lesson' || contextType === 'lesson_task') && !Boolean(window.trainerOsConfig?.homework_mode);
+    const isLessonRoom = (contextType === 'lesson' || contextType === 'lesson_task' || (contextType === 'sandbox_workspace' && Boolean(window.trainerOsConfig?.sandbox_mode))) && !Boolean(window.trainerOsConfig?.homework_mode);
     if (!isLessonRoom) {
       if (changed) loadFromServer();
     }
   }
 
   function hasValidContext() {
-    if (contextType === 'lesson' || contextType === 'lesson_task' || embeddedTarget || document.getElementById('canvas-window')) {
+    if (contextType === 'lesson' || contextType === 'lesson_task' || (contextType === 'sandbox_workspace' && Number(contextId) > 0) || embeddedTarget || document.getElementById('canvas-window')) {
       return Boolean(Number.isFinite(contextId) && contextId > 0) || Boolean(Number.isFinite(taskId) && taskId > 0) || Boolean(embeddedTarget) || Boolean(document.getElementById('canvas-window'));
     }
     return Number.isFinite(taskId) && taskId > 0;
@@ -8699,11 +8763,14 @@
 
     const flyoutH = flyoutEl.offsetHeight || 260;
     const screenH = window.innerHeight;
+    const isLessonShapeMenu = flyoutEl === shapesMenu && !!document.querySelector('.room-lesson-os');
+    const topInset = isLessonShapeMenu ? 64 : 12;
+    const bottomInset = isLessonShapeMenu ? 84 : 12;
     let top = rect.top;
-    if (top + flyoutH > screenH - 12) {
-      top = Math.max(12, screenH - flyoutH - 12);
+    if (top + flyoutH > screenH - bottomInset) {
+      top = Math.max(topInset, screenH - flyoutH - bottomInset);
     }
-    if (top < 12) top = 12;
+    if (top < topInset) top = topInset;
     flyoutEl.style.top = `${Math.round(top)}px`;
   }
 
@@ -9233,16 +9300,21 @@
       });
     });
 
+    const previousPageId = currentPageId;
     if (activePageId && activePageId !== currentPageId && pages.some((p) => p.id === activePageId)) {
       currentPageId = activePageId;
     }
 
+    applyCanvasBackground(getActivePage()?.background || 'dots', true);
     syncPageStrokes();
     renderPageTabs();
     redraw();
     syncDomWidgets();
     updateSelectionBox();
     updateReviewLayerUI();
+    if (previousPageId && previousPageId !== currentPageId) {
+      window.dispatchEvent(new CustomEvent('boostudy:page-changed', { detail: { prevPageId: previousPageId, pageId: currentPageId } }));
+    }
   }
 
   function remoteAddPage(pageData) {
@@ -9298,6 +9370,7 @@
 
   function setReadOnly(ro) {
     isReadOnly = Boolean(ro);
+    renderPageTabs();
     if (overlay) overlay.classList.toggle('is-read-only', isReadOnly);
     if (toolbar) toolbar.classList.toggle('is-read-only', isReadOnly);
     document.body.classList.toggle('canvas-read-only', isReadOnly);
@@ -9563,6 +9636,8 @@
     save: saveToServer,
     deleteStroke: deleteSingleStroke,
     deleteSelected,
+    undo,
+    redo,
     hasContent: () => strokes.length > 0,
     getStrokes: () => strokes,
     getSelectedIds: () => Array.from(selectedIds),

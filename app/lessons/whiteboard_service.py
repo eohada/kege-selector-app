@@ -154,7 +154,10 @@ def _safe_import_object(raw: Any, object_id: str, warnings: list[str], converted
             continue
         value = data[key]
         if isinstance(value, (str, int, float, bool)) or value is None:
-            clean_data[key] = _safe_text(value) if isinstance(value, str) else value
+            if key == "data_url" and isinstance(value, str):
+                clean_data[key] = value[: 28 * 1024 * 1024]
+            else:
+                clean_data[key] = _safe_text(value) if isinstance(value, str) else value
     for key in ("start", "end"):
         point = data.get(key)
         if isinstance(point, dict):
@@ -638,6 +641,10 @@ def validate_operation_permissions(document: dict[str, Any], operation: dict[str
     page = _page(normalize_document(document), page_id)
 
     def validate_item(item: dict[str, Any], patch: dict[str, Any] | None = None) -> None:
+        if (item.get("data") or {}).get("layer") == "teacher":
+            raise WhiteboardOperationError("Приватный объект преподавателя недоступен")
+        if ((patch or {}).get("data") or {}).get("layer") == "teacher":
+            raise WhiteboardOperationError("Приватный слой доступен только преподавателю")
         if not _object_is_editable(document, page, item):
             raise WhiteboardOperationError("Объект или его фрейм заблокирован")
         if patch and "locked" in patch:
@@ -652,6 +659,8 @@ def validate_operation_permissions(document: dict[str, Any], operation: dict[str
 
     if operation_type == "object.create":
         item = _safe_object(operation.get("object"))
+        if (item.get("data") or {}).get("layer") == "teacher":
+            raise WhiteboardOperationError("Приватный слой доступен только преподавателю")
         frame_id = (item.get("data") or {}).get("frame_id")
         allowed_frames = _control(document).get("allowed_frame_ids", [])
         if allowed_frames and frame_id not in allowed_frames:
@@ -667,6 +676,8 @@ def validate_operation_permissions(document: dict[str, Any], operation: dict[str
             validate_item(_object(page, str(object_id)))
         for raw in operation.get("creates") or []:
             item = _safe_object(raw)
+            if (item.get("data") or {}).get("layer") == "teacher":
+                raise WhiteboardOperationError("Приватный слой доступен только преподавателю")
             frame_id = (item.get("data") or {}).get("frame_id")
             allowed_frames = _control(document).get("allowed_frame_ids", [])
             if allowed_frames and frame_id not in allowed_frames:
@@ -895,6 +906,17 @@ def _persist_operations_locked(
 ) -> tuple[dict[str, Any], list[str]]:
     if not isinstance(operations, list) or not operations or len(operations) > MAX_OPERATION_BATCH:
         raise WhiteboardOperationError("Некорректный пакет операций")
+    # Canvas persistence uses SELECT FOR UPDATE on this row. Refresh after
+    # taking the same lock so a concurrent control.update cannot write an old
+    # document over a newer canvas snapshot (or vice versa).
+    bind = db.session.get_bind()
+    if bind and bind.dialect.name == "postgresql":
+        board = (
+            LessonWhiteboard.query.filter_by(id=board.id)
+            .with_for_update()
+            .populate_existing()
+            .one()
+        )
     current_version = int(board.document_version or 0)
     existing_ids = {
         row.operation_id
@@ -1055,6 +1077,23 @@ def convert_v2_board_to_document(
                     "name": stroke.get("name") or "Изображение",
                 },
             })
+        elif stype == "widget" and stroke.get("widgetType") in {"pdf", "file"}:
+            p0 = pts[0] if pts else {"x": float(stroke.get("x") or 0), "y": float(stroke.get("y") or 0)}
+            p1 = pts[1] if len(pts) > 1 else {"x": p0["x"] + 360, "y": p0["y"] + 160}
+            data = stroke.get("data") if isinstance(stroke.get("data"), dict) else {}
+            target_page["objects"].append({
+                "id": sid,
+                "type": "file",
+                "x": min(p0["x"], p1["x"]),
+                "y": min(p0["y"], p1["y"]),
+                "width": max(1.0, abs(p1["x"] - p0["x"])),
+                "height": max(1.0, abs(p1["y"] - p0["y"])),
+                "data": {
+                    "name": str(data.get("name") or "Вложение"),
+                    "url": str(data.get("url") or ""),
+                    "mime_type": str(data.get("mime_type") or "application/octet-stream"),
+                },
+            })
         elif stype == "connector" or stroke.get("shape") in ("line", "arrow", "double-arrow", "curved-arrow"):
             p0 = pts[0] if len(pts) > 0 else {"x": 0.0, "y": 0.0}
             p1 = pts[1] if len(pts) > 1 else {"x": 100.0, "y": 100.0}
@@ -1096,7 +1135,7 @@ def convert_v2_board_to_document(
                     "fill": stroke.get("fillColor") or "#eef2ff",
                 },
             })
-        elif stype in ("sticky", "sticker"):
+        elif stype in ("sticky", "sticker", "note"):
             x = pts[0]["x"] if pts else float(stroke.get("x") or 0)
             y = pts[0]["y"] if pts else float(stroke.get("y") or 0)
             target_page["objects"].append({
@@ -1136,6 +1175,9 @@ def convert_v2_board_to_document(
                     "opacity": float(stroke.get("opacity") if stroke.get("opacity") is not None else 1.0),
                 },
             })
+
+        if stroke.get("layer") == "teacher":
+            target_page["objects"][-1].setdefault("data", {})["layer"] = "teacher"
 
     act_pid = active_page_id if active_page_id in page_map else doc_pages[0]["id"]
     return {

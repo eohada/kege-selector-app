@@ -163,6 +163,8 @@ def test_v2_board_to_canonical_document_conversion():
     assert "stroke" in obj_types
     assert "text" in obj_types
     assert "shape" in obj_types
+    private_shape = next(obj for obj in p1_objs if obj["id"] == "s3")
+    assert private_shape["data"]["layer"] == "teacher"
 
     p2_objs = doc_teacher["pages"][1]["objects"]
     assert len(p2_objs) == 1
@@ -252,13 +254,13 @@ def test_whiteboard_export_actual_content_and_privacy(app, role_users):
         # Trigger cached persistence synchronization to LessonWhiteboard
         _persist_cached_board_strokes(lesson_id)
 
-    # 1. Teacher exports SVG: must contain both student text and teacher private note
+    # Portable exports may be imported into a shared room, so private objects stay out.
     t_svg_resp = teacher_http.get(f"/lesson/{lesson_id}/whiteboard/export?format=svg&scope=all")
     assert t_svg_resp.status_code == 200
     assert t_svg_resp.content_type.startswith("image/svg+xml")
     t_svg_text = t_svg_resp.data.decode("utf-8")
     assert "Квадратное уравнение" in t_svg_text
-    assert "Секретная подсказка учителя" in t_svg_text
+    assert "Секретная подсказка учителя" not in t_svg_text
 
     # 2. Student exports SVG: must NOT contain teacher private note!
     s_svg_resp = student_http.get(f"/lesson/{lesson_id}/whiteboard/export?format=svg&scope=all")
@@ -276,8 +278,49 @@ def test_whiteboard_export_actual_content_and_privacy(app, role_users):
     assert len(doc_pages) == 2
     assert doc_pages[0]["title"] == "Алгебра"
     assert doc_pages[1]["title"] == "Геометрия"
-    assert len(doc_pages[0]["objects"]) == 3
+    assert len(doc_pages[0]["objects"]) == 2
     assert len(doc_pages[1]["objects"]) == 1
+
+    # The legacy document API still contains the private object in storage, but
+    # never includes it in a student's full document or conflict snapshot.
+    teacher_document = teacher_http.get(f"/lesson/{lesson_id}/whiteboard")
+    student_document = student_http.get(f"/lesson/{lesson_id}/whiteboard")
+    assert teacher_document.status_code == student_document.status_code == 200
+    assert b"private_note" in teacher_document.data
+    assert b"private_note" not in student_document.data
+
+
+def test_whiteboard_history_does_not_expose_legacy_private_object(app, role_users):
+    """Old operation rows can predate the private-layer checks on new writes."""
+    from app.models import LessonWhiteboardOperation
+
+    lesson_id, _ = _create_lesson_context(app, role_users)
+    with app.app_context():
+        board = get_or_create_board(lesson_id)
+        db.session.add(LessonWhiteboardOperation(
+            whiteboard_id=board.id,
+            operation_id=f"legacy-private-{lesson_id}",
+            version=1,
+            user_id=role_users["tutor_id"],
+            operation_type="object.create",
+            payload={
+                "type": "object.create",
+                "page_id": "page_1",
+                "object": {"id": "private_history_note", "type": "text", "data": {"layer": "teacher", "text": "секрет учителя"}},
+            },
+        ))
+        db.session.commit()
+
+    teacher_http = app.test_client()
+    student_http = app.test_client()
+    login_as(teacher_http, role_users["tutor_id"], "tutor")
+    login_as(student_http, role_users["student_user_id"], "student")
+    teacher_history = teacher_http.get(f"/lesson/{lesson_id}/whiteboard/history")
+    student_history = student_http.get(f"/lesson/{lesson_id}/whiteboard/history")
+    assert teacher_history.status_code == 200
+    assert student_history.status_code == 403
+    assert b"private_history_note" in teacher_history.data
+    assert b"private_history_note" not in student_history.data
 
 
 # -------------------------------------------------------------------------

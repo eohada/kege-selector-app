@@ -113,10 +113,15 @@
   gap: 8px;
 }
 
+.boo-tracer-panel:not(.is-detached) .boo-tracer-controls-row {
+  flex-wrap: wrap;
+}
+
 .boo-tracer-buttons-group {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .boo-tracer-ctrl-btn {
@@ -184,6 +189,8 @@
   padding: 4px 10px;
   border-radius: 20px;
   border: 1px solid #e2e8f0;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .boo-tracer-step-badge strong {
@@ -199,6 +206,7 @@
   border-radius: 8px;
   padding: 2px;
   border: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .boo-tracer-speed-btn {

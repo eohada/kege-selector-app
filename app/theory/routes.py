@@ -1777,14 +1777,31 @@ def _render_theory_content_html_core(content_value):
                 continue
             resolved = _resolve_theory_uploaded_asset_by_name(src)
             if not resolved:
+                placeholder = soup.new_tag('figure')
+                placeholder['class'] = 'theory-missing-image-placeholder my-3 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 text-xs text-slate-500 font-mono flex items-center gap-2'
+                icon = soup.new_tag('i')
+                icon['class'] = 'ph-bold ph-image-broken text-base text-slate-400'
+                placeholder.append(icon)
+                span = soup.new_tag('span')
+                span.string = f'Изображение «{os.path.basename(src)}» временно недоступно'
+                placeholder.append(span)
+                img.replace_with(placeholder)
                 continue
             try:
                 storage_root = current_app.config.get('THEORY_UPLOAD_ROOT')
-                if storage_root and os.path.abspath(resolved).startswith(os.path.abspath(storage_root)):
-                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved, os.path.abspath(storage_root)).replace('\\', '/'))
+                project_root = os.path.dirname(current_app.root_path)
+                data_theory_root = os.path.abspath(os.path.join(project_root, 'data', 'theory'))
+                app_data_theory_root = os.path.abspath(os.path.join(current_app.root_path, 'data', 'theory'))
+                resolved_abs = os.path.abspath(resolved)
+                if storage_root and os.path.commonpath([os.path.abspath(storage_root), resolved_abs]) == os.path.abspath(storage_root):
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved_abs, os.path.abspath(storage_root)).replace('\\', '/'))
+                elif os.path.commonpath([data_theory_root, resolved_abs]) == data_theory_root:
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved_abs, data_theory_root).replace('\\', '/'))
+                elif os.path.commonpath([app_data_theory_root, resolved_abs]) == app_data_theory_root:
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved_abs, app_data_theory_root).replace('\\', '/'))
                 else:
                     static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
-                    url = url_for('static', filename=os.path.relpath(resolved, static_root).replace('\\', '/'))
+                    url = url_for('static', filename=os.path.relpath(resolved_abs, static_root).replace('\\', '/'))
             except Exception:
                 continue
             img['src'] = url
@@ -1920,14 +1937,31 @@ def _render_theory_content_html_core(content_value):
                 continue
             resolved = _resolve_theory_uploaded_asset_by_name(inner)
             if not resolved:
+                placeholder = soup.new_tag('figure')
+                placeholder['class'] = 'theory-missing-image-placeholder my-3 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 text-xs text-slate-500 font-mono flex items-center gap-2'
+                icon = soup.new_tag('i')
+                icon['class'] = 'ph-bold ph-image-broken text-base text-slate-400'
+                placeholder.append(icon)
+                span = soup.new_tag('span')
+                span.string = f'Изображение «{os.path.basename(inner)}» временно недоступно'
+                placeholder.append(span)
+                block.replace_with(placeholder)
                 continue
             try:
                 storage_root = current_app.config.get('THEORY_UPLOAD_ROOT')
-                if storage_root and os.path.abspath(resolved).startswith(os.path.abspath(storage_root)):
-                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved, os.path.abspath(storage_root)).replace('\\', '/'))
+                project_root = os.path.dirname(current_app.root_path)
+                data_theory_root = os.path.abspath(os.path.join(project_root, 'data', 'theory'))
+                app_data_theory_root = os.path.abspath(os.path.join(current_app.root_path, 'data', 'theory'))
+                resolved_abs = os.path.abspath(resolved)
+                if storage_root and os.path.commonpath([os.path.abspath(storage_root), resolved_abs]) == os.path.abspath(storage_root):
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved_abs, os.path.abspath(storage_root)).replace('\\', '/'))
+                elif os.path.commonpath([data_theory_root, resolved_abs]) == data_theory_root:
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved_abs, data_theory_root).replace('\\', '/'))
+                elif os.path.commonpath([app_data_theory_root, resolved_abs]) == app_data_theory_root:
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved_abs, app_data_theory_root).replace('\\', '/'))
                 else:
                     static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
-                    url = url_for('static', filename=os.path.relpath(resolved, static_root).replace('\\', '/'))
+                    url = url_for('static', filename=os.path.relpath(resolved_abs, static_root).replace('\\', '/'))
             except Exception:
                 continue
             img = soup.new_tag('img')
@@ -3033,6 +3067,56 @@ def _build_theory_public_url(abs_path: str, base_root: str, persistent: bool):
     return url_for('static', filename=rel)
 
 
+_LEGACY_THEORY_PICTURE_ALIASES = {
+    '1775733390_a.png': ('1', 'a.png'),
+    '1775733411_schema.png': ('1', 'schema.png'),
+    '1775733441_c-g.png': ('1', 'c-g.png'),
+    '1775733459_f.png': ('1', 'f.png'),
+    '1775733487_b-e.png': ('1', 'b-e.png'),
+    '1775732339_step-2.png': ('3', 'step-2.png'),
+    '1775732349_step-1.png': ('3', 'step-1.png'),
+    '1775732358_step-5.png': ('3', 'step-5.png'),
+    '1775732365_answer.png': ('3', 'answer.png'),
+    '1775733694_ege-4-1a.png': ('4', 'ege-4-1a.png'),
+    '1775733713_ege-4-2a.png': ('4', 'ege-4-2a.png'),
+    '1775733728_ege-4-3a.png': ('4', 'ege-4-3a.png'),
+    '1775734876_about.png': ('6', 'about.png'),
+    '1775734940_turtle-graphics.png': ('6', 'turtle-graphics.png'),
+    '1775735234_image.png': ('7', 'image.png'),
+    '1775735256_log2.png': ('7', 'log2.png'),
+    '1775735279_audio.png': ('7', 'audio.png'),
+    '1775735297_transfer-rate.png': ('7', 'transfer-rate.png'),
+    '1776307051_4.png': ('18', '4.png'),
+    '1776307086_5.png': ('18', '5.png'),
+    '1776307183_6.png': ('18', '6.png'),
+    '1776307223_7.png': ('18', '7.png'),
+    '1776309098_step-02.png': ('22', 'step-02.png'),
+    '1776309126_step-03.png': ('22', 'step-03.png'),
+    '1776309156_step-05.png': ('22', 'step-05.png'),
+    '1776309219_step-06.png': ('22', 'step-06.png'),
+    '1776309242_step-07.png': ('22', 'step-07.png'),
+    '1776309262_step-08.png': ('22', 'step-08.png'),
+    '1776309280_step-09.png': ('22', 'step-09.png'),
+    '1776309298_step-10.png': ('22', 'step-10.png'),
+    '1776309319_step-11.png': ('22', 'step-11.png'),
+    '1776309408_step-12.png': ('22', 'step-12.png'),
+    '1776309514_step-13.png': ('22', 'step-13.png'),
+    '1776309536_step-14.png': ('22', 'step-14.png'),
+    '1776309575_min-solving.png': ('22', 'min-solving.png'),
+    '1776309601_complete-in-x-ms-solving.png': ('22', 'complete-in-x-ms-solving.png'),
+}
+
+
+def _legacy_theory_picture_path(rel_path: str) -> str | None:
+    match = re.fullmatch(r'theory/3/(\d{9,12}_[^/]+)', rel_path)
+    alias = _LEGACY_THEORY_PICTURE_ALIASES.get(match.group(1)) if match else None
+    if not alias:
+        return None
+    project_root = os.path.dirname(current_app.root_path)
+    path = os.path.join(project_root, 'data', 'theory', 'pictures', *alias)
+    return path if os.path.isfile(path) else None
+
+
 def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
     raw_name = (file_name or '').strip().strip('"\'')
     raw_name = raw_name.split('?', 1)[0].split('#', 1)[0]
@@ -3044,6 +3128,21 @@ def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
     persistent_root = current_app.config.get('THEORY_UPLOAD_ROOT')
     if persistent_root:
         roots.append(os.path.abspath(persistent_root))
+
+    project_root = os.path.dirname(current_app.root_path)
+    data_pictures = os.path.join(project_root, 'data', 'theory', 'pictures')
+    if os.path.isdir(data_pictures):
+        roots.append(os.path.abspath(data_pictures))
+    data_theory = os.path.join(project_root, 'data', 'theory')
+    if os.path.isdir(data_theory):
+        roots.append(os.path.abspath(data_theory))
+    app_data_pictures = os.path.join(current_app.root_path, 'data', 'theory', 'pictures')
+    if os.path.isdir(app_data_pictures) and os.path.abspath(app_data_pictures) not in roots:
+        roots.append(os.path.abspath(app_data_pictures))
+    app_data_theory = os.path.join(current_app.root_path, 'data', 'theory')
+    if os.path.isdir(app_data_theory) and os.path.abspath(app_data_theory) not in roots:
+        roots.append(os.path.abspath(app_data_theory))
+
     static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
     upload_subfolders = ('theory', 'theory_files', 'theory_images')
     roots.extend([
@@ -3059,11 +3158,32 @@ def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
         for subfolder in upload_subfolders
     ])
 
+    # Historical uploads have task-specific provenance. Never resolve a missing
+    # timestamped upload by a basename found in another task's folder.
+    if re.fullmatch(r'theory/3/\d{9,12}_[^/]+', raw_name):
+        for root in roots:
+            root_abs = os.path.abspath(root)
+            candidate = os.path.abspath(os.path.join(root_abs, raw_name))
+            if os.path.commonpath([root_abs, candidate]) == root_abs and os.path.isfile(candidate):
+                return candidate
+        return _legacy_theory_picture_path(raw_name)
+
     allowed_exts = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg')
-    stem, ext = os.path.splitext(base_name)
     search_names = [base_name]
-    if ext.lower() not in allowed_exts:
-        search_names.extend([stem + candidate_ext for candidate_ext in allowed_exts])
+
+    # Strip timestamp upload prefix (e.g. 1776307086_5.png -> 5.png)
+    stripped_name = re.sub(r'^\d{9,12}_', '', base_name)
+    if stripped_name and stripped_name not in search_names:
+        search_names.append(stripped_name)
+
+    names_to_expand = list(search_names)
+    for n in names_to_expand:
+        stem, ext = os.path.splitext(n)
+        if ext.lower() not in allowed_exts:
+            for candidate_ext in allowed_exts:
+                cand = stem + candidate_ext
+                if cand not in search_names:
+                    search_names.append(cand)
 
     for root in roots:
         if not root:
@@ -3072,20 +3192,28 @@ def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
         if not os.path.isdir(root_abs):
             continue
         if raw_name and raw_name != base_name:
-            candidate_path = os.path.join(root_abs, raw_name.replace('\\', '/').lstrip('/'))
-            if os.path.isfile(candidate_path):
-                return candidate_path
+            candidate_path = os.path.abspath(os.path.join(root_abs, raw_name.replace('\\', '/').lstrip('/')))
+            try:
+                if os.path.commonpath([root_abs, candidate_path]) == root_abs and os.path.isfile(candidate_path):
+                    return candidate_path
+            except Exception:
+                pass
         for candidate_name in search_names:
-            candidate_path = os.path.join(root_abs, candidate_name)
-            if os.path.isfile(candidate_path):
-                return candidate_path
+            candidate_path = os.path.abspath(os.path.join(root_abs, candidate_name))
+            try:
+                if os.path.commonpath([root_abs, candidate_path]) == root_abs and os.path.isfile(candidate_path):
+                    return candidate_path
+            except Exception:
+                pass
         for dirpath, _dirnames, filenames in os.walk(root_abs):
-            if base_name in filenames:
-                return os.path.join(dirpath, base_name)
-            if ext.lower() not in allowed_exts:
-                for candidate_name in search_names[1:]:
-                    if candidate_name in filenames:
-                        return os.path.join(dirpath, candidate_name)
+            for candidate_name in search_names:
+                if candidate_name in filenames:
+                    cand_file = os.path.abspath(os.path.join(dirpath, candidate_name))
+                    try:
+                        if os.path.commonpath([root_abs, cand_file]) == root_abs and os.path.isfile(cand_file):
+                            return cand_file
+                    except Exception:
+                        pass
     return None
 
 
@@ -4324,22 +4452,41 @@ def upload_file():
 @login_required
 def theory_uploaded_file(rel_path):
     """
-    Serve theory uploads from persistent storage root.
+    Serve theory uploads from persistent storage root or data/theory.
     Access is allowed for users who can view or manage theory.
     """
     if not (has_permission(current_user, 'theory.view') or _can_manage_theory()):
         abort(403)
 
+    roots = []
     persistent_root = current_app.config.get('THEORY_UPLOAD_ROOT')
-    if not persistent_root:
+    if persistent_root:
+        roots.append(os.path.abspath(persistent_root))
+    project_root = os.path.dirname(current_app.root_path)
+    data_theory = os.path.abspath(os.path.join(project_root, 'data', 'theory'))
+    if os.path.isdir(data_theory):
+        roots.append(data_theory)
+    app_data_theory = os.path.abspath(os.path.join(current_app.root_path, 'data', 'theory'))
+    if os.path.isdir(app_data_theory) and app_data_theory not in roots:
+        roots.append(app_data_theory)
+
+    if not roots:
         abort(404)
 
     safe_rel = (rel_path or '').replace('\\', '/').lstrip('/')
-    abs_root = os.path.abspath(persistent_root)
-    abs_path = os.path.abspath(os.path.join(abs_root, safe_rel))
-    if not abs_path.startswith(abs_root):
-        abort(404)
-    if not os.path.isfile(abs_path):
+    abs_path = None
+    for root in roots:
+        candidate = os.path.abspath(os.path.join(root, safe_rel))
+        try:
+            if os.path.commonpath([root, candidate]) == root and os.path.isfile(candidate):
+                abs_path = candidate
+                break
+        except Exception:
+            continue
+
+    if not abs_path:
+        abs_path = _legacy_theory_picture_path(safe_rel)
+    if not abs_path:
         abort(404)
 
     guessed_mime, _ = mimetypes.guess_type(abs_path)

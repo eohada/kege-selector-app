@@ -444,14 +444,14 @@ def lesson_start(lesson_id):
         abort(403)
 
     now = moscow_now()
-    # SQLite drops timezone metadata from DateTime(timezone=True). Persist UTC-naive
-    # consistently so the overdue worker compares the same wall-clock basis.
+    # Pass timezone-aware Moscow datetime directly so _moscow_naive normalizes
+    # consistently to wall-clock Moscow time without subtracting UTC offset twice.
     transition_lesson_status(
         lesson, "in_progress",
         source="teacher_start_endpoint",
         reason="teacher_started_lesson",
         actor_user_id=getattr(current_user, "id", None),
-        started_at=now.astimezone(dt_timezone.utc).replace(tzinfo=None),
+        started_at=now,
     )
     mark_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
     if not mark_late and request.is_json:
@@ -579,6 +579,15 @@ def lesson_complete(lesson_id):
     except Exception as e:
         db.session.rollback()
         raise
+    try:
+        from app.lessons.lesson_socket import emit_lesson_studio_updated
+        emit_lesson_studio_updated(
+            lesson.lesson_id,
+            _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=False),
+            status=lesson.status,
+        )
+    except Exception:
+        logger.warning('emit_lesson_studio_updated after lesson_complete failed', exc_info=True)
     if request.is_json:
         return jsonify({
             'success': True,
@@ -1350,6 +1359,12 @@ def lesson_os_code_save(lesson_id: int):
             stored = {}
 
     if request.method == 'GET':
+        from app.lessons.lesson_socket import _load_cached_code_state
+        live_state = _load_cached_code_state(lesson_id, page_id=page_id) or {}
+        stored_revision = int(stored.get('revision') or stored.get('version') or 0)
+        live_revision = int(live_state.get('revision') or live_state.get('version') or 0)
+        if live_state and live_revision >= stored_revision:
+            stored = live_state
         files = dict(stored.get('files') or {})
         if not files and stored.get('code') is not None:
             files[stored.get('file_name') or 'main.py'] = stored.get('code') or ''
@@ -1358,10 +1373,6 @@ def lesson_os_code_save(lesson_id: int):
         active_file = stored.get('active_file') or stored.get('file_name') or 'main.py'
         open_tabs = list(stored.get('open_tabs') or [active_file])
         revision = int(stored.get('revision') or stored.get('version') or 0)
-        from app.lessons.lesson_socket import _get_code_state_cache
-        in_mem_state = _get_code_state_cache(lesson_id, page_id) or {}
-        mem_rev = int(in_mem_state.get('revision') or in_mem_state.get('version') or 0)
-        revision = max(revision, mem_rev)
         return jsonify({
             'success': True,
             'page_id': page_id,
@@ -1388,7 +1399,7 @@ def lesson_os_code_save(lesson_id: int):
             payload = {}
 
     page_id = str(payload.get('page_id') or page_id or 'page_1')
-    incoming_code = str(payload.get('code') or '')
+    incoming_code = str(payload.get('code') or '').replace('\r\n', '\n').replace('\r', '\n')
     incoming_file = str(payload.get('file_name') or 'main.py')[:120]
     incoming_files = payload.get('files')
     incoming_tabs = payload.get('open_tabs')
@@ -1400,7 +1411,7 @@ def lesson_os_code_save(lesson_id: int):
         total_len = 0
         for k, v in incoming_files.items():
             clean_name = str(k)[:120].replace('/', '').replace('\\', '').replace('\0', '').strip()
-            clean_val = str(v)[:100000]
+            clean_val = str(v)[:100000].replace('\r\n', '\n').replace('\r', '\n')
             total_len += len(clean_val)
             if clean_name:
                 files_dict[clean_name] = clean_val
@@ -1579,6 +1590,13 @@ def lesson_status_get(lesson_id: int):
         'is_completed': lesson.status == 'completed',
         'started_at': lesson.started_at.isoformat() if lesson.started_at else None,
     })
+
+
+@lessons_bp.route('/lessons/room/<int:lesson_id>')
+@login_required
+def lessons_room_redirect(lesson_id: int):
+    """Совместимый маршрут: редирект с plural /lessons/room на каноничный /lesson/<id>/room."""
+    return redirect(url_for('lessons.lesson_interactive_room', lesson_id=lesson_id, **request.args))
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/room')
@@ -1803,6 +1821,10 @@ def lesson_interactive_room(lesson_id: int):
                 linked_homework_url = url_for('task_workspace.workspace_page', context_type='submission_task', context_id=linked_submission.submission_id, assignment_task_id=linked_task.assignment_task_id)
                 break
 
+    from app.lessons.lesson_socket import _load_cached_board_active_page, _load_cached_code_state
+    room_initial_page_id = _load_cached_board_active_page(lesson.lesson_id) or 'page_1'
+    room_initial_workspace = _load_cached_code_state(lesson.lesson_id, page_id=room_initial_page_id) or {}
+
     return render_template(
         'sandbox/trainer.html',
         lesson=lesson,
@@ -1822,14 +1844,9 @@ def lesson_interactive_room(lesson_id: int):
         can_open_task_generator=can_open_task_generator,
         theory_items=theory_items,
         room_materials=room_materials,
-        room_os_workspace=(
-            __import__('app.lessons.lesson_socket', fromlist=['_load_cached_code_state'])._load_cached_code_state(lesson.lesson_id)
-            or ((lesson.review_summaries or {}).get('_os_workspace') or {})
-        ),
-        room_os_code=(
-            (__import__('app.lessons.lesson_socket', fromlist=['_load_cached_code_state'])._load_cached_code_state(lesson.lesson_id)
-            or ((lesson.review_summaries or {}).get('_os_workspace') or {})).get('code') or ''
-        ),
+        sandbox_initial_page_id=room_initial_page_id,
+        room_os_workspace=room_initial_workspace,
+        room_os_code=room_initial_workspace.get('code') or '',
         linked_homework_url=linked_homework_url,
         lesson_homework=lesson_homework_list,
         is_demo_preview=demo_preview,
@@ -2012,6 +2029,7 @@ def _whiteboard_pdf(lesson_id: int, document: dict) -> bytes:
     for candidate in (
         os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts', 'arial.ttf'),
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/TTF/DejaVuSans.ttf',
     ):
         if os.path.isfile(candidate):
             try:
@@ -2129,6 +2147,7 @@ def lesson_whiteboard_get(lesson_id: int):
     board = get_or_create_board(lesson_id)
     payload = board_payload(board)
     document = payload['document']
+    _filter_whiteboard_payload_for_viewer(lesson_id, payload, role)
     active_page_id = document.get('active_page_id')
     payload['permissions'] = {
         'role': role,
@@ -2138,6 +2157,29 @@ def lesson_whiteboard_get(lesson_id: int):
         'control': document.get('presentation', {}).get('control', {}),
     }
     return jsonify(payload)
+
+
+def _whiteboard_private_ids(lesson_id: int) -> set[str]:
+    from app.lessons.lesson_socket import _load_cached_board_strokes
+
+    return {
+        str(stroke_id) for stroke_id, stroke in _load_cached_board_strokes(lesson_id).items()
+        if isinstance(stroke, dict) and stroke.get('layer') == 'teacher'
+    }
+
+
+def _filter_whiteboard_payload_for_viewer(lesson_id: int, payload: dict, role: str) -> dict:
+    if role == 'teacher':
+        return payload
+    private_ids = _whiteboard_private_ids(lesson_id)
+    document = payload.get('document') or {}
+    for page in document.get('pages', []):
+        page['objects'] = [
+            item for item in page.get('objects', [])
+            if str(item.get('id')) not in private_ids
+            and (item.get('data') or {}).get('layer') != 'teacher'
+        ]
+    return payload
 
 
 def _save_whiteboard_asset_bytes(lesson_id: int, raw: bytes, filename: str, mime_type: str) -> dict:
@@ -2179,8 +2221,16 @@ def _materialize_import_assets(lesson_id: int, pages: list[dict]) -> None:
             if not (mime_type.startswith('image/') or mime_type == 'application/pdf'):
                 data.pop('data_url', None)
                 continue
+            if mime_type == 'application/pdf' and not raw.startswith(b'%PDF-'):
+                raise WhiteboardOperationError('Встроенный PDF содержит некорректные данные')
+            if mime_type == 'image/svg+xml':
+                lowered = raw.lower()
+                if b'<script' in lowered or re.search(rb'\bon\w+\s*=|javascript:', lowered):
+                    raise WhiteboardOperationError('SVG содержит запрещённый скрипт или обработчик события')
             extension = mimetypes.guess_extension(mime_type) or '.bin'
-            asset = _save_whiteboard_asset_bytes(lesson_id, raw, f'imported{extension}', mime_type)
+            original_name = secure_filename(str(data.get('name') or 'imported'))
+            stem = os.path.splitext(original_name)[0] or 'imported'
+            asset = _save_whiteboard_asset_bytes(lesson_id, raw, f'{stem}{extension}', mime_type)
             data.update(asset)
             data.pop('data_url', None)
             item['data'] = data
@@ -2205,14 +2255,16 @@ def lesson_whiteboard_export(lesson_id: int):
         v2_pages = _load_cached_board_pages(lesson_id)
         v2_active = _load_cached_board_active_page(lesson_id)
 
-        include_teacher = (role == "teacher")
+        # A portable board is shared lesson material. Teacher draft geometry
+        # must stay in the room's private layer and never become public on re-import.
+        include_teacher = False
         if v2_strokes:
             raw_document = convert_v2_board_to_document(v2_strokes, v2_pages, v2_active, include_teacher=include_teacher)
         else:
             board = get_or_create_board(lesson_id)
             raw_document = board_payload(board)['document']
-            if not include_teacher and raw_document.get("pages"):
-                # Filter out any teacher layer objects for student exports
+            if raw_document.get("pages"):
+                # The legacy document may also contain teacher-only objects.
                 for p in raw_document["pages"]:
                     p["objects"] = [o for o in p.get("objects", []) if (o.get("data") or {}).get("layer") != "teacher"]
 
@@ -2277,6 +2329,8 @@ def lesson_whiteboard_import(lesson_id: int):
             payload = json.loads(raw.decode('utf-8-sig'))
             pages, warnings, converted_count = import_excalidraw_payload(payload, filename)
         elif extension == '.pdf' or uploaded.mimetype == 'application/pdf':
+            if not raw.startswith(b'%PDF-'):
+                raise WhiteboardOperationError('PDF содержит некорректные данные')
             asset = _save_whiteboard_asset_bytes(lesson_id, raw, filename, 'application/pdf')
             pages, warnings, converted_count = normalize_import_pages([{'id': 'pdf-page', 'title': os.path.splitext(filename)[0], 'objects': [{'id': 'pdf-material', 'type': 'file', 'x': 120, 'y': 120, 'width': 720, 'height': 480, 'locked': True, 'data': asset}]}])
         elif extension == '.svg' or uploaded.mimetype == 'image/svg+xml':
@@ -2288,6 +2342,18 @@ def lesson_whiteboard_import(lesson_id: int):
         else:
             raise WhiteboardOperationError('Поддерживаются .boostudy.json, .excalidraw, .pdf и .svg')
         _materialize_import_assets(lesson_id, pages)
+        if request.form.get('room_mode') == '1':
+            from app.lessons.lesson_socket import import_room_board_pages
+
+            try:
+                document, version = import_room_board_pages(lesson_id, pages, current_user.id)
+            except ValueError as error:
+                return jsonify({'error': str(error)}), 422
+            return jsonify({
+                'success': True, 'imported_page_ids': [page['id'] for page in pages],
+                'warnings': warnings, 'converted_count': converted_count,
+                'document': document, 'version': version, 'accepted': True,
+            })
         board = get_or_create_board(lesson_id)
         operation = {'operation_id': uuid.uuid4().hex, 'type': 'page.import', 'pages': pages, 'warnings': warnings, 'converted_count': converted_count}
         result, accepted = persist_operations(board, [operation], current_user.id, request.headers.get('X-Client-ID'), board.document_version, role)
@@ -2318,6 +2384,31 @@ def lesson_whiteboard_operations(lesson_id: int):
         normalized.append(item)
     if role == 'parent':
         return jsonify({'error': 'Родитель может просматривать доску, но не изменять её'}), 403
+    private_ids = _whiteboard_private_ids(lesson_id)
+    private_ids.update(
+        str(obj.get('id'))
+        for page in board_payload(board)['document'].get('pages', [])
+        for obj in page.get('objects', [])
+        if (obj.get('data') or {}).get('layer') == 'teacher'
+    )
+
+    def requests_private_layer(value, depth=0):
+        if depth > 8:
+            return False
+        if isinstance(value, dict):
+            return value.get('layer') == 'teacher' or any(requests_private_layer(part, depth + 1) for part in value.values())
+        if isinstance(value, list):
+            return any(requests_private_layer(part, depth + 1) for part in value)
+        return False
+
+    for item in normalized:
+        if requests_private_layer(item):
+            return jsonify({'error': 'Приватный слой управляется в BooCanvas'}), 400
+        object_ids = [str(item.get('object_id') or '')]
+        object_ids.extend(str(entry.get('object_id') or '') for entry in item.get('updates') or [] if isinstance(entry, dict))
+        object_ids.extend(str(object_id) for object_id in item.get('deletes') or [])
+        if private_ids.intersection(object_ids):
+            return jsonify({'error': 'Приватный объект управляется в BooCanvas'}), 403
     try:
         result, accepted = persist_operations(
             board,
@@ -2328,7 +2419,8 @@ def lesson_whiteboard_operations(lesson_id: int):
             role,
         )
     except WhiteboardConflict as conflict:
-        return jsonify({'error': 'conflict', 'version': conflict.version, 'document': conflict.document}), 409
+        conflict_payload = {'error': 'conflict', 'version': conflict.version, 'document': conflict.document}
+        return jsonify(_filter_whiteboard_payload_for_viewer(lesson_id, conflict_payload, role)), 409
     except WhiteboardOperationError as error:
         return jsonify({'error': str(error)}), 400
     accepted_set = set(accepted)
@@ -2346,13 +2438,15 @@ def lesson_whiteboard_operations(lesson_id: int):
             room=f'lesson:{lesson_id}',
             namespace='/lesson',
         )
-    return jsonify({'accepted': accepted, **result})
+    return jsonify(_filter_whiteboard_payload_for_viewer(lesson_id, {'accepted': accepted, **result}, role))
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/history', methods=['GET'])
 @login_required
 def lesson_whiteboard_history(lesson_id: int):
-    _lesson, _role = _whiteboard_access(lesson_id)
+    _lesson, role = _whiteboard_access(lesson_id)
+    if role != 'teacher':
+        return jsonify({'error': 'История операций доступна только преподавателю'}), 403
     board = get_or_create_board(lesson_id)
     rows = LessonWhiteboardOperation.query.filter_by(whiteboard_id=board.id).order_by(LessonWhiteboardOperation.version.desc()).limit(100).all()
     return jsonify({'version': board.document_version or 0, 'operations': [
@@ -3536,7 +3630,7 @@ def lesson_task_student_submit(lesson_id, lesson_task_id):
 
     db.session.commit()
     from app.lessons.lesson_socket import emit_lesson_tasks_updated
-    emit_lesson_tasks_updated(lesson_id, assignment_type)
+    emit_lesson_tasks_updated(lesson_id, assignment_type, _lesson_room_task_payload(lesson_task), teacher_only=True)
     flash('Задание сдано', 'success')
     return redirect(url_for(back_route, lesson_id=lesson_id) + f"#task-{lesson_task_id}")
 

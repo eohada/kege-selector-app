@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import json
 from threading import RLock
 from time import monotonic, time
 from typing import Any
@@ -166,8 +167,8 @@ def _get_all_room_ui(lesson_id: int) -> list[dict[str, Any]]:
     redis_ui = hgetall_json(_room_ui_key(lesson_id))
     if redis_ui:
         _lesson_room_ui[lesson_id] = redis_ui
-        return list(redis_ui.values())
-    return list(_lesson_room_ui.get(lesson_id, {}).values())
+        return [value for key, value in redis_ui.items() if key != "tracer_restart"]
+    return [value for key, value in _lesson_room_ui.get(lesson_id, {}).items() if key != "tracer_restart"]
 
 
 def _save_room_ui_state(lesson_id: int, state_key: str, payload: dict[str, Any]) -> None:
@@ -354,6 +355,111 @@ def _load_cached_board_strokes(lesson_id: int) -> dict[str, Any]:
     return _load_cached_board_data(lesson_id)[0]
 
 
+def import_room_board_pages(lesson_id: int, imported_pages: list[dict[str, Any]], user_id: int) -> tuple[dict[str, Any], int]:
+    """Add validated whiteboard import pages to the active Lesson OS board."""
+    from flask import current_app
+    from app.models import LessonWhiteboard, db
+
+    prepared_pages = []
+    prepared_strokes = {}
+    for page in imported_pages:
+        page_id = str(page["id"])
+        prepared_pages.append({"id": page_id, "title": str(page.get("title") or "Страница"), "background": "dots"})
+        for item in page.get("objects") or []:
+            kind = item.get("type")
+            data = item.get("data") or {}
+            x, y = float(item["x"]), float(item["y"])
+            width, height = float(item["width"]), float(item["height"])
+            corners = [{"x": x, "y": y}, {"x": x + width, "y": y + height}]
+            stroke = {
+                "id": str(item["id"]), "page_id": page_id, "layer": "student",
+                "userId": user_id, "color": str(data.get("color") or "#4f46e5"),
+                "points": corners,
+            }
+            if kind == "stroke":
+                stroke.update({
+                    "type": "stroke", "points": data.get("points") or corners,
+                    "brush": "ballpoint", "width": float(data.get("size") or 4),
+                    "opacity": float(data.get("opacity") if data.get("opacity") is not None else 1),
+                })
+            elif kind == "shape" or kind == "frame":
+                stroke.update({
+                    "type": "shape", "shape": str(data.get("shape") or "rectangle"),
+                    "width": 3, "fill": "none", "fillColor": str(data.get("fill") or stroke["color"]),
+                })
+            elif kind == "arrow":
+                stroke.update({
+                    "type": "connector", "shape": str(data.get("shape") or "arrow"),
+                    "points": [data.get("start") or corners[0], data.get("end") or corners[1]], "width": 3,
+                })
+            elif kind == "text":
+                stroke.update({
+                    "type": "text", "points": [corners[0]],
+                    "text": str(data.get("text") or data.get("label") or ""),
+                    "fontSize": float(data.get("fontSize") or 20),
+                })
+            elif kind in {"sticky", "comment"}:
+                stroke.update({
+                    "type": "note", "text": str(data.get("text") or data.get("label") or ""),
+                    "width": width, "height": height, "colorTheme": "yellow",
+                })
+            elif kind == "image":
+                src = str(data.get("url") or data.get("data_url") or "")
+                raster_data = src.lower().startswith((
+                    "data:image/png;base64,", "data:image/jpeg;base64,",
+                    "data:image/webp;base64,", "data:image/gif;base64,",
+                ))
+                if not (src.startswith("/") and not src.startswith("//")
+                        or src.startswith(("https://", "http://")) or raster_data):
+                    raise ValueError("У изображения нет безопасного адреса")
+                stroke.update({"type": "image", "src": src, "name": str(data.get("name") or "Изображение")})
+            elif kind == "file":
+                url = str(data.get("url") or "")
+                if not (url.startswith("/") and not url.startswith("//")
+                        or url.startswith(("https://", "http://"))):
+                    raise ValueError("У вложения нет безопасного адреса")
+                mime_type = str(data.get("mime_type") or "")
+                stroke.update({
+                    "type": "widget", "widgetType": "pdf" if mime_type == "application/pdf" else "file",
+                    "data": {"url": url, "name": str(data.get("name") or "Вложение"), "mime_type": mime_type},
+                    "points": [corners[0], {"x": x + min(width, 360), "y": y + min(height, 160)}],
+                })
+            else:
+                raise ValueError(f"Тип «{kind}» пока нельзя импортировать в комнату урока")
+            prepared_strokes[stroke["id"]] = stroke
+
+    operation_lock = _lesson_operation_locks.setdefault(lesson_id, RLock())
+    with operation_lock:
+        current_strokes, current_pages, _ = _load_cached_board_data(lesson_id)
+        current_page_ids = {str(page.get("id")) for page in current_pages}
+        if any(page["id"] in current_page_ids for page in prepared_pages):
+            raise ValueError("Страница с таким ID уже существует")
+        _lesson_board_strokes[lesson_id] = {**current_strokes, **prepared_strokes}
+        _lesson_board_pages[lesson_id] = [*current_pages, *prepared_pages]
+        _lesson_board_active_page[lesson_id] = prepared_pages[0]["id"]
+        _next_board_revision(lesson_id)
+        _sync_cached_board_to_redis(lesson_id)
+        _persist_cached_board_strokes(lesson_id)
+
+        db.session.expire_all()
+        board = db.session.query(LessonWhiteboard).filter(LessonWhiteboard.lesson_id == lesson_id).first()
+        document = (board.document_state if board else None) or {}
+        persisted_ids = {str(page.get("id")) for page in document.get("pages") or []}
+        if not all(page["id"] in persisted_ids for page in prepared_pages):
+            raise RuntimeError("Импорт не сохранился в PostgreSQL")
+        version = int(board.document_version or 0)
+
+    socketio = getattr(current_app, "socketio", None)
+    if socketio:
+        all_strokes = list(_lesson_board_strokes[lesson_id].values())
+        common = {"lesson_id": lesson_id, "pages": _lesson_board_pages[lesson_id],
+                  "active_page_id": _lesson_board_active_page[lesson_id]}
+        socketio.emit("board_snapshot", {**common, "strokes": all_strokes}, room=_teacher_room(lesson_id), namespace="/lesson")
+        public_strokes = [stroke for stroke in all_strokes if stroke.get("layer") != "teacher"]
+        socketio.emit("board_snapshot", {**common, "strokes": public_strokes}, room=_student_room(lesson_id), namespace="/lesson")
+    return document, version
+
+
 def _load_cached_board_pages(lesson_id: int) -> list[dict[str, Any]]:
     return _load_cached_board_data(lesson_id)[1]
 
@@ -488,6 +594,10 @@ def _load_cached_code_state(lesson_id: int, page_id: str | None = None) -> dict[
     ckey = _code_state_key(lesson_id, page_id)
     redis_state = get_json(ckey)
     if isinstance(redis_state, dict) and redis_state:
+        if isinstance(redis_state.get("files"), dict):
+            redis_state["files"] = {str(k): _canonicalize_lf(str(v)) for k, v in redis_state["files"].items()}
+        if redis_state.get("code") is not None:
+            redis_state["code"] = _canonicalize_lf(str(redis_state["code"]))
         _set_code_state_cache(lesson_id, page_id, redis_state)
         dirty = get_dirty_code(lesson_id)
         if dirty and dirty.get("revision"):
@@ -530,10 +640,10 @@ def _load_cached_code_state(lesson_id: int, page_id: str | None = None) -> dict[
                 raw_files = stored.get("files")
                 files_dict: dict[str, str] = {}
                 if isinstance(raw_files, dict) and raw_files:
-                    files_dict = {str(k)[:120]: str(v)[:100000] for k, v in raw_files.items()}
+                    files_dict = {str(k)[:120]: _canonicalize_lf(str(v)[:100000]) for k, v in raw_files.items()}
                 elif stored.get("code") is not None:
                     fname = str(stored.get("file_name") or "main.py")[:120]
-                    files_dict[fname] = str(stored.get("code") or "")[:100000]
+                    files_dict[fname] = _canonicalize_lf(str(stored.get("code") or "")[:100000])
 
                 if not files_dict:
                     files_dict["main.py"] = ""
@@ -658,7 +768,7 @@ def _persist_cached_code_state(lesson_id: int, page_id: str | None = None) -> No
 
                 emit_lesson_code_persisted(lesson_id, {
                     "lesson_id": lesson_id,
-                    "page_id": str(page_id) if page_id else None,
+                    "page_id": str(page_id) if page_id else "page_1",
                     "file_name": active_file,
                     "revision": revision,
                     "updated_at": workspace_data.get("updated_at"),
@@ -734,7 +844,7 @@ def _revalidate_distributed_state(lesson_id: int) -> None:
                         "revision": authoritative_state.get("revision", 1),
                         "message": "Распределённая синхронизация восстановлена. Состояние актуализировано.",
                     }, room=_room(lesson_id), namespace="/lesson")
-                    sio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **authoritative_state}, room=_room(lesson_id), namespace="/lesson")
+                    sio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **authoritative_state, "page_id": "page_1"}, room=_room(lesson_id), namespace="/lesson")
             except Exception as e:
                 logger.warning("Error emitting lesson_sync_restored: %s", e)
 
@@ -809,7 +919,7 @@ def _persist_cached_board_strokes(lesson_id: int) -> None:
                     # Keep LessonWhiteboard synchronized in the exact same atomic transaction with PostgreSQL row locking
                     try:
                         from app.models import LessonWhiteboard
-                        from app.lessons.whiteboard_service import convert_v2_board_to_document, default_document
+                        from app.lessons.whiteboard_service import convert_v2_board_to_document, default_document, normalize_document
                         bind = db.session.get_bind()
                         wb_query = db.session.query(LessonWhiteboard).filter(LessonWhiteboard.lesson_id == lesson_id)
                         if bind and bind.dialect.name == "postgresql":
@@ -827,8 +937,22 @@ def _persist_cached_board_strokes(lesson_id: int) -> None:
                                 allow_student_edit=True,
                             )
                             db.session.add(wb)
-                        wb.document_state = convert_v2_board_to_document(strokes, pages, active_page_id, include_teacher=True)
-                        wb.document_version = rev
+                        # V2 canvas owns page geometry. The whiteboard document also
+                        # owns lesson permissions and presentation state; replacing the
+                        # whole document here resets confirmed control.update changes.
+                        canvas_document = convert_v2_board_to_document(strokes, pages, active_page_id, include_teacher=True)
+                        document = normalize_document(wb.document_state)
+                        previous_pages = {page.get("id"): page for page in document.get("pages", [])}
+                        document["pages"] = [
+                            {**previous_pages.get(page["id"], {}), **page}
+                            for page in canvas_document["pages"]
+                        ]
+                        document["active_page_id"] = canvas_document["active_page_id"]
+                        presentation = document.get("presentation", {})
+                        if presentation.get("page_id") not in {page["id"] for page in document["pages"]}:
+                            presentation["page_id"] = document["active_page_id"]
+                        wb.document_state = document
+                        wb.document_version = max(int(wb.document_version or 0), rev) + 1
                         wb.updated_at = moscow_now()
                     except Exception as wb_err:
                         logger.warning("Error syncing LessonWhiteboard for lesson %s: %s", lesson_id, wb_err)
@@ -924,6 +1048,13 @@ def _resolve_user_presence_info(user) -> dict[str, Any]:
     }
 
 
+def _canonicalize_lf(text: Any) -> str:
+    """Enforce canonical LF (\n) line ending contract across all operational boundaries."""
+    if not isinstance(text, str):
+        return "" if text is None else str(text)
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def _utf16_to_py_offset(s: str, utf16_idx: int) -> int:
     b = s.encode("utf-16-le")
     byte_offset = min(len(b), max(0, utf16_idx * 2))
@@ -952,25 +1083,70 @@ def _ot_transform_position(pos: int, op: dict[str, Any], is_tie_breaker: bool = 
 
 def _ot_transform_op(op_to_transform: dict[str, Any], concurrent_op: dict[str, Any], is_tie_breaker: bool = False) -> dict[str, Any]:
     s1 = int(op_to_transform.get("start") or 0)
-    e1 = int(op_to_transform.get("end") or s1)
+    e1 = int(op_to_transform.get("end") if op_to_transform.get("end") is not None else s1)
+    ins1 = _canonicalize_lf(str(op_to_transform.get("inserted") or ""))
+
     s2 = int(concurrent_op.get("start") or 0)
-    e2 = int(concurrent_op.get("end") or s2)
-    ins2_len = len(str(concurrent_op.get("inserted") or ""))
+    e2 = int(concurrent_op.get("end") if concurrent_op.get("end") is not None else s2)
+    ins2 = _canonicalize_lf(str(concurrent_op.get("inserted") or ""))
+    ins2_len = len(ins2)
     del2_len = max(0, e2 - s2)
     delta2 = ins2_len - del2_len
 
-    if e1 <= s2:
-        if e1 == s2 and s1 == e1 and s2 == e2 and is_tie_breaker:
-            return {"start": s1 + ins2_len, "end": e1 + ins2_len, "inserted": op_to_transform.get("inserted", "")}
-        return {"start": s1, "end": e1, "inserted": op_to_transform.get("inserted", "")}
-    if s1 >= e2:
-        return {"start": max(0, s1 + delta2), "end": max(0, e1 + delta2), "inserted": op_to_transform.get("inserted", "")}
+    # Case 1: op1 entirely before op2
+    if e1 < s2:
+        return {"start": s1, "end": e1, "inserted": ins1}
+    if e1 == s2:
+        if s1 == e1 and s2 == e2:  # both pure insertions at same pos
+            if is_tie_breaker:
+                return {"start": s1 + ins2_len, "end": e1 + ins2_len, "inserted": ins1}
+            return {"start": s1, "end": e1, "inserted": ins1}
+        return {"start": s1, "end": e1, "inserted": ins1}
 
-    new_s = s1 if s1 < s2 else s2 + ins2_len
-    new_e = max(0, e1 + delta2) if e1 > e2 else s2 + ins2_len
-    if new_e < new_s:
-        new_e = new_s
-    return {"start": new_s, "end": new_e, "inserted": op_to_transform.get("inserted", "")}
+    # Case 2: op1 entirely after op2
+    if s1 > e2:
+        return {"start": max(0, s1 + delta2), "end": max(0, e1 + delta2), "inserted": ins1}
+    if s1 == e2:
+        return {"start": max(0, s1 + delta2), "end": max(0, e1 + delta2), "inserted": ins1}
+
+    # Case 3: Exactly identical range
+    if s1 == s2 and e1 == e2:
+        if is_tie_breaker:
+            return {"start": s1 + ins2_len, "end": s1 + ins2_len, "inserted": ins1}
+        return {"start": s1, "end": s1, "inserted": ins1}
+
+    if s1 == s2 and e1 < e2 and not is_tie_breaker:
+        return {"start": s1, "end": s1, "inserted": ins1}
+    if s1 == s2 and e1 > e2 and not is_tie_breaker:
+        return {"start": s1, "end": e1 + delta2, "inserted": ins1 + ins2}
+
+    if s2 < s1 and e1 <= e2:
+        return {"start": s2, "end": s2, "inserted": ""}
+
+    # Case 4: op1 is an insertion strictly inside op2's deletion
+    if s1 == e1 and s2 < s1 < e2:
+        return {"start": s2, "end": s2, "inserted": ""}
+
+    # Case 5: General overlapping ranges
+    # Calculate new start
+    if s1 < s2:
+        new_s = s1
+    elif s1 <= e2:
+        new_s = s2 + ins2_len
+    else:
+        new_s = max(0, s1 + delta2)
+
+    # Calculate new end
+    if e1 < s2:
+        new_e = e1
+    elif s1 < s2 and s2 <= e1 < e2:
+        new_e = s2
+    elif e1 <= e2:
+        new_e = s2 + ins2_len
+    else:
+        new_e = max(0, e1 + delta2)
+
+    return {"start": min(new_s, new_e), "end": max(new_s, new_e), "inserted": ins1}
 
 
 def is_user_banned_from_lesson(lesson_id: int, user_id: int) -> bool:
@@ -1160,6 +1336,20 @@ def register_lesson_socket(socketio, app=None) -> None:
             namespace="/lesson",
             include_self=False,
         )
+        try:
+            from app.lessons.routes import _lesson_studio_state, _lesson_studio_state_for_viewer
+            socketio.emit(
+                "lesson_studio_updated",
+                {
+                    "lesson_id": lesson_id,
+                    "state": _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=role == "teacher"),
+                    "status": lesson.status,
+                },
+                room=request.sid,
+                namespace="/lesson",
+            )
+        except Exception:
+            logger.warning('lesson studio replay failed on join for lesson %s', lesson_id, exc_info=True)
         # Воспроизвести текущее состояние интерфейса комнаты (окна, режимы)
         room_ui_list = _get_all_room_ui(lesson_id)
         for ui_payload in room_ui_list:
@@ -1712,11 +1902,10 @@ def register_lesson_socket(socketio, app=None) -> None:
             camera_state = _lesson_camera_state.get(lesson_id)
             if camera_state:
                 socketio.emit("whiteboard_live_camera", camera_state, room=request.sid, namespace="/lesson")
-            code_state = _lesson_code_state.get(lesson_id)
-            if not code_state:
-                code_state = _load_cached_code_state(lesson_id)
+            code_page_id = str((data or {}).get("page_id") or active_page_id or "page_1")
+            code_state = _load_cached_code_state(lesson_id, page_id=code_page_id)
             if code_state:
-                socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **code_state}, room=request.sid, namespace="/lesson")
+                socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **code_state, "page_id": code_page_id}, room=request.sid, namespace="/lesson")
         except Exception as error:
             logger.warning("whiteboard_join failed: %s", error)
 
@@ -2048,7 +2237,15 @@ def register_lesson_socket(socketio, app=None) -> None:
             elif kind in {"run", "run_start"}:
                 code = str((data or {}).get("code") or "")[:100000]
                 payload.update({"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code})
+            if kind in {"run", "run_start", "terminal_output"}:
+                if (data or {}).get("page_id"):
+                    payload["page_id"] = str(data["page_id"])[:64]
+                if (data or {}).get("run_id"):
+                    payload["run_id"] = str(data["run_id"])[:64]
+                payload["initiator_id"] = current_user.id
             elif kind in tracer_kinds:
+                if (data or {}).get("page_id"):
+                    payload["page_id"] = str(data["page_id"])[:96]
                 if (data or {}).get("step") is not None:
                     payload["step"] = int(data["step"])
                 if (data or {}).get("playing") is not None:
@@ -2068,6 +2265,27 @@ def register_lesson_socket(socketio, app=None) -> None:
                     payload["code"] = str(data["code"] or "")[:100000]
                 if "run_id" in (data or {}):
                     payload["run_id"] = str(data["run_id"])[:64]
+                if kind == "tracer_state" and role == "teacher" and (data or {}).get("error"):
+                    payload["error"] = str(data["error"])[:500]
+                if kind == "tracer_state" and role == "teacher":
+                    if "waiting_input" in (data or {}):
+                        payload["waiting_input"] = bool(data["waiting_input"])
+                    if "input_prompt" in (data or {}):
+                        payload["input_prompt"] = str(data["input_prompt"] or "")[:500]
+                    if "input_line" in (data or {}) and data["input_line"] is not None:
+                        try:
+                            payload["input_line"] = max(1, min(int(data["input_line"]), 50000))
+                        except (ValueError, TypeError):
+                            pass
+                if kind == "tracer_state" and role == "teacher" and isinstance((data or {}).get("frames"), list):
+                    frames = data["frames"]
+                    if len(frames) <= 1000:
+                        try:
+                            encoded_frames = json.dumps(frames, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                            if len(encoded_frames) <= 700000:
+                                payload["frames"] = frames
+                        except (TypeError, ValueError):
+                            pass
                 if "seq" in (data or {}):
                     try:
                         payload["seq"] = int(data["seq"])
@@ -2162,6 +2380,8 @@ def register_lesson_socket(socketio, app=None) -> None:
                         _save_room_ui_state(lesson_id, "tracer_state", curr_tracer)
                     else:
                         _save_room_ui_state(lesson_id, "tracer_state", {"kind": "tracer_state", "breakpoints": payload.get("breakpoints", []), "lesson_id": lesson_id})
+                elif kind == "tracer_restart":
+                    _remove_room_ui_state(lesson_id, "tracer_restart")
                 else:
                     is_transient_layout = (kind == "window_layout" and payload.get("phase") in {"move", "resize"})
                     if not is_transient_layout:
@@ -2177,7 +2397,12 @@ def register_lesson_socket(socketio, app=None) -> None:
                             else f"window_layout:{payload.get('window_id', 'main')}" if kind == "window_layout"
                             else f"window:{payload.get('window_id', 'main')}"
                         )
-                        _save_room_ui_state(lesson_id, state_key, payload)
+                        state_payload = payload
+                        if kind == "tracer_state" and "frames" not in payload:
+                            previous = _lesson_room_ui.get(lesson_id, {}).get("tracer_state") or {}
+                            if previous.get("run_id") == payload.get("run_id") and previous.get("frames"):
+                                state_payload = {**previous, **payload}
+                        _save_room_ui_state(lesson_id, state_key, state_payload)
             elif kind in {"freeze_student", "freeze"}:
                 val = (data or {}).get("is_frozen")
                 if val is None:
@@ -2243,7 +2468,14 @@ def register_lesson_socket(socketio, app=None) -> None:
                     socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, "page_id": page_id, **current}, room=request.sid, namespace="/lesson")
                 return
 
-            if current is None:
+            is_teacher = role in ("teacher", "tutor")
+            is_empty_default = (
+                isinstance(current, dict)
+                and current.get("files") == {"main.py": ""}
+                and int(current.get("revision") or 1) <= 1
+                and not current.get("code")
+            )
+            if current is None or (is_teacher and is_empty_default and (incoming_files or incoming_code)):
                 initial_files = {}
                 if isinstance(incoming_files, dict) and incoming_files:
                     initial_files = {str(k)[:120]: str(v)[:100000] for k, v in incoming_files.items()}
@@ -2304,6 +2536,17 @@ def register_lesson_socket(socketio, app=None) -> None:
             if role == "parent" or not control.get("code_sync") or (role != "teacher" and (not control.get("student_code_editing") or control.get("freeze_student"))):
                 if role == "student" and control.get("freeze_student"):
                     socketio.emit("whiteboard_error", {"message": "Редактирование кода заблокировано преподавателем"}, room=request.sid, namespace="/lesson")
+                elif role == "student" and not control.get("student_code_editing"):
+                    curr_rev = int((_load_cached_code_state(lesson_id, page_id=page_id) or {}).get("revision") or 0)
+                    socketio.emit("lesson_code_rejected", {
+                        "lesson_id": lesson_id,
+                        "page_id": page_id,
+                        "file_name": file_name,
+                        "op_id": op_id,
+                        "reason": "student_code_editing_disabled",
+                        "message": "Редактирование кода отключено преподавателем",
+                        "revision": curr_rev,
+                    }, room=request.sid, namespace="/lesson")
                 return
 
             patch_dict = (data or {}).get("patch") or (data or {}).get("op") or {}
@@ -2313,7 +2556,7 @@ def register_lesson_socket(socketio, app=None) -> None:
             base_revision = int((data or {}).get("base_revision") or patch_dict.get("base_revision") or 0)
             start = max(0, int(patch_dict.get("start") if "start" in patch_dict else (data or {}).get("start") or 0))
             end = max(start, int(patch_dict.get("end") if "end" in patch_dict else (data or {}).get("end") or start))
-            inserted = str(patch_dict.get("inserted") if "inserted" in patch_dict else (data or {}).get("inserted") or "")[:50000]
+            inserted = _canonicalize_lf(str(patch_dict.get("inserted") if "inserted" in patch_dict else (data or {}).get("inserted") or "")[:50000])
             cursor = (data or {}).get("cursor") or patch_dict.get("cursor") or {}
 
             from app.runtime_state import is_distributed_runtime_healthy, is_single_process_mode, set_dirty_code, atomic_cas_json
@@ -2354,7 +2597,7 @@ def register_lesson_socket(socketio, app=None) -> None:
                         "file_name": file_name,
                         "revision": c_rev,
                         "deleted_files": deleted_files,
-                    }, False
+                    }, True
 
                 for past_op in history:
                     if past_op.get("op_id") == op_id:
@@ -2363,9 +2606,9 @@ def register_lesson_socket(socketio, app=None) -> None:
                             "revision": past_op.get("revision", c_rev),
                             "file_name": file_name,
                             "op_id": op_id,
-                        }, False
+                        }, True
 
-                file_text = str(f_dict.get(file_name) or "")
+                file_text = _canonicalize_lf(str(f_dict.get(file_name) or ""))
 
                 if history:
                     min_history_rev = int(history[0].get("revision") or 0)
@@ -2385,22 +2628,24 @@ def register_lesson_socket(socketio, app=None) -> None:
 
                 cur_start = start
                 cur_end = end
+                cur_inserted = inserted
                 for c_op in concurrent_ops:
                     is_tie_breaker = bool(client_id and c_op.get("client_id") and client_id > str(c_op.get("client_id")))
                     transformed = _ot_transform_op(
-                        {"start": cur_start, "end": cur_end, "inserted": inserted},
+                        {"start": cur_start, "end": cur_end, "inserted": cur_inserted},
                         c_op,
                         is_tie_breaker=is_tie_breaker,
                     )
                     cur_start = transformed["start"]
                     cur_end = transformed["end"]
+                    cur_inserted = transformed["inserted"]
 
                 py_start = _utf16_to_py_offset(file_text, cur_start)
                 py_end = _utf16_to_py_offset(file_text, cur_end)
                 py_start = min(py_start, len(file_text))
                 py_end = min(max(py_start, py_end), len(file_text))
 
-                next_text = file_text[:py_start] + inserted + file_text[py_end:]
+                next_text = file_text[:py_start] + cur_inserted + file_text[py_end:]
                 f_dict[file_name] = next_text
 
                 n_rev = c_rev + 1
@@ -2417,7 +2662,7 @@ def register_lesson_socket(socketio, app=None) -> None:
                     "base_revision": base_revision,
                     "start": cur_start,
                     "end": cur_end,
-                    "inserted": inserted,
+                    "inserted": cur_inserted,
                     "updated_at": int(time() * 1000),
                 }
                 history.append(applied_op)
@@ -2495,7 +2740,7 @@ def register_lesson_socket(socketio, app=None) -> None:
                 "base_revision": base_revision,
                 "start": trans_start,
                 "end": trans_end,
-                "inserted": inserted,
+                "inserted": cas_res.get("_last_applied_op", {}).get("inserted", inserted),
                 "code_after": next_text,
                 "cursor": cursor,
             }, room=_room(lesson_id), namespace="/lesson", include_self=False)
@@ -3601,7 +3846,7 @@ def register_lesson_socket(socketio, app=None) -> None:
         )
 
 
-def emit_lesson_tasks_updated(lesson_id: int, assignment_type: str, task: dict | None = None) -> None:
+def emit_lesson_tasks_updated(lesson_id: int, assignment_type: str, task: dict | None = None, *, teacher_only: bool = False) -> None:
     try:
         from flask import current_app
         sio = getattr(current_app, "socketio", None) or _socketio_instance
@@ -3616,7 +3861,8 @@ def emit_lesson_tasks_updated(lesson_id: int, assignment_type: str, task: dict |
                 if not student_task.get("answer_visible_to_student", False):
                     student_task["answer"] = ""
                 sio.emit("lesson_tasks_updated", {**payload, "task": teacher_task}, room=_teacher_room(lesson_id), namespace="/lesson")
-                sio.emit("lesson_tasks_updated", {**payload, "task": student_task}, room=_student_room(lesson_id), namespace="/lesson")
+                if not teacher_only:
+                    sio.emit("lesson_tasks_updated", {**payload, "task": student_task}, room=_student_room(lesson_id), namespace="/lesson")
             else:
                 sio.emit(
                     "lesson_tasks_updated",

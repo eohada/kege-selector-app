@@ -32,6 +32,7 @@
       // State flags
       this.isConnected = false;
       this.isConnecting = false;
+      this.isLeaving = false;
       this.isAudioMuted = false;
       this.isVideoMuted = false;
       this.isScreenSharing = false;
@@ -41,6 +42,11 @@
       this.remoteParticipants = new Map();
       this.primaryRemoteIdentity = null;
       this.activeScreenshareIdentity = null;
+      this.audioTracks = new Map();
+      this.audioUnlockHandlerAttached = false;
+      this.audioRecoveryTimer = null;
+      this.audioRecoveryAttempts = 0;
+      this.audioRecoveryCount = 0;
 
       this.init();
     }
@@ -604,9 +610,17 @@
 
         // 6. Initial sync with any already-connected participants
         this.syncRemoteParticipantUI();
+        this.scheduleAudioRecoveryCheck();
 
       } catch (err) {
         console.error('[LiveKit] Join failed:', err);
+        const failedRoom = this.room;
+        this.room = null;
+        if (failedRoom) {
+          try { await failedRoom.disconnect(); } catch (disconnectError) {
+            console.warn('[LiveKit] Failed room cleanup:', disconnectError);
+          }
+        }
         this.isConnecting = false;
         this.updateStatusBadge('error', 'Ошибка сети');
         if (joinBtn) {
@@ -655,11 +669,181 @@
       }
     }
 
+    attachRemoteAudio(participant, track) {
+      if (!participant || !track || track.kind !== 'audio') return;
+      const identity = String(participant.identity);
+      const trackSid = track.sid || track.mediaStreamTrack?.id || 'audio_track';
+
+      const existing = this.audioTracks.get(identity);
+      if (existing) {
+        if (existing.trackSid === trackSid && existing.element && document.body.contains(existing.element)) {
+          existing.element.play().catch(() => {});
+          this.updateAudioPlaybackUI();
+          return;
+        }
+        try {
+          if (typeof existing.track?.detach === 'function') {
+            existing.track.detach(existing.element);
+          }
+          existing.element.srcObject = null;
+          existing.element.remove();
+        } catch (_) {}
+        this.audioTracks.delete(identity);
+      }
+
+      document.querySelectorAll(`audio[id="audio-${identity}"]`).forEach(el => {
+        try {
+          el.srcObject = null;
+          el.remove();
+        } catch (_) {}
+      });
+
+      const audioEl = document.createElement('audio');
+      audioEl.id = `audio-${identity}`;
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      audioEl.setAttribute('data-track-sid', trackSid);
+      audioEl.style.display = 'none';
+      document.body.appendChild(audioEl);
+
+      try {
+        if (typeof track.attach === 'function') {
+          track.attach(audioEl);
+        } else if (track.mediaStream) {
+          audioEl.srcObject = track.mediaStream;
+        }
+      } catch (attachErr) {
+        console.warn('[LiveKit OS] Error attaching audio track:', attachErr);
+      }
+
+      this.audioTracks.set(identity, {
+        trackSid: trackSid,
+        track: track,
+        element: audioEl
+      });
+
+      audioEl.play().catch(err => {
+        console.warn('[LiveKit OS] Audio play blocked by browser autoplay policy:', err);
+        this.updateAudioPlaybackUI();
+      });
+
+      this.updateAudioPlaybackUI();
+    }
+
+    detachRemoteAudio(participant, track) {
+      if (!participant || !track) return;
+      const identity = String(participant.identity);
+      const trackSid = track.sid || track.mediaStreamTrack?.id;
+      const existing = this.audioTracks.get(identity);
+
+      if (existing) {
+        if (!trackSid || existing.trackSid === trackSid) {
+          try {
+            if (typeof track.detach === 'function') {
+              track.detach(existing.element);
+            }
+            existing.element.srcObject = null;
+            existing.element.remove();
+          } catch (_) {}
+          this.audioTracks.delete(identity);
+        } else {
+          try {
+            if (typeof track.detach === 'function') {
+              track.detach();
+            }
+          } catch (_) {}
+        }
+      } else {
+        try {
+          if (typeof track.detach === 'function') track.detach();
+        } catch (_) {}
+      }
+    }
+
+    cleanupParticipantAudio(identity) {
+      if (!identity) return;
+      const existing = this.audioTracks.get(identity);
+      if (existing) {
+        try {
+          if (typeof existing.track?.detach === 'function') {
+            existing.track.detach(existing.element);
+          }
+          existing.element.srcObject = null;
+          existing.element.remove();
+        } catch (_) {}
+        this.audioTracks.delete(identity);
+      }
+      document.querySelectorAll(`audio[id="audio-${identity}"]`).forEach(el => {
+        try {
+          el.srcObject = null;
+          el.remove();
+        } catch (_) {}
+      });
+    }
+
+    updateAudioPlaybackUI() {
+      const blocked = Boolean(this.room && this.room.canPlaybackAudio === false);
+      let banner = document.getElementById('livekit-audio-unlock-banner');
+
+      if (blocked) {
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'livekit-audio-unlock-banner';
+          banner.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 cursor-pointer border border-amber-300 transition-all text-xs';
+          banner.innerHTML = `
+            <i class="ph-bold ph-speaker-simple-slash text-base"></i>
+            <span>Звук заблокирован браузером. Нажмите, чтобы включить</span>
+            <button type="button" class="bg-slate-900 text-white px-2.5 py-1 rounded-lg text-xs font-semibold">Включить</button>
+          `;
+          banner.addEventListener('click', () => {
+            this.unlockAudio();
+          });
+          document.body.appendChild(banner);
+        }
+        banner.style.display = 'flex';
+
+        if (!this.audioUnlockHandlerAttached) {
+          this.audioUnlockHandlerAttached = true;
+          const onFirstInteraction = () => {
+            this.unlockAudio();
+            window.removeEventListener('pointerdown', onFirstInteraction, true);
+            window.removeEventListener('keydown', onFirstInteraction, true);
+            this.audioUnlockHandlerAttached = false;
+          };
+          window.addEventListener('pointerdown', onFirstInteraction, true);
+          window.addEventListener('keydown', onFirstInteraction, true);
+        }
+      } else {
+        if (banner) {
+          banner.style.display = 'none';
+          banner.remove();
+        }
+      }
+    }
+
+    unlockAudio() {
+      if (this.room && typeof this.room.startAudio === 'function') {
+        this.room.startAudio().then(() => {
+          this.updateAudioPlaybackUI();
+          this.audioTracks.forEach(entry => {
+            entry.element?.play?.().catch(() => {});
+          });
+        }).catch(err => {
+          console.warn('[LiveKit OS] startAudio error:', err);
+        });
+      }
+    }
+
     setupRoomEvents() {
       const LivekitClient = window.LivekitClient;
       const { RoomEvent } = LivekitClient;
+      const room = this.room;
 
       this.room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (track.kind === 'audio') {
+          this.attachRemoteAudio(participant, track);
+          this.audioRecoveryAttempts = 0;
+        }
         if (publication?.setVideoQuality && LivekitClient?.VideoQuality) {
           publication.setVideoQuality(LivekitClient.VideoQuality.HIGH);
         }
@@ -668,10 +852,21 @@
 
       this.room.on(RoomEvent.TrackPublished, (publication, participant) => {
         this.syncRemoteParticipantUI();
+        if (publication.kind === 'audio') this.scheduleAudioRecoveryCheck();
+      });
+
+      this.room.on(RoomEvent.TrackSubscriptionFailed, (trackSid, participant) => {
+        if (Array.from(participant.audioTrackPublications.values()).some(publication => publication.trackSid === trackSid)) {
+          this.scheduleAudioRecoveryCheck(1500);
+        }
       });
 
       this.room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-        track.detach();
+        if (track.kind === 'audio') {
+          this.detachRemoteAudio(participant, track);
+        } else {
+          try { track.detach(); } catch (_) {}
+        }
         if (track.source === LivekitClient.Track.Source.ScreenShare) {
           this.handleScreenShareEnded(participant);
         } else {
@@ -680,6 +875,9 @@
       });
 
       this.room.on(RoomEvent.TrackUnpublished, (publication, participant) => {
+        if (publication.track && publication.track.kind === 'audio') {
+          this.detachRemoteAudio(participant, publication.track);
+        }
         if (publication.source === LivekitClient.Track.Source.ScreenShare) {
           this.handleScreenShareEnded(participant);
         } else {
@@ -694,9 +892,14 @@
       });
 
       this.room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        this.cleanupParticipantAudio(participant.identity);
         this.remoteParticipants.delete(participant.identity);
         this.syncRemoteParticipantUI();
         this.toast(`${participant.name || 'Собеседник'} покинул звонок`);
+      });
+
+      this.room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+        this.updateAudioPlaybackUI();
       });
 
       this.room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
@@ -724,6 +927,10 @@
         this.setDockStatusActive(true);
         this.showActiveCallView();
         this.syncRemoteParticipantUI();
+        if (this.room && typeof this.room.startAudio === 'function') {
+          this.room.startAudio().catch(() => {});
+        }
+        this.updateAudioPlaybackUI();
       });
 
       this.room.on(RoomEvent.Reconnecting, () => {
@@ -733,10 +940,42 @@
         this.updateStatusBadge('connected', 'В сети');
         this.showActiveCallView();
         this.syncRemoteParticipantUI();
+        if (this.room && typeof this.room.startAudio === 'function') {
+          this.room.startAudio().catch(() => {});
+        }
+        this.updateAudioPlaybackUI();
+        this.scheduleAudioRecoveryCheck();
       });
       this.room.on(RoomEvent.Disconnected, () => {
+        if (this.room !== room || this.isLeaving) return;
+        this.room = null;
         this.handleDisconnected();
       });
+    }
+
+    scheduleAudioRecoveryCheck(delayMs = 6000) {
+      if (this.audioRecoveryTimer) clearTimeout(this.audioRecoveryTimer);
+      const room = this.room;
+      this.audioRecoveryTimer = setTimeout(async () => {
+        this.audioRecoveryTimer = null;
+        if (!this.isConnected || this.isLeaving || this.room !== room) return;
+        const missingAudio = Array.from(room.remoteParticipants.values()).some(participant =>
+          Array.from(participant.audioTrackPublications.values()).some(publication =>
+            !publication.isMuted && !publication.isSubscribed && !publication.track
+          )
+        );
+        if (!missingAudio) return;
+        if (this.audioRecoveryAttempts >= 1) {
+          this.updateStatusBadge('error', 'Нет звука собеседника');
+          this.toast('Звук не восстановился. Выйдите из звонка и войдите снова.');
+          return;
+        }
+        this.audioRecoveryAttempts += 1;
+        this.audioRecoveryCount += 1;
+        this.updateStatusBadge('connecting', 'Восстанавливаем звук...');
+        await this.leaveRoom({ automatic: true });
+        await this.joinRoom();
+      }, delayMs);
     }
 
     syncRemoteParticipantUI() {
@@ -756,6 +995,9 @@
 
       if (participants.length === 0) {
         this.primaryRemoteIdentity = null;
+        for (const [id] of this.audioTracks) {
+          this.cleanupParticipantAudio(id);
+        }
         if (remoteVideo) {
           remoteVideo.style.display = 'none';
           remoteVideo.srcObject = null;
@@ -838,14 +1080,21 @@
         if (remotePlaceholder) remotePlaceholder.style.display = 'flex';
       }
 
-      // 3. Audio track
-      const audioPub = publications.find(p => p.kind === 'audio' && p.track);
-      if (audioPub && audioPub.track) {
-        let audioEl = document.getElementById(`audio-${participant.identity}`);
-        if (!audioEl) {
-          audioEl = audioPub.track.attach();
-          audioEl.id = `audio-${participant.identity}`;
-          document.body.appendChild(audioEl);
+      // 3. Audio track reconciliation for all remote participants
+      const activeAudioIdentities = new Set();
+      participants.forEach(p => {
+        const pIdentity = String(p.identity);
+        const pPubs = p.trackPublications ? Array.from(p.trackPublications.values()) : [];
+        const aPub = pPubs.find(pub => pub.kind === 'audio' && pub.track);
+        if (aPub && aPub.track) {
+          activeAudioIdentities.add(pIdentity);
+          this.attachRemoteAudio(p, aPub.track);
+        }
+      });
+      // Detach and clean up audio for participants no longer having active audio
+      for (const [id] of this.audioTracks) {
+        if (!activeAudioIdentities.has(id)) {
+          this.cleanupParticipantAudio(id);
         }
       }
 
@@ -1069,24 +1318,57 @@
       }
     }
 
-    leaveRoom() {
-      if (this.room) {
-        this.room.disconnect();
+    async leaveRoom({ automatic = false } = {}) {
+      if (this.isLeaving) return;
+      if (!automatic) this.audioRecoveryAttempts = 0;
+      const room = this.room;
+      if (!room) {
+        this.handleDisconnected();
+        return;
       }
-      this.handleDisconnected();
+      this.isLeaving = true;
+      this.updateStatusBadge('connecting', 'Отключение...');
+      try {
+        await room.disconnect();
+      } catch (error) {
+        console.warn('[LiveKit] Disconnect failed:', error);
+      } finally {
+        if (this.room === room) this.room = null;
+        this.isLeaving = false;
+        this.handleDisconnected();
+      }
     }
 
     handleDisconnected() {
+      if (this.audioRecoveryTimer) clearTimeout(this.audioRecoveryTimer);
+      this.audioRecoveryTimer = null;
       this.isConnected = false;
       this.isConnecting = false;
       this.isAudioMuted = false;
       this.isVideoMuted = false;
       this.isScreenSharing = false;
+      for (const track of [this.localAudioTrack, this.localVideoTrack, this.screenTrack]) {
+        try { track?.stop?.(); } catch (_) {}
+      }
+      this.localAudioTrack = null;
+      this.localVideoTrack = null;
+      this.screenTrack = null;
       this.remoteParticipants.clear();
       this.primaryRemoteIdentity = null;
       this.activeScreenshareIdentity = null;
 
-      document.querySelectorAll('audio[id^="audio-user-"]').forEach(a => a.remove());
+      for (const [id] of this.audioTracks) {
+        this.cleanupParticipantAudio(id);
+      }
+      this.audioTracks.clear();
+      document.querySelectorAll('audio[id^="audio-"]').forEach(a => {
+        try { a.srcObject = null; a.remove(); } catch (_) {}
+      });
+
+      const banner = document.getElementById('livekit-audio-unlock-banner');
+      if (banner) {
+        banner.remove();
+      }
 
       this.updateStatusBadge('idle', 'Не в сети');
       this.setDockStatusActive(false);
@@ -1247,7 +1529,7 @@
     }
 
     toast(msg) {
-      if (window.toast) {
+      if (typeof window.toast === 'function') {
         window.toast(msg);
       } else {
         const n = document.createElement('div');

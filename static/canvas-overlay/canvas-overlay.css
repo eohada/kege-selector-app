@@ -251,6 +251,11 @@
   display: flex;
 }
 
+body:has(.room-lesson-os) .boo-canvas-shapes-menu {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 148px);
+}
+
 .boo-shapes-menu-section {
   display: flex;
   flex-direction: column;
@@ -1228,6 +1233,14 @@ body.has-board-dock .boo-canvas-pages-bar,
   background: var(--surface-2, #f1f5f9);
   color: var(--text-primary, #0f172a);
 }
+.boo-page-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.boo-page-btn:disabled:hover {
+  background: transparent;
+  color: var(--text-secondary, #475569);
+}
 
 /* Background selector dropdown */
 .boo-bg-selector-popover {
@@ -1537,6 +1550,40 @@ body.has-board-dock .boo-canvas-pages-bar,
   flex-direction: column;
   gap: 6px;
   min-height: 0;
+}
+
+.boo-widget-attachment-body {
+  gap: 10px;
+}
+
+.boo-widget-attachment-name {
+  color: #1e293b;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.boo-widget-attachment-link {
+  align-self: flex-start;
+  border: 1px solid #c7d2fe;
+  border-radius: 9px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 11px;
+  text-decoration: none;
+}
+
+.boo-widget-attachment-link:hover,
+.boo-widget-attachment-link:focus-visible {
+  background: #e0e7ff;
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+.boo-widget-attachment-help {
+  color: #64748b;
+  font-size: 11px;
 }
 
 /* Flashcard 3D flip */

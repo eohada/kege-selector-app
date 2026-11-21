@@ -36,6 +36,10 @@
       this._skipInputModal = false;
       this.currentRunId = null;
       this.syncSeq = 0;
+      this.lastFramesBroadcastGeneration = null;
+      this.traceGeneration = 0;
+      this.preDockCodeLayout = null;
+      this.lastError = null;
 
       this.initDom();
       this.bindGutterBreakpoints();
@@ -334,6 +338,7 @@
       this.pause();
       this.inputs = [];
       this.frames = [];
+      this.lastError = null;
       this.currentIndex = 0;
       this.pendingStep = null;
       this.isWaitingInput = false;
@@ -349,6 +354,15 @@
         inputSec.classList.add('hidden');
         inputSec.innerHTML = '';
       }
+      document.getElementById('boo-tracer-heap-container')?.replaceChildren();
+      document.getElementById('boo-tracer-svg-layer')?.replaceChildren();
+      const heapCount = document.getElementById('boo-tracer-heap-count');
+      if (heapCount) heapCount.textContent = '0';
+      const varsCount = document.getElementById('boo-tracer-vars-count');
+      if (varsCount) varsCount.textContent = '0';
+      this.clearActiveLineHighlight();
+      this.updateSliderBounds();
+      this.renderStdout('');
 
       if (!skipSync && window.boostudyLessonControl?.sendUi) {
         window.boostudyLessonControl.sendUi({
@@ -400,8 +414,12 @@
       const dockIcon = document.getElementById('dock-icon-tracer-window');
       dockIcon?.classList.add('is-active');
 
-      // Если уже есть готовые кадры и код не изменился — восстанавливаем состояние без пересчета
-      if (this.frames && this.frames.length > 0 && !codeChanged) {
+      // Ученик получает авторитетные кадры преподавателя для уже запущенной трассы.
+      // Изменение текста редактора после запуска не должно скрывать эти кадры при replay окна.
+      const currentPageId = window.BooCanvasOverlay?.getActivePageId?.() || window.lessonState?.currentPageId || 'page_1';
+      const remoteStudentFrames = remote && window.trainerOsConfig?.room_role === 'student'
+        && (!this.activePageId || this.activePageId === currentPageId);
+      if (this.frames && this.frames.length > 0 && (!codeChanged || remoteStudentFrames)) {
         if (this.pendingStep !== null && this.pendingStep !== undefined) {
           this.currentIndex = Math.max(0, Math.min(this.pendingStep, this.frames.length - 1));
           this.pendingStep = null;
@@ -412,6 +430,12 @@
         if (!remote) {
           this.broadcastSync();
         }
+        return;
+      }
+
+      if (remote && window.trainerOsConfig?.room_role === 'student') {
+        const stack = document.getElementById('boo-tracer-stack-container');
+        if (stack) stack.textContent = 'Ожидаем трассу преподавателя…';
         return;
       }
 
@@ -464,11 +488,18 @@
       this.isOpen = true;
       this.isDetached = true;
       this.activeFileName = fileName || window.activeFileName || this.activeFileName || 'main.py';
-      this.lastCode = typeof code === 'string' && code ? code : (document.getElementById('code-editor-textarea')?.value || window.virtualFS?.[this.activeFileName] || '');
-      this.inputs = [];
-      this.pendingStep = null;
-      this.currentIndex = 0;
-      this.isWaitingInput = false;
+      const incomingCode = typeof code === 'string' && code ? code : (document.getElementById('code-editor-textarea')?.value || window.virtualFS?.[this.activeFileName] || '');
+      const isTeacher = Boolean(window.trainerOsConfig?.is_studio_teacher || window.lessonState?.role === 'teacher');
+      const canEdit = window.boostudyLessonControl?.canEditCode ? window.boostudyLessonControl.canEditCode() : isTeacher;
+
+      const hasValidFrames = Boolean(this.frames && this.frames.length > 0 && this.lastCode === incomingCode);
+      if (!hasValidFrames) {
+        this.lastCode = incomingCode;
+        this.inputs = [];
+        this.pendingStep = null;
+        this.currentIndex = 0;
+        this.isWaitingInput = false;
+      }
       this.renderInteractiveInputPrompt(null);
 
       this.renderTracerShell();
@@ -495,8 +526,16 @@
         toggleBtn.classList.add('is-active', 'ring-2', 'ring-cyan-400');
       }
 
-      await this.runTrace(this.lastCode, this.activeFileName, []);
-      if (!skipSync) {
+      if (!hasValidFrames && skipSync && !isTeacher) {
+        const stack = document.getElementById('boo-tracer-stack-container');
+        if (stack) stack.textContent = 'Ожидаем трассу преподавателя…';
+      } else if (!hasValidFrames) {
+        await this.runTrace(this.lastCode, this.activeFileName, []);
+      } else {
+        this.updateSliderBounds();
+        this.renderCurrentStep();
+      }
+      if (!skipSync && (isTeacher || canEdit)) {
         this.broadcastSync();
       }
     }
@@ -527,6 +566,31 @@
     /** Переключает между пристыкованной панелью и плавающим окном OS */
     toggleDockMode(skipSync = false) {
       this.isDetached = !this.isDetached;
+      const codeWindow = document.getElementById('code-window');
+      if (window.trainerOsConfig?.room_mode && codeWindow) {
+        if (!this.isDetached) {
+          if (!this.preDockCodeLayout) {
+            this.preDockCodeLayout = {
+              width: codeWindow.style.width,
+              height: codeWindow.style.height,
+              left: codeWindow.style.left,
+              top: codeWindow.style.top,
+            };
+          }
+          const parentRect = codeWindow.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
+          const width = Math.min(1000, window.innerWidth - 24);
+          const height = Math.min(640, window.innerHeight - 120);
+          codeWindow.style.width = `${width}px`;
+          codeWindow.style.height = `${height}px`;
+          codeWindow.style.left = `${Math.max(12, (window.innerWidth - width) / 2) - parentRect.left}px`;
+          codeWindow.style.top = `${Math.max(68, (window.innerHeight - height) / 2) - parentRect.top}px`;
+          codeWindow.classList.add('is-tracer-docked');
+        } else if (this.preDockCodeLayout) {
+          Object.assign(codeWindow.style, this.preDockCodeLayout);
+          codeWindow.classList.remove('is-tracer-docked');
+          this.preDockCodeLayout = null;
+        }
+      }
       if (this.isDetached) {
         this.dockedPanel?.classList.add('hidden');
         this.renderTracerShell();
@@ -548,6 +612,7 @@
         this.renderTracerShell();
         this.dockedPanel?.classList.remove('hidden');
       }
+      this.updateSliderBounds();
       this.renderCurrentStep();
       if (!skipSync) {
         this.broadcastSync();
@@ -557,6 +622,7 @@
     /** Запрашивает серверную трассировку кода */
     async runTrace(code, fileName, inputs = null) {
       if (this.isLoading) return;
+      this.lastError = null;
 
       if (!this.currentRunId || !inputs || !inputs.length) {
         this.currentRunId = 'run_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
@@ -569,6 +635,7 @@
       }
 
       this.isLoading = true;
+      const traceGeneration = ++this.traceGeneration;
       this.pause();
 
       const bodyEl = document.getElementById('boo-tracer-body');
@@ -597,6 +664,8 @@
           }),
         });
 
+        if (traceGeneration !== this.traceGeneration) return;
+
         if (!res.ok) {
           if (res.status === 404) {
             this.renderError('Маршрут /api/v2/code/trace не найден (требуется деплой бэкенда на прод-сервер)');
@@ -607,7 +676,9 @@
         }
 
         const data = await res.json();
+        if (traceGeneration !== this.traceGeneration) return;
         if (data.success && Array.isArray(data.frames) && data.frames.length > 0) {
+          this.lastError = null;
           this.frames = data.frames;
           this.isWaitingInput = Boolean(data.waiting_input);
           this.currentInputPrompt = data.input_prompt || '';
@@ -628,9 +699,9 @@
           this.renderError(data.error || 'Не удалось выполнить трассировку кода');
         }
       } catch (err) {
-        this.renderError(`Сетевая ошибка: ${err.message}`);
+        if (traceGeneration === this.traceGeneration) this.renderError(`Сетевая ошибка: ${err.message}`);
       } finally {
-        this.isLoading = false;
+        if (traceGeneration === this.traceGeneration) this.isLoading = false;
       }
     }
 
@@ -667,7 +738,10 @@
             <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black uppercase tracking-wider animate-pulse">Ожидание</span>
           </div>
           ${promptHtml}
-          <div class="flex items-center gap-2 pt-1">
+          ${window.trainerOsConfig?.room_role === 'student' && window.trainerOsConfig?.room_mode ? `
+          <div class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-800">
+            Значение вводит преподаватель. Трассировка продолжится после его ответа.
+          </div>` : `<div class="flex items-center gap-2 pt-1">
             <input type="text" id="boo-tracer-step-input-val"
               class="flex-1 px-3.5 py-2 text-xs font-mono font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
               placeholder="Введите значение (например, 42)..." autofocus autocomplete="off">
@@ -675,7 +749,7 @@
               class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center gap-1.5 cursor-pointer">
               <span>Ввести</span> <i class="ph-bold ph-arrow-right"></i>
             </button>
-          </div>
+          </div>`}
         </div>
       `;
 
@@ -717,7 +791,7 @@
         });
       }
 
-      this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+      this.runTrace(this.lastCode, this.activeFileName, this.inputs).then(() => this.broadcastSync());
     }
 
     /** Обновляет точку-индикатор наличия входных данных в кнопке Stdin */
@@ -897,6 +971,8 @@
     highlightExecutingLine(lineNum) {
       this.clearActiveLineHighlight();
       if (!lineNum || lineNum < 1) return;
+      const currentPid = window.BooCanvasOverlay?.getActivePageId?.() || window.lessonState?.currentPageId || 'page_1';
+      if (this.activePageId && this.activePageId !== currentPid) return;
       this.activeLine = lineNum;
 
       // 1. Позиционируем плавающий оверлей активной строки
@@ -1163,21 +1239,25 @@
     }
 
     renderError(msg) {
+      this.lastError = String(msg || 'Не удалось построить трассу');
       const stackCont = document.getElementById('boo-tracer-stack-container');
       if (stackCont) {
-        stackCont.innerHTML = `
-          <div class="p-3 rounded-lg bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs font-mono">
-            <strong>Ошибка трассировки:</strong><br>${msg}
-          </div>
-        `;
+        stackCont.innerHTML = '<div class="p-3 rounded-lg bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs font-mono"><strong>Ошибка трассировки:</strong><br><span class="boo-tracer-error-message"></span></div>';
+        stackCont.querySelector('.boo-tracer-error-message').textContent = this.lastError;
       }
     }
 
     /** Двусторонняя синхронизация через Socket.IO комнаты урока */
     broadcastSync() {
       if (!window.boostudyLessonControl?.sendUi) return;
+      if (this._suppressBroadcast) return;
+      const isTeacher = Boolean(window.trainerOsConfig?.is_studio_teacher || window.lessonState?.role === 'teacher');
+      const canEdit = window.boostudyLessonControl?.canEditCode ? window.boostudyLessonControl.canEditCode() : isTeacher;
+      if (window.trainerOsConfig?.room_mode && !isTeacher && !canEdit) {
+        return;
+      }
 
-      window.boostudyLessonControl.sendUi({
+      const payload = {
         kind: 'tracer_state',
         run_id: this.currentRunId,
         seq: ++this.syncSeq,
@@ -1190,120 +1270,179 @@
         breakpoints: Array.from(this.breakpoints),
         code: this.lastCode,
         inputs: this.inputs || [],
-      });
+        waiting_input: this.isWaitingInput,
+        input_prompt: this.currentInputPrompt || '',
+        input_line: this.currentInputLine || null,
+        error: isTeacher && !this.frames.length ? this.lastError : null,
+        page_id: this.activePageId || window.BooCanvasOverlay?.getActivePageId?.() || window.lessonState?.currentPageId || 'page_1',
+      };
+      if (isTeacher && this.frames.length && this.traceGeneration !== this.lastFramesBroadcastGeneration) {
+        payload.frames = this.frames;
+        this.lastFramesBroadcastGeneration = this.traceGeneration;
+      }
+      window.boostudyLessonControl.sendUi(payload);
     }
 
     /** Применение удаленного состояния трассировщика из сети */
     applyRemoteState(payload) {
       if (!payload) return;
-
-      // Обработка явного перезапуска трассировки
-      if (payload.kind === 'tracer_restart') {
-        this.currentRunId = payload.run_id;
-        this.inputs = [];
-        this.pendingStep = typeof payload.step === 'number' ? payload.step : 0;
-        if (payload.code) {
-          this.lastCode = payload.code;
+      this._suppressBroadcast = true;
+      try {
+        const remoteStudent = window.trainerOsConfig?.room_role === 'student';
+        if (payload.page_id) {
+          this.activePageId = payload.page_id;
         }
-        if (payload.file_name) {
-          this.activeFileName = payload.file_name;
-        }
-        const win = document.getElementById('tracer-window');
-        const isVisible = win && !win.classList.contains('hidden') && win.dataset.isMinimized !== 'true' && win.style.display !== 'none';
-        if (isVisible) {
-          this.restartTrace(true);
-        }
-        return;
-      }
 
-      if (payload.run_id) {
-        this.currentRunId = payload.run_id;
-      }
+        // Обработка явного перезапуска трассировки
+        if (payload.kind === 'tracer_restart') {
+          this.currentRunId = payload.run_id;
+          this.inputs = [];
+          this.frames = [];
+          this.lastError = null;
+          this.currentIndex = 0;
+          this.pause(true);
+          this.clearActiveLineHighlight();
+          this.updateSliderBounds();
+          const stackCont = document.getElementById('boo-tracer-stack-container');
+          if (stackCont && remoteStudent) stackCont.textContent = 'Ожидаем новую трассу преподавателя…';
+          const heapCont = document.getElementById('boo-tracer-heap-container');
+          if (heapCont) heapCont.replaceChildren();
+          document.getElementById('boo-tracer-svg-layer')?.replaceChildren();
+          const heapCount = document.getElementById('boo-tracer-heap-count');
+          if (heapCount) heapCount.textContent = '0';
+          const varsCount = document.getElementById('boo-tracer-vars-count');
+          if (varsCount) varsCount.textContent = '0';
+          this.renderStdout('');
+          this.pendingStep = typeof payload.step === 'number' ? payload.step : 0;
+          if (payload.code) {
+            this.lastCode = payload.code;
+          }
+          if (payload.file_name) {
+            this.activeFileName = payload.file_name;
+          }
+          if (!remoteStudent) this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+          return;
+        }
 
-      // 1. Синхронизация точек останова (брейкпоинтов)
-      if (Array.isArray(payload.breakpoints)) {
-        const incomingBp = new Set(payload.breakpoints);
-        let changed = incomingBp.size !== this.breakpoints.size;
-        if (!changed) {
-          for (const b of incomingBp) {
-            if (!this.breakpoints.has(b)) {
-              changed = true;
-              break;
+        if (payload.run_id) {
+          this.currentRunId = payload.run_id;
+        }
+
+        if (remoteStudent && typeof payload.waiting_input === 'boolean') {
+          this.isWaitingInput = payload.waiting_input;
+          this.currentInputPrompt = payload.input_prompt || '';
+          this.currentInputLine = payload.input_line || null;
+        }
+
+        if (Array.isArray(payload.frames) && payload.frames.length && payload.run_id) {
+          ++this.traceGeneration;
+          this.isLoading = false;
+          this.frames = payload.frames;
+          this.lastCode = payload.code || this.lastCode;
+          this.activeFileName = payload.file_name || this.activeFileName;
+          this.currentIndex = Math.max(0, Math.min(Number(payload.step) || 0, this.frames.length - 1));
+          this.pendingStep = null;
+          this.updateSliderBounds();
+          this.renderCurrentStep();
+          this.updateStdinIndicator();
+        }
+        if (remoteStudent && payload.error && !this.frames.length) {
+          this.renderError(payload.error);
+        }
+
+        // 1. Синхронизация точек останова (брейкпоинтов)
+        if (Array.isArray(payload.breakpoints)) {
+          const incomingBp = new Set(payload.breakpoints);
+          let changed = incomingBp.size !== this.breakpoints.size;
+          if (!changed) {
+            for (const b of incomingBp) {
+              if (!this.breakpoints.has(b)) {
+                changed = true;
+                break;
+              }
             }
           }
+          if (changed) {
+            this.breakpoints = incomingBp;
+            this.updateGutterBreakpoints();
+          }
         }
-        if (changed) {
-          this.breakpoints = incomingBp;
-          this.updateGutterBreakpoints();
-        }
-      }
 
-      // 2. Синхронизация флага активности и кода (без принудительного открытия окна DOM)
-      if (typeof payload.is_open === 'boolean') {
-        this.isOpen = payload.is_open;
-      }
-      if (payload.code && payload.code !== this.lastCode) {
-        this.lastCode = payload.code;
-        if (typeof payload.step === 'number') {
-          this.pendingStep = payload.step;
+        // 2. Синхронизация флага активности и кода (без принудительного открытия окна DOM)
+        if (typeof payload.is_open === 'boolean') {
+          this.isOpen = payload.is_open;
         }
-        const win = document.getElementById('tracer-window');
-        const isVisible = win && !win.classList.contains('hidden') && win.dataset.isMinimized !== 'true' && win.style.display !== 'none';
-        if (isVisible) {
-          this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+
+        const incomingCode = payload.code || (document.getElementById('code-editor-textarea')?.value) || (window.virtualFS?.[this.activeFileName] || '');
+        const codeChanged = Boolean(payload.code && payload.code !== this.lastCode);
+        const hasNoFrames = !this.frames || !this.frames.length;
+        if (codeChanged || hasNoFrames) {
+          if (incomingCode) this.lastCode = incomingCode;
+          if (typeof payload.step === 'number') {
+            this.pendingStep = payload.step;
+          }
+          if (incomingCode && !this.isLoading && !remoteStudent) {
+            this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+          }
         }
-      }
 
-      // 3. Синхронизация открепления/прикрепления панели
-      if (typeof payload.is_detached === 'boolean' && payload.is_detached !== this.isDetached) {
-        this.toggleDockMode(true);
-      }
-
-      // 4. Синхронизация воспроизведения / паузы
-      if (typeof payload.playing === 'boolean') {
-        if (payload.playing && !this.isPlaying) {
-          this.isPlaying = true;
-          this.updatePlayBtnUi(true);
-        } else if (!payload.playing && this.isPlaying) {
-          this.pause(true);
+        // 3. Синхронизация открепления/прикрепления панели
+        if (typeof payload.is_detached === 'boolean' && payload.is_detached !== this.isDetached) {
+          this.toggleDockMode(true);
         }
-      }
 
-      // 5. Синхронизация текущего шага
-      if (typeof payload.step === 'number' && payload.step !== this.currentIndex) {
-        if (this.isLoading) {
-          this.pendingStep = payload.step;
-        } else {
-          this.jumpToStep(payload.step, true);
+        // 4. Синхронизация воспроизведения / паузы
+        if (typeof payload.playing === 'boolean') {
+          if (payload.playing && !this.isPlaying) {
+            this.isPlaying = true;
+            this.updatePlayBtnUi(true);
+          } else if (!payload.playing && this.isPlaying) {
+            this.pause(true);
+          }
         }
-      }
 
-      // 6. Синхронизация скорости
-      if (typeof payload.speed === 'number' && payload.speed !== this.playSpeed) {
-        this.playSpeed = payload.speed;
-        const panel = document.getElementById('boo-tracer-main-panel');
-        if (panel) {
-          panel.querySelectorAll('.boo-tracer-speed-btn').forEach((b) => {
-            b.classList.toggle('active', parseFloat(b.dataset.speed) === payload.speed);
-          });
+        // 5. Синхронизация текущего шага
+        if (typeof payload.step === 'number' && payload.step !== this.currentIndex) {
+          if (this.isLoading || !this.frames || !this.frames.length) {
+            this.pendingStep = payload.step;
+          } else {
+            this.jumpToStep(payload.step, true);
+          }
         }
-      }
 
-      // 7. Синхронизация входных данных (stdin / input)
-      if (Array.isArray(payload.inputs)) {
-        this.inputs = payload.inputs;
-      }
-      if (payload.kind === 'tracer_input_submit') {
-        if (payload.run_id) this.currentRunId = payload.run_id;
-        const prevLength = this.frames.length;
+        // 6. Синхронизация скорости
+        if (typeof payload.speed === 'number' && payload.speed !== this.playSpeed) {
+          this.playSpeed = payload.speed;
+          const panel = document.getElementById('boo-tracer-main-panel');
+          if (panel) {
+            panel.querySelectorAll('.boo-tracer-speed-btn').forEach((b) => {
+              b.classList.toggle('active', parseFloat(b.dataset.speed) === payload.speed);
+            });
+          }
+        }
+
+        // 7. Синхронизация входных данных (stdin / input)
         if (Array.isArray(payload.inputs)) {
           this.inputs = payload.inputs;
-        } else if (payload.input_val) {
-          if (!Array.isArray(this.inputs)) this.inputs = [];
-          this.inputs.push(payload.input_val);
         }
-        this.pendingStep = typeof payload.pending_step === 'number' ? payload.pending_step : prevLength;
-        this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+        if (payload.kind === 'tracer_input_submit') {
+          if (payload.run_id) this.currentRunId = payload.run_id;
+          const prevLength = this.frames.length;
+          if (Array.isArray(payload.inputs)) {
+            this.inputs = payload.inputs;
+          } else if (payload.input_val) {
+            if (!Array.isArray(this.inputs)) this.inputs = [];
+            this.inputs.push(payload.input_val);
+          }
+          this.pendingStep = typeof payload.pending_step === 'number' ? payload.pending_step : prevLength;
+          if (remoteStudent) {
+            this.isWaitingInput = false;
+            this.renderInteractiveInputPrompt(null);
+          }
+          if (!remoteStudent) this.runTrace(this.lastCode, this.activeFileName, this.inputs);
+        }
+      } finally {
+        this._suppressBroadcast = false;
       }
     }
   }
