@@ -3,14 +3,20 @@
 # its existing Docker network and never creates a second data store.
 
 x-web-common: &web-common
-  build: .
+  build:
+    context: .
+    args:
+      BOOSTUDY_REVISION: ${EXPECTED_COMMIT_SHA:-unknown}
   restart: unless-stopped
   env_file:
     - .env
   environment:
     ENVIRONMENT: production
+    AUTO_DB_SCHEMA_SYNC: "0"
     EVENTLET_NO_GREENDNS: "yes"
     PYTHON_TASK_SANDBOX_URL: http://python-task-sandbox:8777
+  labels:
+    org.opencontainers.image.revision: ${EXPECTED_COMMIT_SHA:-unknown}
   volumes:
     - ./uploads:/app/uploads
   networks:

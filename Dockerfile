@@ -1,4 +1,6 @@
 FROM python:3.10-slim
+ARG BOOSTUDY_REVISION=unknown
+LABEL org.opencontainers.image.revision="${BOOSTUDY_REVISION}"
 
 WORKDIR /app
 

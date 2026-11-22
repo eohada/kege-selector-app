@@ -30,9 +30,8 @@ GREEN_PORT="${GREEN_PORT:-8002}"
 DRAIN_SECONDS="${DRAIN_SECONDS:-90}"
 STOP_OLD_AFTER_DRAIN="${STOP_OLD_AFTER_DRAIN:-0}"
 PRUNE_IMAGES_AFTER_DEPLOY="${PRUNE_IMAGES_AFTER_DEPLOY:-0}"
-RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
-#
-MIGRATION_RECOVERY_ANCHOR="${MIGRATION_RECOVERY_ANCHOR:-f2b3c4d5e6f7}"
+RUN_MIGRATIONS="${RUN_MIGRATIONS:-0}"
+EXPECTED_COMMIT_SHA="${EXPECTED_COMMIT_SHA:-}"
 # Celery belongs to the primary compose stack. Rebuilding it through the
 # blue-green file could create duplicate workers and duplicate scheduled jobs.
 UPDATE_CELERY="${UPDATE_CELERY:-0}"
@@ -147,26 +146,11 @@ run_expand_only_migrations() {
     migration_log="$(mktemp /tmp/boostudy-migrations-${color}.XXXXXX)"
     if ! compose run --rm "$(service_for_color "$color")" flask db upgrade -d /app/migrations >"$migration_log" 2>&1; then
         cat "$migration_log" >&2
-        if ! grep -q "Can't locate revision identified" "$migration_log"; then
-            rm -f "$migration_log"
-            echo "Migration failed. Traffic was not switched." >&2
-            return 1
-        fi
-
-        echo "Recovering an orphaned legacy Alembic revision from $MIGRATION_RECOVERY_ANCHOR"
-        if ! compose run --rm "$(service_for_color "$color")" flask db stamp "$MIGRATION_RECOVERY_ANCHOR" --purge -d /app/migrations; then
-            rm -f "$migration_log"
-            echo "Legacy migration recovery failed. Traffic was not switched." >&2
-            return 1
-        fi
-        if ! compose run --rm "$(service_for_color "$color")" flask db upgrade -d /app/migrations; then
-            rm -f "$migration_log"
-            echo "Migration failed after legacy recovery. Traffic was not switched." >&2
-            return 1
-        fi
-    else
-        cat "$migration_log"
+        rm -f "$migration_log"
+        echo "Migration failed. Traffic was not switched; automatic revision stamping is disabled." >&2
+        return 1
     fi
+    cat "$migration_log"
     rm -f "$migration_log"
 
     if ! compose run --rm "$(service_for_color "$color")" flask db current -d /app/migrations; then
@@ -203,6 +187,11 @@ ensure_internal_token() {
 
 deploy() {
     local current target current_service target_service
+    local remote_commit checked_out_commit
+    if [[ ! "$EXPECTED_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+        echo "Deploy requires EXPECTED_COMMIT_SHA with the exact 40-character release commit." >&2
+        return 2
+    fi
     current="$(active_color)"
     target="$(opposite_color "$current")"
     current_service="$(service_for_color "$current")"
@@ -211,7 +200,17 @@ deploy() {
     echo "Current: $current, target: $target"
     ensure_clean_worktree
     git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+    remote_commit="$(git rev-parse "refs/remotes/origin/$BRANCH^{commit}")"
+    if [[ "$remote_commit" != "$EXPECTED_COMMIT_SHA" ]]; then
+        echo "Refusing deployment: origin/$BRANCH is $remote_commit, expected $EXPECTED_COMMIT_SHA." >&2
+        return 1
+    fi
     git switch --force-create "$BRANCH" "origin/$BRANCH"
+    checked_out_commit="$(git rev-parse HEAD)"
+    if [[ "$checked_out_commit" != "$EXPECTED_COMMIT_SHA" ]]; then
+        echo "Refusing deployment: checkout is $checked_out_commit, expected $EXPECTED_COMMIT_SHA." >&2
+        return 1
+    fi
     ensure_clean_worktree
     ensure_internal_token
 
@@ -297,8 +296,3 @@ case "${1:-deploy}" in
     switch-green) write_nginx_upstream green ;;
     *) echo "Usage: $0 [deploy|rollback|status|switch-blue|switch-green]" >&2; exit 2 ;;
 esac
-
-# Legacy installations created before Alembic can contain a revision from an
-# abandoned migration history.  A normal upgrade cannot start from an unknown
-# revision, so recover it from the last schema-repair anchor and then apply the
-# current forward-only chain.  This never deletes application data.
