@@ -646,8 +646,15 @@
         });
         this.localAudioTrack = audioTrack;
         await this.room.localParticipant.publishTrack(audioTrack);
+        this.isAudioMuted = false;
+        this.syncLocalMediaControls();
       } catch (err) {
         console.warn('[LiveKit] Could not publish local audio track:', err);
+        this.localAudioTrack?.stop?.();
+        this.localAudioTrack = null;
+        this.isAudioMuted = true;
+        this.syncLocalMediaControls();
+        this.toast('Микрофон недоступен. Проверьте устройство и разрешение браузера.');
       }
 
       // 2. Publish Video (Full HD 720/1080 with simulcast: false for crystal clarity)
@@ -663,10 +670,19 @@
         });
         const localVideoEl = document.getElementById('livekit-local-video');
         if (localVideoEl) videoTrack.attach(localVideoEl);
+        this.isVideoMuted = false;
+        this.syncLocalMediaControls();
       } catch (err) {
         console.warn('[LiveKit] Could not publish local video track (audio-only):', err);
-        this.toast('Камера недоступна, звонок запущен со звуком');
+        this.localVideoTrack?.stop?.();
+        this.localVideoTrack = null;
+        this.isVideoMuted = true;
+        this.syncLocalMediaControls();
+        this.toast(this.localAudioTrack
+          ? 'Камера недоступна, звонок запущен со звуком'
+          : 'Камера и микрофон недоступны. Соединение установлено без медиа.');
       }
+      this.syncLocalMediaControls();
     }
 
     attachRemoteAudio(participant, track) {
@@ -677,7 +693,7 @@
       const existing = this.audioTracks.get(identity);
       if (existing) {
         if (existing.trackSid === trackSid && existing.element && document.body.contains(existing.element)) {
-          existing.element.play().catch(() => {});
+          existing.element.play().catch(err => this.handleRemoteAudioPlayError(identity, existing.element, err));
           this.updateAudioPlaybackUI();
           return;
         }
@@ -722,11 +738,25 @@
         element: audioEl
       });
 
-      audioEl.play().catch(err => {
-        console.warn('[LiveKit OS] Audio play blocked by browser autoplay policy:', err);
-        this.updateAudioPlaybackUI();
-      });
+      audioEl.play().catch(err => this.handleRemoteAudioPlayError(identity, audioEl, err));
 
+      this.updateAudioPlaybackUI();
+    }
+
+    handleRemoteAudioPlayError(identity, element, error) {
+      if (this.audioTracks.get(identity)?.element !== element) return;
+      if (error?.name === 'AbortError') {
+        console.info('[LiveKit OS] Audio playback interrupted by track reload; retrying current track.');
+        setTimeout(() => {
+          if (this.audioTracks.get(identity)?.element !== element) return;
+          element.play().catch(retryError => {
+            console.warn('[LiveKit OS] Remote audio retry failed:', retryError);
+            this.updateAudioPlaybackUI();
+          });
+        }, 120);
+        return;
+      }
+      console.warn('[LiveKit OS] Remote audio playback failed:', error);
       this.updateAudioPlaybackUI();
     }
 
@@ -1195,49 +1225,54 @@
        4. CONTROLS (MIC, CAM, SCREENSHARE, TEACHER ADMIN)
        ===================================================================== */
 
+    syncLocalMediaControls() {
+      for (const id of ['livekit-btn-mic', 'video-pip-mic']) {
+        const button = document.getElementById(id);
+        if (!button) continue;
+        button.classList.toggle('is-off', this.isAudioMuted);
+        button.innerHTML = this.isAudioMuted
+          ? '<i class="ph-bold ph-microphone-slash"></i>'
+          : '<i class="ph-bold ph-microphone"></i>';
+      }
+      for (const id of ['livekit-btn-cam', 'video-pip-cam']) {
+        const button = document.getElementById(id);
+        if (!button) continue;
+        button.classList.toggle('is-off', this.isVideoMuted);
+        button.innerHTML = this.isVideoMuted
+          ? '<i class="ph-bold ph-video-camera-slash"></i>'
+          : '<i class="ph-bold ph-video-camera"></i>';
+      }
+      this.updateParticipantMuteIcon(this.room?.localParticipant);
+    }
+
     async toggleMicrophone() {
       if (!this.room?.localParticipant) return;
-      this.isAudioMuted = !this.isAudioMuted;
-      await this.room.localParticipant.setMicrophoneEnabled(!this.isAudioMuted);
-
-      const micBtn = document.getElementById('livekit-btn-mic');
-      const pipMicBtn = document.getElementById('video-pip-mic');
-
-      if (micBtn) {
-        micBtn.classList.toggle('is-off', this.isAudioMuted);
-        micBtn.innerHTML = this.isAudioMuted
-          ? '<i class="ph-bold ph-microphone-slash"></i>'
-          : '<i class="ph-bold ph-microphone"></i>';
+      const nextMuted = !this.isAudioMuted;
+      try {
+        await this.room.localParticipant.setMicrophoneEnabled(!nextMuted);
+        this.isAudioMuted = nextMuted;
+      } catch (error) {
+        console.warn('[LiveKit] Could not change microphone state:', error);
+        this.toast('Не удалось включить микрофон. Проверьте устройство и разрешение браузера.');
+        return;
       }
-      if (pipMicBtn) {
-        pipMicBtn.classList.toggle('is-off', this.isAudioMuted);
-        pipMicBtn.innerHTML = this.isAudioMuted
-          ? '<i class="ph-bold ph-microphone-slash"></i>'
-          : '<i class="ph-bold ph-microphone"></i>';
-      }
-      this.updateParticipantMuteIcon(this.room.localParticipant);
+
+      this.syncLocalMediaControls();
     }
 
     async toggleCamera() {
       if (!this.room?.localParticipant) return;
-      this.isVideoMuted = !this.isVideoMuted;
-      await this.room.localParticipant.setCameraEnabled(!this.isVideoMuted);
-
-      const camBtn = document.getElementById('livekit-btn-cam');
-      const pipCamBtn = document.getElementById('video-pip-cam');
-
-      if (camBtn) {
-        camBtn.classList.toggle('is-off', this.isVideoMuted);
-        camBtn.innerHTML = this.isVideoMuted
-          ? '<i class="ph-bold ph-video-camera-slash"></i>'
-          : '<i class="ph-bold ph-video-camera"></i>';
+      const nextMuted = !this.isVideoMuted;
+      try {
+        await this.room.localParticipant.setCameraEnabled(!nextMuted);
+        this.isVideoMuted = nextMuted;
+      } catch (error) {
+        console.warn('[LiveKit] Could not change camera state:', error);
+        this.toast('Не удалось включить камеру. Проверьте устройство и разрешение браузера.');
+        return;
       }
-      if (pipCamBtn) {
-        pipCamBtn.classList.toggle('is-off', this.isVideoMuted);
-        pipCamBtn.innerHTML = this.isVideoMuted
-          ? '<i class="ph-bold ph-video-camera-slash"></i>'
-          : '<i class="ph-bold ph-video-camera"></i>';
-      }
+
+      this.syncLocalMediaControls();
     }
 
     async toggleScreenShare() {

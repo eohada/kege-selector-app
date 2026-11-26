@@ -15,6 +15,9 @@
     socket: null,
     lastViewportSentAt: 0,
     viewportRaf: null,
+    viewportClientId: window.crypto?.randomUUID?.() || `pocket-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    viewportClientStartedAt: Date.now(),
+    viewportSequence: 0,
     toastTimeout: null,
     lastTargetCoords: null,
     lastRunCode: null,
@@ -38,21 +41,18 @@
         return;
       }
 
-      // Detect mobile device, touch screen, or small screen dimension
-      const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      const isMobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      const minScreenDim = Math.min(
-        window.screen?.width || window.innerWidth,
-        window.screen?.height || window.innerHeight,
-        window.innerWidth,
-        window.innerHeight
-      );
-      const isMobileDevice = isMobileUA || (isTouchDevice && minScreenDim <= 768);
-      const isMobileSized = window.innerWidth <= 768 || (window.innerHeight <= 500 && (isTouchDevice || minScreenDim <= 768));
       const urlParams = new URLSearchParams(window.location.search);
-      const isParamForced = urlParams.get('pocket_os') === '1';
+      const configuredMode = String(window.trainerOsConfig?.student_os_mode || window.trainerOsConfig?.os_mode || '').toLowerCase();
+      const isPocketModeRequested = urlParams.get('pocket_os') === '1'
+        || window.trainerOsConfig?.pocket_os_mode === true
+        || configuredMode === 'pocket'
+        || document.body.classList.contains('pocket-os-active');
+      const isDesktopModeRequested = urlParams.get('pocket_os') === '0' || configuredMode === 'desktop';
+      const isMobileDevice = navigator.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
-      if (!isMobileDevice && !isMobileSized && !isParamForced) {
+      // A narrow desktop window or touch-enabled laptop remains Desktop OS.
+      // Pocket is an interface mode, selected explicitly or on a mobile browser.
+      if (isDesktopModeRequested || (!isPocketModeRequested && !isMobileDevice)) {
         return;
       }
 
@@ -1425,6 +1425,7 @@
       const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
       if (isConnected) {
+        if (pill) pill.style.display = '';
         if (joinBtn) joinBtn.style.display = 'none';
         if (leaveBtn) leaveBtn.style.display = 'flex';
         if (micBtn) {
@@ -1469,6 +1470,7 @@
           }
         }
       } else if (isConnecting) {
+        if (pill) pill.style.display = 'none';
         if (joinBtn) {
           joinBtn.style.display = 'inline-flex';
           joinBtn.disabled = true;
@@ -1485,6 +1487,7 @@
         }
       } else {
         // Disconnected
+        if (pill) pill.style.display = 'none';
         if (joinBtn) {
           joinBtn.style.display = 'inline-flex';
           joinBtn.disabled = false;
@@ -1533,10 +1536,13 @@
           worldH = bounds.worldH;
         } else {
           const currentScale = state?.scale || 1.0;
-          worldX = (0 - (state?.panX || 0)) / currentScale;
-          worldY = (0 - (state?.panY || 0)) / currentScale;
-          worldW = (document.getElementById('whiteboard-canvas-viewport')?.clientWidth || 390) / currentScale;
-          worldH = (document.getElementById('whiteboard-canvas-viewport')?.clientHeight || 844) / currentScale;
+          const viewport = document.getElementById('whiteboard-canvas-viewport');
+          const viewportWidth = viewport?.clientWidth || window.innerWidth;
+          const viewportHeight = viewport?.clientHeight || window.innerHeight;
+          worldX = (0 - viewportWidth / 2 - (state?.panX || 0)) / currentScale + viewportWidth / 2;
+          worldY = (0 - viewportHeight / 2 - (state?.panY || 0)) / currentScale + viewportHeight / 2;
+          worldW = viewportWidth / currentScale;
+          worldH = viewportHeight / currentScale;
         }
 
         const drawer = document.getElementById('pocket-terminal-drawer');
@@ -1548,6 +1554,12 @@
           mode: this.currentFocus,
           is_mobile: true,
           device: 'pocket_os',
+          interface_mode: 'pocket',
+          device_type: 'mobile',
+          input_type: 'touch',
+          client_id: this.viewportClientId,
+          client_started_at: this.viewportClientStartedAt,
+          sequence: ++this.viewportSequence,
           terminal_open: isTermOpen,
           world_x: worldX,
           world_y: worldY,

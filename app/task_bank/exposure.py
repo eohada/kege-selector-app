@@ -126,6 +126,13 @@ def record_task_exposure(
                     and item.student_id == student_id and item.task_id == task_id), None)
 
     if row is None:
+        prior = _historical_issuance(session, student_id, task_id, context_type=context_type,
+                                     context_id=context_id_text)
+        if not error_review and prior and (prior[1] is None or add_calendar_months(prior[1]) > now):
+            raise TaskExposureConflict(
+                f'Задание {task_id} уже выдавалось этому ученику в {prior[0]}. '
+                'Повторное назначение сейчас запрещено.'
+            )
         row = StudentTaskSeen(
             student_id=student_id,
             task_id=task_id,
@@ -217,11 +224,29 @@ def _assignment_recipients(session, assignment_id: int) -> tuple[Assignment | No
         for (student_id,) in session.query(Submission.student_id).filter_by(assignment_id=assignment_id).all()
         if student_id is not None
     }
-    if assignment.lesson_id:
-        lesson = session.get(Lesson, assignment.lesson_id)
-        if lesson and lesson.student_id:
-            recipients.add(int(lesson.student_id))
     return assignment, recipients
+
+
+def _historical_issuance(session, student_id: int, task_id: int, *, context_type: str, context_id: str | None):
+    """Find exact prior assignments missing from the exposure ledger."""
+    assignment_rows = (session.query(Assignment.assignment_id, Submission.assigned_at)
+                       .join(Submission, Submission.assignment_id == Assignment.assignment_id)
+                       .join(AssignmentTask, AssignmentTask.assignment_id == Assignment.assignment_id)
+                       .filter(Submission.student_id == student_id, AssignmentTask.task_id == task_id,
+                               Assignment.is_active.is_(True), Submission.status != 'REVOKED').all())
+    for assignment_id, assigned_at in assignment_rows:
+        if context_type == 'assignment' and context_id == str(assignment_id):
+            continue
+        return 'домашней работе', assigned_at
+    lesson_rows = (session.query(LessonTask.lesson_task_id, LessonTask.date_assigned, Lesson.lesson_date)
+                   .join(Lesson, Lesson.lesson_id == LessonTask.lesson_id)
+                   .filter(Lesson.student_id == student_id, LessonTask.task_id == task_id,
+                           LessonTask.is_visible_to_student.is_(True)).all())
+    for lesson_task_id, assigned_at, lesson_date in lesson_rows:
+        if context_type == 'lesson' and context_id == str(lesson_task_id):
+            continue
+        return 'уроке', assigned_at or lesson_date
+    return None
 
 
 def _after_flush_postexec(session, _flush_context) -> None:
@@ -275,22 +300,11 @@ def _after_flush_postexec(session, _flush_context) -> None:
         assignment_task_ids = [int(item.task_id) for item in assignment_tasks if item.task_id is not None]
         if len(assignment_task_ids) != len(set(assignment_task_ids)):
             raise TaskExposureConflict(f'В работе {assignment_id} одно и то же задание добавлено несколько раз.')
-        mirrored_lesson_task_ids = set()
-        if assignment.lesson_id:
-            mirrored_lesson_task_ids = {
-                int(task_id)
-                for (task_id,) in session.query(LessonTask.task_id).filter_by(
-                    lesson_id=assignment.lesson_id,
-                    is_visible_to_student=True,
-                ).all()
-            }
         for student_id in student_ids:
             for assignment_task in assignment_tasks:
                 if (int(student_id), int(assignment_task.task_id)) in pending_lesson_exposures:
                     # A single publication can expose the same item through
                     # both its LessonTask and AssignmentTask records.
-                    continue
-                if int(assignment_task.task_id) in mirrored_lesson_task_ids:
                     continue
                 record_task_exposure(
                     session,

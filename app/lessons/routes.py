@@ -798,6 +798,7 @@ def _default_lesson_studio_state(lesson: Lesson) -> dict:
         'room_work_closed': False,
         'room_work_closed_at': None,
         'room_work_closed_by_user_id': None,
+        'theory_os': {'fragments': [], 'active_id': None, 'follow': False, 'focus': None},
         'video_provider': 'daily',
         'backup_call_url': '',
     }
@@ -835,6 +836,9 @@ def _lesson_studio_state_for_viewer(state: dict, *, is_teacher: bool) -> dict:
     visible = dict(state or {})
     if not is_teacher:
         visible.pop('teacher_private_note', None)
+        theory = visible.get('theory_os')
+        if isinstance(theory, dict):
+            visible['theory_os'] = {**theory, 'fragments': [fragment for fragment in theory.get('fragments', []) if isinstance(fragment, dict) and fragment.get('revealed')]}
     return visible
 
 
@@ -1325,6 +1329,8 @@ def lesson_studio_finish(lesson_id: int):
 @lessons_bp.route('/lesson/<int:lesson_id>/studio/student-notes', methods=['GET', 'POST'])
 @login_required
 def lesson_studio_student_notes_save(lesson_id: int):
+    import hashlib
+
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
     _lesson_studio_access(lesson)
     is_teacher = _lesson_studio_is_teacher()
@@ -1332,15 +1338,237 @@ def lesson_studio_student_notes_save(lesson_id: int):
     if not is_teacher and not is_lesson_student:
         return jsonify({'success': False, 'error': 'Личные заметки доступны только ученику урока'}), 403
     if request.method == 'GET':
-        return jsonify({'success': True, 'notes': lesson.student_notes or ''})
-    notes = ((request.get_json(silent=True) or {}).get('notes') or '').strip()
+        notes = lesson.student_notes or ''
+        return jsonify({'success': True, 'notes': notes, 'revision': hashlib.sha256(notes.encode('utf-8')).hexdigest()})
+    body = request.get_json(silent=True) or {}
+    notes = str(body.get('notes') or '')
     if len(notes) > 20000:
         return jsonify({'success': False, 'error': 'Заметка слишком длинная'}), 400
+    lesson = db.session.query(Lesson).filter_by(lesson_id=lesson_id).with_for_update().populate_existing().one()
+    current_notes = lesson.student_notes or ''
+    current_revision = hashlib.sha256(current_notes.encode('utf-8')).hexdigest()
+    if body.get('revision') != current_revision:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Заметка изменилась в другом окне', 'notes': current_notes, 'revision': current_revision}), 409
     lesson.student_notes = notes
     db.session.commit()
+    revision = hashlib.sha256(notes.encode('utf-8')).hexdigest()
     from app.lessons.lesson_socket import emit_lesson_student_notes_updated
-    emit_lesson_student_notes_updated(lesson.lesson_id, notes, current_user.id)
-    return jsonify({'success': True, 'notes': notes})
+    emit_lesson_student_notes_updated(lesson.lesson_id, notes, current_user.id, revision)
+    return jsonify({'success': True, 'notes': notes, 'revision': revision})
+
+
+def _theory_os_sections(block: TheoryBlock) -> list[dict]:
+    from bs4 import BeautifulSoup
+    from app.theory.routes import _render_theory_content_html
+
+    soup = BeautifulSoup(_render_theory_content_html(block.content or ''), 'html.parser')
+    top_sections = soup.find_all('section', recursive=False)
+    if len(top_sections) > 1:
+        return [{'title': (section.find(['h2', 'h3']) or section).get_text(' ', strip=True)[:160],
+                 'html': str(section)} for section in top_sections[:100]]
+    headings = soup.find_all(['h2', 'h3'])
+    container = headings[0].parent if headings and all(heading.parent is headings[0].parent for heading in headings) else soup
+    sections = []
+    current = {'title': block.title or 'Материал', 'html': ''}
+    for node in list(container.contents):
+        if getattr(node, 'name', None) in {'h2', 'h3'} and current['html'].strip():
+            sections.append(current)
+            current = {'title': node.get_text(' ', strip=True)[:160], 'html': ''}
+        current['html'] += str(node)
+    if current['html'].strip():
+        sections.append(current)
+    return sections[:100]
+
+
+def _theory_os_blocks(section: dict) -> list[dict]:
+    from bs4 import BeautifulSoup, Tag
+
+    soup = BeautifulSoup(section['html'], 'html.parser')
+    container = soup.section or soup
+    blocks = []
+    for node in container.children:
+        if not isinstance(node, Tag) or node.name in {'h1', 'h2', 'h3'}:
+            continue
+        label = node.get_text(' ', strip=True)[:100] or node.name
+        blocks.append({'index': len(blocks), 'title': label, 'html': str(node)})
+    return blocks[:100]
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/theory-os', methods=['GET', 'POST'])
+@login_required
+def lesson_studio_theory_os(lesson_id: int):
+    from uuid import uuid4
+    from bs4 import BeautifulSoup
+
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    is_teacher = _lesson_studio_is_teacher()
+    course_id = _lesson_studio_course_id(lesson)
+    blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.position, TheoryBlock.id).all() if course_id else []
+    blocks = [block for block in blocks if (block.content or '').strip() and not (block.content or '').lstrip().startswith('<!--status:draft-->')]
+    by_id = {block.id: block for block in blocks}
+    if not is_teacher and current_user.is_student() and lesson.student and course_id:
+        denied = {row.task_number for row in StudentTheoryAccess.query.filter_by(student_id=lesson.student.student_id, course_id=course_id, can_view=False).all()}
+        by_id = {key: block for key, block in by_id.items() if block.task_number not in denied}
+    if request.method == 'GET' and request.args.get('preview_block_id'):
+        if not is_teacher:
+            return jsonify({'success': False, 'error': 'Предпросмотр доступен преподавателю'}), 403
+        try:
+            preview_id = int(request.args['preview_block_id'])
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Материал не найден'}), 404
+        preview_block = by_id.get(preview_id)
+        if not preview_block:
+            return jsonify({'success': False, 'error': 'Материал не найден'}), 404
+        return jsonify({'success': True, 'title': preview_block.title,
+                        'sections': _theory_os_sections(preview_block)})
+    state = _lesson_studio_state(lesson)
+    theory = state.get('theory_os') if isinstance(state.get('theory_os'), dict) else {}
+    theory = {**{'fragments': [], 'active_id': None, 'follow': False, 'focus': None, 'presets': []}, **theory}
+    if request.method == 'POST':
+        if not is_teacher:
+            return jsonify({'success': False, 'error': 'Подборкой управляет преподаватель'}), 403
+        body = request.get_json(silent=True) or {}
+        action = body.get('action')
+        fragments = theory['fragments']
+        if action in {'add', 'add_article'}:
+            try:
+                block_id = int(body.get('block_id'))
+                section_index = int(body.get('section_index')) if action == 'add' else 0
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'Некорректный раздел'}), 400
+            block = by_id.get(block_id)
+            sections = _theory_os_sections(block) if block else []
+            if not block or section_index < 0 or section_index >= len(sections) or len(fragments) >= 80:
+                return jsonify({'success': False, 'error': 'Раздел недоступен'}), 400
+            indices = range(len(sections)) if action == 'add_article' else [section_index]
+            for index in indices:
+                if len(fragments) >= 80:
+                    break
+                block_index = body.get('block_index') if action == 'add' else None
+                if block_index is not None:
+                    try:
+                        block_index = int(block_index)
+                    except (TypeError, ValueError):
+                        return jsonify({'success': False, 'error': 'Некорректный блок'}), 400
+                    if not 0 <= block_index < len(_theory_os_blocks(sections[index])):
+                        return jsonify({'success': False, 'error': 'Блок недоступен'}), 400
+                fragments.append({'id': uuid4().hex, 'block_id': block_id, 'section_index': index,
+                                  'block_index': block_index, 'revealed': False, 'explanation': '', 'annotation': '', 'highlights': []})
+        elif action == 'save_preset':
+            name = str(body.get('name') or '').strip()[:100]
+            if not name or not fragments or len(theory['presets']) >= 20:
+                return jsonify({'success': False, 'error': 'Подборку нельзя сохранить'}), 400
+            theory['presets'].append({'id': uuid4().hex, 'name': name,
+                                      'fragments': [{key: item.get(key) for key in ('block_id', 'section_index', 'block_index', 'explanation', 'annotation', 'highlights')}
+                                                    for item in fragments]})
+        elif action == 'load_preset':
+            preset = next((item for item in theory['presets'] if item.get('id') == body.get('preset_id')), None)
+            if not preset:
+                return jsonify({'success': False, 'error': 'Подборка не найдена'}), 404
+            theory['fragments'] = [{**item, 'id': uuid4().hex, 'revealed': False} for item in preset['fragments']]
+            theory['active_id'] = None
+            theory['focus'] = None
+        else:
+            fragment = next((item for item in fragments if item.get('id') == body.get('fragment_id')), None)
+            if not fragment and action not in {'follow', 'clear_focus'}:
+                return jsonify({'success': False, 'error': 'Фрагмент не найден'}), 404
+            if action == 'remove':
+                fragments.remove(fragment)
+            elif action == 'move':
+                index = fragments.index(fragment)
+                if body.get('target_index') is not None:
+                    try:
+                        target = max(0, min(len(fragments) - 1, int(body['target_index'])))
+                    except (TypeError, ValueError):
+                        return jsonify({'success': False, 'error': 'Некорректная позиция'}), 400
+                else:
+                    target = max(0, min(len(fragments) - 1, index + (1 if body.get('direction') == 'down' else -1)))
+                fragments.insert(target, fragments.pop(index))
+            elif action == 'reveal':
+                fragment['revealed'] = bool(body.get('revealed'))
+                if fragment['revealed']:
+                    theory['active_id'] = fragment['id']
+                    theory['focus'] = None
+            elif action == 'open':
+                theory['active_id'] = fragment['id']
+                theory['focus'] = None
+            elif action == 'explanation':
+                fragment['explanation'] = str(body.get('text') or '')[:5000]
+            elif action == 'annotation':
+                fragment['annotation'] = str(body.get('text') or '')[:1000]
+            elif action == 'focus':
+                if not fragment['revealed']:
+                    return jsonify({'success': False, 'error': 'Сначала откройте фрагмент ученику'}), 400
+                theory['active_id'] = fragment['id']
+                theory['focus'] = {'fragment_id': fragment['id'], 'quote': str(body.get('quote') or '')[:500],
+                                   'author': str(getattr(current_user, 'username', '') or 'Преподаватель')[:80]}
+            elif action == 'highlight':
+                quote = str(body.get('quote') or '').strip()[:500]
+                if not quote or len(fragment.get('highlights') or []) >= 30:
+                    return jsonify({'success': False, 'error': 'Выделение недоступно'}), 400
+                block = by_id.get(fragment.get('block_id'))
+                sections = _theory_os_sections(block) if block else []
+                index = fragment.get('section_index')
+                if not isinstance(index, int) or not 0 <= index < len(sections):
+                    return jsonify({'success': False, 'error': 'Материал не найден'}), 404
+                source = sections[index]
+                block_index = fragment.get('block_index')
+                if block_index is not None:
+                    parts = _theory_os_blocks(source)
+                    if not isinstance(block_index, int) or not 0 <= block_index < len(parts):
+                        return jsonify({'success': False, 'error': 'Блок не найден'}), 404
+                    source = parts[block_index]
+                if quote not in (BeautifulSoup(source['html'], 'html.parser').get_text() + str(fragment.get('explanation') or '')):
+                    return jsonify({'success': False, 'error': 'Выделенный текст изменился'}), 409
+                fragment.setdefault('highlights', []).append({
+                    'id': uuid4().hex, 'quote': quote, 'prefix': str(body.get('prefix') or '')[-32:],
+                    'suffix': str(body.get('suffix') or '')[:32],
+                    'comment': str(body.get('comment') or '')[:1000],
+                    'author': str(getattr(current_user, 'username', '') or 'Преподаватель')[:80],
+                })
+            elif action == 'clear_highlight':
+                fragment['highlights'] = [item for item in fragment.get('highlights', []) if item.get('id') != body.get('highlight_id')]
+            elif action == 'clear_focus':
+                theory['focus'] = None
+            elif action == 'follow':
+                theory['follow'] = bool(body.get('enabled'))
+            else:
+                return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
+        state['theory_os'] = theory
+        _save_lesson_studio_state(lesson, state)
+    library = []
+    if is_teacher:
+        library = [{'id': block.id, 'title': block.title or f'Тема {block.task_number}',
+                    'sections': [{'index': index, 'title': item['title'],
+                                  'preview': BeautifulSoup(item['html'], 'html.parser').get_text(' ', strip=True)[:220],
+                                  'blocks': [{'index': part['index'], 'title': part['title']} for part in _theory_os_blocks(item)]}
+                                 for index, item in enumerate(_theory_os_sections(block))]}
+                   for block in blocks]
+    visible = []
+    for fragment in theory['fragments']:
+        if not is_teacher and not fragment.get('revealed'):
+            continue
+        block = by_id.get(fragment.get('block_id'))
+        if not block:
+            continue
+        sections = _theory_os_sections(block)
+        index = fragment.get('section_index')
+        if not isinstance(index, int) or not 0 <= index < len(sections):
+            continue
+        selected = sections[index]
+        block_index = fragment.get('block_index')
+        if block_index is not None:
+            parts = _theory_os_blocks(selected)
+            if not isinstance(block_index, int) or not 0 <= block_index < len(parts):
+                continue
+            selected = {'title': f"{selected['title']} · {parts[block_index]['title']}", 'html': parts[block_index]['html']}
+        visible.append({**fragment, 'title': selected['title'], 'html': selected['html'],
+                        'source_title': block.title or f'Тема {block.task_number}'})
+    return jsonify({'success': True, 'library': library, 'fragments': visible,
+                    'active_id': theory.get('active_id'), 'follow': theory.get('follow'), 'focus': theory.get('focus'),
+                    'presets': theory['presets'] if is_teacher else []})
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/studio/os-code', methods=['GET', 'POST'])
@@ -1735,6 +1963,8 @@ def lesson_interactive_room(lesson_id: int):
         and (item.content or '').strip()
         and not (item.content or '').lstrip().startswith('<!--status:draft-->')
     ]
+    if not is_studio_teacher:
+        theory_items = []
     room_materials = lesson.materials or []
     if isinstance(room_materials, str):
         try:
@@ -4693,6 +4923,31 @@ def lesson_room_search_tasks(lesson_id: int):
         page = pages
 
     tasks = q.order_by(Tasks.course_id.asc(), Tasks.task_number.asc(), Tasks.task_id.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    task_ids = [task.task_id for task in tasks]
+    task_history = {}
+    if lesson.student_id and task_ids:
+        from app.models import StudentTaskSeen
+        from app.task_bank.exposure import exposure_state_for_row
+        for row in StudentTaskSeen.query.filter(StudentTaskSeen.student_id == lesson.student_id, StudentTaskSeen.task_id.in_(task_ids)).all():
+            task_history[row.task_id] = {'source': row.source or 'Ранее выдано',
+                                         'date': row.last_seen_at.isoformat() if row.last_seen_at else None,
+                                         'blocked': exposure_state_for_row(row)['blocked']}
+        homework_rows = (db.session.query(AssignmentTask.task_id, Submission.assigned_at)
+                         .join(Submission, Submission.assignment_id == AssignmentTask.assignment_id)
+                         .join(Assignment, Assignment.assignment_id == AssignmentTask.assignment_id)
+                         .filter(Submission.student_id == lesson.student_id, Assignment.is_active.is_(True),
+                                 Assignment.assignment_type == 'homework', AssignmentTask.task_id.in_(task_ids),
+                                 Submission.status != 'REVOKED').all())
+        for task_id_used, assigned_at in homework_rows:
+            task_history[task_id_used] = {'source': 'Домашняя работа',
+                                          'date': assigned_at.isoformat() if assigned_at else None, 'blocked': True}
+        lesson_rows = (db.session.query(LessonTask.task_id, LessonTask.lesson_id, Lesson.lesson_date)
+                       .join(Lesson, Lesson.lesson_id == LessonTask.lesson_id)
+                       .filter(Lesson.student_id == lesson.student_id, LessonTask.task_id.in_(task_ids),
+                               LessonTask.is_visible_to_student.is_(True)).all())
+        for task_id_used, used_lesson_id, lesson_date in lesson_rows:
+            task_history[task_id_used] = {'source': 'Текущий урок' if used_lesson_id == lesson_id else 'Прошлый урок',
+                                          'date': lesson_date.isoformat() if lesson_date else None, 'blocked': True}
 
     def _parse_files(raw_files):
         if not raw_files:
@@ -4776,6 +5031,7 @@ def lesson_room_search_tasks(lesson_id: int):
             'course_name': course_map.get(t.course_id, 'Банк заданий'),
             'bank_category': t.bank_category,
             'attached_files': _parse_files(t.attached_files),
+            'usage': task_history.get(t.task_id),
         })
 
     return jsonify({
@@ -5065,28 +5321,10 @@ def lesson_content_blocks_save(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/student-notes/save', methods=['POST'])
 @login_required
 def lesson_student_notes_save(lesson_id):
-    """Сохранение заметок ученика"""
+    """Reject unversioned legacy writes that could overwrite current lesson notes."""
     lesson = Lesson.query.get_or_404(lesson_id)
-    
-    data = request.get_json()
-    if data and 'notes' in data:
-        lesson.student_notes = data['notes']
-        db.session.commit()
-        try:
-            audit_logger.log(
-                action='lesson_student_notes_save',
-                entity='Lesson',
-                entity_id=lesson.lesson_id,
-                status='success',
-                metadata={
-                    'student_id': lesson.student_id,
-                    'notes_len': len((data.get('notes') or '')),
-                },
-            )
-        except Exception:
-            pass
-        return jsonify({'success': True})
-    return jsonify({'success': False, 'error': 'No notes provided'}), 400
+    _lesson_studio_access(lesson)
+    return jsonify({'success': False, 'error': 'Откройте комнату урока заново: старая вкладка не умеет безопасно сохранять заметки.'}), 409
 
 @lessons_bp.route('/lesson/<int:lesson_id>/upload', methods=['POST'])
 @login_required
@@ -5137,6 +5375,8 @@ def lesson_upload_material(lesson_id):
         flag_modified(lesson, "materials")
         
         db.session.commit()
+        from app.lessons.lesson_socket import emit_lesson_material_added
+        emit_lesson_material_added(lesson.lesson_id, new_material)
         return jsonify({'success': True, 'material': new_material})
         
     return jsonify({'success': False, 'error': 'Unknown error'}), 500

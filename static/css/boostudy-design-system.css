@@ -4096,3 +4096,103 @@ html body.bs-student-shell.bs-lesson-room .bs-dashboard-content {
   .bs-student-dashboard-v2 .student-dashboard-path-list { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .bs-student-dashboard-v2 .student-dashboard-actions { max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Keep dashboard hero copy and learning tile actions inside their cards. */
+@media (min-width: 641px) {
+  .bs-student-dashboard-v2 .student-dashboard-hero {
+    height: auto;
+    min-height: 238px;
+  }
+  .bs-student-dashboard-v2 .student-dashboard-hero-copy { transform: none; }
+}
+@media (min-width: 1401px) {
+  .bs-student-dashboard-v2 .student-dashboard-hero { padding-block: 16px; }
+  .bs-student-dashboard-v2 .student-dashboard-hero-copy h1 { margin-block: 4px; }
+  .bs-student-dashboard-v2 .student-dashboard-hero-copy p { line-height: 1.35; }
+  .bs-student-dashboard-v2 .student-dashboard-actions { margin-top: 8px; }
+  .bs-student-dashboard-v2 .student-dashboard-actions > .bs-button {
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+}
+.bs-student-dashboard-v2 .student-dashboard-actions {
+  width: min(100%, 388px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 641px) {
+  .bs-student-dashboard-v2 .student-dashboard-learning-tile:not(.is-showcase) {
+    gap: 6px;
+    padding: 12px;
+  }
+  .bs-student-dashboard-v2 .student-dashboard-learning-tile:not(.is-showcase) strong {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.2;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  .bs-student-dashboard-v2 .student-dashboard-learning-tile:not(.is-showcase) > .student-dashboard-tile-action {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    height: 34px;
+    min-height: 34px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 0 6px;
+    color: var(--bs-primary);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .bs-student-dashboard-v2 .student-dashboard-tile-action-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bs-student-dashboard-v2 .student-dashboard-tile-action:focus-visible {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 2px;
+  }
+}
+@media (max-width: 640px) {
+  .bs-student-dashboard-v2 .student-dashboard-actions { width: 100%; }
+  .bs-student-dashboard-v2 .student-dashboard-learning-tile:not(.is-showcase) > .student-dashboard-tile-action {
+    box-sizing: border-box;
+    display: grid;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    justify-self: end;
+    padding: 0;
+    place-items: center;
+  }
+  .bs-student-dashboard-v2 .student-dashboard-tile-action-label { display: none; }
+}
+
+/* Keep the profile avatar clipped, actions aligned, and lesson balance compact. */
+#profile-page-shell .profile-avatar-image-clip {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+}
+#profile-page-shell .profile-avatar-image-clip > img {
+  display: block;
+}
+#profile-page-shell .profile-hero-actions {
+  width: 100%;
+  align-self: stretch;
+  justify-content: flex-end;
+}
+#profile-page-shell .profile-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 1199px) {
+  #profile-page-shell .profile-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  #profile-page-shell .profile-metrics { grid-template-columns: minmax(0, 1fr); }
+}

@@ -18,10 +18,9 @@
 {% block title %}{{ (sandbox_workspace_name if sandbox_mode else (homework_workspace.assignment_title if homework_mode else (room_lesson.topic if room_mode and room_lesson else 'Тренажёр v2'))) }} · BooStudy{% endblock %}
 
 {% block sandbox_content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-tracer.css') }}?v=20261121-rapid-rc1">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-tracer.css') }}?v=20261022-v2">
 {% if sandbox_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/sandbox-skill-trainer.css') }}?v=20261107-v1"><link rel="stylesheet" href="{{ url_for('static', filename='css/typing-lab.css') }}?v=20261107-v1">{% endif %}
 {% if sandbox_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/sandbox-os-collaboration.css') }}?v=20261107-v1">{% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-radial-wheel.css') }}?v=20261022-v1"><link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-teacher-orbit.css') }}?v=20261022-v1">{% endif %}
 <!-- Skulpt Python Interpreter for KEGE Engine -->
 <script src="{{ url_for('static', filename='vendor/skulpt/skulpt.min.js') }}?v=1.2.0"></script>
 <script src="{{ url_for('static', filename='vendor/skulpt/skulpt-stdlib.js') }}?v=1.2.0"></script>
@@ -559,6 +558,9 @@
   .room-lesson-os .window-edge-resizer.resizer-sw { bottom: 0; left: 0; width: 20px; height: 20px; cursor: nesw-resize; z-index: 45; }
   .room-lesson-os .window-edge-resizer.resizer-ne { top: 0; right: 0; width: 20px; height: 20px; cursor: nesw-resize; z-index: 45; }
   .room-lesson-os .window-edge-resizer.resizer-nw { top: 0; left: 0; width: 20px; height: 20px; cursor: nwse-resize; z-index: 45; }
+  .room-lesson-os #terminal-window > .window-edge-resizer.resizer-e,
+  .room-lesson-os #notes-window > .window-edge-resizer.resizer-e,
+  .room-lesson-os #theory-window > .window-edge-resizer.resizer-e { display: none !important; }
 
   .room-lesson-os #task-window .window-resize-handle {
     display: flex !important;
@@ -1518,7 +1520,7 @@
   .room-lesson-os .board-presentation-banner button:hover { color: #4338ca; }
   .room-lesson-os .board-presentation-banner .hidden { display: none !important; }
   .room-lesson-os .board-viewport-indicators { position: absolute; inset: 0; pointer-events: none; z-index: 35 !important; overflow: hidden; }
-  .room-lesson-os .board-student-viewport-box { position: absolute; pointer-events: none; border-radius: 12px; border-width: 2px; border-style: dashed; box-sizing: border-box; transition: opacity 0.2s ease, border-color 0.2s ease; }
+  .room-lesson-os .board-student-viewport-box { position: absolute; pointer-events: none; border-radius: 12px; border-width: 2px; border-style: dashed; box-sizing: border-box; transition: opacity 0.2s ease, border-color 0.2s ease, left 0.08s linear, top 0.08s linear, width 0.08s linear, height 0.08s linear; }
   .room-lesson-os .board-student-viewport-box.is-code-mode { opacity: 0.45; border-style: dotted; }
   .room-lesson-os .board-student-viewport-badge { position: absolute; top: -34px; left: -2px; pointer-events: auto; user-select: none; display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border-radius: 9999px; font-size: 11px; font-weight: 800; white-space: nowrap; box-shadow: 0 4px 12px rgba(15,23,42,.15), 0 2px 0 rgba(0,0,0,.1); border-width: 2px; border-style: solid; background: #fff; }
   .room-lesson-os .board-student-viewport-jump-btn { display: inline-flex; align-items: center; gap: .25rem; padding: .15rem .45rem; margin-left: .35rem; border-radius: 6px; background: #fff; color: #1e293b; border: 1px solid #cbd5e1; border-bottom: 2px solid #94a3b8; font-size: 10px; font-weight: 800; cursor: pointer; transition: transform .1s ease, background .1s ease; }
@@ -2459,7 +2461,8 @@
         font-weight: 800 !important;
       }
     </style>
-    {% if os_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261121-rapid-rc1"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261121-rapid-rc1">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if room_mode and livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261121-rapid-rc1">{% endif %}{% if room_mode and pocket_os_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-pocket-os.css') }}?v=20261102-pocket-v123">{% endif %}{% endif %}
+    {% if os_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261126-release-v1"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261126-release-v1">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if room_mode and livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261126-release-v1">{% endif %}{% if room_mode and pocket_os_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-pocket-os.css') }}?v=20261126-release-v1">{% endif %}{% endif %}
+    {% if room_mode and not homework_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-refinement.css') }}?v=20261126-release-v1">{% endif %}
     {% if sandbox_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/sandbox-os-mobile.css') }}?v=20261107-v11">{% endif %}
 
     {% if sandbox_mode %}
@@ -2819,7 +2822,7 @@
 
       {% if homework_mode %}
       <header class="lesson-os-system-bar homework-os-system-bar" aria-label="Панель домашней работы">
-        <div class="lesson-os-system-left"><a class="lesson-os-system-action" href="{{ homework_workspace.return_url or url_for('submissions.list_submissions') }}"><i class="ph-bold ph-arrow-left" aria-hidden="true"></i><span>К списку работ</span></a></div>
+        <div class="lesson-os-system-left"><a class="lesson-os-system-action" href="{{ homework_workspace.return_url or url_for('submissions.list_submissions') }}"><i class="ph-bold ph-arrow-left" aria-hidden="true"></i><span>{{ 'К уроку' if homework_workspace.return_to_lesson else 'К списку работ' }}</span></a></div>
         <div class="lesson-os-system-center"><span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span><div class="lesson-os-system-title"><strong>{{ homework_workspace.assignment_title }}</strong><span>Домашняя OS · {{ homework_workspace.completed_task_count }} из {{ homework_workspace.task_count }} заданий</span></div></div>
         <div class="lesson-os-system-right">
           {% if review_mode %}
@@ -2932,30 +2935,31 @@
             <i class="ph-bold ph-play" aria-hidden="true"></i><span>Начать урок</span>
           </button>
           {% endif %}
-          <span class="lesson-os-duration"><i class="ph-bold ph-clock" aria-hidden="true"></i>{{ room_lesson.duration or 60 }} мин</span>
         </div>
         <div class="lesson-os-system-center flex items-center gap-3">
           <div class="flex items-center gap-2">
             <span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span>
-            <div class="lesson-os-system-title"><strong>{{ room_lesson.topic or 'Комната урока' }}</strong><span>{% if room_lesson.subject %}{{ room_lesson.subject }}{% else %}BooStudy OS{% endif %}</span></div>
+            <div class="lesson-os-system-title"><strong title="{{ room_lesson.topic or 'Комната урока' }}">{{ room_lesson.topic or 'Комната урока' }}</strong><span>{% if room_lesson.subject %}{{ room_lesson.subject }}{% else %}BooStudy OS{% endif %} · {{ room_lesson.duration or 60 }} мин</span></div>
           </div>
 
         </div>
         <div class="lesson-os-system-right">
-          {% if linked_homework_url %}<a class="lesson-os-system-action" href="{{ linked_homework_url }}"><i class="ph-bold ph-notebook" aria-hidden="true"></i><span>Домашняя OS</span></a>{% endif %}
+          {% if is_studio_teacher %}
+          <aside id="student-window-presence-panel" class="lesson-window-presence" aria-label="Рабочее пространство ученика">
+            <button type="button" id="student-window-presence-toggle" class="lesson-window-presence-trigger" aria-expanded="false" aria-controls="student-window-presence-list">
+              <span class="lesson-window-presence-avatar"><i class="ph-bold ph-student" aria-hidden="true"></i></span>
+              <span class="lesson-window-presence-heading"><strong>Экран ученика</strong><small id="student-window-presence-summary">Ожидаем подключение</small></span>
+              <span id="student-window-presence-preview" class="lesson-window-presence-preview" aria-hidden="true"></span>
+              <i class="ph-bold ph-caret-down lesson-window-presence-caret" aria-hidden="true"></i>
+            </button>
+            <div id="student-window-presence-list" class="lesson-window-presence-detail hidden" role="region" aria-label="Состояние окон учеников" aria-live="polite"></div>
+          </aside>
+          {% endif %}
           <div class="lesson-os-presence-wrap">
             <button type="button" id="lesson-os-presence-toggle" class="lesson-os-system-action" aria-label="Участники урока" aria-expanded="false" aria-controls="lesson-os-presence-list"><i class="ph-bold ph-users" aria-hidden="true"></i><span id="lesson-os-participants">Участники</span></button>
             <div id="lesson-os-presence-list" class="lesson-os-presence-list hidden" role="region" aria-label="Участники онлайн"></div>
           </div>
           {% if is_studio_teacher|default(false) %}
-          <button type="button" id="lesson-os-student-viewport-toggle" class="lesson-os-system-action is-active" onclick="window.toggleStudentViewportOutline?.()" title="Контур экрана ученика (показать/скрыть область, которую видит ученик)" aria-label="Контур видимости ученика">
-            <i class="ph-bold ph-bounding-box" aria-hidden="true"></i>
-            <span>Контур ученика</span>
-          </button>
-          <button type="button" id="btn-teacher-show-here" class="lesson-os-system-action" onclick="window.teacherShowHere?.()" title="Показать текущую область экрана ученику (однократная синхронизация камеры)" aria-label="Показать ученику здесь">
-            <i class="ph-bold ph-broadcast" aria-hidden="true"></i>
-            <span>Показать здесь</span>
-          </button>
           <div class="lesson-os-control-wrap" id="lesson-os-control-wrap">
             <button type="button" id="lesson-os-control-toggle" class="lesson-os-system-action lesson-os-control-action" aria-label="Управление уроком" aria-expanded="false" aria-controls="lesson-os-control-popover" title="Управление следованием и синхронизацией">
               <i class="ph-bold ph-sliders" aria-hidden="true"></i>
@@ -2966,6 +2970,11 @@
               <div class="lesson-os-control-header">
                 <strong>Синхронизация и следование</strong>
                 <span class="text-xs text-slate-500">Управление тем, что видят ученики</span>
+              </div>
+              <div class="lesson-os-control-shortcuts">
+                <button type="button" id="lesson-os-student-viewport-toggle" class="lesson-os-system-action is-active" onclick="window.toggleStudentViewportOutline?.()" title="Показать или скрыть видимую ученику область" aria-label="Контур видимости ученика"><i class="ph-bold ph-bounding-box" aria-hidden="true"></i><span>Контур ученика</span></button>
+                <button type="button" id="btn-teacher-show-here" class="lesson-os-system-action" onclick="window.teacherShowHere?.()" title="Однократно показать ученику эту область" aria-label="Показать ученику здесь"><i class="ph-bold ph-broadcast" aria-hidden="true"></i><span>Показать здесь</span></button>
+                <button type="button" class="lesson-os-system-action lesson-os-about-action" onclick="openWindow('lesson-info-window')" aria-label="Информация об уроке"><i class="ph-bold ph-info" aria-hidden="true"></i><span>Об уроке</span></button>
               </div>
               <div class="lesson-os-control-section">
                 <label class="lesson-os-control-toggle-row">
@@ -3076,7 +3085,6 @@
               </div>
             </div>
           </div>
-          <button type="button" class="lesson-os-system-action lesson-os-about-action" onclick="openWindow('lesson-info-window')" aria-label="Информация об уроке" title="Информация об уроке"><i class="ph-bold ph-info" aria-hidden="true"></i><span>Об уроке</span></button>
           {% endif %}
           <button type="button" id="lesson-os-board-actions-toggle" class="lesson-os-system-action" aria-label="Дополнительные действия доски" aria-controls="board-command-bar" aria-expanded="false" title="Действия доски"><i class="ph-bold ph-dots-three" aria-hidden="true"></i></button>
         </div>
@@ -3841,6 +3849,12 @@
               class="term-tab-btn px-2.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 text-left flex items-center gap-1.5 cursor-pointer font-medium transition-colors">
               <i class="ph-bold ph-warning-circle"></i> {% if room_mode %}Ошибки (0){% else %}Problems (0){% endif %}
             </button>
+            {% if room_mode %}
+            <button id="terminal-follow-scroll" type="button" aria-pressed="true"
+              class="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-left text-indigo-700 font-semibold no-drag">
+              Следить за прокруткой
+            </button>
+            {% endif %}
           </div>
 
           <!-- Tab 1: Terminal Output -->
@@ -4264,16 +4278,19 @@
           </div>
           <span class="text-xs font-bold text-amber-900 flex items-center gap-1.5"><i class="ph-bold ph-note-pencil"></i> {% if room_mode %}Конспект ученика{% else %}Заметки ученика{% endif %}</span>
           <div class="flex items-center gap-2">
-            <span id="notes-status-text" class="text-[10px] text-amber-700 font-bold">Auto-saved</span>
+            <span id="notes-status-text" class="text-[10px] text-amber-700 font-bold">Сохранено</span>
+            {% if room_mode and is_studio_teacher %}
+            {% endif %}
             <button onclick="clearNotes()" aria-label="Очистить заметки"
               class="text-amber-800 hover:text-rose-600 text-xs font-bold px-1 cursor-pointer"
               title="Очистить заметки"><i class="ph-bold ph-trash"></i></button>
           </div>
         </div>
 
-        <textarea id="notes-textarea" oninput="onNotesInput(this.value)" aria-label="Заметки ученика" {% if (homework_mode and not homework_workspace.can_edit) or sandbox_readonly %}readonly{% endif %}
+        <div class="notes-text-wrap flex flex-1 min-h-0 relative"><div id="notes-remote-highlight-overlay" class="notes-remote-highlight-overlay hidden" aria-hidden="true"><div id="notes-remote-highlight-content"></div></div><textarea id="notes-textarea" oninput="onNotesInput(this.value)" aria-label="Заметки ученика" {% if (homework_mode and not homework_workspace.can_edit) or sandbox_readonly %}readonly{% endif %}
           class="w-full flex-1 bg-transparent border-none outline-none text-slate-800 p-4 font-sans text-xs leading-relaxed resize-none font-medium placeholder:text-amber-700/50"
-          placeholder="Фиксируй вопросы, идеи и выводы урока здесь...">{% if room_mode %}{{ room_student_notes|default('') }}{% endif %}</textarea>
+          placeholder="Фиксируй вопросы, идеи и выводы урока здесь...">{% if room_mode %}{{ room_student_notes|default('') }}{% endif %}</textarea></div>
+        <div id="notes-conflict-panel" class="hidden px-3 py-2 bg-rose-50 border-t border-rose-200 text-xs"><strong>Заметка изменилась в другой вкладке</strong><p>Сверьте текст выше с сохранённой версией, затем явно подтвердите итог.</p><pre id="notes-conflict-server-text" class="max-h-20 overflow-auto whitespace-pre-wrap bg-white p-2 my-2"></pre><button type="button" id="notes-conflict-save" class="rounded-lg bg-rose-700 text-white px-3 py-1.5 font-bold">Сохранить итоговый текст</button></div>
 
         <div
           class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center text-amber-700 hover:text-amber-900 select-none font-bold text-[10px]"
@@ -4304,18 +4321,30 @@
           {% if homework_workspace.attachments %}{% for file in homework_workspace.attachments %}<a class="lesson-os-theory-open" href="{{ file.download_url }}" target="_blank" rel="noopener noreferrer"><i class="ph-bold ph-paperclip"></i> {{ file.name }}</a>{% endfor %}{% else %}<p>К этому заданию пока не прикреплены дополнительные материалы.</p>{% endif %}
           <a class="lesson-os-theory-open" href="{{ url_for('theory.theory_index') }}"><i class="ph-bold ph-books"></i> Открыть библиотеку теории</a>
           {% elif room_mode %}
-          {% if theory_items %}
-          <label class="lesson-os-theory-picker"><span>Материал</span><select id="lesson-os-theory-select" aria-label="Выбрать материал урока">{% for item in theory_items %}<option value="{{ item.id }}">{{ item.title }}</option>{% endfor %}</select></label>
-          {% for item in theory_items %}
-          <article class="lesson-os-theory-article{% if not loop.first %} hidden{% endif %}" data-theory-id="{{ item.id }}">
-            <h2>{{ item.title }}</h2>
-            <div class="lesson-os-theory-richtext">{{ item.content_html|safe }}</div>
-            <a href="{{ item.url }}" class="lesson-os-theory-open">Открыть полную тему <i class="ph-bold ph-arrow-up-right" aria-hidden="true"></i></a>
-          </article>
-          {% endfor %}
-          {% else %}
-          <div class="lesson-os-theory-empty"><i class="ph-bold ph-book-open" aria-hidden="true"></i><strong>Материалы пока не прикреплены</strong><span>Когда появится теория для этого урока, она откроется здесь.</span></div>
-          {% endif %}
+          <div id="lesson-theory-os" data-lesson-id="{{ lesson.lesson_id }}" data-role="{{ 'teacher' if is_studio_teacher else 'student' }}">
+            <div class="theory-os-header">
+              <div class="theory-os-title"><strong>Теория урока</strong><span>Материал открывается по шагам</span></div>
+              {% if is_studio_teacher %}<label class="theory-os-follow-switch"><input type="checkbox" id="theory-os-follow"><span>Вести ученика</span></label>{% else %}<span id="theory-os-reading-mode" class="theory-os-reading-mode">Свободное чтение</span>{% endif %}
+              <span id="theory-os-status" role="status">Загрузка…</span>
+            </div>
+            <div class="theory-os-workspace">
+              <aside class="theory-os-sidebar">
+                {% if is_studio_teacher %}<div class="theory-os-sidebar-tabs" role="tablist" aria-label="Режим теории"><button type="button" id="theory-os-tab-collection" class="is-active" role="tab" aria-selected="true">Подборка</button><button type="button" id="theory-os-tab-library" role="tab" aria-selected="false">Библиотека</button></div>{% endif %}
+                <div id="theory-os-collection-panel" class="theory-os-sidebar-panel">
+                  <div class="theory-os-sidebar-caption"><strong>Ход занятия</strong><small id="theory-os-collection-count"></small></div>
+                  <nav id="theory-os-fragments" aria-label="Подборка фрагментов"></nav>
+                  {% if is_studio_teacher %}<div class="theory-os-presets"><button type="button" id="theory-os-save-preset">Сохранить подборку</button><button type="button" id="theory-os-open-presets">Мои подборки</button><div id="theory-os-preset-list" class="hidden"></div></div>{% endif %}
+                </div>
+                {% if is_studio_teacher %}<div id="theory-os-library-panel" class="theory-os-sidebar-panel hidden"><label for="theory-os-library-search">Найти материал</label><input id="theory-os-library-search" type="search" placeholder="Название или тема" autocomplete="off"><div id="theory-os-library-results" role="listbox" aria-label="Статьи"></div></div>{% endif %}
+              </aside>
+              <div class="theory-os-reader">
+                {% if is_studio_teacher %}<div id="theory-os-preview-banner" class="theory-os-preview-banner hidden"><span>Предпросмотр · ученик пока не видит</span><button type="button" id="theory-os-add-article">Добавить статью целиком</button></div><div id="theory-os-preview-actions" class="theory-os-preview-actions hidden"></div>{% endif %}
+                <div id="theory-os-reading" class="lesson-os-theory-richtext"></div>
+                <div id="theory-os-focus" class="hidden" role="status"></div>
+                {% if is_studio_teacher %}<details id="theory-os-inspector" class="theory-os-inspector"><summary>Пояснение и пометки <i class="ph-bold ph-caret-down" aria-hidden="true"></i></summary><label for="theory-os-explanation">Пояснение для ученика</label><textarea id="theory-os-explanation" rows="3" placeholder="Пример или объяснение к фрагменту"></textarea><label for="theory-os-annotation">Короткая пометка</label><input id="theory-os-annotation" placeholder="Важный акцент"><label for="theory-os-comment-input">Комментарий к выбранному тексту</label><textarea id="theory-os-comment-input" rows="2" placeholder="Выделите текст в статье, затем напишите пояснение здесь"></textarea><button type="button" id="theory-os-save-comment" class="theory-os-annotation-action">Сохранить комментарий</button><div id="theory-os-highlight-list"></div></details>{% endif %}
+              </div>
+            </div>
+          </div>
           {% else %}
           <h1 class="text-lg font-black text-slate-900 font-display">Задание №27: Кольцевой буфер и остатки</h1>
           <p>
@@ -4360,7 +4389,7 @@
             <a href="{{ material.url }}" target="_blank" rel="noopener noreferrer" class="lesson-os-file-row"><i class="ph-bold ph-file-text" aria-hidden="true"></i><span>{{ material.name or material.title or 'Материал урока' }}</span><i class="ph-bold ph-arrow-square-out" aria-hidden="true"></i></a>
             {% endif %}
             {% endfor %}
-            {% if not room_materials %}<div class="lesson-os-files-empty">Преподаватель пока не прикрепил файлы к уроку.</div>{% endif %}
+            {% if not room_materials %}<div class="lesson-os-files-empty">{% if is_studio_teacher %}Файлов пока нет. Добавьте PDF, изображение или документ.{% else %}Преподаватель пока не прикрепил файлы к уроку.{% endif %}</div>{% endif %}
           </div>
         </div>
         <div class="window-resize-handle" title="Изменить размер"></div>
@@ -5226,7 +5255,6 @@
           <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Домашние задания (Приватно)</span>
         </div>
         {% endif %}
-        {% if linked_homework_url %}<a class="board-dock-item group relative" data-room-label="Домашняя OS" href="{{ linked_homework_url }}" aria-label="Открыть домашнюю OS" title="Открыть домашнюю OS"><i class="ph-bold ph-notebook text-lg" aria-hidden="true"></i></a>{% endif %}
         {% endif %}
 
         <!-- App 5: Reference Viewer (Teal) -->
@@ -7525,11 +7553,11 @@
         'homework-answer-window': { minWidth: 460, minHeight: 320 },
         'homework-files-window': { minWidth: 320, minHeight: 200 },
         'review-grade-window': { minWidth: 440, minHeight: 340 },
-        'terminal-window': { minWidth: 360, minHeight: 200 },
+        'terminal-window': { minWidth: 360, minHeight: 300 },
         'tracer-window': { minWidth: 340, minHeight: 200 },
         'notes-window': { minWidth: 300, minHeight: 180 },
         'teacher-notes-window': { minWidth: 300, minHeight: 180 },
-        'theory-window': { minWidth: 340, minHeight: 220 },
+        'theory-window': { minWidth: 600, minHeight: 460 },
         'files-window': { minWidth: 320, minHeight: 200 },
         'teacher-task-bank-window': { minWidth: 360, minHeight: 240 },
         'lesson-info-window': { minWidth: 320, minHeight: 200 },
@@ -7655,6 +7683,19 @@
           if (this.isSandboxCompactViewport()) return;
           if (!e.isPrimary || e.button !== 0) return;
           if (!canUserInteractWindow(windowEl.id)) return;
+          if (dir === 'e') {
+            const previousPointerEvents = el.style.pointerEvents;
+            el.style.pointerEvents = 'none';
+            let pointTarget = document.elementFromPoint(e.clientX, e.clientY);
+            el.style.pointerEvents = previousPointerEvents;
+            while (pointTarget && pointTarget !== windowEl) {
+              const pointStyle = getComputedStyle(pointTarget);
+              const pointRect = pointTarget.getBoundingClientRect();
+              const scrollableY = /auto|scroll/.test(pointStyle.overflowY) && pointTarget.scrollHeight > pointTarget.clientHeight + 2;
+              if (scrollableY && e.clientX >= pointRect.right - 14 && e.clientX <= pointRect.right) return;
+              pointTarget = pointTarget.parentElement;
+            }
+          }
           e.stopPropagation();
           e.preventDefault();
 
@@ -8492,10 +8533,21 @@
         document.getElementById('lesson-os-presence-list')?.classList.add('hidden');
         presenceToggle?.setAttribute('aria-expanded', 'false');
       });
-      document.getElementById('lesson-os-theory-select')?.addEventListener('change', (event) => {
-        document.querySelectorAll('.lesson-os-theory-article').forEach((article) => {
-          article.classList.toggle('hidden', article.dataset.theoryId !== event.target.value);
-        });
+      const appendLessonFile = (material) => {
+        if (!material?.url) return;
+        const list = document.getElementById('lesson-os-files-list');
+        if (!list || [...list.querySelectorAll('a')].some((link) => link.getAttribute('href') === material.url)) return;
+        list.querySelector('.lesson-os-files-empty')?.remove();
+        const link = document.createElement('a');
+        link.className = 'lesson-os-file-row';
+        link.href = material.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = material.name || 'Материал урока';
+        list.append(link);
+      };
+      window.addEventListener('boostudy:lesson-material-added', (event) => {
+        if (Number(event.detail?.lesson_id) === Number(trainerOsConfig.lesson_id)) appendLessonFile(event.detail.material);
       });
       document.getElementById('lesson-os-file-input')?.addEventListener('change', async (event) => {
         const file = event.target.files?.[0];
@@ -8505,18 +8557,13 @@
         try {
           const form = new FormData();
           form.append('file', file);
-          const response = await fetch(`/lesson/${trainerOsConfig.lesson_id}/upload`, { method: 'POST', body: form, credentials: 'same-origin' });
-          const result = await response.json();
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+          const response = await fetch(`/lesson/${trainerOsConfig.lesson_id}/upload`, {
+            method: 'POST', body: form, credentials: 'same-origin', headers: { 'X-CSRFToken': csrf }
+          });
+          const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.success || !result.material?.url) throw new Error(result.error || 'Не удалось загрузить файл');
-          const list = document.getElementById('lesson-os-files-list');
-          list.querySelector('.lesson-os-files-empty')?.remove();
-          const link = document.createElement('a');
-          link.className = 'lesson-os-file-row';
-          link.href = result.material.url;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.textContent = result.material.name || file.name;
-          list.append(link);
+          appendLessonFile(result.material);
           status.textContent = 'Файл добавлен';
         } catch (error) {
           status.textContent = error.message || 'Не удалось загрузить файл';
@@ -9007,6 +9054,279 @@
   // also works when the room script is evaluated after DOMContentLoaded.
   bindTerminalInput();
 
+  let activeTerminalRunId = '';
+  let activeTerminalPageId = '';
+  const terminalPageOutputs = new Map();
+  let terminalFollowScroll = true;
+  let suppressTerminalScroll = false;
+  let terminalRemoteScrollUntil = 0;
+  let terminalLocalIntentUntil = 0;
+  let terminalManualOverrideUntil = 0;
+  let terminalScrollSendAt = 0;
+  let terminalScrollSendTimer = null;
+  let terminalRemoteFrame = 0;
+  let terminalRemoteResumeTimer = null;
+  let terminalRemoteTargetRatio = null;
+  let terminalSelectionTimer = null;
+  let terminalSelectionPending = false;
+  let terminalSelectionSentAt = 0;
+  let terminalLastSelectionKey = '';
+  let terminalSequence = 0;
+  const terminalRemoteSequences = new Map();
+  const terminalClientId = window.crypto?.randomUUID?.() || `terminal-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  function clearRemoteTerminalSelection() {
+    if (window.CSS?.highlights) CSS.highlights.delete('boostudy-terminal-remote-selection');
+  }
+
+  function cancelTerminalRemoteScroll() {
+    if (terminalRemoteFrame) cancelAnimationFrame(terminalRemoteFrame);
+    terminalRemoteFrame = 0;
+    terminalRemoteTargetRatio = null;
+    terminalRemoteScrollUntil = 0;
+  }
+
+  function stopTerminalPresenceTimers() {
+    cancelTerminalRemoteScroll();
+    if (terminalScrollSendTimer) clearTimeout(terminalScrollSendTimer);
+    if (terminalSelectionTimer) clearTimeout(terminalSelectionTimer);
+    if (terminalRemoteResumeTimer) clearTimeout(terminalRemoteResumeTimer);
+    terminalScrollSendTimer = null;
+    terminalSelectionTimer = null;
+    terminalRemoteResumeTimer = null;
+    terminalSelectionPending = false;
+  }
+
+  function setTerminalRunContext(runId, pageId) {
+    const nextRun = String(runId || '');
+    const nextPage = String(pageId || '');
+    if (nextRun !== activeTerminalRunId || nextPage !== activeTerminalPageId) {
+      if (activeTerminalRunId) sendTerminalPresence('terminal_selection', { clear: true });
+      stopTerminalPresenceTimers();
+      clearRemoteTerminalSelection();
+      terminalRemoteSequences.clear();
+      terminalLastSelectionKey = '';
+      const viewport = document.getElementById('terminal-tab-output');
+      if (viewport) viewport.scrollTop = 0;
+    }
+    activeTerminalRunId = nextRun;
+    activeTerminalPageId = nextPage;
+  }
+
+  function sendTerminalPresence(kind, fields) {
+    if (!trainerOsConfig.room_mode || !activeTerminalRunId) return;
+    const currentPage = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
+    if (String(currentPage).replace(/-/g, '_') !== activeTerminalPageId.replace(/-/g, '_')) return;
+    window.boostudyLessonControl?.sendUi?.({
+      kind, run_id: activeTerminalRunId, page_id: activeTerminalPageId,
+      client_id: terminalClientId, seq: ++terminalSequence, ...fields,
+    });
+  }
+
+  function terminalTextRangeAt(root, start, end) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let text = '';
+    while (walker.nextNode()) {
+      nodes.push({ node: walker.currentNode, start: text.length, end: text.length + walker.currentNode.textContent.length });
+      text += walker.currentNode.textContent;
+    }
+    if (start < 0 || end <= start || end > text.length) return null;
+    const first = nodes.find(item => item.start <= start && item.end > start);
+    const last = [...nodes].reverse().find(item => item.start < end && item.end >= end);
+    if (!first || !last) return null;
+    const range = document.createRange();
+    range.setStart(first.node, start - first.start);
+    range.setEnd(last.node, end - last.start);
+    return range;
+  }
+
+  function terminalAnchoredRange(body, payload) {
+    const text = body.textContent || '';
+    const start = Number(payload.start);
+    const end = Number(payload.end);
+    const quote = String(payload.quote || '');
+    if (quote && Number.isInteger(start) && Number.isInteger(end)
+      && end - start === quote.length && text.slice(start, end) === quote) {
+      return terminalTextRangeAt(body, start, end);
+    }
+    if (!quote) return null;
+    let offset = -1;
+    while ((offset = text.indexOf(quote, offset + 1)) !== -1) {
+      if (payload.prefix && !text.slice(Math.max(0, offset - payload.prefix.length), offset).endsWith(payload.prefix)) continue;
+      if (payload.suffix && !text.slice(offset + quote.length).startsWith(payload.suffix)) continue;
+      return terminalTextRangeAt(body, offset, offset + quote.length);
+    }
+    return null;
+  }
+
+  function animateTerminalRemoteScroll() {
+    const viewport = document.getElementById('terminal-tab-output');
+    if (!viewport || terminalRemoteFrame || terminalRemoteTargetRatio == null) return;
+    let lastFrameAt = performance.now();
+    const frame = now => {
+      terminalRemoteFrame = 0;
+      if (!viewport.isConnected || !terminalFollowScroll || performance.now() < terminalManualOverrideUntil) {
+        terminalRemoteTargetRatio = null;
+        return;
+      }
+      const maxScroll = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+      const target = Math.max(0, Math.min(1, terminalRemoteTargetRatio)) * maxScroll;
+      const elapsed = Math.max(1, now - lastFrameAt);
+      lastFrameAt = now;
+      const next = viewport.scrollTop + (target - viewport.scrollTop) * (1 - Math.exp(-elapsed / 52));
+      suppressTerminalScroll = true;
+      terminalRemoteScrollUntil = performance.now() + 140;
+      viewport.scrollTop = Math.abs(target - next) < 0.65 ? target : next;
+      if (Math.abs(target - viewport.scrollTop) < 0.65) {
+        terminalRemoteTargetRatio = null;
+        terminalRemoteScrollUntil = performance.now() + 120;
+        suppressTerminalScroll = false;
+        return;
+      }
+      suppressTerminalScroll = false;
+      terminalRemoteFrame = requestAnimationFrame(frame);
+    };
+    terminalRemoteFrame = requestAnimationFrame(frame);
+  }
+
+  function sendTerminalScroll() {
+    const viewport = document.getElementById('terminal-tab-output');
+    if (!viewport) return;
+    const maxScroll = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+    sendTerminalPresence('terminal_scroll', { ratio: maxScroll ? viewport.scrollTop / maxScroll : 0 });
+    terminalScrollSendAt = performance.now();
+  }
+
+  function scheduleTerminalScrollSend() {
+    if (terminalScrollSendTimer) return;
+    const wait = Math.max(0, 32 - (performance.now() - terminalScrollSendAt));
+    terminalScrollSendTimer = setTimeout(() => {
+      terminalScrollSendTimer = null;
+      sendTerminalScroll();
+    }, wait);
+  }
+
+  function publishTerminalSelection() {
+    const body = document.querySelector('#terminal-console-output [data-terminal-output-body]');
+    const selection = window.getSelection();
+    if (!body || !selection || selection.isCollapsed || !selection.rangeCount) {
+      if (terminalLastSelectionKey) {
+        terminalLastSelectionKey = '';
+        sendTerminalPresence('terminal_selection', { clear: true });
+      }
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    if (!body.contains(range.startContainer) || !body.contains(range.endContainer)) {
+      if (terminalLastSelectionKey) {
+        terminalLastSelectionKey = '';
+        sendTerminalPresence('terminal_selection', { clear: true });
+      }
+      return;
+    }
+    const quote = range.toString();
+    if (!quote.trim() || quote.length > 2000 || !activeTerminalRunId) return;
+    const before = document.createRange();
+    before.selectNodeContents(body);
+    before.setEnd(range.startContainer, range.startOffset);
+    const start = before.toString().length;
+    const allText = body.textContent || '';
+    const key = `${activeTerminalRunId}:${start}:${quote}`;
+    if (key === terminalLastSelectionKey) return;
+    terminalLastSelectionKey = key;
+    sendTerminalPresence('terminal_selection', {
+      start, end: start + quote.length, quote,
+      prefix: allText.slice(Math.max(0, start - 64), start),
+      suffix: allText.slice(start + quote.length, start + quote.length + 64),
+    });
+  }
+
+  function queueTerminalSelection() {
+    terminalSelectionPending = true;
+    if (terminalSelectionTimer) return;
+    const wait = Math.max(0, 36 - (performance.now() - terminalSelectionSentAt));
+    terminalSelectionTimer = setTimeout(() => {
+      terminalSelectionTimer = null;
+      if (!terminalSelectionPending) return;
+      terminalSelectionPending = false;
+      publishTerminalSelection();
+      terminalSelectionSentAt = performance.now();
+    }, wait);
+  }
+
+  function applyTerminalPresence(payload) {
+    if (!payload?.run_id || String(payload.run_id) !== activeTerminalRunId) return;
+    if (String(payload.page_id || '') !== activeTerminalPageId) return;
+    const sequenceKey = `${payload.client_id || payload.author_role || 'peer'}:${payload.kind}`;
+    const sequence = Number(payload.seq) || 0;
+    if (sequence && sequence <= (terminalRemoteSequences.get(sequenceKey) || 0)) return;
+    if (sequence) terminalRemoteSequences.set(sequenceKey, sequence);
+    if (payload.kind === 'terminal_scroll') {
+      if (!terminalFollowScroll) return;
+      terminalRemoteTargetRatio = Math.max(0, Math.min(1, Number(payload.ratio) || 0));
+      if (performance.now() < terminalManualOverrideUntil) {
+        if (!terminalRemoteResumeTimer) terminalRemoteResumeTimer = setTimeout(() => {
+          terminalRemoteResumeTimer = null;
+          animateTerminalRemoteScroll();
+        }, Math.max(0, terminalManualOverrideUntil - performance.now()));
+        return;
+      }
+      animateTerminalRemoteScroll();
+      return;
+    }
+    if (payload.kind !== 'terminal_selection') return;
+    clearRemoteTerminalSelection();
+    if (payload.clear) return;
+    const body = document.querySelector('#terminal-console-output [data-terminal-output-body]');
+    if (!body) return;
+    const range = terminalAnchoredRange(body, payload);
+    if (!range) return;
+    if (window.CSS?.highlights && window.Highlight) CSS.highlights.set('boostudy-terminal-remote-selection', new Highlight(range));
+  }
+
+  if (trainerOsConfig.room_mode) {
+    const viewport = document.getElementById('terminal-tab-output');
+    const noteLocalTerminalIntent = () => {
+      const now = performance.now();
+      terminalLocalIntentUntil = now + 450;
+      terminalManualOverrideUntil = now + 900;
+      cancelTerminalRemoteScroll();
+    };
+    viewport?.addEventListener('wheel', noteLocalTerminalIntent, { passive: true });
+    viewport?.addEventListener('touchstart', noteLocalTerminalIntent, { passive: true });
+    viewport?.addEventListener('touchmove', noteLocalTerminalIntent, { passive: true });
+    viewport?.addEventListener('pointerdown', noteLocalTerminalIntent, { passive: true });
+    document.addEventListener('pointerup', () => { terminalLocalIntentUntil = Math.max(terminalLocalIntentUntil, performance.now() + 280); }, { passive: true });
+    viewport?.addEventListener('keydown', event => {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) noteLocalTerminalIntent();
+    });
+    viewport?.addEventListener('scroll', () => {
+      if (suppressTerminalScroll || performance.now() < terminalRemoteScrollUntil || performance.now() > terminalLocalIntentUntil) return;
+      const now = performance.now();
+      if (now - terminalScrollSendAt >= 32) sendTerminalScroll();
+      else scheduleTerminalScrollSend();
+    });
+    const follow = document.getElementById('terminal-follow-scroll');
+    follow?.addEventListener('click', () => {
+      terminalFollowScroll = !terminalFollowScroll;
+      if (!terminalFollowScroll) cancelTerminalRemoteScroll();
+      follow.setAttribute('aria-pressed', String(terminalFollowScroll));
+      follow.textContent = terminalFollowScroll ? 'Следить за прокруткой' : 'Прокрутка свободная';
+    });
+    document.addEventListener('selectionchange', queueTerminalSelection);
+    document.getElementById('terminal-console-output')?.addEventListener('mouseup', queueTerminalSelection);
+    document.getElementById('terminal-console-output')?.addEventListener('keyup', queueTerminalSelection);
+    window.addEventListener('boostudy:terminal-close', () => {
+      if (terminalLastSelectionKey) {
+        terminalLastSelectionKey = '';
+        sendTerminalPresence('terminal_selection', { clear: true });
+      }
+      stopTerminalPresenceTimers();
+      clearRemoteTerminalSelection();
+    });
+  }
+
   function executeRunCode(options = {}) {
     if (trainerOsConfig.sandbox_mode && (!trainerOsConfig.sandbox_can_run_code || trainerOsConfig.sandbox_readonly)) return;
     if (!options.remote && trainerOsConfig.room_mode && state?.role === 'student' && window.boostudyLessonControl?.getControl?.()?.freeze_student) {
@@ -9029,7 +9349,8 @@
     }
 
     if (termEl && !window.BooStudyPocketOS?.active) {
-      openWindow('terminal-window', { remote: Boolean(options.remote) });
+      // A permitted run is a system result, independent of manual window control.
+      openWindow('terminal-window', { remote: true });
     }
 
     if (!termConsole) return;
@@ -9047,6 +9368,7 @@
 
     const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
     const runId = options.runId || ('run_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+    setTerminalRunContext(runId, activePid);
 
     setExecutionStatus('running');
     if (terminalExitStatus) terminalExitStatus.textContent = 'Выполняется';
@@ -9141,7 +9463,7 @@
         const cleanOutput = outputBuffer.trim() ? outputBuffer : '(Программа завершилась без вывода print)';
         termConsole.innerHTML = `
           <div class="text-slate-500">>>> Running python ${fileName}...</div>
-          <div class="text-emerald-400 font-bold text-xs whitespace-pre-wrap">${escapeHtml(cleanOutput)}</div>
+          <div data-terminal-output-body class="text-emerald-400 font-bold text-xs whitespace-pre-wrap">${escapeHtml(cleanOutput)}</div>
           <div class="text-slate-400 text-[10px] pt-1">Выполнено за ${duration} с · Код выхода: 0</div>
         `;
         const payload = {
@@ -9167,7 +9489,7 @@
         const duration = ((endTime - startTime) / 1000).toFixed(3);
         termConsole.innerHTML = `
           <div class="text-slate-500">>>> Running python ${fileName}...</div>
-          <div class="text-rose-400 font-bold text-xs whitespace-pre-wrap">[Python Error]: ${escapeHtml(err.toString())}</div>
+          <div data-terminal-output-body class="text-rose-400 font-bold text-xs whitespace-pre-wrap">[Python Error]: ${escapeHtml(err.toString())}</div>
           <div class="text-slate-400 text-[10px] pt-1">Failed in ${duration}s (Exit code: 1)</div>
         `;
         const payload = {
@@ -11982,8 +12304,12 @@
     // ----------------------------------------------------------------------
     // STUDENT VIEWPORT OUTLINE (Контур видимости ученика на доске)
     // ----------------------------------------------------------------------
-    let studentViewportRaf = null;
+    let studentViewportTimer = null;
     let lastStudentViewportSentAt = 0;
+    const studentViewportClientId = window.crypto?.randomUUID?.() || `desktop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const studentViewportClientStartedAt = Date.now();
+    let studentViewportSequence = 0;
+    const remoteStudentViewportSequences = new Map();
 
     try {
       const savedVp = localStorage.getItem(`boostudy_show_student_viewport_${lessonId}`);
@@ -11998,9 +12324,8 @@
         window.BooStudyPocketOS.reportMobileViewport(immediate);
         return;
       }
-      const now = performance.now();
       const doSend = () => {
-        studentViewportRaf = null;
+        studentViewportTimer = null;
         lastStudentViewportSentAt = performance.now();
         const vp = viewport();
         if (!vp) return;
@@ -12017,18 +12342,27 @@
           worldH = bounds.worldH;
         } else {
           const currentScale = state.scale || 1.0;
-          worldX = (0 - state.panX) / currentScale;
-          worldY = (0 - state.panY) / currentScale;
+          worldX = (0 - vp.clientWidth / 2 - state.panX) / currentScale + vp.clientWidth / 2;
+          worldY = (0 - vp.clientHeight / 2 - state.panY) / currentScale + vp.clientHeight / 2;
           worldW = vp.clientWidth / currentScale;
           worldH = vp.clientHeight / currentScale;
         }
+
+        const isMobileDevice = navigator.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        const hasTouchInput = navigator.maxTouchPoints > 0 || window.matchMedia?.('(pointer: coarse)').matches;
 
         emitRealtime('whiteboard_viewport', {
           lesson_id: lessonId,
           page_id: state.currentPageId,
           mode: mode,
-          is_mobile: isPocketMobile,
-          device: isPocketMobile ? 'pocket_os' : 'desktop',
+          interface_mode: isPocketMobile ? 'pocket' : 'desktop',
+          device_type: isMobileDevice ? 'mobile' : 'desktop',
+          input_type: hasTouchInput ? 'touch' : 'pointer',
+          is_mobile: isMobileDevice,
+          device: isPocketMobile ? 'pocket_os' : (isMobileDevice ? 'mobile_browser' : 'desktop_browser'),
+          client_id: studentViewportClientId,
+          client_started_at: studentViewportClientStartedAt,
+          sequence: ++studentViewportSequence,
           world_x: worldX,
           world_y: worldY,
           world_w: worldW,
@@ -12036,11 +12370,13 @@
         });
       };
 
-      if (immediate || now - lastStudentViewportSentAt > 100) {
-        if (studentViewportRaf) cancelAnimationFrame(studentViewportRaf);
+      if (immediate) {
+        if (studentViewportTimer) clearTimeout(studentViewportTimer);
+        studentViewportTimer = null;
         doSend();
-      } else if (!studentViewportRaf) {
-        studentViewportRaf = requestAnimationFrame(doSend);
+      } else if (studentViewportTimer === null) {
+        const wait = Math.max(0, 100 - (performance.now() - lastStudentViewportSentAt));
+        studentViewportTimer = setTimeout(doSend, wait);
       }
     }
 
@@ -12109,6 +12445,14 @@
       if (!isTeacher) return;
 
       const userId = String(payload.user_id || 'student');
+      const clientId = String(payload.client_id || 'legacy');
+      const sequence = Number(payload.sequence) || 0;
+      const startedAt = Number(payload.client_started_at) || 0;
+      const previous = remoteStudentViewportSequences.get(userId);
+      if (previous && clientId === previous.clientId && sequence > 0 && sequence <= previous.sequence) return;
+      if (previous && clientId === 'legacy' && previous.clientId !== 'legacy') return;
+      if (previous && clientId !== previous.clientId && startedAt > 0 && previous.startedAt > startedAt) return;
+      if (sequence > 0) remoteStudentViewportSequences.set(userId, { clientId, sequence, startedAt });
       state.remoteStudentViewports[userId] = payload;
       renderStudentViewportIndicators();
     }
@@ -12138,7 +12482,14 @@
           document.getElementById(`student-viewport-${userId}`)?.remove();
           return;
         }
-        const { world_x, world_y, world_w, world_h } = data.viewport;
+        const world_x = Number(data.viewport.world_x);
+        const world_y = Number(data.viewport.world_y);
+        const world_w = Number(data.viewport.world_w);
+        const world_h = Number(data.viewport.world_h);
+        if (![world_x, world_y, world_w, world_h].every(Number.isFinite) || world_w <= 0 || world_h <= 0) {
+          document.getElementById(`student-viewport-${userId}`)?.remove();
+          return;
+        }
         let screenX, screenY, screenW, screenH;
         if (window.BooCanvasOverlay?.worldRectToScreen) {
           const s = window.BooCanvasOverlay.worldRectToScreen(world_x, world_y, world_w, world_h);
@@ -12151,6 +12502,10 @@
           screenY = world_y * state.scale + state.panY;
           screenW = world_w * state.scale;
           screenH = world_h * state.scale;
+        }
+        if (![screenX, screenY, screenW, screenH].every(Number.isFinite) || screenW <= 0 || screenH <= 0) {
+          document.getElementById(`student-viewport-${userId}`)?.remove();
+          return;
         }
 
         const elId = `student-viewport-${userId}`;
@@ -12165,7 +12520,9 @@
         const color = data.color || '#4f46e5';
         const isCodeMode = data.mode === 'code';
         const isTaskMode = data.mode === 'task';
-        const isMobile = Boolean(data.is_mobile || data.device === 'pocket_os');
+        const isMobile = data.interface_mode
+          ? data.interface_mode === 'pocket'
+          : data.device === 'pocket_os';
         box.classList.toggle('is-code-mode', isCodeMode);
         box.classList.toggle('is-task-mode', isTaskMode);
         box.classList.toggle('is-mobile-contour', isMobile);
@@ -12414,12 +12771,14 @@
       const control = controlState();
       const isTeacher = Boolean(trainerOsConfig.is_studio_teacher || state.role === 'teacher' || trainerOsConfig.room_role === 'teacher' || state.canPresent);
       const winMode = control.windows_mode || (control.windows_sync === false ? 'independent' : 'teacher');
-      const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab'].includes(payload.kind);
+      const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab', 'terminal_scroll', 'terminal_selection'].includes(payload.kind);
+      const isTerminalPresence = ['terminal_scroll', 'terminal_selection'].includes(payload.kind);
+      const isSharedSelection = payload.kind === 'text_selection';
       const isWindowKind = ['window', 'window_layout', 'window_order'].includes(payload.kind);
       const isWorkspaceKind = payload.kind === 'workspace';
       const isTracerKind = typeof payload.kind === 'string' && payload.kind.startsWith('tracer_');
       const isOrbitKind = typeof payload.kind === 'string' && payload.kind.startsWith('orbit_');
-      const isTeacherMasterKind = ['teacher_stamp', 'teacher_hint', 'teacher_answer_vis', 'task_switch', 'focus_board', 'freeze_student', 'free_mode', 'focus_suggestion', 'set_focus', 'terminal_close'].includes(payload.kind);
+      const isTeacherMasterKind = ['teacher_stamp', 'teacher_hint', 'teacher_answer_vis', 'task_switch', 'focus_board', 'freeze_student', 'free_mode', 'focus_suggestion', 'set_focus', 'terminal_close', 'notes_preview_request', 'window_presence_request'].includes(payload.kind);
 
       if (payload.kind === 'focus_suggestion_ack') {
         state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
@@ -12442,6 +12801,17 @@
       }
 
       if (payload.window_id && isPrivateWindow(payload.window_id)) return;
+
+      if (isTerminalPresence) {
+        if (!isTeacher && control.freeze_student) return;
+        state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
+        return;
+      }
+      if (isSharedSelection) {
+        if (!isTeacher && control.freeze_student) return;
+        state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
+        return;
+      }
 
       if (isWorkspaceKind) {
         if (control.workspace_sync === false && !isTeacher) return;
@@ -12470,11 +12840,130 @@
         if (payload.window_id !== 'tracer-window' && !allowedWindows.includes(payload.window_id)) return;
       }
       if (payload.kind === 'mode' && !_teacherControlEnabled(control, 'teacher_controls_mode')) return;
-      if ((payload.kind === 'run' || payload.kind === 'run_start') && control.auto_open_terminal_on_run !== true && control.terminal_sync !== true) return;
-      if (payload.kind === 'terminal_output' && control.terminal_sync === false) return;
+      // A program run and its result are shared even when manual window control is teacher-only.
       if (payload.kind === 'terminal_tab' && control.terminal_sync === false) return;
       state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
     }
+
+    let notesRemoteSelection = null;
+    let notesLastSelectionKey = '';
+    let notesSelectionTimer = null;
+    let notesSelectionSentAt = 0;
+    let notesSelectionSeq = 0;
+    const notesSelectionClientId = window.crypto?.randomUUID?.() || `notes-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+    function clearNotesRemoteHighlight() {
+      document.getElementById('notes-remote-highlight-overlay')?.classList.add('hidden');
+    }
+
+    function renderNotesRemoteHighlight(field, selection) {
+      const overlay = document.getElementById('notes-remote-highlight-overlay');
+      const content = document.getElementById('notes-remote-highlight-content');
+      if (!overlay || !content || !selection?.quote) { clearNotesRemoteHighlight(); return; }
+      const text = field.value;
+      const quote = selection.quote;
+      let start = Number(selection.start);
+      let end = Number(selection.end);
+      if (!Number.isInteger(start) || !Number.isInteger(end) || text.slice(start, end) !== quote) {
+        start = -1;
+        let offset = -1;
+        while ((offset = text.indexOf(quote, offset + 1)) !== -1) {
+          if (selection.prefix && !text.slice(Math.max(0, offset - selection.prefix.length), offset).endsWith(selection.prefix)) continue;
+          if (selection.suffix && !text.slice(offset + quote.length).startsWith(selection.suffix)) continue;
+          start = offset;
+          break;
+        }
+        end = start < 0 ? -1 : start + quote.length;
+      }
+      if (start < 0 || end <= start) { clearNotesRemoteHighlight(); return; }
+      const mark = document.createElement('mark');
+      mark.textContent = quote;
+      content.replaceChildren(document.createTextNode(text.slice(0, start)), mark, document.createTextNode(text.slice(end)));
+      overlay.classList.remove('hidden');
+      overlay.scrollTop = field.scrollTop;
+      if (!field.dataset.remoteHighlightBound) {
+        field.dataset.remoteHighlightBound = 'true';
+        field.addEventListener('scroll', () => { overlay.scrollTop = field.scrollTop; });
+      }
+    }
+    function applyNotesRemoteSelection(payload) {
+      if (payload.clear) {
+        if (!notesRemoteSelection || !payload.sender_id || String(payload.sender_id) === String(notesRemoteSelection.sender_id)) {
+          notesRemoteSelection = null;
+          clearNotesRemoteHighlight();
+        }
+        return;
+      }
+      notesRemoteSelection = payload;
+      const field = document.getElementById('notes-textarea');
+      if (!field) return;
+      renderNotesRemoteHighlight(field, payload);
+    }
+
+    function publishNotesSelection() {
+      const field = document.getElementById('notes-textarea');
+      if (!field) return;
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      const quote = field.value.slice(start, end);
+      if (start === end || !quote.trim() || quote.length > 2000) {
+        if (notesLastSelectionKey) {
+          notesLastSelectionKey = '';
+          sendRoomUi({ kind: 'text_selection', surface: 'notes', clear: true, client_id: notesSelectionClientId, seq: ++notesSelectionSeq });
+        }
+        return;
+      }
+      const key = `${start}:${quote}`;
+      if (key === notesLastSelectionKey) return;
+      notesLastSelectionKey = key;
+      sendRoomUi({
+        kind: 'text_selection', surface: 'notes', client_id: notesSelectionClientId,
+        seq: ++notesSelectionSeq, start, end, quote,
+        prefix: field.value.slice(Math.max(0, start - 64), start),
+        suffix: field.value.slice(end, end + 64),
+      });
+    }
+
+    function queueNotesSelection() {
+      if (notesSelectionTimer) return;
+      const wait = Math.max(0, 36 - (performance.now() - notesSelectionSentAt));
+      notesSelectionTimer = setTimeout(() => {
+        notesSelectionTimer = null;
+        publishNotesSelection();
+        notesSelectionSentAt = performance.now();
+      }, wait);
+    }
+
+    const notesField = document.getElementById('notes-textarea');
+    let notesSelectionDragging = false;
+    notesField?.addEventListener('select', queueNotesSelection);
+    notesField?.addEventListener('selectionchange', queueNotesSelection);
+    notesField?.addEventListener('pointerdown', event => {
+      notesSelectionDragging = event.button === 0 && event.isPrimary !== false;
+    }, { passive: true });
+    document.addEventListener('pointermove', () => {
+      if (notesSelectionDragging) queueNotesSelection();
+    }, { passive: true });
+    document.addEventListener('pointerup', () => {
+      if (!notesSelectionDragging) return;
+      notesSelectionDragging = false;
+      queueNotesSelection();
+    }, { passive: true });
+    document.addEventListener('pointercancel', () => { notesSelectionDragging = false; }, { passive: true });
+    window.addEventListener('blur', () => { notesSelectionDragging = false; });
+    notesField?.addEventListener('keyup', queueNotesSelection);
+    notesField?.addEventListener('input', () => {
+      queueNotesSelection();
+      if (notesRemoteSelection) renderNotesRemoteHighlight(notesField, notesRemoteSelection);
+    });
+    notesField?.addEventListener('blur', () => {
+      if (!notesLastSelectionKey) return;
+      notesLastSelectionKey = '';
+      sendRoomUi({ kind: 'text_selection', surface: 'notes', clear: true, client_id: notesSelectionClientId, seq: ++notesSelectionSeq });
+    });
+    window.addEventListener('boostudy:text-selection', event => {
+      if (event.detail?.surface === 'notes') applyNotesRemoteSelection(event.detail);
+    });
 
     function syncCurrentRoomUi(control = controlState()) {
       if (state.role !== 'teacher' || !state.socket) return;
@@ -12963,6 +13452,19 @@
     window.onLessonPageSwitch = function(prevPageId, newPageId) {
       if (!newPageId || lastSwitchedLessonPageId === newPageId) return;
       const fromPage = prevPageId || lastSwitchedLessonPageId;
+      if (trainerOsConfig.room_mode && fromPage) {
+        const output = document.getElementById('terminal-console-output');
+        const viewport = document.getElementById('terminal-tab-output');
+        terminalPageOutputs.set(fromPage, {
+          html: output?.innerHTML || '',
+          runId: activeTerminalRunId,
+          scrollTop: viewport?.scrollTop || 0,
+        });
+        const next = terminalPageOutputs.get(newPageId);
+        setTerminalRunContext(next?.runId || '', newPageId);
+        if (output) output.innerHTML = next?.html || '<div class="text-slate-500">На этой странице ещё не запускали программу.</div>';
+        if (viewport) viewport.scrollTop = next?.scrollTop || 0;
+      }
       const sandboxPreviousEditor = trainerOsConfig.sandbox_mode ? getSandboxFileState() : null;
       const sandboxPreviousNotes = trainerOsConfig.sandbox_mode ? String($('#notes-textarea')?.value || '') : null;
       lastSwitchedLessonPageId = newPageId;
@@ -14023,7 +14525,8 @@
       const isTeacher = Boolean(trainerOsConfig.is_studio_teacher || state.role === 'teacher' || trainerOsConfig.room_role === 'teacher' || state.canPresent);
       const winMode = ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : 'teacher');
 
-      const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab'].includes(payload.kind);
+      const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab', 'terminal_scroll', 'terminal_selection'].includes(payload.kind);
+      const isSharedSelection = payload.kind === 'text_selection';
       const isWindowKind = ['window', 'window_layout', 'window_order'].includes(payload.kind);
       const isTracerKind = typeof payload.kind === 'string' && payload.kind.startsWith('tracer_');
       const isOrbitKind = typeof payload.kind === 'string' && payload.kind.startsWith('orbit_');
@@ -14114,6 +14617,14 @@
         window.dispatchEvent(new CustomEvent('boostudy:terminal-close', { detail: payload }));
         return;
       }
+      if (isSharedSelection) {
+        if (!payload.clear) {
+          const windowId = payload.surface === 'theory' ? 'theory-window' : 'notes-window';
+          if (state.role !== 'student' || canStudentWindow(windowId)) openWindow(windowId, { remote: true });
+        }
+        window.dispatchEvent(new CustomEvent('boostudy:text-selection', { detail: payload }));
+        return;
+      }
 
       if (isWindowKind) {
         if (document.body.classList.contains('pocket-os-active') || window.BooStudyPocketOS?.active) return;
@@ -14123,7 +14634,7 @@
         if (payload.window_id && isPrivateWindow(payload.window_id)) return;
       }
 
-      if (isTeacher && !isCodeKind && !isWindowKind && !isTracerKind) return;
+      if (isTeacher && !isCodeKind && !isWindowKind && !isTracerKind && !isSharedSelection) return;
 
       const allowedWindows = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
         'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window'
@@ -14134,6 +14645,12 @@
       }
       if (payload.kind === 'terminal_tab' && ctrl.terminal_sync !== false) {
         switchTerminalTab(payload.tab, { remote: true });
+      }
+      if (payload.kind === 'terminal_scroll' || payload.kind === 'terminal_selection') {
+        applyTerminalPresence(payload);
+      }
+      if (payload.kind === 'window_presence_request' && state.role === 'student') {
+        window.dispatchEvent(new Event('boostudy:request-window-presence'));
       }
       if (payload.kind === 'window' && (payload.window_id === 'tracer-window' || allowedWindows.includes(payload.window_id))) {
         const winId = payload.window_id;
@@ -14245,10 +14762,11 @@
           }
         }
       }
-      if (payload.kind === 'run_start' && (ctrl.auto_open_terminal_on_run !== false || ctrl.terminal_sync !== false)) {
+      if (payload.kind === 'run_start') {
         if (payload.run_id && completedTerminalRunIds.has(String(payload.run_id))) return;
         const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
         if (payload.page_id && String(payload.page_id).replace(/-/g, '_') !== String(activePid).replace(/-/g, '_')) return;
+        setTerminalRunContext(payload.run_id, activePid);
         if (!window.BooStudyPocketOS?.active) {
           switchRoomWorkMode('code', { remote: true });
           openWindow('terminal-window', { remote: true });
@@ -14267,9 +14785,10 @@
         }
         window.dispatchEvent(new CustomEvent('boostudy:terminal-run-start', { detail: payload }));
       }
-      if (payload.kind === 'terminal_output' && ctrl.terminal_sync !== false) {
+      if (payload.kind === 'terminal_output') {
         const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
         if (payload.page_id && String(payload.page_id).replace(/-/g, '_') !== String(activePid).replace(/-/g, '_')) return;
+        setTerminalRunContext(payload.run_id, activePid);
         if (payload.run_id) {
           completedTerminalRunIds.add(String(payload.run_id));
           if (completedTerminalRunIds.size > 100) completedTerminalRunIds.delete(completedTerminalRunIds.values().next().value);
@@ -14287,7 +14806,7 @@
           const prefix = payload.is_error ? '[Python Error]: ' : '';
           termConsole.innerHTML = `
             <div class="text-slate-500">>>> Running python ${payload.file_name || 'main.py'}...</div>
-            <div class="${colorClass} font-bold text-xs whitespace-pre-wrap">${prefix}${escapeHtml(payload.output || '')}</div>
+            <div data-terminal-output-body class="${colorClass} font-bold text-xs whitespace-pre-wrap">${prefix}${escapeHtml(payload.output || '')}</div>
             <div class="text-slate-400 text-[10px] pt-1">Выполнено за ${payload.duration || '0.000'} с · Код выхода: ${payload.exit_code ?? 0}</div>
           `;
         }
@@ -15450,6 +15969,88 @@
           timeout: 10000,
         });
         window.boostudyLessonSocket = state.socket;
+        const presenceWindows = ['code-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'task-window', 'files-window', 'video-window'];
+        const presenceLabels = { 'code-window': 'Код', 'terminal-window': 'Терминал', 'tracer-window': 'Трассировка', 'notes-window': 'Заметки', 'theory-window': 'Теория', 'task-window': 'Задание', 'files-window': 'Файлы', 'video-window': 'Звонок' };
+        const presenceIcons = { 'code-window': 'ph-code', 'terminal-window': 'ph-terminal-window', 'tracer-window': 'ph-git-branch', 'notes-window': 'ph-note-pencil', 'theory-window': 'ph-book-open-text', 'task-window': 'ph-check-square-offset', 'files-window': 'ph-folder-open', 'video-window': 'ph-video-camera' };
+        const studentWindowStates = new Map();
+        const renderStudentWindowPresence = () => {
+          const list = document.getElementById('student-window-presence-list');
+          const preview = document.getElementById('student-window-presence-preview');
+          const summary = document.getElementById('student-window-presence-summary');
+          if (!list || !preview || !summary) return;
+          list.replaceChildren();
+          preview.replaceChildren();
+          const students = [...studentWindowStates.values()];
+          if (!students.length) { summary.textContent = 'Ожидаем подключение'; return; }
+          const openCount = students.reduce((count, student) => count + student.windows.filter(item => item.status === 'open').length, 0);
+          summary.textContent = students.length === 1 ? `${students[0].name} · ${openCount} открыто` : `${students.length} ученика · ${openCount} открыто`;
+          const renderIcon = (item) => {
+            const icon = document.createElement('span');
+            icon.className = `lesson-window-presence-icon is-${item.status}`;
+            icon.title = `${presenceLabels[item.id] || item.id}: ${item.status === 'open' ? 'открыто' : item.status === 'minimized' ? 'свёрнуто' : 'закрыто'}`;
+            icon.setAttribute('aria-label', icon.title);
+            const glyph = document.createElement('i');
+            glyph.className = `ph-bold ${presenceIcons[item.id] || 'ph-square'}`;
+            glyph.setAttribute('aria-hidden', 'true');
+            icon.appendChild(glyph);
+            return icon;
+          };
+          students[0].windows.filter(item => item.status !== 'closed').slice(0, 4).forEach(item => preview.appendChild(renderIcon(item)));
+          students.forEach(student => {
+            const group = document.createElement('section');
+            group.className = 'lesson-window-presence-student';
+            const name = document.createElement('strong');
+            name.textContent = student.name;
+            const grid = document.createElement('div');
+            grid.className = 'lesson-window-presence-grid';
+            student.windows.forEach(item => {
+              const cell = document.createElement('div');
+              cell.className = 'lesson-window-presence-cell';
+              cell.appendChild(renderIcon(item));
+              const label = document.createElement('span');
+              label.textContent = presenceLabels[item.id] || item.id;
+              cell.appendChild(label);
+              grid.appendChild(cell);
+            });
+            group.append(name, grid);
+            list.appendChild(group);
+          });
+        };
+        document.getElementById('student-window-presence-toggle')?.addEventListener('click', (event) => {
+          const list = document.getElementById('student-window-presence-list');
+          const open = list?.classList.toggle('hidden') === false;
+          event.currentTarget.setAttribute('aria-expanded', String(open));
+        });
+        let presenceTimer = null;
+        const publishWindowPresence = () => {
+          if (state.role !== 'student' || !state.socket?.connected) return;
+          const pageId = String(window.activeLessonPageId || window.BooCanvasOverlay?.getActivePageId?.() || state.currentPageId || 'page_1');
+          const windows = presenceWindows.map((id) => {
+            const node = document.getElementById(id);
+            const status = !node || node.classList.contains('hidden') || getComputedStyle(node).display === 'none'
+              ? 'closed' : node.dataset.isMinimized === 'true' ? 'minimized' : 'open';
+            return { id, status, page_id: pageId };
+          });
+          state.socket.emit('lesson_room_ui', { lesson_id: lessonId, kind: 'window_presence', windows });
+        };
+        if (state.role === 'student') {
+          const observer = new MutationObserver(() => {
+            clearTimeout(presenceTimer);
+            presenceTimer = setTimeout(publishWindowPresence, 130);
+          });
+          presenceWindows.forEach((id) => {
+            const node = document.getElementById(id);
+            if (node) observer.observe(node, { attributes: true, attributeFilter: ['class', 'style', 'data-is-minimized'] });
+          });
+          window.addEventListener('boostudy:lesson-page-changed', publishWindowPresence);
+          window.addEventListener('boostudy:request-window-presence', publishWindowPresence);
+        }
+        state.socket.on('lesson_window_presence', (payload) => {
+          if (state.role !== 'teacher' || Number(payload?.lesson_id) !== Number(lessonId)) return;
+          if (!Array.isArray(payload.windows)) return;
+          studentWindowStates.set(String(payload.user_id), { name: payload.name || 'Ученик', windows: payload.windows });
+          renderStudentWindowPresence();
+        });
         const joinLessonRooms = () => {
           state.connected = true;
           setSaveState('ready', 'Синхронизировано');
@@ -15481,6 +16082,8 @@
           flushOutbox();
           connectCanvasOverlaySync();
           if (state.role === 'student') sendStudentViewport(true);
+          if (state.role === 'student') setTimeout(publishWindowPresence, 200);
+          if (state.role === 'teacher') setTimeout(() => sendRoomUi({ kind: 'window_presence_request' }), 200);
         };
         state.socket.on('connect', () => {
           joinLessonRooms();
@@ -15522,6 +16125,25 @@
         });
         state.socket.on('lesson_presence', (payload) => {
           if (Number(payload.lesson_id) !== Number(lessonId)) return;
+          if (state.role === 'student' && payload.presence?.some((person) => person.role === 'teacher')) {
+            setTimeout(publishWindowPresence, 150);
+          }
+          if (state.role === 'teacher') {
+            const hasStudent = payload.presence?.some((person) => person.role === 'student');
+            const windowList = document.getElementById('student-window-presence-list');
+            if (Array.isArray(payload.presence)) {
+              const online = new Set(payload.presence.filter(person => person.role === 'student').map(person => String(person.user_id)));
+              for (const userId of studentWindowStates.keys()) {
+                if (!online.has(userId)) studentWindowStates.delete(userId);
+              }
+              renderStudentWindowPresence();
+            }
+            if (!hasStudent && windowList) windowList.textContent = 'Ученик не в сети';
+            if (hasStudent && Date.now() - (state.lastWindowPresenceRequestAt || 0) > 2000) {
+              state.lastWindowPresenceRequestAt = Date.now();
+              sendRoomUi({ kind: 'window_presence_request' });
+            }
+          }
           if (state.remoteCodeCursors && Array.isArray(payload.presence)) {
             const activeUserIds = new Set(payload.presence.map((p) => String(p.user_id)));
             Object.keys(state.remoteCodeCursors).forEach((uId) => {
@@ -15944,9 +16566,12 @@
           }
         });
         state.socket.on('lesson_sync_pong', (payload) => {
-          if (payload && payload.revision && Number(payload.revision) > currentRevision) {
+          const currentPid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
+          if (payload && payload.page_id === currentPid && payload.revision && Number(payload.revision) > currentRevision) {
+            const key = `${currentPid}:${payload.revision}`;
+            if (state.lastPongResync?.key === key && Date.now() - state.lastPongResync.at < 5000) return;
+            state.lastPongResync = { key, at: Date.now() };
             console.warn('[OS] Pong detected higher server revision:', payload.revision);
-            const currentPid = window.BooCanvasOverlay?.getActivePageId?.() || state?.currentPageId || 'page_1';
             state.socket.emit('lesson_code_resync', { lesson_id: lessonId, page_id: currentPid, current_revision: currentRevision });
           }
         });
@@ -16107,6 +16732,10 @@
         state.socket.on('whiteboard_reaction', (payload) => { if (Number(payload.lesson_id) === Number(lessonId)) showReaction(payload.reaction, payload.name); });
         state.socket.on('lesson_studio_updated', (payload) => window.dispatchEvent(new CustomEvent('boostudy:studio-updated', { detail: payload })));
         state.socket.on('lesson_student_notes_updated', (payload) => window.dispatchEvent(new CustomEvent('boostudy:student-notes-updated', { detail: payload })));
+        state.socket.on('lesson_student_notes_preview', (payload) => window.dispatchEvent(new CustomEvent('boostudy:student-notes-preview', { detail: payload })));
+        state.socket.on('lesson_notes_preview_request', (payload) => window.dispatchEvent(new CustomEvent('boostudy:notes-preview-request', { detail: payload })));
+        state.socket.on('connect', () => window.dispatchEvent(new Event('boostudy:notes-reconnect')));
+        state.socket.on('lesson_material_added', (payload) => window.dispatchEvent(new CustomEvent('boostudy:lesson-material-added', { detail: payload })));
         state.socket.on('lesson_private_note_updated', (payload) => window.dispatchEvent(new CustomEvent('boostudy:private-note-updated', { detail: payload })));
         state.socket.on('lesson_tasks_updated', (payload) => window.dispatchEvent(new CustomEvent('boostudy:tasks-updated', { detail: payload })));
       } catch (error) {
@@ -17148,6 +17777,16 @@
       status: config.lesson_status || 'planned',
       balanceDeducted: Boolean(config.balance_deducted),
       studentNotes: String(config.student_notes || ''),
+      notesRevision: null,
+      notesServerRevision: null,
+      notesDirty: false,
+      notesSaving: false,
+      notesConflict: false,
+      notesPreviewClientId: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+      notesPreviewSeq: 0,
+      notesPreviewText: String(config.student_notes || ''),
+      notesPreviewTimer: null,
+      remotePreview: null,
       saving: false,
       noteTimer: null,
       teacherNoteTimer: null,
@@ -17359,17 +17998,103 @@
 
     function queueStudentNotes(value) {
       studio.studentNotes = String(value || '');
+      studio.notesDirty = true;
+      clearTimeout(studio.notesPreviewTimer);
+      studio.notesPreviewTimer = setTimeout(sendStudentNotesPreview, 45);
+      if (studio.notesConflict) {
+        localStorage.setItem(`boostudy:lesson:${lessonId}:notes-recovery`, studio.studentNotes);
+        const status = $('#notes-status-text');
+        if (status) status.textContent = 'Черновик обновлён локально. Подтвердите итоговый текст ниже.';
+        return;
+      }
       const status = $('#notes-status-text');
       if (status) status.textContent = 'Сохранение...';
       clearTimeout(studio.noteTimer);
-      studio.noteTimer = setTimeout(async () => {
-        try {
-          await postJson(`${studioApi}/student-notes`, { notes: studio.studentNotes });
-          if (status) status.textContent = `Сохранено ${new Date().toTimeString().slice(0, 5)}`;
-        } catch (error) {
-          if (status) status.textContent = error.message;
+      studio.noteTimer = setTimeout(saveStudentNotes, 420);
+    }
+
+    function sendStudentNotesPreview(forceSnapshot = false) {
+      if (isTeacher || role !== 'student' || !window.boostudyLessonSocket?.connected) return;
+      const current = studio.studentNotes;
+      const previous = studio.notesPreviewText;
+      if (!forceSnapshot && current === previous) return;
+      let start = 0;
+      let deleteCount = previous.length;
+      let insert = current;
+      if (!forceSnapshot) {
+        while (start < previous.length && start < current.length && previous[start] === current[start]) start++;
+        let tail = 0;
+        while (tail < previous.length - start && tail < current.length - start
+          && previous[previous.length - 1 - tail] === current[current.length - 1 - tail]) tail++;
+        deleteCount = previous.length - start - tail;
+        insert = current.slice(start, current.length - tail);
+      }
+      studio.notesPreviewSeq++;
+      window.boostudyLessonSocket.emit('lesson_room_ui', {
+        lesson_id: lessonId, kind: 'notes_preview', client_id: studio.notesPreviewClientId,
+        seq: studio.notesPreviewSeq, start, delete_count: deleteCount, insert,
+        snapshot: forceSnapshot, sent_at: Date.now(),
+      });
+      studio.notesPreviewText = current;
+    }
+
+    function requestStudentNotesPreview() {
+      if (!isTeacher || !window.boostudyLessonSocket?.connected) return;
+      if (studio.notesPreviewRequestedAt && Date.now() - studio.notesPreviewRequestedAt < 1500) return;
+      studio.notesPreviewRequestedAt = Date.now();
+      window.boostudyLessonControl?.sendUi?.({ kind: 'notes_preview_request' });
+    }
+
+    async function saveStudentNotes() {
+      if (!studio.notesDirty || studio.notesSaving || studio.notesConflict) return;
+      if (!studio.notesRevision) {
+        await loadStudentNotes();
+        if (!studio.notesRevision) return;
+      }
+      studio.notesSaving = true;
+      const submitted = studio.studentNotes;
+      const status = $('#notes-status-text');
+      try {
+        const response = await fetch(`${studioApi}/student-notes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
+          },
+          body: JSON.stringify({ notes: submitted, revision: studio.notesRevision }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          studio.notesConflict = true;
+          studio.notesServerRevision = result.revision;
+          localStorage.setItem(`boostudy:lesson:${lessonId}:notes-recovery`, studio.studentNotes);
+          if (status) status.textContent = 'Конфликт: ваш текст сохранён в этом браузере. Обновите страницу для сверки.';
+          showNotesConflict(result.notes);
+          return;
         }
-      }, 550);
+        if (!response.ok || !result.success) throw new Error(result.error || 'Не удалось сохранить заметку');
+        studio.notesRevision = result.revision;
+        localStorage.removeItem(`boostudy:lesson:${lessonId}:notes-recovery`);
+        studio.notesDirty = studio.studentNotes !== submitted;
+        if (status && !studio.notesDirty) status.textContent = `Сохранено ${new Date().toTimeString().slice(0, 5)}`;
+      } catch (error) {
+        if (status) status.textContent = error.message;
+        studio.notesDirty = true;
+      } finally {
+        studio.notesSaving = false;
+        if (studio.notesDirty && !studio.notesConflict) {
+          clearTimeout(studio.noteTimer);
+          studio.noteTimer = setTimeout(saveStudentNotes, 300);
+        }
+      }
+    }
+
+    function showNotesConflict(serverText) {
+      const panel = $('#notes-conflict-panel');
+      const saved = $('#notes-conflict-server-text');
+      if (saved) saved.textContent = String(serverText || '');
+      panel?.classList.remove('hidden');
     }
 
     function queueTeacherNote(value) {
@@ -17393,9 +18118,24 @@
         const response = await fetch(`${studioApi}/student-notes`);
         if (!response.ok) return;
         const result = await response.json();
+        studio.notesRevision = result.revision;
+        if (studio.notesDirty) return;
         studio.studentNotes = String(result.notes || '');
+        studio.notesPreviewText = studio.studentNotes;
         const field = $('#notes-textarea');
         if (field && document.activeElement !== field) field.value = studio.studentNotes;
+        const recovery = localStorage.getItem(`boostudy:lesson:${lessonId}:notes-recovery`);
+        if (recovery !== null && recovery !== studio.studentNotes) {
+          if (field) field.value = recovery;
+          studio.studentNotes = recovery;
+          studio.notesDirty = true;
+          studio.notesConflict = true;
+          studio.notesServerRevision = result.revision;
+          showNotesConflict(result.notes);
+          const status = $('#notes-status-text');
+          if (status) status.textContent = 'Найден локальный черновик после конфликта. Скопируйте нужный текст перед продолжением.';
+        }
+        if (!isTeacher) sendStudentNotesPreview(true);
       } catch (error) { /* локальное содержимое из шаблона остаётся доступным */ }
     }
 
@@ -17583,6 +18323,9 @@
       document.querySelectorAll('[data-teacher-note-prefix]').forEach((button) => button.addEventListener('click', () => appendTeacherNotePrefix(button.dataset.teacherNotePrefix || '')));
       window.setInterval(() => renderInfo(), 1000);
       loadStudentNotes();
+      if (isTeacher) window.setTimeout(() => {
+        requestStudentNotesPreview();
+      }, 800);
       renderInfo();
     }
 
@@ -17615,9 +18358,56 @@
     window.addEventListener('boostudy:student-notes-updated', (event) => {
       const payload = event.detail || {};
       if (Number(payload.lesson_id) !== lessonId || typeof payload.notes !== 'string') return;
+      if (studio.notesDirty || studio.notesSaving) return;
       studio.studentNotes = payload.notes;
+      studio.notesRevision = payload.revision || studio.notesRevision;
+      if (studio.remotePreview && studio.remotePreview.text !== payload.notes) return;
+      studio.remotePreview = null;
       const field = $('#notes-textarea');
       if (field && document.activeElement !== field) field.value = payload.notes;
+    });
+    window.addEventListener('boostudy:notes-reconnect', () => {
+      if (!isTeacher && role === 'student') sendStudentNotesPreview(true);
+      if (isTeacher) requestStudentNotesPreview();
+    });
+    window.addEventListener('boostudy:notes-preview-request', (event) => {
+      if (!isTeacher && role === 'student' && Number(event.detail?.lesson_id) === lessonId) sendStudentNotesPreview(true);
+    });
+    window.addEventListener('boostudy:student-notes-preview', (event) => {
+      const payload = event.detail || {};
+      if (!isTeacher || Number(payload.lesson_id) !== lessonId || !Number.isInteger(payload.seq)) return;
+      const previous = studio.remotePreview;
+      let text;
+      if (payload.snapshot) {
+        text = String(payload.insert || '');
+      } else {
+        if (!previous || previous.clientId !== payload.client_id || payload.seq !== previous.seq + 1) {
+          requestStudentNotesPreview();
+          return;
+        }
+        const start = Number(payload.start);
+        const count = Number(payload.delete_count);
+        if (!Number.isInteger(start) || !Number.isInteger(count) || start < 0 || count < 0 || start + count > previous.text.length) return;
+        text = previous.text.slice(0, start) + String(payload.insert || '') + previous.text.slice(start + count);
+      }
+      studio.remotePreview = { clientId: payload.client_id, seq: payload.seq, text };
+      const field = $('#notes-textarea');
+      if (!field || field.value === text) return;
+      const scrollTop = field.scrollTop;
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      field.value = text;
+      field.setSelectionRange(Math.min(start, text.length), Math.min(end, text.length));
+      field.scrollTop = scrollTop;
+    });
+    document.getElementById('notes-conflict-save')?.addEventListener('click', () => {
+      if (!studio.notesConflict || !studio.notesServerRevision) return;
+      studio.studentNotes = $('#notes-textarea')?.value || '';
+      studio.notesRevision = studio.notesServerRevision;
+      studio.notesConflict = false;
+      studio.notesDirty = true;
+      $('#notes-conflict-panel')?.classList.add('hidden');
+      saveStudentNotes();
     });
     window.addEventListener('boostudy:private-note-updated', (event) => {
       const payload = event.detail || {};
@@ -18476,6 +19266,7 @@
                   <span class="text-xs font-black text-slate-900">${task.task_number ? `Задание №${task.task_number}` : (task.title || 'Задание')}</span>
                   <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">${escapeHtml(task.course_name || 'Банк')}</span>
                   ${diffBadge}
+                  ${task.usage ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200" title="${escapeHtml(task.usage.date ? new Date(task.usage.date).toLocaleDateString('ru-RU') : 'Дата неизвестна')}">${escapeHtml(task.usage.source)}${task.usage.date ? ` · ${escapeHtml(new Date(task.usage.date).toLocaleDateString('ru-RU'))}` : ''}</span>` : '<span class="text-[10px] text-emerald-700">Ещё не выдавалось</span>'}
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                   ${hasAnswer ? `
@@ -18484,9 +19275,9 @@
                       <span>Ответ</span>
                     </button>
                   ` : ''}
-                  <button type="button" class="btn-add-to-work px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer" data-task-id="${task.task_id}">
+                  <button type="button" class="btn-add-to-work px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer" data-task-id="${task.task_id}" ${task.usage?.blocked ? 'disabled title="Задание уже выдавалось этому ученику"' : ''}>
                     <i class="ph-bold ph-plus-circle text-xs"></i>
-                    <span>В работу</span>
+                    <span>${task.usage?.blocked ? 'Уже выдавалось' : 'В работу'}</span>
                   </button>
                 </div>
               </div>
@@ -18601,9 +19392,10 @@
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261121-rapid-rc1"></script><script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-v1"></script><script src="{{ url_for('static', filename='js/boostudy-teacher-orbit.js') }}?v=20261022-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261121-rapid-rc1"></script>{% endif %}{% if pocket_os_enabled %}<script src="{{ url_for('static', filename='js/boostudy-pocket-os.js') }}?v=20261102-pocket-v123"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261126-release-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261126-release-v1"></script>{% endif %}{% if pocket_os_enabled %}<script src="{{ url_for('static', filename='js/boostudy-pocket-os.js') }}?v=20261126-release-v1"></script>{% endif %}{% endif %}
+{% if room_mode and not homework_mode %}<script src="{{ url_for('static', filename='js/lesson-theory-os.js') }}?v=20261126-release-v1" defer></script>{% endif %}
 <script src="{{ url_for('static', filename='js/boostudy-code-autocomplete.js') }}?v=20261022-v1"></script>
-<script src="{{ url_for('static', filename='js/boostudy-tracer.js') }}?v=20261121-rapid-rc1"></script>
+<script src="{{ url_for('static', filename='js/boostudy-tracer.js') }}?v=20261022-v2"></script>
 <script>
   function toggleVisualTracer() {
     const win = document.getElementById('tracer-window');

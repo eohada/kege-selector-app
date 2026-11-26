@@ -1833,6 +1833,8 @@ def register_lesson_socket(socketio, app=None) -> None:
             join_room(f"lesson_{lesson_id}_user_{current_user.id}")
             if role == "teacher":
                 join_room(_teacher_room(lesson_id))
+            else:
+                join_room(_student_room(lesson_id))
             from app.lessons.whiteboard_service import board_payload, get_or_create_board, can_student_edit_page
             board = get_or_create_board(lesson_id)
             identity = _lesson_presence.setdefault(lesson_id, {}).setdefault(current_user.id, {})
@@ -2091,7 +2093,7 @@ def register_lesson_socket(socketio, app=None) -> None:
                 return
             kind = str((data or {}).get("kind") or "")
 
-            standard_kinds = {"mode", "window", "window_layout", "window_order", "run", "run_start", "terminal_output", "terminal_tab", "focus_suggestion_ack"}
+            standard_kinds = {"mode", "window", "window_layout", "window_order", "run", "run_start", "terminal_output", "terminal_tab", "terminal_scroll", "terminal_selection", "text_selection", "window_presence", "notes_preview", "focus_suggestion_ack"}
             tracer_kinds = {"tracer_state", "tracer_window", "tracer_run", "tracer_breakpoint", "tracer_step", "tracer_input_submit", "tracer_restart"}
             orbit_kinds = {
                 "orbit_beacon", "orbit_stamp", "orbit_stamp_move", "orbit_stamp_remove",
@@ -2101,10 +2103,59 @@ def register_lesson_socket(socketio, app=None) -> None:
             teacher_master_kinds = {
                 "focus_board", "freeze_student", "free_mode", "freeze", "teacher_stamp", "teacher_hint",
                 "blitz_start", "blitz_update", "blitz_end", "teacher_answer_vis", "task_switch",
-                "show_here", "focus_suggestion", "set_focus", "terminal_close"
+                "show_here", "focus_suggestion", "set_focus", "terminal_close", "notes_focus", "notes_preview_request", "window_presence_request"
             }
 
             if kind not in (standard_kinds | orbit_kinds | teacher_master_kinds | tracer_kinds):
+                return
+
+            if kind == "window_presence":
+                if role != "student":
+                    return
+                allowed_presence = {"code-window", "terminal-window", "tracer-window", "notes-window", "theory-window", "task-window", "files-window", "video-window"}
+                raw_windows = (data or {}).get("windows")
+                if not isinstance(raw_windows, list) or len(raw_windows) > len(allowed_presence):
+                    return
+                windows = []
+                for item in raw_windows:
+                    if not isinstance(item, dict) or item.get("id") not in allowed_presence:
+                        return
+                    if item.get("status") not in {"open", "minimized", "closed"}:
+                        return
+                    windows.append({"id": item["id"], "status": item["status"], "page_id": str(item.get("page_id") or "")[:64]})
+                socketio.emit("lesson_window_presence", {"lesson_id": lesson_id, "user_id": current_user.id,
+                    "name": str(getattr(current_user, "username", "Ученик"))[:80], "windows": windows},
+                    room=_teacher_room(lesson_id), namespace="/lesson")
+                return
+
+            if kind == "notes_preview":
+                if role != "student":
+                    return
+                raw = data or {}
+                client_id = str(raw.get("client_id") or "")
+                insert = raw.get("insert")
+                if not isinstance(insert, str) or len(insert) > 20000 or not (1 <= len(client_id) <= 64):
+                    return
+                try:
+                    seq = int(raw.get("seq"))
+                    start = int(raw.get("start"))
+                    delete_count = int(raw.get("delete_count"))
+                except (TypeError, ValueError):
+                    return
+                if not (0 < seq <= 1000000 and 0 <= start <= 20000 and 0 <= delete_count <= 20000):
+                    return
+                socketio.emit("lesson_student_notes_preview", {
+                    "lesson_id": lesson_id, "client_id": client_id, "seq": seq,
+                    "start": start, "delete_count": delete_count, "insert": insert,
+                    "snapshot": bool(raw.get("snapshot")), "sent_at": raw.get("sent_at"),
+                }, room=_teacher_room(lesson_id), namespace="/lesson")
+                return
+
+            if kind == "notes_preview_request":
+                if role != "teacher":
+                    return
+                socketio.emit("lesson_notes_preview_request", {"lesson_id": lesson_id},
+                    room=_student_room(lesson_id), namespace="/lesson")
                 return
 
             control = _room_control(lesson_id)
@@ -2112,6 +2163,7 @@ def register_lesson_socket(socketio, app=None) -> None:
             is_student_run = (
                 role == "student"
                 and control.get("student_code_editing")
+                and not control.get("freeze_student")
                 and kind in {"run", "run_start", "terminal_output", "terminal_tab"}
             )
             is_student_tracer = (
@@ -2119,6 +2171,8 @@ def register_lesson_socket(socketio, app=None) -> None:
                 and not control.get("freeze_student")
                 and kind in tracer_kinds
             )
+            is_terminal_presence = role == "student" and not control.get("freeze_student") and kind in {"terminal_scroll", "terminal_selection"}
+            is_shared_selection = role == "student" and not control.get("freeze_student") and kind == "text_selection"
             is_tracer_action = kind in tracer_kinds
             is_window_action = kind in {"window", "window_layout", "window_order"}
             is_orbit_action = kind in orbit_kinds
@@ -2165,15 +2219,11 @@ def register_lesson_socket(socketio, app=None) -> None:
                     if allowed_ctrl and target_win not in allowed_ctrl and not is_teacher_user:
                         return
 
-            if not (is_window_action or is_student_run or is_student_tracer or is_orbit_action or is_teacher_user or is_ack_action):
+            if not (is_window_action or is_student_run or is_student_tracer or is_terminal_presence or is_shared_selection or is_orbit_action or is_teacher_user or is_ack_action):
                 socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
                 return
 
             if kind == "mode" and not _teacher_control_enabled(control, "teacher_controls_mode"):
-                return
-            if kind in {"run", "run_start"} and not (control.get("auto_open_terminal_on_run") or control.get("terminal_sync")):
-                return
-            if kind == "terminal_output" and not control.get("terminal_sync"):
                 return
 
             payload = {"lesson_id": lesson_id, "kind": kind, "updated_at": int(time() * 1000)}
@@ -2226,6 +2276,114 @@ def register_lesson_socket(socketio, app=None) -> None:
                 if tab not in {"output", "problems"}:
                     return
                 payload["tab"] = tab
+            elif kind in {"terminal_scroll", "terminal_selection"}:
+                payload["run_id"] = str((data or {}).get("run_id") or "")[:64]
+                payload["page_id"] = str((data or {}).get("page_id") or "")[:64]
+                payload["client_id"] = str((data or {}).get("client_id") or "")[:64]
+                try:
+                    payload["seq"] = max(0, min(int((data or {}).get("seq") or 0), 2**31 - 1))
+                except (TypeError, ValueError):
+                    return
+                if not payload["run_id"] or not payload["page_id"]:
+                    return
+                if kind == "terminal_scroll":
+                    try:
+                        payload["ratio"] = max(0.0, min(1.0, float((data or {}).get("ratio", 0))))
+                    except (TypeError, ValueError):
+                        return
+                else:
+                    payload["clear"] = bool((data or {}).get("clear"))
+                    start, end = (data or {}).get("start"), (data or {}).get("end")
+                    if payload["clear"]:
+                        payload.update({"start": None, "end": None})
+                    else:
+                        try:
+                            start, end = int(start), int(end)
+                        except (TypeError, ValueError):
+                            return
+                        quote = (data or {}).get("quote")
+                        prefix = (data or {}).get("prefix", "")
+                        suffix = (data or {}).get("suffix", "")
+                        if not (0 <= start < end <= 200000) or not isinstance(quote, str) or not quote.strip() or len(quote) > 2000 or end - start != len(quote):
+                            return
+                        if not isinstance(prefix, str) or not isinstance(suffix, str) or len(prefix) > 64 or len(suffix) > 64:
+                            return
+                        payload.update({"start": start, "end": end, "quote": quote, "prefix": prefix, "suffix": suffix})
+                    payload["author"] = str(getattr(current_user, "username", None) or "Участник")[:80]
+                    payload["author_role"] = role
+            elif kind == "text_selection":
+                raw = data or {}
+                surface = str(raw.get("surface") or "")
+                if surface not in {"notes", "theory"}:
+                    return
+                clear = bool(raw.get("clear"))
+                payload.update({
+                    "surface": surface,
+                    "clear": clear,
+                    "author": str(getattr(current_user, "username", None) or ("Преподаватель" if role == "teacher" else "Ученик"))[:80],
+                    "author_role": role,
+                    "sender_id": str(current_user.id),
+                    "client_id": str(raw.get("client_id") or "")[:64],
+                })
+                try:
+                    payload["seq"] = max(0, min(int(raw.get("seq") or 0), 2**31 - 1))
+                except (TypeError, ValueError):
+                    return
+                if clear:
+                    if surface == "notes":
+                        payload.update({"start": 0, "end": 0, "quote": ""})
+                    else:
+                        payload.update({"fragment_id": str(raw.get("fragment_id") or "")[:64], "quote": ""})
+                elif surface == "notes":
+                    try:
+                        start, end = int(raw.get("start")), int(raw.get("end"))
+                    except (TypeError, ValueError):
+                        return
+                    quote = raw.get("quote")
+                    if not isinstance(quote, str) or not quote.strip() or len(quote) > 2000 or not (0 <= start < end <= 20000) or end - start != len(quote):
+                        return
+                    prefix, suffix = raw.get("prefix", ""), raw.get("suffix", "")
+                    if not isinstance(prefix, str) or not isinstance(suffix, str) or len(prefix) > 64 or len(suffix) > 64:
+                        return
+                    payload.update({"start": start, "end": end, "quote": quote, "prefix": prefix, "suffix": suffix})
+                else:
+                    fragment_id = str(raw.get("fragment_id") or "")[:64]
+                    try:
+                        start = int(raw.get("selection_start"))
+                        end = int(raw.get("selection_end"))
+                    except (TypeError, ValueError):
+                        return
+                    fingerprint = raw.get("text_fingerprint")
+                    if not fragment_id or not isinstance(fingerprint, str) or len(fingerprint) > 24:
+                        return
+                    text_length, separator, text_hash = fingerprint.partition(":")
+                    if (not separator or not text_length.isdigit() or not text_hash
+                            or len(text_hash) > 8 or any(char not in "0123456789abcdef" for char in text_hash)):
+                        return
+                    if not (0 <= start < end <= 200000 and end <= int(text_length)):
+                        return
+                    from app.models import Lesson
+                    from app.lessons.routes import _lesson_studio_state
+                    lesson = Lesson.query.get(lesson_id)
+                    fragments = (_lesson_studio_state(lesson).get("theory_os") or {}).get("fragments", []) if lesson else []
+                    if not any(isinstance(fragment, dict) and str(fragment.get("id")) == fragment_id and fragment.get("revealed") for fragment in fragments):
+                        return
+                    payload.update({
+                        "fragment_id": fragment_id,
+                        "selection_start": start,
+                        "selection_end": end,
+                        "text_fingerprint": fingerprint,
+                    })
+            elif kind == "notes_focus":
+                try:
+                    start = int((data or {}).get("start", 0))
+                    end = int((data or {}).get("end", 0))
+                except (TypeError, ValueError):
+                    return
+                if not (0 <= start <= end <= 20000):
+                    return
+                payload.update({"start": start, "end": end, "clear": bool((data or {}).get("clear")),
+                                "author": str(getattr(current_user, "username", None) or "Преподаватель")[:80]})
             elif kind == "terminal_output":
                 payload.update({
                     "file_name": str((data or {}).get("file_name") or "main.py")[:120],
@@ -2439,7 +2597,10 @@ def register_lesson_socket(socketio, app=None) -> None:
                 else:
                     _lesson_control_cache.pop(lesson_id, None)
 
-            socketio.emit("lesson_room_ui", payload, room=_room(lesson_id), namespace="/lesson", include_self=False)
+            emit_room = _room(lesson_id)
+            if kind in {"terminal_scroll", "terminal_selection", "text_selection"}:
+                emit_room = _student_room(lesson_id) if role == "teacher" else _teacher_room(lesson_id)
+            socketio.emit("lesson_room_ui", payload, room=emit_room, namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("lesson_room_ui failed: %s", error)
 
@@ -3317,13 +3478,17 @@ def register_lesson_socket(socketio, app=None) -> None:
             lesson_id = int((data or {}).get("lesson_id") or 0)
             if not lesson_id:
                 return
+            if not _get_lesson_auth(lesson_id)[1]:
+                return
             from app.runtime_state import refresh_connection_lease
             refresh_connection_lease(request.sid)
-            state = _load_cached_code_state(lesson_id) or {}
+            page_id = str((data or {}).get("page_id") or "page_1")[:64]
+            state = _load_cached_code_state(lesson_id, page_id=page_id) or {}
             rev = int(state.get("revision") or state.get("version") or 0)
             active_page = _load_cached_board_active_page(lesson_id)
             socketio.emit("lesson_sync_pong", {
                 "lesson_id": lesson_id,
+                "page_id": page_id,
                 "revision": rev,
                 "active_page_id": active_page,
             }, room=request.sid, namespace="/lesson")
@@ -3339,7 +3504,9 @@ def register_lesson_socket(socketio, app=None) -> None:
             lesson_id = int((data or {}).get("lesson_id") or 0)
             if not lesson_id:
                 return
-            page_id = str((data or {}).get("page_id") or "page_1")
+            if not _get_lesson_auth(lesson_id)[1]:
+                return
+            page_id = str((data or {}).get("page_id") or "page_1")[:64]
             current = _load_cached_code_state(lesson_id, page_id=page_id)
             if current:
                 socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, "page_id": page_id, **current}, room=request.sid, namespace="/lesson")
@@ -3759,6 +3926,12 @@ def register_lesson_socket(socketio, app=None) -> None:
                 "color": color,
                 "page_id": str(payload.get("page_id") or "")[:96],
                 "mode": str(payload.get("mode") or "board")[:16],
+                "interface_mode": str(payload.get("interface_mode") or ("pocket" if payload.get("device") == "pocket_os" else "desktop"))[:16],
+                "device_type": str(payload.get("device_type") or "unknown")[:16],
+                "input_type": str(payload.get("input_type") or "unknown")[:16],
+                "client_id": str(payload.get("client_id") or "legacy")[:96],
+                "client_started_at": max(0, int(payload.get("client_started_at") or 0)),
+                "sequence": max(0, int(payload.get("sequence") or 0)),
                 "viewport": {
                     "world_x": float(payload.get("world_x") or 0),
                     "world_y": float(payload.get("world_y") or 0),
@@ -3946,13 +4119,25 @@ def _emit_lesson_role_event(lesson_id: int, event: str, payload: dict, roles: se
         logger.warning("%s failed: %s", event, exc)
 
 
-def emit_lesson_student_notes_updated(lesson_id: int, notes: str, author_id: int | None = None) -> None:
+def emit_lesson_student_notes_updated(lesson_id: int, notes: str, author_id: int | None = None, revision: str = "") -> None:
     _emit_lesson_role_event(
         lesson_id,
         "lesson_student_notes_updated",
-        {"lesson_id": lesson_id, "notes": notes or "", "author_id": author_id},
+        {"lesson_id": lesson_id, "notes": notes or "", "author_id": author_id, "revision": revision},
         {"teacher", "student"},
         user_id=author_id,
+    )
+
+
+def emit_lesson_material_added(lesson_id: int, material: dict) -> None:
+    _emit_lesson_role_event(
+        lesson_id,
+        "lesson_material_added",
+        {
+            "lesson_id": lesson_id,
+            "material": {key: material.get(key) for key in ("name", "url", "type", "size")},
+        },
+        {"teacher", "student"},
     )
 
 

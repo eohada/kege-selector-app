@@ -119,7 +119,7 @@
             <span class="student-dashboard-tile-icon is-blue"><i class="ph {% if dashboard_showcase %}ph-calendar-blank{% else %}ph-book-open{% endif %}" aria-hidden="true"></i></span>
             <div><span class="student-dashboard-tile-label">{% if course_next_lesson and not dashboard_showcase %}Следующий урок{% else %}Текущая тема{% endif %}</span><strong>{% if display_next_topic %}{{ course_next_lesson.topic if course_next_lesson and not dashboard_showcase else display_next_topic }}{% else %}Тема ещё не выбрана{% endif %}</strong></div>
             {% if dashboard_showcase or not course_next_lesson %}<span class="bs-badge-soon">Скоро...</span>{% endif %}
-            {% if course_next_lesson and not dashboard_showcase %}<a class="student-dashboard-tile-action" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=course_next_lesson.lesson_id) }}">Открыть</a>{% endif %}
+            {% if course_next_lesson and not dashboard_showcase %}<a class="student-dashboard-tile-action" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=course_next_lesson.lesson_id) }}" aria-label="Открыть следующий урок"><span class="student-dashboard-tile-action-label">Открыть</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>{% endif %}
           </article>
           <article class="student-dashboard-learning-tile{% if dashboard_showcase %} is-showcase{% endif %}">
             <span class="student-dashboard-tile-icon {% if dashboard_showcase %}is-purple{% else %}is-pink{% endif %}"><i class="ph {% if dashboard_showcase %}ph-file-text{% else %}ph-notebook{% endif %}" aria-hidden="true"></i></span>
@@ -127,8 +127,8 @@
             {% if dashboard_showcase %}
               <span class="student-dashboard-tile-deadline">до 25.09</span>
               <a class="student-dashboard-tile-action" href="{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) if next_assignment else url_for('assignments.assignments_list') }}">Открыть</a>
-            {% elif next_assignment %}<a href="{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) }}" aria-label="Открыть домашнее задание"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
-            {% else %}<a href="{{ url_for('assignments.assignments_list') }}" aria-label="Открыть задания"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+            {% elif next_assignment %}<a class="student-dashboard-tile-action" href="{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) }}" aria-label="Открыть домашнее задание"><span class="student-dashboard-tile-action-label">Открыть</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+            {% else %}<a class="student-dashboard-tile-action" href="{{ url_for('assignments.assignments_list') }}" aria-label="Открыть задания"><span class="student-dashboard-tile-action-label">Открыть</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>{% endif %}
           </article>
           <article class="student-dashboard-learning-tile{% if dashboard_showcase %} is-showcase{% endif %}">
             <span class="student-dashboard-tile-icon {% if dashboard_showcase %}is-blue{% else %}is-green{% endif %}"><i class="ph {% if dashboard_showcase %}ph-file-text{% else %}ph-graduation-cap{% endif %}" aria-hidden="true"></i></span>
@@ -136,7 +136,7 @@
             {% if dashboard_showcase %}
               <div class="student-dashboard-tile-progress"><span><i style="width: 66%;"></i></span><b>2 / 3</b></div>
               <a class="student-dashboard-tile-action" href="{{ url_for('theory.theory_index') }}">Читать</a>
-            {% else %}<a href="{{ url_for('theory.theory_index') }}" aria-label="Открыть теорию"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+            {% else %}<a class="student-dashboard-tile-action" href="{{ url_for('theory.theory_index') }}" aria-label="Открыть теорию"><span class="student-dashboard-tile-action-label">Открыть</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>{% endif %}
           </article>
         </div>
       </div>

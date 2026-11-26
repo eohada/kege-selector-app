@@ -139,7 +139,13 @@ body.pocket-os-active #pocket-os-shell {
   height: 100%;
   z-index: 150;
   pointer-events: none !important;
-  overflow: hidden;
+  overflow: clip;
+}
+
+/* The desktop participant chip sits over the first line in the narrow editor.
+   Keep the colored remote caret in the editor; the mobile header shows presence. */
+body.pocket-os-active #code-remote-cursors {
+  display: none !important;
 }
 
 /* -----------------------------------------------------------------------------
@@ -683,17 +689,17 @@ body.pocket-os-active #code-window {
   .pocket-code-filename {
     max-width: calc(100% - 130px) !important;
   }
+  .pocket-code-filename > i { display: none; }
   .pocket-code-save-status {
     display: none !important;
   }
   .pocket-code-perm-badge {
     padding: 2px 5px;
     font-size: 10px;
-    max-width: 85px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 0 0 auto;
     white-space: nowrap;
   }
+  .pocket-code-perm-badge i { display: none; }
   .pocket-btn-console-toggle .pocket-btn-label {
     display: none !important;
   }
